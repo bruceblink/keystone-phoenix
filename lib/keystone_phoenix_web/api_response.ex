@@ -10,4 +10,9 @@ defmodule KeystonePhoenixWeb.ApiResponse do
   def ok(data \\ nil) do
     %{code: @success_code, msg: @success_message, data: data}
   end
+
+  @spec error(integer(), String.t(), term()) :: map()
+  def error(code, message, data \\ nil) do
+    %{code: code, msg: message, data: data}
+  end
 end

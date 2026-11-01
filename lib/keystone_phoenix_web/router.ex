@@ -11,8 +11,16 @@ defmodule KeystonePhoenixWeb.Router do
     get "/health", HealthController, :show
     get "/system/dict/types", DictionaryController, :list_types
     get "/system/dict/type/list", DictionaryController, :list_types
+    get "/system/dict/type/:dict_id", DictionaryController, :show_type
     get "/system/dict/data/list", DictionaryController, :list_data
     get "/system/dict/data/type/:dict_type", DictionaryController, :list_data_by_type
+    get "/system/dict/data/:dict_code", DictionaryController, :show_data
+    post "/system/dict/type", DictionaryController, :create_type
+    put "/system/dict/type/:dict_id", DictionaryController, :update_type
+    delete "/system/dict/type/:dict_id", DictionaryController, :delete_type
+    post "/system/dict/data", DictionaryController, :create_data
+    put "/system/dict/data/:dict_code", DictionaryController, :update_data
+    delete "/system/dict/data/:dict_code", DictionaryController, :delete_data
   end
 
   scope "/api", KeystonePhoenixWeb do
