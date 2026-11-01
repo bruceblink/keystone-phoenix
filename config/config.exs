@@ -9,7 +9,9 @@ import Config
 
 config :keystone_phoenix,
   ecto_repos: [KeystonePhoenix.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  redis_enabled: true,
+  redis_url: "redis://localhost:6379/0"
 
 # Configure the endpoint
 config :keystone_phoenix, KeystonePhoenixWeb.Endpoint,

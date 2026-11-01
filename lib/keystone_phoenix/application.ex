@@ -7,16 +7,30 @@ defmodule KeystonePhoenix.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      KeystonePhoenixWeb.Telemetry,
-      KeystonePhoenix.Repo,
-      {DNSCluster, query: Application.get_env(:keystone_phoenix, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: KeystonePhoenix.PubSub},
-      # Start a worker by calling: KeystonePhoenix.Worker.start_link(arg)
-      # {KeystonePhoenix.Worker, arg},
-      # Start to serve requests, typically the last entry
-      KeystonePhoenixWeb.Endpoint
-    ]
+    redis_children =
+      if Application.get_env(:keystone_phoenix, :redis_enabled, true) do
+        [
+          {Redix,
+           {Application.fetch_env!(:keystone_phoenix, :redis_url), [name: KeystonePhoenix.Redis]}}
+        ]
+      else
+        []
+      end
+
+    children =
+      [
+        KeystonePhoenixWeb.Telemetry,
+        KeystonePhoenix.Repo,
+        redis_children,
+        {DNSCluster,
+         query: Application.get_env(:keystone_phoenix, :dns_cluster_query) || :ignore},
+        {Phoenix.PubSub, name: KeystonePhoenix.PubSub},
+        # Start a worker by calling: KeystonePhoenix.Worker.start_link(arg)
+        # {KeystonePhoenix.Worker, arg},
+        # Start to serve requests, typically the last entry
+        KeystonePhoenixWeb.Endpoint
+      ]
+      |> List.flatten()
 
     # See https://elixir.hexdocs.pm/Supervisor.html
     # for other strategies and supported options

@@ -11,8 +11,10 @@ The project is managed with Mix and uses PostgreSQL from the first commit.
 - Phoenix 1.8.16
 - Ecto SQL 3.14.x
 - Postgrex 0.22.x
+- Redix 1.10.x
 - Bandit 1.14.x
 - PostgreSQL 18.x
+- Redis 8.6.x
 
 The dependency versions are locked in [`mix.lock`](mix.lock). `mix.exs` keeps
 the compatible minor version ranges so security and patch releases can be
@@ -22,7 +24,7 @@ updated with the normal Mix workflow.
 
 ```bash
 cp .env.example .env
-docker compose up -d postgres
+docker compose up -d postgres redis
 mix setup
 mix phx.server
 ```
@@ -45,8 +47,10 @@ frontend can call Phoenix JSON endpoints while Ecto owns PostgreSQL access.
 LiveView pages will be added later for real-time operations and administration
 scenarios where server-side interactive state is useful.
 
-## PostgreSQL configuration
+## PostgreSQL and Redis configuration
 
 Development and test configuration reads `POSTGRES_*` environment variables.
-Production releases read `DATABASE_URL` and `SECRET_KEY_BASE` from the runtime
-environment. No database password is committed to the repository.
+Dictionary lookups by type use Redis with a five-minute TTL; writes invalidate
+the corresponding key. Development reads `REDIS_URL`, while production
+releases require `DATABASE_URL`, `REDIS_URL`, and `SECRET_KEY_BASE` from the
+runtime environment. No database password is committed to the repository.

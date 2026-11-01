@@ -5,12 +5,14 @@ defmodule KeystonePhoenix.Dictionary do
 
   import Ecto.Query
 
+  alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Dictionary.{DictData, DictType}
   alias KeystonePhoenix.Repo
 
   @default_page 1
   @default_page_size 10
   @max_page_size 500
+  @dict_data_cache_ttl 300
 
   @dict_type_attrs [
     {"dictName", :dict_name},
@@ -81,8 +83,13 @@ defmodule KeystonePhoenix.Dictionary do
                    Repo.rollback(update_changeset)
                end
              end) do
-          {:ok, updated} -> {:ok, updated}
-          {:error, %Ecto.Changeset{} = changeset} -> {:error, changeset}
+          {:ok, updated} ->
+            Cache.delete(dict_data_cache_key(old_dict_type))
+            Cache.delete(dict_data_cache_key(updated.dict_type))
+            {:ok, updated}
+
+          {:error, %Ecto.Changeset{} = changeset} ->
+            {:error, changeset}
         end
       else
         {:error, changeset}
@@ -103,8 +110,12 @@ defmodule KeystonePhoenix.Dictionary do
         {:error, :has_data}
       else
         case Repo.update(Ecto.Changeset.change(dict_type, deleted: true)) do
-          {:ok, _deleted} -> :ok
-          {:error, _changeset} -> {:error, :not_found}
+          {:ok, _deleted} ->
+            Cache.delete(dict_data_cache_key(dict_type.dict_type))
+            :ok
+
+          {:error, _changeset} ->
+            {:error, :not_found}
         end
       end
     end
@@ -112,18 +123,34 @@ defmodule KeystonePhoenix.Dictionary do
 
   @spec create_dict_data(map()) :: {:ok, DictData.t()} | {:error, Ecto.Changeset.t()}
   def create_dict_data(attrs) do
-    %DictData{}
-    |> DictData.changeset(normalize_attrs(attrs, @dict_data_attrs))
-    |> Repo.insert()
+    changeset = DictData.changeset(%DictData{}, normalize_attrs(attrs, @dict_data_attrs))
+
+    case Repo.insert(changeset) do
+      {:ok, dict_data} = result ->
+        Cache.delete(dict_data_cache_key(dict_data.dict_type))
+        result
+
+      error ->
+        error
+    end
   end
 
   @spec update_dict_data(integer() | String.t(), map()) ::
           {:ok, DictData.t()} | {:error, :not_found | Ecto.Changeset.t()}
   def update_dict_data(id, attrs) do
     with {:ok, dict_data} <- get_dict_data(id) do
-      dict_data
-      |> DictData.changeset(normalize_attrs(attrs, @dict_data_attrs))
-      |> Repo.update()
+      old_dict_type = dict_data.dict_type
+      changeset = DictData.changeset(dict_data, normalize_attrs(attrs, @dict_data_attrs))
+
+      case Repo.update(changeset) do
+        {:ok, updated} = result ->
+          Cache.delete(dict_data_cache_key(old_dict_type))
+          Cache.delete(dict_data_cache_key(updated.dict_type))
+          result
+
+        error ->
+          error
+      end
     end
   end
 
@@ -131,8 +158,12 @@ defmodule KeystonePhoenix.Dictionary do
   def delete_dict_data(id) do
     with {:ok, dict_data} <- get_dict_data(id) do
       case Repo.update(Ecto.Changeset.change(dict_data, deleted: true)) do
-        {:ok, _deleted} -> :ok
-        {:error, _changeset} -> {:error, :not_found}
+        {:ok, _deleted} ->
+          Cache.delete(dict_data_cache_key(dict_data.dict_type))
+          :ok
+
+        {:error, _changeset} ->
+          {:error, :not_found}
       end
     end
   end
@@ -171,12 +202,14 @@ defmodule KeystonePhoenix.Dictionary do
 
   @spec list_dict_data_by_type(String.t()) :: [map()]
   def list_dict_data_by_type(dict_type) when is_binary(dict_type) do
-    from(d in DictData,
-      where: d.deleted == false and d.status == 1 and d.dict_type == ^dict_type,
-      order_by: [asc: d.dict_sort, asc: d.dict_code]
-    )
-    |> Repo.all()
-    |> Enum.map(&dict_data_to_map/1)
+    Cache.fetch(dict_data_cache_key(dict_type), @dict_data_cache_ttl, fn ->
+      from(d in DictData,
+        where: d.deleted == false and d.status == 1 and d.dict_type == ^dict_type,
+        order_by: [asc: d.dict_sort, asc: d.dict_code]
+      )
+      |> Repo.all()
+      |> Enum.map(&dict_data_to_map/1)
+    end)
   end
 
   defp page_query(query, params, count_field, mapper) do
@@ -252,6 +285,8 @@ defmodule KeystonePhoenix.Dictionary do
       "createTime" => format_datetime(dict_data.create_time)
     }
   end
+
+  defp dict_data_cache_key(dict_type), do: "keystone:dictionary:data:#{dict_type}"
 
   defp format_datetime(nil), do: nil
 
