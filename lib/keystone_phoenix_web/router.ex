@@ -5,6 +5,12 @@ defmodule KeystonePhoenixWeb.Router do
     plug :accepts, ["json"]
   end
 
+  scope "/", KeystonePhoenixWeb do
+    pipe_through :api
+
+    get "/health", HealthController, :show
+  end
+
   scope "/api", KeystonePhoenixWeb do
     pipe_through :api
   end
