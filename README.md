@@ -90,6 +90,11 @@ queries and cleanup under `/logs`; authenticated users can submit operation log
 records for their own actions. Login success and failure results are recorded
 without passwords or tokens.
 
+Public login bootstrap endpoints now include `/getConfig` and
+`/captchaImage`; the seeded configuration keeps captcha disabled. `/register`
+returns an explicit unsupported response until an open-registration policy is
+implemented.
+
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout
 action. Phoenix and LiveView browser assets are served from their Mix

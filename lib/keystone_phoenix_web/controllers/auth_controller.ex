@@ -5,6 +5,8 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Token
+  alias KeystonePhoenix.Config
+  alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Log
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.User
@@ -13,6 +15,33 @@ defmodule KeystonePhoenixWeb.AuthController do
   @doc "Returns the public key used to verify RS256 access tokens."
   def public_key(conn, _params) do
     json(conn, ApiResponse.ok(%{"publicKey" => Token.public_key_base64()}))
+  end
+
+  @doc "Returns public login configuration and dictionary data."
+  def config(conn, _params) do
+    json(conn, ApiResponse.ok(%{
+      "isCaptchaOn" => Config.get_config_value_by_key("sys.account.captchaOnOff") == "true",
+      "dictionary" => %{
+        "common.yesOrNo" => Dictionary.list_dict_data_by_type("common.yesOrNo"),
+        "common.status" => Dictionary.list_dict_data_by_type("common.status")
+      }
+    }))
+  end
+
+  @doc "Returns the captcha state. Captcha generation is disabled by default."
+  def captcha(conn, _params) do
+    json(conn, ApiResponse.ok(%{
+      "isCaptchaOn" => Config.get_config_value_by_key("sys.account.captchaOnOff") == "true",
+      "captchaCodeKey" => nil,
+      "captchaCodeImg" => nil
+    }))
+  end
+
+  @doc "Registration remains disabled until an explicit registration policy is added."
+  def register(conn, _params) do
+    conn
+    |> put_status(:not_implemented)
+    |> json(ApiResponse.error(50101, "暂不支持用户注册"))
   end
 
   @doc "Authenticates a local username and password."

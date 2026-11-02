@@ -25,9 +25,12 @@ defmodule KeystonePhoenixWeb.Router do
 
     get "/health", HealthController, :show
     get "/login/rsa-public-key", AuthController, :public_key
+    get "/getConfig", AuthController, :config
+    get "/captchaImage", AuthController, :captcha
     post "/login", AuthController, :login
     post "/refresh-token", AuthController, :refresh
     post "/logout-refresh-token", AuthController, :logout_refresh_token
+    post "/register", AuthController, :register
     get "/getLoginUserInfo", AuthController, :current_user
     get "/getRouters", AuthController, :routers
     get "/system/dict/types", DictionaryController, :list_types
