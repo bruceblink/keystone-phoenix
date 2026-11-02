@@ -21,6 +21,11 @@ defmodule KeystonePhoenixWeb.Router do
     post "/system/dict/data", DictionaryController, :create_data
     put "/system/dict/data/:dict_code", DictionaryController, :update_data
     delete "/system/dict/data/:dict_code", DictionaryController, :delete_data
+    get "/system/configs", ConfigController, :list
+    get "/system/config/:config_id", ConfigController, :show
+    post "/system/config", ConfigController, :create
+    put "/system/config/:config_id", ConfigController, :update
+    delete "/system/configs/cache", ConfigController, :refresh_cache
   end
 
   scope "/api", KeystonePhoenixWeb do

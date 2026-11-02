@@ -42,6 +42,17 @@ defmodule KeystonePhoenix.Cache do
     _ -> :ok
   end
 
+  @spec delete_prefix(String.t()) :: :ok
+  def delete_prefix(prefix) do
+    prefix
+    |> scan_keys()
+    |> delete_many()
+
+    :ok
+  rescue
+    _ -> :ok
+  end
+
   defp get(key) do
     case Redix.command(@redis_name, ["GET", key]) do
       {:ok, nil} -> :miss
@@ -56,6 +67,31 @@ defmodule KeystonePhoenix.Cache do
     case Jason.decode(encoded) do
       {:ok, value} -> {:ok, value}
       _ -> :miss
+    end
+  end
+
+  defp delete_many([]), do: :ok
+
+  defp delete_many(keys) do
+    Redix.command(@redis_name, ["DEL" | keys])
+    :ok
+  end
+
+  defp scan_keys(prefix), do: scan_keys("0", "#{prefix}*", [])
+
+  defp scan_keys(cursor, pattern, keys) do
+    case Redix.command(@redis_name, ["SCAN", cursor, "MATCH", pattern, "COUNT", "100"]) do
+      {:ok, [next_cursor, found_keys]} when is_binary(next_cursor) and is_list(found_keys) ->
+        keys = keys ++ found_keys
+
+        if next_cursor == "0" do
+          keys
+        else
+          scan_keys(next_cursor, pattern, keys)
+        end
+
+      _ ->
+        keys
     end
   end
 end

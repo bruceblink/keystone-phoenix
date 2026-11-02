@@ -47,6 +47,10 @@ frontend can call Phoenix JSON endpoints while Ecto owns PostgreSQL access.
 LiveView pages will be added later for real-time operations and administration
 scenarios where server-side interactive state is useful.
 
+Implemented API slices currently include health checks, dictionary type/data
+CRUD, Redis-backed dictionary lookups, and system configuration CRUD with
+validated option values and cache refresh support.
+
 ## PostgreSQL and Redis configuration
 
 Development and test configuration reads `POSTGRES_*` environment variables.
