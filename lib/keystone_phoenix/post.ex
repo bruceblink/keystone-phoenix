@@ -5,6 +5,15 @@ defmodule KeystonePhoenix.Post do
 
   alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.User.SysUser
+
+  @post_attrs [
+    {"postCode", :post_code},
+    {"postName", :post_name},
+    {"postSort", :post_sort},
+    {"status", :status},
+    {"remark", :remark}
+  ]
 
   def list_posts(params \\ %{}) do
     query =
@@ -31,6 +40,37 @@ defmodule KeystonePhoenix.Post do
     end
   end
 
+  def create_post(attrs) when is_map(attrs) do
+    %SysPost{}
+    |> SysPost.changeset(normalize_attrs(attrs))
+    |> Repo.insert()
+  end
+
+  def create_post(_attrs), do: {:error, invalid_changeset(:post_code)}
+
+  def update_post(id, attrs) when is_map(attrs) do
+    with {:ok, post} <- get_post(id) do
+      Repo.update(SysPost.changeset(post, normalize_attrs(attrs)))
+    end
+  end
+
+  def update_post(_id, _attrs), do: {:error, invalid_changeset(:post_code)}
+
+  def delete_posts(ids) when is_list(ids) do
+    ids = Enum.map(ids, &parse_positive_integer/1)
+
+    if ids == [] or Enum.any?(ids, &is_nil/1) do
+      {:error, :invalid_ids}
+    else
+      case Repo.transaction(fn -> delete_posts_in_transaction(ids) end) do
+        {:ok, :ok} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  def delete_posts(_ids), do: {:error, :invalid_ids}
+
   def post_to_map(post) do
     %{
       "postId" => post.post_id,
@@ -42,6 +82,53 @@ defmodule KeystonePhoenix.Post do
       "createTime" => format_datetime(post.create_time)
     }
   end
+
+  defp delete_posts_in_transaction(ids) do
+    Enum.each(ids, fn post_id ->
+      case get_post(post_id) do
+        {:error, :not_found} -> Repo.rollback(:not_found)
+        {:ok, post} ->
+          if user_count(post_id) > 0 do
+            Repo.rollback(:has_users)
+          else
+            case Repo.update(Ecto.Changeset.change(post, deleted: true)) do
+              {:ok, _deleted} -> :ok
+              {:error, _changeset} -> Repo.rollback(:update_failed)
+            end
+          end
+      end
+    end)
+
+    :ok
+  end
+
+  defp user_count(post_id) do
+    from(u in SysUser, where: u.post_id == ^post_id and u.deleted == false)
+    |> Repo.aggregate(:count, :user_id)
+  end
+
+  defp normalize_attrs(attrs) do
+    Enum.reduce(@post_attrs, %{}, fn {json_key, atom_key}, normalized ->
+      cond do
+        Map.has_key?(attrs, json_key) -> Map.put(normalized, atom_key, Map.get(attrs, json_key))
+        Map.has_key?(attrs, atom_key) -> Map.put(normalized, atom_key, Map.get(attrs, atom_key))
+        true -> normalized
+      end
+    end)
+  end
+
+  defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
+
+  defp parse_positive_integer(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {integer, ""} when integer > 0 -> integer
+      _ -> nil
+    end
+  end
+
+  defp parse_positive_integer(_value), do: nil
+
+  defp invalid_changeset(field), do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysPost{}), field, "参数无效")
 
   defp filter_contains(query, _field, nil), do: query
   defp filter_contains(query, _field, ""), do: query

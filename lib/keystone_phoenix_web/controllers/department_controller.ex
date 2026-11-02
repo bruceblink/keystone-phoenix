@@ -24,9 +24,55 @@ defmodule KeystonePhoenixWeb.DepartmentController do
     json(conn, ApiResponse.ok(Department.list_dropdown()))
   end
 
+  @doc "Creates a department."
+  def create(conn, params) do
+    case Department.create_dept(params) do
+      {:ok, _dept} -> conn |> put_status(:created) |> json(ApiResponse.ok())
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
+  @doc "Updates a department."
+  def update(conn, %{"dept_id" => dept_id} = params) do
+    case Department.update_dept(dept_id, params) do
+      {:ok, _dept} -> json(conn, ApiResponse.ok())
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
+  @doc "Soft deletes a department."
+  def delete(conn, %{"dept_id" => dept_id}) do
+    case Department.delete_dept(dept_id) do
+      :ok -> json(conn, ApiResponse.ok())
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
     |> json(ApiResponse.error(10001, "找不到请求的部门"))
+  end
+
+  defp render_error(conn, reason) when reason in [:parent_not_found, :invalid_parent, :has_children, :has_users, :update_failed] do
+    messages = %{
+      parent_not_found: "父部门不存在",
+      invalid_parent: "父部门无效",
+      has_children: "部门存在子部门，不能删除",
+      has_users: "部门存在用户，不能删除",
+      update_failed: "部门更新失败"
+    }
+
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(10002, Map.fetch!(messages, reason)))
+  end
+
+  defp render_error(conn, %Ecto.Changeset{} = changeset) do
+    errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
+
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(99999, "参数校验失败", errors))
   end
 end

@@ -19,9 +19,53 @@ defmodule KeystonePhoenixWeb.PostController do
     end
   end
 
+  @doc "Creates a post."
+  def create(conn, params) do
+    case Post.create_post(params) do
+      {:ok, _post} -> conn |> put_status(:created) |> json(ApiResponse.ok())
+      {:error, changeset} -> render_error(conn, changeset)
+    end
+  end
+
+  @doc "Updates a post."
+  def update(conn, %{"post_id" => post_id} = params) do
+    case Post.update_post(post_id, params) do
+      {:ok, _post} -> json(conn, ApiResponse.ok())
+      {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, changeset} -> render_error(conn, changeset)
+    end
+  end
+
+  @doc "Soft deletes posts."
+  def delete(conn, %{"ids" => ids}) do
+    case Post.delete_posts(String.split(ids, ",")) do
+      :ok -> json(conn, ApiResponse.ok())
+      {:error, :invalid_ids} -> render_error(conn, :invalid_ids)
+      {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, :has_users} -> render_error(conn, :has_users)
+      {:error, :update_failed} -> render_error(conn, :update_failed)
+    end
+  end
+
+  def delete(conn, _params), do: render_error(conn, :invalid_ids)
+
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
     |> json(ApiResponse.error(10001, "找不到请求的岗位"))
+  end
+
+  defp render_error(conn, :invalid_ids) do
+    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10002, "岗位编号无效"))
+  end
+
+  defp render_error(conn, reason) when reason in [:has_users, :update_failed] do
+    message = if reason == :has_users, do: "岗位存在用户，不能删除", else: "岗位更新失败"
+    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10003, message))
+  end
+
+  defp render_error(conn, %Ecto.Changeset{} = changeset) do
+    errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
+    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(99999, "参数校验失败", errors))
   end
 end
