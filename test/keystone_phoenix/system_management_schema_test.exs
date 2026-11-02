@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.SystemManagementSchemaTest do
 
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Menu.SysMenu
+  alias KeystonePhoenix.Notice.SysNotice
   alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Role.SysRole
 
@@ -44,6 +45,20 @@ defmodule KeystonePhoenix.SystemManagementSchemaTest do
 
     refute changeset.valid?
     assert Keyword.has_key?(changeset.errors, :menu_type)
+    assert Keyword.has_key?(changeset.errors, :status)
+  end
+
+  test "notice changeset validates notice type and status" do
+    changeset =
+      SysNotice.changeset(%SysNotice{}, %{
+        notice_title: "维护",
+        notice_type: 9,
+        notice_content: "内容",
+        status: 2
+      })
+
+    refute changeset.valid?
+    assert Keyword.has_key?(changeset.errors, :notice_type)
     assert Keyword.has_key?(changeset.errors, :status)
   end
 end

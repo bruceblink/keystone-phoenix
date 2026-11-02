@@ -202,6 +202,36 @@ if Repo.aggregate(KeystonePhoenix.Role.SysRoleMenu, :count, :role_id) == 0 do
   Repo.insert_all("sys_role_menu", role_menu_entries)
 end
 
+notice_entries = [
+  %{
+    notice_id: 1,
+    notice_title: "Keystone Phoenix 开发环境",
+    notice_type: 2,
+    notice_content: "这是本地开发环境公告。",
+    status: 1,
+    remark: "管理员",
+    deleted: false,
+    create_time: now,
+    update_time: now
+  },
+  %{
+    notice_id: 2,
+    notice_title: "系统维护通知",
+    notice_type: 1,
+    notice_content: "请在维护窗口前保存工作。",
+    status: 1,
+    remark: "管理员",
+    deleted: false,
+    create_time: now,
+    update_time: now
+  }
+]
+
+if Repo.aggregate(KeystonePhoenix.Notice.SysNotice, :count, :notice_id) == 0 do
+  Repo.insert_all("sys_notice", notice_entries)
+  Repo.query!("SELECT setval('sys_notice_notice_id_seq', (SELECT MAX(notice_id) FROM sys_notice))")
+end
+
 user_entries = [
   %{
     user_id: 1,

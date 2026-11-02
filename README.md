@@ -81,6 +81,9 @@ Authenticated users can read and update their own profile under
 `/system/user/profile`, including old-password-checked password changes and
 avatar URL updates.
 
+Administrators can manage notices through `/system/notices` with paginated
+queries, detail reads, create, update, and soft-delete operations.
+
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout
 action. Phoenix and LiveView browser assets are served from their Mix

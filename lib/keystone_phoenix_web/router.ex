@@ -78,6 +78,11 @@ defmodule KeystonePhoenixWeb.Router do
     post "/system/menus", MenuController, :create
     put "/system/menus/:menu_id", MenuController, :update
     delete "/system/menus/:menu_id", MenuController, :delete
+    get "/system/notices", NoticeController, :list
+    get "/system/notices/:notice_id", NoticeController, :show
+    post "/system/notices", NoticeController, :create
+    put "/system/notices/:notice_id", NoticeController, :update
+    delete "/system/notices", NoticeController, :delete
     get "/system/user/profile", ProfileController, :show
     put "/system/user/profile", ProfileController, :update
     put "/system/user/profile/password", ProfileController, :update_password
