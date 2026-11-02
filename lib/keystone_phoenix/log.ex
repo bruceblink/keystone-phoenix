@@ -34,6 +34,28 @@ defmodule KeystonePhoenix.Log do
   def delete_login_logs(ids), do: soft_delete(SysLoginInfo, :info_id, ids)
   def delete_operation_logs(ids), do: soft_delete(SysOperationLog, :operation_id, ids)
 
+  @doc "Records a login result without persisting passwords or tokens."
+  def record_login(conn, username, status, message) when is_binary(username) do
+    attrs = %{
+      username: username,
+      ip_address: to_string(remote_ip(conn)),
+      login_location: "",
+      browser: List.first(Plug.Conn.get_req_header(conn, "user-agent")) || "",
+      operation_system: "",
+      status: status,
+      msg: message,
+      login_time: DateTime.utc_now(),
+      deleted: false
+    }
+
+    case Repo.insert(Ecto.Changeset.cast(%SysLoginInfo{}, attrs, Map.keys(attrs))) do
+      {:ok, _log} -> :ok
+      {:error, _changeset} -> :ok
+    end
+  end
+
+  def record_login(_conn, _username, _status, _message), do: :ok
+
   def create_operation_log(attrs, user, request_url, request_method) when is_map(attrs) do
     normalized = %{
       business_type: attrs["businessType"] || attrs[:business_type] || 0,
@@ -159,6 +181,9 @@ defmodule KeystonePhoenix.Log do
     do: %{"GET" => 1, "POST" => 2, "PUT" => 3, "DELETE" => 4}[method]
 
   defp request_method_code(_method), do: 0
+
+  defp remote_ip(%Plug.Conn{remote_ip: {a, b, c, d}}), do: "#{a}.#{b}.#{c}.#{d}"
+  defp remote_ip(%Plug.Conn{remote_ip: remote_ip}), do: inspect(remote_ip)
 
   defp format_datetime(nil), do: nil
 

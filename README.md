@@ -87,7 +87,8 @@ queries, detail reads, create, update, and soft-delete operations.
 
 The log foundation now provides administrator-only login and operation log
 queries and cleanup under `/logs`; authenticated users can submit operation log
-records for their own actions.
+records for their own actions. Login success and failure results are recorded
+without passwords or tokens.
 
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout

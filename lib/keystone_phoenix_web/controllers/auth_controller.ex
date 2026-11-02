@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Token
+  alias KeystonePhoenix.Log
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.ApiResponse
@@ -17,11 +18,25 @@ defmodule KeystonePhoenixWeb.AuthController do
   @doc "Authenticates a local username and password."
   def login(conn, %{"username" => username, "password" => password} = params) do
     case Auth.login(username, password, params["forceLogin"] == true) do
-      {:ok, tokens} -> json(conn, ApiResponse.ok(token_to_map(tokens)))
-      {:error, :invalid_credentials} -> render_error(conn, :invalid_credentials)
-      {:error, :already_logged_in} -> render_error(conn, :already_logged_in)
-      {:error, :unavailable} -> render_error(conn, :unavailable)
-      {:error, :token_configuration} -> render_error(conn, :token_configuration)
+      {:ok, tokens} ->
+        Log.record_login(conn, username, 1, "登录成功")
+        json(conn, ApiResponse.ok(token_to_map(tokens)))
+
+      {:error, :invalid_credentials} ->
+        Log.record_login(conn, username, 0, "用户名或密码错误")
+        render_error(conn, :invalid_credentials)
+
+      {:error, :already_logged_in} ->
+        Log.record_login(conn, username, 0, "该账号已经登录")
+        render_error(conn, :already_logged_in)
+
+      {:error, :unavailable} ->
+        Log.record_login(conn, username, 0, "认证会话暂不可用")
+        render_error(conn, :unavailable)
+
+      {:error, :token_configuration} ->
+        Log.record_login(conn, username, 0, "认证密钥配置无效")
+        render_error(conn, :token_configuration)
     end
   end
 
