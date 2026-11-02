@@ -1,6 +1,8 @@
 defmodule KeystonePhoenixWeb.DictionaryController do
   use KeystonePhoenixWeb, :controller
 
+  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
+
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenixWeb.ApiResponse
 

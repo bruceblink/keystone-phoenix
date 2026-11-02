@@ -67,6 +67,15 @@ defmodule KeystonePhoenix.Auth.Session do
     release(user_id, jti)
   end
 
+  @doc "Revokes the refresh session currently associated with a user account."
+  @spec revoke_account(integer()) :: :ok
+  def revoke_account(user_id) do
+    case command(["GET", account_key(user_id)]) do
+      {:ok, jti} when is_binary(jti) -> revoke(user_id, jti)
+      _ -> :ok
+    end
+  end
+
   @spec delete(String.t()) :: :ok
   def delete(jti) do
     command(["DEL", key(jti)])

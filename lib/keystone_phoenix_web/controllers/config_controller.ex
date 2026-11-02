@@ -1,6 +1,8 @@
 defmodule KeystonePhoenixWeb.ConfigController do
   use KeystonePhoenixWeb, :controller
 
+  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
+
   alias KeystonePhoenix.Config
   alias KeystonePhoenixWeb.ApiResponse
 

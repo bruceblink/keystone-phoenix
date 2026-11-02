@@ -60,6 +60,14 @@ session control, and protected user queries are now available through `/login`,
 X.509 public key; clients encrypt the login password with RSA/PKCS#1 before
 sending `/login`, matching the original Keystone contract.
 
+Administrator access tokens can also create, update, soft-delete, disable, and
+reset passwords for local users through the write endpoints under
+`/system/users`. Passwords are validated and bcrypt-hashed before persistence;
+disabling, deleting, or resetting a user revokes that user's active refresh
+session. The system configuration and dictionary management endpoints use the
+same administrator check. Non-administrator access tokens receive `403` for
+these management endpoints.
+
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout
 action. Phoenix and LiveView browser assets are served from their Mix

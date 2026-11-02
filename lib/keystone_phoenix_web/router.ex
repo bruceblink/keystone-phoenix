@@ -48,6 +48,11 @@ defmodule KeystonePhoenixWeb.Router do
     delete "/system/configs/cache", ConfigController, :refresh_cache
     get "/system/users", UserController, :list
     get "/system/users/:user_id", UserController, :show
+    post "/system/users", UserController, :create
+    put "/system/users/:user_id", UserController, :update
+    delete "/system/users/:user_ids", UserController, :delete
+    put "/system/users/:user_id/password", UserController, :reset_password
+    put "/system/users/:user_id/status", UserController, :change_status
   end
 
   scope "/api", KeystonePhoenixWeb do

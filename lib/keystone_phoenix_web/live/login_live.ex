@@ -31,7 +31,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
     case Auth.login_plaintext(username, password) do
       {:ok, tokens} ->
-        dashboard = load_dashboard()
+        dashboard =
+          if tokens.current_user["isAdmin"] == 1 do
+            load_dashboard()
+          else
+            empty_dashboard()
+          end
 
         {:noreply,
          assign(socket,
@@ -65,15 +70,23 @@ defmodule KeystonePhoenixWeb.LoginLive do
   @impl true
   def handle_event("show-panel", %{"panel" => panel}, socket)
       when panel in ["overview", "users", "configs", "dicts"] do
-    {:noreply, assign(socket, active_panel: panel)}
+    if admin_socket?(socket) do
+      {:noreply, assign(socket, active_panel: panel)}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("show-panel", _params, socket), do: {:noreply, socket}
 
   @impl true
   def handle_event("refresh-config", _params, socket) do
-    Config.refresh_cache()
-    {:noreply, assign(socket, config_rows: Config.list_configs(%{"pageSize" => 50}).rows)}
+    if admin_socket?(socket) do
+      Config.refresh_cache()
+      {:noreply, assign(socket, config_rows: Config.list_configs(%{"pageSize" => 50}).rows)}
+    else
+      {:noreply, socket}
+    end
   end
 
   @impl true
@@ -101,6 +114,13 @@ defmodule KeystonePhoenixWeb.LoginLive do
       dict_type_rows: Dictionary.list_dict_types(%{"pageSize" => 50}).rows
     }
   end
+
+  defp empty_dashboard do
+    %{user_rows: [], config_rows: [], dict_type_rows: []}
+  end
+
+  defp admin_socket?(socket),
+    do: is_map(socket.assigns.current_user) and socket.assigns.current_user["isAdmin"] == 1
 
   @impl true
   def render(assigns) do
@@ -147,7 +167,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
         <main>
           <section class="shell">
             <%= if @current_user do %>
-              <div class="dashboard">
+              <%= if @current_user["isAdmin"] == 1 do %>
+                <div class="dashboard">
                 <div class="topbar">
                   <div>
                     <p class="muted">Keystone Phoenix</p>
@@ -208,7 +229,14 @@ defmodule KeystonePhoenixWeb.LoginLive do
                       </table>
                     </div>
                 <% end %>
-              </div>
+                </div>
+              <% else %>
+                <div class="card">
+                  <h2>登录成功</h2>
+                  <p class="muted">当前账号没有管理后台权限。</p>
+                  <button type="button" class="secondary" phx-click="logout">退出</button>
+                </div>
+              <% end %>
             <% else %>
               <div class="brand">
                 <p>Keystone Phoenix</p>
