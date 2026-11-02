@@ -149,3 +149,77 @@ config_entries = [
 if Repo.aggregate(KeystonePhoenix.Config.SysConfig, :count, :config_id) == 0 do
   Repo.insert_all("sys_config", config_entries)
 end
+
+user_entries = [
+  %{
+    user_id: 1,
+    post_id: 1,
+    role_id: 1,
+    dept_id: 4,
+    username: "admin",
+    nickname: "valarchie1",
+    user_type: 0,
+    email: "keystone@163.com",
+    phone_number: "15888888883",
+    sex: 0,
+    avatar: "/profile/avatar/20230725164110_blob_6b7a989b1cdd4dd396665d2cfd2addc5.png",
+    password: "$2a$10$50rE5lPkPBJqkyUtULeijeVWpZemGTYkibf0ucCU4QBHQxI.5YZ2W",
+    status: 1,
+    login_ip: "127.0.0.1",
+    login_date: now,
+    is_admin: true,
+    remark: "管理员",
+    deleted: false,
+    create_time: now,
+    update_time: now
+  },
+  %{
+    user_id: 2,
+    post_id: 2,
+    role_id: 2,
+    dept_id: 5,
+    username: "ag1",
+    nickname: "valarchie2",
+    user_type: 0,
+    email: "keystone1@qq.com",
+    phone_number: "15666666666",
+    sex: 1,
+    avatar: "/profile/avatar/20230725114818_avatar_b5bf400732bb43369b4df58802049b22.png",
+    password: "$2a$10$f6jc0znkcSTrQW5pm0oixOslxGGX9JIBPHKncl.rOnfiLhxlLrM6y",
+    status: 1,
+    login_ip: "127.0.0.1",
+    login_date: now,
+    is_admin: false,
+    remark: "测试员1",
+    deleted: false,
+    create_time: now,
+    update_time: now
+  },
+  %{
+    user_id: 3,
+    post_id: 2,
+    role_id: 0,
+    dept_id: 5,
+    username: "ag2",
+    nickname: "valarchie3",
+    user_type: 0,
+    email: "keystone2@qq.com",
+    phone_number: "15666666667",
+    sex: 1,
+    avatar: "/profile/avatar/20230725114818_avatar_b5bf400732bb43369b4df58802049b22.png",
+    password: "$2a$10$f6jc0znkcSTrQW5pm0oixOslxGGX9JIBPHKncl.rOnfiLhxlLrM6y",
+    status: 1,
+    login_ip: "127.0.0.1",
+    login_date: now,
+    is_admin: false,
+    remark: "测试员2",
+    deleted: false,
+    create_time: now,
+    update_time: now
+  }
+]
+
+if Repo.aggregate(KeystonePhoenix.User.SysUser, :count, :user_id) == 0 do
+  Repo.insert_all("sys_user", user_entries)
+  Repo.query!("SELECT setval('sys_user_user_id_seq', (SELECT MAX(user_id) FROM sys_user))")
+end

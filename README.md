@@ -49,7 +49,8 @@ scenarios where server-side interactive state is useful.
 
 Implemented API slices currently include health checks, dictionary type/data
 CRUD, Redis-backed dictionary lookups, and system configuration CRUD with
-validated option values and cache refresh support.
+validated option values and cache refresh support. User list/detail queries and
+default local accounts are also available as the foundation for authentication.
 
 ## PostgreSQL and Redis configuration
 

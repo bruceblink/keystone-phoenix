@@ -26,6 +26,8 @@ defmodule KeystonePhoenixWeb.Router do
     post "/system/config", ConfigController, :create
     put "/system/config/:config_id", ConfigController, :update
     delete "/system/configs/cache", ConfigController, :refresh_cache
+    get "/system/users", UserController, :list
+    get "/system/users/:user_id", UserController, :show
   end
 
   scope "/api", KeystonePhoenixWeb do
