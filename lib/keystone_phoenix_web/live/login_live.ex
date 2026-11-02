@@ -4,6 +4,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
   import Phoenix.Component
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Config
+  alias KeystonePhoenix.Dictionary
+  alias KeystonePhoenix.User
 
   @impl true
   def mount(_params, _session, socket) do
@@ -14,7 +17,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
        login_error: nil,
        current_user: nil,
        access_token: nil,
-       refresh_token: nil
+       refresh_token: nil,
+       active_panel: "overview",
+       user_rows: [],
+       config_rows: [],
+       dict_type_rows: []
      )}
   end
 
@@ -24,6 +31,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
     case Auth.login_plaintext(username, password) do
       {:ok, tokens} ->
+        dashboard = load_dashboard()
+
         {:noreply,
          assign(socket,
            username: username,
@@ -31,7 +40,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
            login_error: nil,
            current_user: tokens.current_user,
            access_token: tokens.token,
-           refresh_token: tokens.refresh_token
+           refresh_token: tokens.refresh_token,
+           active_panel: "overview",
+           user_rows: dashboard.user_rows,
+           config_rows: dashboard.config_rows,
+           dict_type_rows: dashboard.dict_type_rows
          )}
 
       {:error, :already_logged_in} ->
@@ -50,6 +63,20 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   @impl true
+  def handle_event("show-panel", %{"panel" => panel}, socket)
+      when panel in ["overview", "users", "configs", "dicts"] do
+    {:noreply, assign(socket, active_panel: panel)}
+  end
+
+  def handle_event("show-panel", _params, socket), do: {:noreply, socket}
+
+  @impl true
+  def handle_event("refresh-config", _params, socket) do
+    Config.refresh_cache()
+    {:noreply, assign(socket, config_rows: Config.list_configs(%{"pageSize" => 50}).rows)}
+  end
+
+  @impl true
   def handle_event("logout", _params, socket) do
     Auth.logout(socket.assigns.refresh_token)
 
@@ -59,8 +86,20 @@ defmodule KeystonePhoenixWeb.LoginLive do
        login_error: nil,
        current_user: nil,
        access_token: nil,
-       refresh_token: nil
+       refresh_token: nil,
+       active_panel: "overview",
+       user_rows: [],
+       config_rows: [],
+       dict_type_rows: []
      )}
+  end
+
+  defp load_dashboard do
+    %{
+      user_rows: User.list_users(%{"pageSize" => 50}).rows,
+      config_rows: Config.list_configs(%{"pageSize" => 50}).rows,
+      dict_type_rows: Dictionary.list_dict_types(%{"pageSize" => 50}).rows
+    }
   end
 
   @impl true
@@ -89,31 +128,97 @@ defmodule KeystonePhoenixWeb.LoginLive do
           .user { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
           .user strong { display: block; font-size: 20px; }
           .user span { color: #9aacbf; }
+          .dashboard { grid-column: 1 / -1; }
+          .topbar { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 20px; }
+          .topbar h2 { margin: 0; }
+          nav { display: flex; gap: 8px; flex-wrap: wrap; }
+          nav button { width: auto; margin: 0; padding: 8px 12px; background: #243650; }
+          nav button.active { background: #4f8cff; }
+          .panel { overflow-x: auto; padding: 20px; border: 1px solid #27354a; border-radius: 12px; background: #172235; }
+          table { width: 100%; border-collapse: collapse; font-size: 14px; }
+          th, td { padding: 10px 8px; border-bottom: 1px solid #293a52; text-align: left; white-space: nowrap; }
+          th { color: #9aacbf; font-weight: 600; }
+          .muted { color: #9aacbf; }
+          .refresh { width: auto; margin: 0 0 14px; padding: 8px 12px; }
           @media (max-width: 720px) { .shell { grid-template-columns: 1fr; } main { padding: 32px 0; } .brand h1 { font-size: 34px; } }
         </style>
       </head>
       <body>
         <main>
           <section class="shell">
-            <div class="brand">
-              <p>Keystone Phoenix</p>
-              <h1>管理后台正在迁移到 LiveView</h1>
-              <p>
-                这个页面运行在 Phoenix LiveView 上，认证和业务数据由 Elixir、PostgreSQL 与 Redis 提供。
-                后续管理页面会继续在这里逐步替换原来的 Java 前端。
-              </p>
-            </div>
-            <div class="card">
-              <%= if @current_user do %>
-                <div class="user">
+            <%= if @current_user do %>
+              <div class="dashboard">
+                <div class="topbar">
                   <div>
-                    <strong>{@current_user["nickname"] || @current_user["username"]}</strong>
-                    <span>@{@current_user["username"]}</span>
+                    <p class="muted">Keystone Phoenix</p>
+                    <h2>管理概览</h2>
                   </div>
-                  <span>已登录</span>
+                  <div class="user">
+                    <div>
+                      <strong>{@current_user["nickname"] || @current_user["username"]}</strong>
+                      <span>@{@current_user["username"]}</span>
+                    </div>
+                    <button type="button" class="secondary" phx-click="logout">退出</button>
+                  </div>
                 </div>
-                <button type="button" class="secondary" phx-click="logout">退出登录</button>
-              <% else %>
+                <nav aria-label="管理模块">
+                  <button type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" phx-value-panel="overview">概览</button>
+                  <button type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" phx-value-panel="users">用户</button>
+                  <button type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
+                  <button type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
+                </nav>
+                <%= case @active_panel do %>
+                  <% "overview" -> %>
+                    <div class="panel">
+                      <p>当前登录用户：<strong>{@current_user["username"]}</strong></p>
+                      <p class="muted">用户总数：{@user_rows |> length()}　配置项：{@config_rows |> length()}　字典类型：{@dict_type_rows |> length()}</p>
+                    </div>
+                  <% "users" -> %>
+                    <div class="panel">
+                      <table>
+                        <thead><tr><th>用户名</th><th>昵称</th><th>邮箱</th><th>状态</th></tr></thead>
+                        <tbody>
+                          <%= for user <- @user_rows do %>
+                            <tr><td>{user["username"]}</td><td>{user["nickname"]}</td><td>{user["email"]}</td><td>{if user["status"] == 1, do: "正常", else: "停用"}</td></tr>
+                          <% end %>
+                        </tbody>
+                      </table>
+                    </div>
+                  <% "configs" -> %>
+                    <div class="panel">
+                      <button type="button" class="refresh" phx-click="refresh-config">刷新配置缓存</button>
+                      <table>
+                        <thead><tr><th>名称</th><th>键</th><th>值</th><th>允许修改</th></tr></thead>
+                        <tbody>
+                          <%= for config <- @config_rows do %>
+                            <tr><td>{config["configName"]}</td><td>{config["configKey"]}</td><td>{config["configValue"]}</td><td>{config["isAllowChangeStr"]}</td></tr>
+                          <% end %>
+                        </tbody>
+                      </table>
+                    </div>
+                  <% "dicts" -> %>
+                    <div class="panel">
+                      <table>
+                        <thead><tr><th>名称</th><th>类型</th><th>状态</th><th>备注</th></tr></thead>
+                        <tbody>
+                          <%= for dict <- @dict_type_rows do %>
+                            <tr><td>{dict["dictName"]}</td><td>{dict["dictType"]}</td><td>{if dict["status"] == 1, do: "正常", else: "停用"}</td><td>{dict["remark"]}</td></tr>
+                          <% end %>
+                        </tbody>
+                      </table>
+                    </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="brand">
+                <p>Keystone Phoenix</p>
+                <h1>管理后台正在迁移到 LiveView</h1>
+                <p>
+                  这个页面运行在 Phoenix LiveView 上，认证和业务数据由 Elixir、PostgreSQL 与 Redis 提供。
+                  后续管理页面会继续在这里逐步替换原来的 Java 前端。
+                </p>
+              </div>
+              <div class="card">
                 <form id="login-form" phx-submit="login">
                   <h2>登录</h2>
                   <label for="username">用户名</label>
@@ -125,8 +230,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <% end %>
                   <button type="submit">登录</button>
                 </form>
-              <% end %>
-            </div>
+              </div>
+            <% end %>
           </section>
         </main>
         <script src="/assets/phoenix/phoenix.min.js"></script>
