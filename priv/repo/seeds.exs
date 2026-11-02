@@ -150,6 +150,58 @@ if Repo.aggregate(KeystonePhoenix.Config.SysConfig, :count, :config_id) == 0 do
   Repo.insert_all("sys_config", config_entries)
 end
 
+dept_entries = [
+  %{dept_id: 1, parent_id: 0, ancestors: "0", dept_name: "Keystone科技", order_num: 0, status: 1},
+  %{dept_id: 2, parent_id: 1, ancestors: "0,1", dept_name: "深圳总公司", order_num: 1, status: 1},
+  %{dept_id: 4, parent_id: 2, ancestors: "0,1,2", dept_name: "研发部门", order_num: 1, status: 1},
+  %{dept_id: 5, parent_id: 2, ancestors: "0,1,2", dept_name: "市场部门", order_num: 2, status: 1}
+]
+
+if Repo.aggregate(KeystonePhoenix.Department.SysDept, :count, :dept_id) == 0 do
+  Repo.insert_all("sys_dept", Enum.map(dept_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now})))
+  Repo.query!("SELECT setval('sys_dept_dept_id_seq', (SELECT MAX(dept_id) FROM sys_dept))")
+end
+
+post_entries = [
+  %{post_id: 1, post_code: "ceo", post_name: "董事长", post_sort: 1, status: 1, remark: ""},
+  %{post_id: 2, post_code: "se", post_name: "项目经理", post_sort: 2, status: 1, remark: ""},
+  %{post_id: 3, post_code: "user", post_name: "普通员工", post_sort: 5, status: 0, remark: ""}
+]
+
+if Repo.aggregate(KeystonePhoenix.Post.SysPost, :count, :post_id) == 0 do
+  Repo.insert_all("sys_post", Enum.map(post_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now})))
+  Repo.query!("SELECT setval('sys_post_post_id_seq', (SELECT MAX(post_id) FROM sys_post))")
+end
+
+role_entries = [
+  %{role_id: 1, role_name: "超级管理员", role_key: "admin", role_sort: 1, data_scope: 1, dept_id_set: "", status: 1, remark: "超级管理员"},
+  %{role_id: 2, role_name: "普通角色", role_key: "common", role_sort: 3, data_scope: 2, dept_id_set: "", status: 1, remark: "普通角色"}
+]
+
+if Repo.aggregate(KeystonePhoenix.Role.SysRole, :count, :role_id) == 0 do
+  Repo.insert_all("sys_role", Enum.map(role_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now})))
+  Repo.query!("SELECT setval('sys_role_role_id_seq', (SELECT MAX(role_id) FROM sys_role))")
+end
+
+menu_entries = [
+  %{menu_id: 1, menu_name: "系统管理", menu_type: 2, router_name: "", parent_id: 0, path: "/system", is_button: false, permission: "", meta_info: Jason.encode!(%{"title" => "系统管理", "showParent" => true}), status: 1, remark: "系统管理目录"},
+  %{menu_id: 5, menu_name: "用户管理", menu_type: 1, router_name: "SystemUser", parent_id: 1, path: "/system/user/index", is_button: false, permission: "system:user:list", meta_info: Jason.encode!(%{"title" => "用户管理", "showParent" => true}), status: 1, remark: "用户管理菜单"},
+  %{menu_id: 6, menu_name: "角色管理", menu_type: 1, router_name: "SystemRole", parent_id: 1, path: "/system/role/index", is_button: false, permission: "system:role:list", meta_info: Jason.encode!(%{"title" => "角色管理", "showParent" => true}), status: 1, remark: "角色管理菜单"},
+  %{menu_id: 8, menu_name: "部门管理", menu_type: 1, router_name: "Department", parent_id: 1, path: "/system/dept/index", is_button: false, permission: "system:dept:list", meta_info: Jason.encode!(%{"title" => "部门管理", "showParent" => true}), status: 1, remark: "部门管理菜单"},
+  %{menu_id: 9, menu_name: "岗位管理", menu_type: 1, router_name: "Post", parent_id: 1, path: "/system/post/index", is_button: false, permission: "system:post:list", meta_info: Jason.encode!(%{"title" => "岗位管理", "showParent" => true}), status: 1, remark: "岗位管理菜单"}
+]
+
+if Repo.aggregate(KeystonePhoenix.Menu.SysMenu, :count, :menu_id) == 0 do
+  Repo.insert_all("sys_menu", Enum.map(menu_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now})))
+  Repo.query!("SELECT setval('sys_menu_menu_id_seq', (SELECT MAX(menu_id) FROM sys_menu))")
+end
+
+role_menu_entries = Enum.map(Enum.map(menu_entries, & &1.menu_id), &%{role_id: 2, menu_id: &1})
+
+if Repo.aggregate(KeystonePhoenix.Role.SysRoleMenu, :count, :role_id) == 0 do
+  Repo.insert_all("sys_role_menu", role_menu_entries)
+end
+
 user_entries = [
   %{
     user_id: 1,

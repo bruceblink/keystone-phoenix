@@ -29,6 +29,7 @@ defmodule KeystonePhoenixWeb.Router do
     post "/refresh-token", AuthController, :refresh
     post "/logout-refresh-token", AuthController, :logout_refresh_token
     get "/getLoginUserInfo", AuthController, :current_user
+    get "/getRouters", AuthController, :routers
     get "/system/dict/types", DictionaryController, :list_types
     get "/system/dict/type/list", DictionaryController, :list_types
     get "/system/dict/type/:dict_id", DictionaryController, :show_type
@@ -53,6 +54,16 @@ defmodule KeystonePhoenixWeb.Router do
     delete "/system/users/:user_ids", UserController, :delete
     put "/system/users/:user_id/password", UserController, :reset_password
     put "/system/users/:user_id/status", UserController, :change_status
+    get "/system/depts", DepartmentController, :list
+    get "/system/dept/:dept_id", DepartmentController, :show
+    get "/system/depts/dropdown", DepartmentController, :dropdown
+    get "/system/post/list", PostController, :list
+    get "/system/post/:post_id", PostController, :show
+    get "/system/role/list", RoleController, :list
+    get "/system/role/:role_id", RoleController, :show
+    get "/system/menus", MenuController, :list
+    get "/system/menus/dropdown", MenuController, :dropdown
+    get "/system/menus/:menu_id", MenuController, :show
   end
 
   scope "/api", KeystonePhoenixWeb do

@@ -1,10 +1,11 @@
 defmodule KeystonePhoenixWeb.AuthController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:current_user]
+  plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:current_user, :routers]
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Token
+  alias KeystonePhoenix.Menu
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.ApiResponse
 
@@ -48,6 +49,11 @@ defmodule KeystonePhoenixWeb.AuthController do
   @doc "Returns the current authenticated user."
   def current_user(conn, _params) do
     json(conn, ApiResponse.ok(User.user_to_map(conn.assigns.current_user)))
+  end
+
+  @doc "Returns the authenticated user's menu router tree."
+  def routers(conn, _params) do
+    json(conn, ApiResponse.ok(Menu.routers_for_user(conn.assigns.current_user)))
   end
 
   defp token_to_map(tokens) do

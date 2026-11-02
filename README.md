@@ -68,6 +68,12 @@ session. The system configuration and dictionary management endpoints use the
 same administrator check. Non-administrator access tokens receive `403` for
 these management endpoints.
 
+The organization and permission foundation now includes PostgreSQL-backed
+departments, posts, roles, menus, role-menu assignments, and the authenticated
+`/getRouters` menu tree. Read endpoints are available under `/system/depts`,
+`/system/post`, `/system/role`, and `/system/menus`; write commands for these
+resources remain in the next migration slice.
+
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout
 action. Phoenix and LiveView browser assets are served from their Mix
