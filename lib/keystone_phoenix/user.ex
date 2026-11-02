@@ -8,7 +8,10 @@ defmodule KeystonePhoenix.User do
   import Ecto.Query
 
   alias KeystonePhoenix.Auth.Session
+  alias KeystonePhoenix.Department
+  alias KeystonePhoenix.Post
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Role
   alias KeystonePhoenix.User.SysUser
 
   @default_page 1
@@ -71,9 +74,11 @@ defmodule KeystonePhoenix.User do
   def create_user(attrs) when is_map(attrs) do
     attrs = normalize_attrs(attrs)
 
-    %SysUser{}
-    |> SysUser.create_changeset(attrs)
-    |> Repo.insert()
+    with :ok <- validate_relations(attrs) do
+      %SysUser{}
+      |> SysUser.create_changeset(attrs)
+      |> Repo.insert()
+    end
   end
 
   def create_user(_attrs), do: {:error, invalid_changeset(%SysUser{}, :username)}
@@ -83,14 +88,23 @@ defmodule KeystonePhoenix.User do
           {:ok, SysUser.t()} | {:error, :not_found | Ecto.Changeset.t()}
   def update_user(id, attrs) when is_map(attrs) do
     with {:ok, user} <- get_user(id) do
-      case user |> SysUser.update_changeset(normalize_attrs(attrs)) |> Repo.update() do
-        {:ok, updated} = result ->
-          revoke_if_disabled(user, updated)
-          result
+      attrs = normalize_attrs(attrs)
 
-        error ->
-          error
+      case validate_relations(attrs) do
+        :ok -> update_user_record(user, attrs)
+        error -> error
       end
+    end
+  end
+
+  defp update_user_record(user, attrs) do
+    case user |> SysUser.update_changeset(attrs) |> Repo.update() do
+      {:ok, updated} = result ->
+        revoke_if_disabled(user, updated)
+        result
+
+      error ->
+        error
     end
   end
 
@@ -196,6 +210,23 @@ defmodule KeystonePhoenix.User do
     case Enum.find(source_keys, &Map.has_key?(source, &1)) do
       nil -> target
       source_key -> Map.put(target, target_key, Map.get(source, source_key))
+    end
+  end
+
+  defp validate_relations(attrs) do
+    with :ok <- validate_relation(attrs[:dept_id], &Department.get_dept/1, :dept_not_found),
+         :ok <- validate_relation(attrs[:post_id], &Post.get_post/1, :post_not_found),
+         :ok <- validate_relation(attrs[:role_id], &Role.get_role/1, :role_not_found) do
+      :ok
+    end
+  end
+
+  defp validate_relation(nil, _lookup, _error), do: :ok
+
+  defp validate_relation(id, lookup, error) do
+    case lookup.(id) do
+      {:ok, _record} -> :ok
+      {:error, :not_found} -> {:error, error}
     end
   end
 
