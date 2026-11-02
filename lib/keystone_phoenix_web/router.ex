@@ -75,6 +75,9 @@ defmodule KeystonePhoenixWeb.Router do
     get "/system/menus", MenuController, :list
     get "/system/menus/dropdown", MenuController, :dropdown
     get "/system/menus/:menu_id", MenuController, :show
+    post "/system/menus", MenuController, :create
+    put "/system/menus/:menu_id", MenuController, :update
+    delete "/system/menus/:menu_id", MenuController, :delete
   end
 
   scope "/api", KeystonePhoenixWeb do

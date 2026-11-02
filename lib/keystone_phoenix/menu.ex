@@ -6,6 +6,20 @@ defmodule KeystonePhoenix.Menu do
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Repo
 
+  @menu_attrs [
+    {"menuName", :menu_name},
+    {"menuType", :menu_type},
+    {"routerName", :router_name},
+    {"parentId", :parent_id},
+    {"path", :path},
+    {"isButton", :is_button},
+    {"permission", :permission},
+    {"metaInfo", :meta_info},
+    {"meta", :meta_info},
+    {"status", :status},
+    {"remark", :remark}
+  ]
+
   def list_menus(params \\ %{}) do
     query =
       from(m in SysMenu,
@@ -26,6 +40,53 @@ defmodule KeystonePhoenix.Menu do
     case Repo.get_by(SysMenu, menu_id: id, deleted: false) do
       nil -> {:error, :not_found}
       menu -> {:ok, menu}
+    end
+  end
+
+  def create_menu(attrs) when is_map(attrs) do
+    attrs = normalize_attrs(attrs)
+
+    with {:ok, parent_id} <- parent_id(attrs[:parent_id]),
+         :ok <- ensure_parent(parent_id) do
+      attrs = Map.put(attrs, :parent_id, parent_id)
+      Repo.insert(SysMenu.changeset(%SysMenu{}, attrs))
+    end
+  end
+
+  def create_menu(_attrs), do: {:error, invalid_changeset(:menu_name)}
+
+  def update_menu(id, attrs) when is_map(attrs) do
+    with {:ok, menu} <- get_menu(id) do
+      attrs = normalize_attrs(attrs)
+
+      with {:ok, parent_id} <- parent_id(Map.get(attrs, :parent_id, menu.parent_id)) do
+        if parent_id == menu.menu_id do
+          {:error, :invalid_parent}
+        else
+          with :ok <- ensure_parent(parent_id) do
+            Repo.update(SysMenu.changeset(menu, Map.put(attrs, :parent_id, parent_id)))
+          end
+        end
+      end
+    end
+  end
+
+  def update_menu(_id, _attrs), do: {:error, invalid_changeset(:menu_name)}
+
+  def delete_menu(id) do
+    with {:ok, menu} <- get_menu(id) do
+      cond do
+        child_count(menu.menu_id) > 0 -> {:error, :has_children}
+        true ->
+          Repo.transaction(fn ->
+            Repo.delete_all(from(rm in "sys_role_menu", where: rm.menu_id == ^menu.menu_id))
+
+            case Repo.update(Ecto.Changeset.change(menu, deleted: true)) do
+              {:ok, _deleted} -> :ok
+              {:error, changeset} -> Repo.rollback(changeset)
+            end
+          end)
+      end
     end
   end
 
@@ -73,6 +134,52 @@ defmodule KeystonePhoenix.Menu do
       "createTime" => format_datetime(menu.create_time)
     }
   end
+
+  defp normalize_attrs(attrs) do
+    attrs =
+      Enum.reduce(@menu_attrs, %{}, fn {json_key, atom_key}, normalized ->
+        cond do
+          Map.has_key?(attrs, json_key) -> Map.put(normalized, atom_key, Map.get(attrs, json_key))
+          Map.has_key?(attrs, atom_key) -> Map.put(normalized, atom_key, Map.get(attrs, atom_key))
+          true -> normalized
+        end
+      end)
+
+    normalize_meta(attrs)
+  end
+
+  defp normalize_meta(attrs) do
+    case Map.fetch(attrs, :meta_info) do
+      {:ok, meta} when is_map(meta) -> Map.put(attrs, :meta_info, Jason.encode!(meta))
+      {:ok, nil} -> Map.put(attrs, :meta_info, "{}")
+      _ -> attrs
+    end
+  end
+
+  defp parent_id(nil), do: {:ok, 0}
+
+  defp parent_id(value) do
+    case Integer.parse(to_string(value)) do
+      {id, ""} when id >= 0 -> {:ok, id}
+      _ -> {:error, :invalid_parent}
+    end
+  end
+
+  defp ensure_parent(0), do: :ok
+
+  defp ensure_parent(id) do
+    case get_menu(id) do
+      {:ok, _parent} -> :ok
+      {:error, :not_found} -> {:error, :parent_not_found}
+    end
+  end
+
+  defp child_count(parent_id) do
+    from(menu in SysMenu, where: menu.parent_id == ^parent_id and menu.deleted == false)
+    |> Repo.aggregate(:count, :menu_id)
+  end
+
+  defp invalid_changeset(field), do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysMenu{}), field, "参数无效")
 
   defp build_tree(menus) do
     Enum.filter(menus, &(&1["parentId"] == 0))

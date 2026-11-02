@@ -74,7 +74,8 @@ departments, posts, roles, menus, role-menu assignments, and the authenticated
 `/system/post`, `/system/role`, and `/system/menus`. Departments and posts also
 support administrator-only create, update, and soft-delete commands; role and
 menu resources also support administrator-only create, update, status, data
-scope, menu assignment, and soft-delete commands.
+scope, menu assignment, and soft-delete commands. Menu resources support the
+same administrator-only create, update, and soft-delete commands.
 
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout
