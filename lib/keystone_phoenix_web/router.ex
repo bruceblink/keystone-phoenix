@@ -9,6 +9,10 @@ defmodule KeystonePhoenixWeb.Router do
     pipe_through :api
 
     get "/health", HealthController, :show
+    get "/login/rsa-public-key", AuthController, :public_key
+    post "/login", AuthController, :login
+    post "/refresh-token", AuthController, :refresh
+    post "/logout-refresh-token", AuthController, :logout_refresh_token
     get "/system/dict/types", DictionaryController, :list_types
     get "/system/dict/type/list", DictionaryController, :list_types
     get "/system/dict/type/:dict_id", DictionaryController, :show_type

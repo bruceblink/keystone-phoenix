@@ -12,6 +12,8 @@ The project is managed with Mix and uses PostgreSQL from the first commit.
 - Ecto SQL 3.14.x
 - Postgrex 0.22.x
 - Redix 1.10.x
+- bcrypt_elixir 3.3.x
+- JOSE 1.11.x
 - Bandit 1.14.x
 - PostgreSQL 18.x
 - Redis 8.6.x
@@ -51,6 +53,9 @@ Implemented API slices currently include health checks, dictionary type/data
 CRUD, Redis-backed dictionary lookups, and system configuration CRUD with
 validated option values and cache refresh support. User list/detail queries and
 default local accounts are also available as the foundation for authentication.
+Local login, RS256 access/refresh tokens, refresh rotation, and protected user
+queries are now available through `/login`, `/refresh-token`, and
+`/system/users`.
 
 ## PostgreSQL and Redis configuration
 
@@ -58,4 +63,10 @@ Development and test configuration reads `POSTGRES_*` environment variables.
 Dictionary lookups by type use Redis with a five-minute TTL; writes invalidate
 the corresponding key. Development reads `REDIS_URL`, while production
 releases require `DATABASE_URL`, `REDIS_URL`, and `SECRET_KEY_BASE` from the
-runtime environment. No database password is committed to the repository.
+runtime environment. Production authentication also requires the PEM encoded
+`JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY` values. Development generates an
+ephemeral RSA key pair when those values are omitted. No database password is
+committed to the repository.
+
+The seeded development users use password `123456`; replace those credentials
+before exposing a deployment outside local development.

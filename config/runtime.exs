@@ -50,6 +50,24 @@ if config_env() == :prod do
 
   config :keystone_phoenix, redis_url: redis_url
 
+  jwt_private_key =
+    System.get_env("JWT_PRIVATE_KEY") ||
+      raise """
+      environment variable JWT_PRIVATE_KEY is missing.
+      Provide a PEM encoded RSA private key for RS256 token signing.
+      """
+
+  jwt_public_key =
+    System.get_env("JWT_PUBLIC_KEY") ||
+      raise """
+      environment variable JWT_PUBLIC_KEY is missing.
+      Provide a PEM encoded RSA public key for RS256 token verification.
+      """
+
+  config :keystone_phoenix,
+    jwt_private_key: jwt_private_key,
+    jwt_public_key: jwt_public_key
+
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
   # want to use a different value for prod and you most likely don't want

@@ -11,7 +11,12 @@ config :keystone_phoenix,
   ecto_repos: [KeystonePhoenix.Repo],
   generators: [timestamp_type: :utc_datetime],
   redis_enabled: true,
-  redis_url: "redis://localhost:6379/0"
+  redis_url: "redis://localhost:6379/0",
+  jwt_issuer: "keystone",
+  jwt_access_ttl: 1800,
+  jwt_refresh_ttl: 604_800,
+  jwt_private_key: nil,
+  jwt_public_key: nil
 
 # Configure the endpoint
 config :keystone_phoenix, KeystonePhoenixWeb.Endpoint,

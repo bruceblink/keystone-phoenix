@@ -47,6 +47,8 @@ defmodule KeystonePhoenix.MixProject do
       {:telemetry_poller, "~> 1.3"},
       {:jason, "~> 1.4"},
       {:castore, "~> 1.0"},
+      {:bcrypt_elixir, "~> 3.2"},
+      {:jose, "~> 1.11"},
       {:redix, "~> 1.10"},
       {:dns_cluster, "~> 0.3"},
       {:bandit, "~> 1.14"}

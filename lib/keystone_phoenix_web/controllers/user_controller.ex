@@ -1,6 +1,8 @@
 defmodule KeystonePhoenixWeb.UserController do
   use KeystonePhoenixWeb, :controller
 
+  plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:list, :show]
+
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.ApiResponse
 

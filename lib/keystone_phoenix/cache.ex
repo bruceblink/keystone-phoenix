@@ -32,6 +32,8 @@ defmodule KeystonePhoenix.Cache do
     end
   rescue
     _ -> :ok
+  catch
+    :exit, _ -> :ok
   end
 
   @spec delete(String.t()) :: :ok
@@ -40,6 +42,8 @@ defmodule KeystonePhoenix.Cache do
     :ok
   rescue
     _ -> :ok
+  catch
+    :exit, _ -> :ok
   end
 
   @spec delete_prefix(String.t()) :: :ok
@@ -51,6 +55,8 @@ defmodule KeystonePhoenix.Cache do
     :ok
   rescue
     _ -> :ok
+  catch
+    :exit, _ -> :ok
   end
 
   defp get(key) do
@@ -61,6 +67,8 @@ defmodule KeystonePhoenix.Cache do
     end
   rescue
     _ -> :miss
+  catch
+    :exit, _ -> :miss
   end
 
   defp decode(encoded) do
