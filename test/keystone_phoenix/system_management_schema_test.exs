@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.SystemManagementSchemaTest do
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Notice.SysNotice
+  alias KeystonePhoenix.Log.{SysLoginInfo, SysOperationLog}
   alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Role.SysRole
 
@@ -60,5 +61,13 @@ defmodule KeystonePhoenix.SystemManagementSchemaTest do
     refute changeset.valid?
     assert Keyword.has_key?(changeset.errors, :notice_type)
     assert Keyword.has_key?(changeset.errors, :status)
+  end
+
+  test "log maps omit database-only deletion fields" do
+    login = %SysLoginInfo{info_id: 1, username: "admin", status: 1}
+    operation = %SysOperationLog{operation_id: 2, username: "admin", status: 1}
+
+    refute Map.has_key?(KeystonePhoenix.Log.login_info_to_map(login), "deleted")
+    refute Map.has_key?(KeystonePhoenix.Log.operation_log_to_map(operation), "deleted")
   end
 end
