@@ -40,6 +40,7 @@ defmodule KeystonePhoenix.MixProject do
   defp deps do
     [
       {:phoenix, "~> 1.8.16"},
+      {:phoenix_live_view, "~> 1.1"},
       {:phoenix_ecto, "~> 4.7"},
       {:ecto_sql, "~> 3.14"},
       {:postgrex, "~> 0.22"},

@@ -14,6 +14,7 @@ The project is managed with Mix and uses PostgreSQL from the first commit.
 - Redix 1.10.x
 - bcrypt_elixir 3.3.x
 - JOSE 1.11.x
+- Phoenix LiveView 1.2.x
 - Bandit 1.14.x
 - PostgreSQL 18.x
 - Redis 8.6.x
@@ -44,10 +45,9 @@ mix ecto.rollback
 MIX_ENV=prod mix release
 ```
 
-The first implementation keeps the service API-first. The existing Keystone
-frontend can call Phoenix JSON endpoints while Ecto owns PostgreSQL access.
-LiveView pages will be added later for real-time operations and administration
-scenarios where server-side interactive state is useful.
+The frontend is being rebuilt with Phoenix LiveView. The existing Keystone
+frontend can continue calling the JSON endpoints while LiveView owns the new
+server-rendered interactive pages and Ecto owns PostgreSQL access.
 
 Implemented API slices currently include health checks, dictionary type/data
 CRUD, Redis-backed dictionary lookups, and system configuration CRUD with
@@ -59,6 +59,11 @@ session control, and protected user queries are now available through `/login`,
 `/login/rsa-public-key` endpoint returns a Base64 encoded
 X.509 public key; clients encrypt the login password with RSA/PKCS#1 before
 sending `/login`, matching the original Keystone contract.
+
+The LiveView login page is available at `/`. It keeps the authenticated user
+and refresh session on the LiveView process and provides a server-side logout
+action. Phoenix and LiveView browser assets are served from their Mix
+dependencies, so the page does not need a separate Node.js build step.
 
 ## PostgreSQL and Redis configuration
 

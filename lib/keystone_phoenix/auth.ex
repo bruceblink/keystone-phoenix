@@ -9,10 +9,24 @@ defmodule KeystonePhoenix.Auth do
 
   def login(username, password, force_login)
       when is_binary(username) and is_binary(password) and is_boolean(force_login) do
-    with {:ok, plaintext_password} <- Token.decrypt_password(password),
-         {:ok, user} <- User.get_user_by_username(username),
+    with {:ok, plaintext_password} <- Token.decrypt_password(password) do
+      login_plaintext(username, plaintext_password, force_login)
+    else
+      _ -> {:error, :invalid_credentials}
+    end
+  end
+
+  def login(_username, _password, _force_login), do: {:error, :invalid_credentials}
+
+  @doc "Authenticates a password already received over a LiveView session."
+  @spec login_plaintext(String.t(), String.t(), boolean()) :: {:ok, map()} | {:error, atom()}
+  def login_plaintext(username, password, force_login \\ false)
+
+  def login_plaintext(username, password, force_login)
+      when is_binary(username) and is_binary(password) and is_boolean(force_login) do
+    with {:ok, user} <- User.get_user_by_username(username),
          true <- user.status == 1,
-         true <- Bcrypt.verify_pass(plaintext_password, user.password || ""),
+         true <- Bcrypt.verify_pass(password, user.password || ""),
          {:ok, tokens} <- issue_pair(user, force_login) do
       {:ok, Map.put(tokens, :current_user, User.user_to_map(user))}
     else
@@ -24,7 +38,7 @@ defmodule KeystonePhoenix.Auth do
     end
   end
 
-  def login(_username, _password, _force_login), do: {:error, :invalid_credentials}
+  def login_plaintext(_username, _password, _force_login), do: {:error, :invalid_credentials}
 
   @spec refresh(String.t()) :: {:ok, map()} | {:error, atom()}
   def refresh(refresh_token) when is_binary(refresh_token) do

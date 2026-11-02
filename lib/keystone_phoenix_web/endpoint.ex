@@ -11,9 +11,19 @@ defmodule KeystonePhoenixWeb.Endpoint do
     same_site: "Lax"
   ]
 
-  # socket "/live", Phoenix.LiveView.Socket,
-  #   websocket: [connect_info: [session: @session_options]],
-  #   longpoll: [connect_info: [session: @session_options]]
+  socket "/live", Phoenix.LiveView.Socket,
+    websocket: [connect_info: [session: @session_options]],
+    longpoll: [connect_info: [session: @session_options]]
+
+  plug Plug.Static,
+    at: "/assets/phoenix",
+    from: {:phoenix, "priv/static"},
+    only: ~w(phoenix.min.js)
+
+  plug Plug.Static,
+    at: "/assets/phoenix_live_view",
+    from: {:phoenix_live_view, "priv/static"},
+    only: ~w(phoenix_live_view.min.js)
 
   # Serve at "/" the static files from "priv/static" directory.
   #
