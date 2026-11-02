@@ -77,6 +77,10 @@ menu resources also support administrator-only create, update, status, data
 scope, menu assignment, and soft-delete commands. Menu resources support the
 same administrator-only create, update, and soft-delete commands.
 
+Authenticated users can read and update their own profile under
+`/system/user/profile`, including old-password-checked password changes and
+avatar URL updates.
+
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout
 action. Phoenix and LiveView browser assets are served from their Mix

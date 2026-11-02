@@ -78,6 +78,10 @@ defmodule KeystonePhoenixWeb.Router do
     post "/system/menus", MenuController, :create
     put "/system/menus/:menu_id", MenuController, :update
     delete "/system/menus/:menu_id", MenuController, :delete
+    get "/system/user/profile", ProfileController, :show
+    put "/system/user/profile", ProfileController, :update
+    put "/system/user/profile/password", ProfileController, :update_password
+    post "/system/user/profile/avatar", ProfileController, :update_avatar
   end
 
   scope "/api", KeystonePhoenixWeb do

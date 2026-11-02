@@ -139,6 +139,77 @@ defmodule KeystonePhoenix.User do
     update_user(id, %{"status" => status})
   end
 
+  @doc "Returns the profile view for an authenticated user."
+  def profile(id) do
+    case get_user(id) do
+      {:ok, user} -> {:ok, user_to_map(user)}
+      error -> error
+    end
+  end
+
+  @doc "Updates editable profile fields without allowing account privilege changes."
+  def update_profile(id, attrs) when is_map(attrs) do
+    attrs =
+      %{}
+      |> maybe_put(attrs, "nickname", ["nickName", "nickname"])
+      |> maybe_put(attrs, "phoneNumber", ["phoneNumber", "phone_number"])
+      |> maybe_put(attrs, "email", ["email"])
+      |> maybe_put(attrs, "sex", ["sex"])
+
+    update_user(id, attrs)
+  end
+
+  def update_profile(_id, _attrs), do: {:error, invalid_changeset(%SysUser{}, :nickname)}
+
+  @doc "Changes a password after checking the current password."
+  def update_password(id, attrs) when is_map(attrs) do
+    with {:ok, user} <- get_user(id),
+         {:ok, old_password, new_password} <- password_inputs(attrs),
+         true <- Bcrypt.verify_pass(old_password, user.password || ""),
+         false <- Bcrypt.verify_pass(new_password, user.password || "") do
+      case Repo.update(SysUser.password_changeset(user, %{password: new_password})) do
+        {:ok, updated} = result ->
+          Session.revoke_account(updated.user_id)
+          result
+
+        error ->
+          error
+      end
+    else
+      {:error, :not_found} -> {:error, :not_found}
+      {:error, :invalid_password_input} -> {:error, invalid_changeset(%SysUser{}, :password)}
+      false -> {:error, :invalid_old_password}
+      _ -> {:error, :same_password}
+    end
+  end
+
+  def update_password(_id, _attrs), do: {:error, invalid_changeset(%SysUser{}, :password)}
+
+  @doc "Updates an avatar URL supplied by the file service."
+  def update_avatar(id, avatar) when is_binary(avatar) do
+    update_user(id, %{"avatar" => avatar})
+  end
+
+  def update_avatar(_id, _avatar), do: {:error, invalid_changeset(%SysUser{}, :avatar)}
+
+  defp maybe_put(target, source, target_key, source_keys) do
+    case Enum.find(source_keys, &Map.has_key?(source, &1)) do
+      nil -> target
+      source_key -> Map.put(target, target_key, Map.get(source, source_key))
+    end
+  end
+
+  defp password_inputs(attrs) do
+    old_password = attrs["oldPassword"] || attrs[:old_password]
+    new_password = attrs["newPassword"] || attrs[:new_password]
+
+    if is_binary(old_password) and is_binary(new_password) do
+      {:ok, old_password, new_password}
+    else
+      {:error, :invalid_password_input}
+    end
+  end
+
   @spec user_to_map(SysUser.t()) :: map()
   def user_to_map(user) do
     %{
