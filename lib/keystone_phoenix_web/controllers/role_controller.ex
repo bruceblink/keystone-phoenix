@@ -23,9 +23,63 @@ defmodule KeystonePhoenixWeb.RoleController do
     end
   end
 
+  @doc "Creates a role and assigns its menus."
+  def create(conn, params) do
+    case Role.create_role(params) do
+      {:ok, _role} -> conn |> put_status(:created) |> json(ApiResponse.ok())
+      {:error, changeset} -> render_error(conn, changeset)
+    end
+  end
+
+  @doc "Updates a role and optionally replaces its menu assignments."
+  def update(conn, params) do
+    case Role.update_role(params["roleId"] || params[:role_id], params) do
+      {:ok, _role} -> json(conn, ApiResponse.ok())
+      {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, changeset} -> render_error(conn, changeset)
+    end
+  end
+
+  @doc "Soft deletes a role."
+  def delete(conn, %{"role_id" => role_id}) do
+    case Role.delete_role(role_id) do
+      {:ok, _} -> json(conn, ApiResponse.ok())
+      {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
+  @doc "Changes a role's enabled status."
+  def change_status(conn, %{"role_id" => role_id} = params) do
+    case Role.change_status(role_id, params["status"] || params[:status]) do
+      {:ok, _role} -> json(conn, ApiResponse.ok())
+      {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, changeset} -> render_error(conn, changeset)
+    end
+  end
+
+  @doc "Changes a role's data scope and department set."
+  def data_scope(conn, %{"role_id" => role_id} = params) do
+    case Role.update_data_scope(role_id, params) do
+      {:ok, _role} -> json(conn, ApiResponse.ok())
+      {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, changeset} -> render_error(conn, changeset)
+    end
+  end
+
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
     |> json(ApiResponse.error(10001, "找不到请求的角色"))
+  end
+
+  defp render_error(conn, reason) when reason in [:protected_role, :has_users] do
+    message = if reason == :protected_role, do: "管理员角色不能删除", else: "角色存在用户，不能删除"
+    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10002, message))
+  end
+
+  defp render_error(conn, %Ecto.Changeset{} = changeset) do
+    errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
+    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(99999, "参数校验失败", errors))
   end
 end

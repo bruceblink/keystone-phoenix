@@ -73,7 +73,8 @@ departments, posts, roles, menus, role-menu assignments, and the authenticated
 `/getRouters` menu tree. Read endpoints are available under `/system/depts`,
 `/system/post`, `/system/role`, and `/system/menus`. Departments and posts also
 support administrator-only create, update, and soft-delete commands; role and
-menu write commands remain in the next migration slice.
+menu resources also support administrator-only create, update, status, data
+scope, menu assignment, and soft-delete commands.
 
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout

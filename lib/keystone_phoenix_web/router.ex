@@ -67,6 +67,11 @@ defmodule KeystonePhoenixWeb.Router do
     delete "/system/post", PostController, :delete
     get "/system/role/list", RoleController, :list
     get "/system/role/:role_id", RoleController, :show
+    post "/system/role", RoleController, :create
+    put "/system/role", RoleController, :update
+    delete "/system/role/:role_id", RoleController, :delete
+    put "/system/role/:role_id/status", RoleController, :change_status
+    put "/system/role/:role_id/dataScope", RoleController, :data_scope
     get "/system/menus", MenuController, :list
     get "/system/menus/dropdown", MenuController, :dropdown
     get "/system/menus/:menu_id", MenuController, :show
