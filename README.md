@@ -55,7 +55,9 @@ validated option values and cache refresh support. User list/detail queries and
 default local accounts are also available as the foundation for authentication.
 Local login, RS256 access/refresh tokens, refresh rotation, and protected user
 queries are now available through `/login`, `/refresh-token`, and
-`/system/users`.
+`/system/users`. The `/login/rsa-public-key` endpoint returns a Base64 encoded
+X.509 public key; clients encrypt the login password with RSA/PKCS#1 before
+sending `/login`, matching the original Keystone contract.
 
 ## PostgreSQL and Redis configuration
 
@@ -64,9 +66,10 @@ Dictionary lookups by type use Redis with a five-minute TTL; writes invalidate
 the corresponding key. Development reads `REDIS_URL`, while production
 releases require `DATABASE_URL`, `REDIS_URL`, and `SECRET_KEY_BASE` from the
 runtime environment. Production authentication also requires the PEM encoded
-`JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY` values. Development generates an
-ephemeral RSA key pair when those values are omitted. No database password is
-committed to the repository.
+`JWT_PRIVATE_KEY` value; `JWT_PUBLIC_KEY` is optional and is derived from the
+private key when omitted. The private key signs JWTs and decrypts RSA login
+passwords. Development generates an ephemeral RSA key pair when those values
+are omitted. No database password is committed to the repository.
 
 The seeded development users use password `123456`; replace those credentials
 before exposing a deployment outside local development.

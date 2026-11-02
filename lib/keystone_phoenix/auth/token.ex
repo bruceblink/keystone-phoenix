@@ -73,6 +73,30 @@ defmodule KeystonePhoenix.Auth.Token do
     pem
   end
 
+  @doc "Returns the public key as Base64 encoded X.509 SubjectPublicKeyInfo."
+  @spec public_key_base64() :: binary()
+  def public_key_base64 do
+    :public_key.pem_entry_encode(:SubjectPublicKeyInfo, public_key())
+    |> elem(1)
+    |> Base.encode64()
+  end
+
+  @doc "Decrypts a Base64 encoded RSA/PKCS#1 login password."
+  @spec decrypt_password(String.t()) :: {:ok, String.t()} | {:error, :invalid_password}
+  def decrypt_password(password) when is_binary(password) and password != "" do
+    with {:ok, encrypted} <- Base.decode64(password),
+         decrypted <- :public_key.decrypt_private(encrypted, private_key()),
+         true <- String.valid?(decrypted) do
+      {:ok, decrypted}
+    else
+      _ -> {:error, :invalid_password}
+    end
+  rescue
+    _ -> {:error, :invalid_password}
+  end
+
+  def decrypt_password(_password), do: {:error, :invalid_password}
+
   defp valid_claims?(claims, expected_type) do
     now = System.system_time(:second)
 
@@ -98,6 +122,18 @@ defmodule KeystonePhoenix.Auth.Token do
       nil -> JOSE.JWK.to_public(private_jwk())
       pem -> configured_jwk(@public_key_cache_key, pem)
     end
+  end
+
+  defp public_key do
+    public_jwk()
+    |> JOSE.JWK.to_public_key()
+    |> elem(1)
+  end
+
+  defp private_key do
+    private_jwk()
+    |> JOSE.JWK.to_key()
+    |> elem(1)
   end
 
   defp configured_jwk(cache_key, pem) do

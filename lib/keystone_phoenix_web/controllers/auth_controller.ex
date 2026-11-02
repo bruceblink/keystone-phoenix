@@ -7,7 +7,7 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   @doc "Returns the public key used to verify RS256 access tokens."
   def public_key(conn, _params) do
-    json(conn, ApiResponse.ok(%{"publicKey" => Token.public_key_pem(), "algorithm" => "RS256"}))
+    json(conn, ApiResponse.ok(%{"publicKey" => Token.public_key_base64()}))
   end
 
   @doc "Authenticates a local username and password."

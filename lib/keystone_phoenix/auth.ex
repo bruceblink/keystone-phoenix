@@ -6,9 +6,10 @@ defmodule KeystonePhoenix.Auth do
 
   @spec login(String.t(), String.t()) :: {:ok, map()} | {:error, atom()}
   def login(username, password) when is_binary(username) and is_binary(password) do
-    with {:ok, user} <- User.get_user_by_username(username),
+    with {:ok, plaintext_password} <- Token.decrypt_password(password),
+         {:ok, user} <- User.get_user_by_username(username),
          true <- user.status == 1,
-         true <- Bcrypt.verify_pass(password, user.password || ""),
+         true <- Bcrypt.verify_pass(plaintext_password, user.password || ""),
          {:ok, tokens} <- issue_pair(user) do
       {:ok, Map.put(tokens, :current_user, User.user_to_map(user))}
     else

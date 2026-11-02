@@ -57,12 +57,7 @@ if config_env() == :prod do
       Provide a PEM encoded RSA private key for RS256 token signing.
       """
 
-  jwt_public_key =
-    System.get_env("JWT_PUBLIC_KEY") ||
-      raise """
-      environment variable JWT_PUBLIC_KEY is missing.
-      Provide a PEM encoded RSA public key for RS256 token verification.
-      """
+  jwt_public_key = System.get_env("JWT_PUBLIC_KEY")
 
   config :keystone_phoenix,
     jwt_private_key: jwt_private_key,
