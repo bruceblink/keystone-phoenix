@@ -1,8 +1,11 @@
 defmodule KeystonePhoenixWeb.AuthController do
   use KeystonePhoenixWeb, :controller
 
+  plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:current_user]
+
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Token
+  alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.ApiResponse
 
   @doc "Returns the public key used to verify RS256 access tokens."
@@ -11,10 +14,11 @@ defmodule KeystonePhoenixWeb.AuthController do
   end
 
   @doc "Authenticates a local username and password."
-  def login(conn, %{"username" => username, "password" => password}) do
-    case Auth.login(username, password) do
+  def login(conn, %{"username" => username, "password" => password} = params) do
+    case Auth.login(username, password, params["forceLogin"] == true) do
       {:ok, tokens} -> json(conn, ApiResponse.ok(token_to_map(tokens)))
       {:error, :invalid_credentials} -> render_error(conn, :invalid_credentials)
+      {:error, :already_logged_in} -> render_error(conn, :already_logged_in)
       {:error, :unavailable} -> render_error(conn, :unavailable)
       {:error, :token_configuration} -> render_error(conn, :token_configuration)
     end
@@ -41,6 +45,11 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   def logout_refresh_token(conn, _params), do: json(conn, ApiResponse.ok())
 
+  @doc "Returns the current authenticated user."
+  def current_user(conn, _params) do
+    json(conn, ApiResponse.ok(User.user_to_map(conn.assigns.current_user)))
+  end
+
   defp token_to_map(tokens) do
     %{
       "token" => tokens.token,
@@ -61,6 +70,12 @@ defmodule KeystonePhoenixWeb.AuthController do
     conn
     |> put_status(:unauthorized)
     |> json(ApiResponse.error(40102, "刷新令牌无效或已过期"))
+  end
+
+  defp render_error(conn, :already_logged_in) do
+    conn
+    |> put_status(:conflict)
+    |> json(ApiResponse.error(10210, "该账号已经登录"))
   end
 
   defp render_error(conn, :unavailable) do

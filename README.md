@@ -53,9 +53,10 @@ Implemented API slices currently include health checks, dictionary type/data
 CRUD, Redis-backed dictionary lookups, and system configuration CRUD with
 validated option values and cache refresh support. User list/detail queries and
 default local accounts are also available as the foundation for authentication.
-Local login, RS256 access/refresh tokens, refresh rotation, and protected user
-queries are now available through `/login`, `/refresh-token`, and
-`/system/users`. The `/login/rsa-public-key` endpoint returns a Base64 encoded
+Local login, RS256 access/refresh tokens, refresh rotation, single-account
+session control, and protected user queries are now available through `/login`,
+`/refresh-token`, `/getLoginUserInfo`, and `/system/users`. The
+`/login/rsa-public-key` endpoint returns a Base64 encoded
 X.509 public key; clients encrypt the login password with RSA/PKCS#1 before
 sending `/login`, matching the original Keystone contract.
 

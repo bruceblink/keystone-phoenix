@@ -13,6 +13,7 @@ defmodule KeystonePhoenixWeb.Router do
     post "/login", AuthController, :login
     post "/refresh-token", AuthController, :refresh
     post "/logout-refresh-token", AuthController, :logout_refresh_token
+    get "/getLoginUserInfo", AuthController, :current_user
     get "/system/dict/types", DictionaryController, :list_types
     get "/system/dict/type/list", DictionaryController, :list_types
     get "/system/dict/type/:dict_id", DictionaryController, :show_type

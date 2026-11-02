@@ -4,31 +4,38 @@ defmodule KeystonePhoenix.Auth do
   alias KeystonePhoenix.Auth.{Session, Token}
   alias KeystonePhoenix.User
 
-  @spec login(String.t(), String.t()) :: {:ok, map()} | {:error, atom()}
-  def login(username, password) when is_binary(username) and is_binary(password) do
+  @spec login(String.t(), String.t(), boolean()) :: {:ok, map()} | {:error, atom()}
+  def login(username, password, force_login \\ false)
+
+  def login(username, password, force_login)
+      when is_binary(username) and is_binary(password) and is_boolean(force_login) do
     with {:ok, plaintext_password} <- Token.decrypt_password(password),
          {:ok, user} <- User.get_user_by_username(username),
          true <- user.status == 1,
          true <- Bcrypt.verify_pass(plaintext_password, user.password || ""),
-         {:ok, tokens} <- issue_pair(user) do
+         {:ok, tokens} <- issue_pair(user, force_login) do
       {:ok, Map.put(tokens, :current_user, User.user_to_map(user))}
     else
-      {:error, reason} when reason in [:unavailable, :token_configuration] -> {:error, reason}
-      _ -> {:error, :invalid_credentials}
+      {:error, reason} when reason in [:unavailable, :token_configuration, :already_logged_in] ->
+        {:error, reason}
+
+      _ ->
+        {:error, :invalid_credentials}
     end
   end
 
-  def login(_username, _password), do: {:error, :invalid_credentials}
+  def login(_username, _password, _force_login), do: {:error, :invalid_credentials}
 
   @spec refresh(String.t()) :: {:ok, map()} | {:error, atom()}
   def refresh(refresh_token) when is_binary(refresh_token) do
     with {:ok, claims} <- Token.verify(refresh_token, Token.refresh_type()),
          {:ok, user_id} <- parse_user_id(claims["sub"]),
          true <- Session.valid?(claims["jti"], user_id),
+         true <- Session.active?(user_id, claims["jti"]),
          {:ok, user} <- User.get_user(user_id),
          true <- user.status == 1,
-         :ok <- Session.delete(claims["jti"]),
-         {:ok, tokens} <- issue_pair(user) do
+         :ok <- Session.revoke(user_id, claims["jti"]),
+         {:ok, tokens} <- issue_pair(user, false) do
       {:ok, Map.put(tokens, :current_user, User.user_to_map(user))}
     else
       {:error, :unavailable} -> {:error, :unavailable}
@@ -41,8 +48,9 @@ defmodule KeystonePhoenix.Auth do
   @spec logout(String.t()) :: :ok
   def logout(refresh_token) when is_binary(refresh_token) do
     with {:ok, claims} <- Token.verify(refresh_token, Token.refresh_type()),
+         {:ok, user_id} <- parse_user_id(claims["sub"]),
          jti when is_binary(jti) <- claims["jti"] do
-      Session.delete(jti)
+      Session.revoke(user_id, jti)
     else
       _ -> :ok
     end
@@ -54,6 +62,8 @@ defmodule KeystonePhoenix.Auth do
   def authenticate_access_token(token) do
     with {:ok, claims} <- Token.verify(token, Token.access_type()),
          {:ok, user_id} <- parse_user_id(claims["sub"]),
+         session_id when is_binary(session_id) <- claims["sid"],
+         true <- Session.active?(user_id, session_id),
          {:ok, user} <- User.get_user(user_id),
          true <- user.status == 1 do
       {:ok, user}
@@ -62,20 +72,37 @@ defmodule KeystonePhoenix.Auth do
     end
   end
 
-  defp issue_pair(user) do
-    with {:ok, access} <- Token.issue(user, Token.access_type()),
-         {:ok, refresh} <- Token.issue(user, Token.refresh_type()),
+  defp issue_pair(user, force_login) do
+    with {:ok, refresh} <- Token.issue(user, Token.refresh_type()),
          :ok <- Session.put(refresh.jti, user.user_id, refresh.expires_in) do
-      {:ok,
-       %{
-         token: access.token,
-         refresh_token: refresh.token,
-         expires_in: access.expires_in,
-         refresh_expires_in: refresh.expires_in
-       }}
+      case Session.occupy(user.user_id, refresh.jti, refresh.expires_in, force_login) do
+        :ok ->
+          issue_access_pair(user, refresh)
+
+        {:error, reason} ->
+          Session.delete(refresh.jti)
+          {:error, reason}
+      end
     else
       {:error, {:token_configuration, _reason}} -> {:error, :token_configuration}
       {:error, :unavailable} -> {:error, :unavailable}
+    end
+  end
+
+  defp issue_access_pair(user, refresh) do
+    case Token.issue(user, Token.access_type(), refresh.jti) do
+      {:ok, access} ->
+        {:ok,
+         %{
+           token: access.token,
+           refresh_token: refresh.token,
+           expires_in: access.expires_in,
+           refresh_expires_in: refresh.expires_in
+         }}
+
+      {:error, {:token_configuration, _reason}} ->
+        Session.revoke(user.user_id, refresh.jti)
+        {:error, :token_configuration}
     end
   end
 

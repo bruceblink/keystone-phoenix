@@ -18,8 +18,9 @@ defmodule KeystonePhoenix.Auth.Token do
   @spec refresh_ttl() :: pos_integer()
   def refresh_ttl, do: Application.get_env(:keystone_phoenix, :jwt_refresh_ttl, 604_800)
 
-  @spec issue(map(), String.t()) :: {:ok, map()} | {:error, term()}
-  def issue(user, token_type) when token_type in [@access_type, @refresh_type] do
+  @spec issue(map(), String.t(), String.t() | nil) :: {:ok, map()} | {:error, term()}
+  def issue(user, token_type, session_id \\ nil)
+      when token_type in [@access_type, @refresh_type] do
     now = System.system_time(:second)
     ttl = if token_type == @access_type, do: access_ttl(), else: refresh_ttl()
     jti = Ecto.UUID.generate()
@@ -34,6 +35,8 @@ defmodule KeystonePhoenix.Auth.Token do
       "iat" => now,
       "exp" => now + ttl
     }
+
+    claims = if is_binary(session_id), do: Map.put(claims, "sid", session_id), else: claims
 
     token =
       private_jwk()
