@@ -6,6 +6,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Dictionary
+  alias KeystonePhoenix.Job
   alias KeystonePhoenix.User
 
   @impl true
@@ -21,7 +22,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
        active_panel: "overview",
        user_rows: [],
        config_rows: [],
-       dict_type_rows: []
+       dict_type_rows: [],
+       job_rows: [],
+       job_feedback: nil
      )}
   end
 
@@ -49,7 +52,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
            active_panel: "overview",
            user_rows: dashboard.user_rows,
            config_rows: dashboard.config_rows,
-           dict_type_rows: dashboard.dict_type_rows
+           dict_type_rows: dashboard.dict_type_rows,
+           job_rows: dashboard.job_rows,
+           job_feedback: nil
          )}
 
       {:error, :already_logged_in} ->
@@ -69,7 +74,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   @impl true
   def handle_event("show-panel", %{"panel" => panel}, socket)
-      when panel in ["overview", "users", "configs", "dicts"] do
+      when panel in ["overview", "users", "configs", "dicts", "jobs"] do
     if admin_socket?(socket) do
       {:noreply, assign(socket, active_panel: panel)}
     else
@@ -90,6 +95,46 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   @impl true
+  def handle_event("refresh-jobs", _params, socket) do
+    if admin_socket?(socket) do
+      {:noreply, assign(socket, job_rows: load_jobs(), job_feedback: nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("run-job", %{"job-id" => job_id}, socket) do
+    if admin_socket?(socket) do
+      feedback =
+        case Job.run_job(job_id) do
+          :ok -> "任务已执行并写入运行日志"
+          {:error, :not_found} -> "找不到指定任务"
+          {:error, reason} -> "任务执行失败：#{inspect(reason)}"
+        end
+
+      {:noreply, assign(socket, job_rows: load_jobs(), job_feedback: feedback)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("toggle-job-status", %{"job-id" => job_id, "status" => status}, socket) do
+    if admin_socket?(socket) do
+      feedback =
+        case Job.update_job_status(job_id, status) do
+          {:ok, _job} -> "任务状态已更新"
+          {:error, reason} -> "任务状态更新失败：#{inspect(reason)}"
+        end
+
+      {:noreply, assign(socket, job_rows: load_jobs(), job_feedback: feedback)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
   def handle_event("logout", _params, socket) do
     Auth.logout(socket.assigns.refresh_token)
 
@@ -103,7 +148,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
        active_panel: "overview",
        user_rows: [],
        config_rows: [],
-       dict_type_rows: []
+       dict_type_rows: [],
+       job_rows: [],
+       job_feedback: nil
      )}
   end
 
@@ -111,13 +158,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
     %{
       user_rows: User.list_users(%{"pageSize" => 50}).rows,
       config_rows: Config.list_configs(%{"pageSize" => 50}).rows,
-      dict_type_rows: Dictionary.list_dict_types(%{"pageSize" => 50}).rows
+      dict_type_rows: Dictionary.list_dict_types(%{"pageSize" => 50}).rows,
+      job_rows: load_jobs()
     }
   end
 
-  defp empty_dashboard do
-    %{user_rows: [], config_rows: [], dict_type_rows: []}
-  end
+  defp empty_dashboard,
+    do: %{user_rows: [], config_rows: [], dict_type_rows: [], job_rows: []}
+
+  defp load_jobs, do: Job.list_jobs(%{"pageSize" => 50}).rows
 
   defp admin_socket?(socket),
     do: is_map(socket.assigns.current_user) and socket.assigns.current_user["isAdmin"] == 1
@@ -154,6 +203,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
           nav { display: flex; gap: 8px; flex-wrap: wrap; }
           nav button { width: auto; margin: 0; padding: 8px 12px; background: #243650; }
           nav button.active { background: #4f8cff; }
+          nav button.danger { background: #8b4a55; }
           .panel { overflow-x: auto; padding: 20px; border: 1px solid #27354a; border-radius: 12px; background: #172235; }
           table { width: 100%; border-collapse: collapse; font-size: 14px; }
           th, td { padding: 10px 8px; border-bottom: 1px solid #293a52; text-align: left; white-space: nowrap; }
@@ -187,12 +237,13 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <button type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" phx-value-panel="users">用户</button>
                   <button type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
                   <button type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
+                  <button type="button" class={if @active_panel == "jobs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="jobs">定时任务</button>
                 </nav>
                 <%= case @active_panel do %>
                   <% "overview" -> %>
                     <div class="panel">
                       <p>当前登录用户：<strong>{@current_user["username"]}</strong></p>
-                      <p class="muted">用户总数：{@user_rows |> length()}　配置项：{@config_rows |> length()}　字典类型：{@dict_type_rows |> length()}</p>
+                      <p class="muted">用户总数：{@user_rows |> length()}　配置项：{@config_rows |> length()}　字典类型：{@dict_type_rows |> length()}　定时任务：{@job_rows |> length()}</p>
                     </div>
                   <% "users" -> %>
                     <div class="panel">
@@ -224,6 +275,33 @@ defmodule KeystonePhoenixWeb.LoginLive do
                         <tbody>
                           <%= for dict <- @dict_type_rows do %>
                             <tr><td>{dict["dictName"]}</td><td>{dict["dictType"]}</td><td>{if dict["status"] == 1, do: "正常", else: "停用"}</td><td>{dict["remark"]}</td></tr>
+                          <% end %>
+                        </tbody>
+                      </table>
+                    </div>
+                  <% "jobs" -> %>
+                    <div class="panel">
+                      <button type="button" class="refresh" phx-click="refresh-jobs">刷新任务</button>
+                      <%= if @job_feedback do %>
+                        <p class="muted" role="status">{@job_feedback}</p>
+                      <% end %>
+                      <table>
+                        <thead><tr><th>任务名称</th><th>分组</th><th>调用目标</th><th>Cron</th><th>状态</th><th>操作</th></tr></thead>
+                        <tbody>
+                          <%= for job <- @job_rows do %>
+                            <tr>
+                              <td>{job["jobName"]}</td>
+                              <td>{job["jobGroup"]}</td>
+                              <td>{job["invokeTarget"]}</td>
+                              <td>{job["cronExpression"]}</td>
+                              <td>{job["statusStr"]}</td>
+                              <td>
+                                <button type="button" class="refresh" phx-click="run-job" phx-value-job-id={job["jobId"]}>立即执行</button>
+                                <button type="button" class="refresh" phx-click="toggle-job-status" phx-value-job-id={job["jobId"]} phx-value-status={if job["status"] == 1, do: 0, else: 1}>
+                                  {if job["status"] == 1, do: "暂停", else: "启用"}
+                                </button>
+                              </td>
+                            </tr>
                           <% end %>
                         </tbody>
                       </table>
