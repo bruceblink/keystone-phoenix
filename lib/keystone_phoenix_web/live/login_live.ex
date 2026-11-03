@@ -120,6 +120,22 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   @impl true
+  def handle_event("cancel-job", %{"job-id" => job_id}, socket) do
+    if admin_socket?(socket) do
+      feedback =
+        case Job.cancel_job(job_id) do
+          :ok -> "任务已取消"
+          {:error, :invalid_id} -> "任务编号无效"
+          :not_found -> "没有正在运行的任务"
+        end
+
+      {:noreply, assign(socket, job_rows: load_jobs(), job_feedback: feedback)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
   def handle_event("toggle-job-status", %{"job-id" => job_id, "status" => status}, socket) do
     if admin_socket?(socket) do
       feedback =
@@ -300,6 +316,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                                 <button type="button" class="refresh" phx-click="toggle-job-status" phx-value-job-id={job["jobId"]} phx-value-status={if job["status"] == 1, do: 0, else: 1}>
                                   {if job["status"] == 1, do: "暂停", else: "启用"}
                                 </button>
+                                <button type="button" class="refresh" phx-click="cancel-job" phx-value-job-id={job["jobId"]}>取消运行</button>
                               </td>
                             </tr>
                           <% end %>

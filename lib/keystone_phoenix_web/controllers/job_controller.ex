@@ -58,6 +58,15 @@ defmodule KeystonePhoenixWeb.JobController do
     end
   end
 
+  @doc "Cancels automatic executions currently running for a scheduled job."
+  def cancel(conn, %{"job_id" => job_id}) do
+    case Job.cancel_job(job_id) do
+      :ok -> json(conn, ApiResponse.ok())
+      {:error, :invalid_id} -> render_error(conn, :invalid_ids)
+      :not_found -> render_error(conn, :not_running)
+    end
+  end
+
   @doc "Deletes one or more scheduled jobs."
   def delete(conn, %{"jobIds" => job_ids}) do
     case Job.delete_jobs(String.split(to_string(job_ids), ",")) do
@@ -78,6 +87,10 @@ defmodule KeystonePhoenixWeb.JobController do
 
   defp render_error(conn, :invalid_status) do
     conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(11206, "任务状态值无效"))
+  end
+
+  defp render_error(conn, :not_running) do
+    conn |> put_status(:not_found) |> json(ApiResponse.error(11207, "没有正在运行的任务"))
   end
 
   defp render_error(conn, :invalid_params) do

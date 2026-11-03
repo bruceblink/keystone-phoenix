@@ -50,7 +50,9 @@ if config_env() == :prod do
 
   config :keystone_phoenix,
     redis_url: redis_url,
-    captcha_type: System.get_env("CAPTCHA_TYPE", "math")
+    captcha_type: System.get_env("CAPTCHA_TYPE", "math"),
+    job_execution_timeout_ms:
+      String.to_integer(System.get_env("JOB_EXECUTION_TIMEOUT_MS", "30000"))
 
   config :keystone_phoenix,
     file_base_dir: System.get_env("FILE_BASE_DIR", "/var/lib/keystone/resources")

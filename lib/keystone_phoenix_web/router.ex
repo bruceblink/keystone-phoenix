@@ -41,6 +41,7 @@ defmodule KeystonePhoenixWeb.Router do
     put "/system/jobs/:job_id", JobController, :update
     put "/system/jobs/:job_id/status", JobController, :change_status
     post "/system/jobs/:job_id/run", JobController, :run
+    post "/system/jobs/:job_id/cancel", JobController, :cancel
     delete "/system/jobs", JobController, :delete
     get "/login/rsa-public-key", AuthController, :public_key
     get "/getConfig", AuthController, :config

@@ -105,6 +105,14 @@ defmodule KeystonePhoenix.Job do
     end
   end
 
+  @doc "Cancels automatic runs currently executing for a task."
+  def cancel_job(id) do
+    case parse_positive_integer(id) do
+      nil -> {:error, :invalid_id}
+      job_id -> KeystonePhoenix.Job.Scheduler.cancel(job_id)
+    end
+  end
+
   @doc "Returns available allow-listed invocation targets."
   def invoke_targets, do: Invoke.targets()
 

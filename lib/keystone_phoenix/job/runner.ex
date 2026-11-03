@@ -68,6 +68,54 @@ defmodule KeystonePhoenix.Job.Runner do
     persist_log(attrs, :ok)
   end
 
+  @doc "Records an automatic run that was terminated after exceeding the timeout."
+  def record_timeout(%SysJob{} = job, timeout_ms) do
+    now = DateTime.utc_now()
+
+    attrs = %{
+      job_id: job.job_id,
+      job_name: job.job_name,
+      job_group: job.job_group,
+      invoke_target: job.invoke_target,
+      job_params: job.job_params,
+      cron_expression: job.cron_expression,
+      trigger_type: 1,
+      status: 0,
+      job_message: "任务执行超时（超过#{timeout_ms}毫秒）",
+      exception_info: "任务进程已被调度器终止",
+      start_time: now,
+      end_time: now,
+      duration_ms: timeout_ms,
+      create_time: now
+    }
+
+    persist_log(attrs, :ok)
+  end
+
+  @doc "Records an automatic run cancelled by an administrator."
+  def record_cancel(%SysJob{} = job) do
+    now = DateTime.utc_now()
+
+    attrs = %{
+      job_id: job.job_id,
+      job_name: job.job_name,
+      job_group: job.job_group,
+      invoke_target: job.invoke_target,
+      job_params: job.job_params,
+      cron_expression: job.cron_expression,
+      trigger_type: 1,
+      status: 2,
+      job_message: "任务已取消",
+      exception_info: "",
+      start_time: now,
+      end_time: now,
+      duration_ms: 0,
+      create_time: now
+    }
+
+    persist_log(attrs, :ok)
+  end
+
   defp persist_log(attrs, return) do
     case Repo.insert(SysJobLog.changeset(%SysJobLog{}, attrs)) do
       {:ok, _log} -> return
