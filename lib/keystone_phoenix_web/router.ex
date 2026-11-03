@@ -33,6 +33,15 @@ defmodule KeystonePhoenixWeb.Router do
     get "/monitor/serverInfo", MonitorController, :server_info
     get "/monitor/onlineUsers", MonitorController, :online_users
     delete "/monitor/onlineUser/:token_id", MonitorController, :logout_online_user
+    get "/system/jobs", JobController, :list
+    get "/system/jobs/invoke-targets", JobController, :invoke_targets
+    get "/system/jobs/logs", JobController, :logs
+    get "/system/jobs/:job_id", JobController, :show
+    post "/system/jobs", JobController, :create
+    put "/system/jobs/:job_id", JobController, :update
+    put "/system/jobs/:job_id/status", JobController, :change_status
+    post "/system/jobs/:job_id/run", JobController, :run
+    delete "/system/jobs", JobController, :delete
     get "/login/rsa-public-key", AuthController, :public_key
     get "/getConfig", AuthController, :config
     get "/captchaImage", AuthController, :captcha

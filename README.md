@@ -115,6 +115,12 @@ sessions at `/monitor/onlineUsers`, and forced logout at
 server-sent event snapshot at `/monitor/networkStatus/stream`, which the
 frontend can reconnect to as needed.
 
+Scheduled job management is available through `/system/jobs`, including
+allow-listed invocation targets, job definition CRUD, enable/disable status,
+manual execution, and execution logs at `/system/jobs/logs`. Manual execution
+uses the same persisted log format that the scheduler will use for automatic
+Cron triggers.
+
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout
 action. Phoenix and LiveView browser assets are served from their Mix
