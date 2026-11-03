@@ -14,6 +14,10 @@ defmodule KeystonePhoenixWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :event_stream do
+    plug :accepts, ["sse"]
+  end
+
   scope "/", KeystonePhoenixWeb do
     pipe_through :browser
 
@@ -25,6 +29,10 @@ defmodule KeystonePhoenixWeb.Router do
     pipe_through :api
 
     get "/health", HealthController, :show
+    get "/monitor/cacheInfo", MonitorController, :cache_info
+    get "/monitor/serverInfo", MonitorController, :server_info
+    get "/monitor/onlineUsers", MonitorController, :online_users
+    delete "/monitor/onlineUser/:token_id", MonitorController, :logout_online_user
     get "/login/rsa-public-key", AuthController, :public_key
     get "/getConfig", AuthController, :config
     get "/captchaImage", AuthController, :captcha
@@ -100,6 +108,12 @@ defmodule KeystonePhoenixWeb.Router do
     put "/system/user/profile", ProfileController, :update
     put "/system/user/profile/password", ProfileController, :update_password
     post "/system/user/profile/avatar", ProfileController, :update_avatar
+  end
+
+  scope "/", KeystonePhoenixWeb do
+    pipe_through :event_stream
+
+    get "/monitor/networkStatus/stream", MonitorController, :network_status_stream
   end
 
   scope "/api", KeystonePhoenixWeb do

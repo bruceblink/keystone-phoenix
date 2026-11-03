@@ -108,6 +108,13 @@ character GIF captchas selected with `CAPTCHA_TYPE`. `/login` consumes the
 captcha key before checking credentials. `/register` returns an explicit
 unsupported response until an open-registration policy is implemented.
 
+Administrator monitoring endpoints now cover Redis metrics at
+`/monitor/cacheInfo`, BEAM host metrics at `/monitor/serverInfo`, current online
+sessions at `/monitor/onlineUsers`, and forced logout at
+`DELETE /monitor/onlineUser/:tokenId`. The network status endpoint emits a
+server-sent event snapshot at `/monitor/networkStatus/stream`, which the
+frontend can reconnect to as needed.
+
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout
 action. Phoenix and LiveView browser assets are served from their Mix
