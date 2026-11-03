@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.AuthController do
   plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:current_user, :routers]
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Auth.Captcha
   alias KeystonePhoenix.Auth.Token
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Dictionary
@@ -31,16 +32,22 @@ defmodule KeystonePhoenixWeb.AuthController do
     )
   end
 
-  @doc "Returns the captcha state. Captcha generation is disabled by default."
+  @doc "Returns a one-time captcha image when the database switch is enabled."
   def captcha(conn, _params) do
-    json(
-      conn,
-      ApiResponse.ok(%{
-        "isCaptchaOn" => Config.get_config_value_by_key("sys.account.captchaOnOff") == "true",
-        "captchaCodeKey" => nil,
-        "captchaCodeImg" => nil
-      })
-    )
+    case Captcha.generate() do
+      {:ok, captcha} ->
+        json(
+          conn,
+          ApiResponse.ok(%{
+            "isCaptchaOn" => Captcha.enabled?(),
+            "captchaCodeKey" => captcha.captcha_code_key,
+            "captchaCodeImg" => captcha.captcha_code_img
+          })
+        )
+
+      {:error, :unavailable} ->
+        render_error(conn, :unavailable)
+    end
   end
 
   @doc "Registration remains disabled until an explicit registration policy is added."
@@ -52,7 +59,13 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   @doc "Authenticates a local username and password."
   def login(conn, %{"username" => username, "password" => password} = params) do
-    case Auth.login(username, password, params["forceLogin"] == true) do
+    case Auth.login(
+           username,
+           password,
+           params["forceLogin"] == true,
+           params["captchaCode"],
+           params["captchaCodeKey"]
+         ) do
       {:ok, tokens} ->
         Log.record_login(conn, username, 1, "登录成功")
         json(conn, ApiResponse.ok(token_to_map(tokens)))
@@ -60,6 +73,18 @@ defmodule KeystonePhoenixWeb.AuthController do
       {:error, :invalid_credentials} ->
         Log.record_login(conn, username, 0, "用户名或密码错误")
         render_error(conn, :invalid_credentials)
+
+      {:error, :captcha_required} ->
+        Log.record_login(conn, username, 0, "验证码为空")
+        render_error(conn, :captcha_required)
+
+      {:error, :captcha_invalid} ->
+        Log.record_login(conn, username, 0, "验证码错误")
+        render_error(conn, :captcha_invalid)
+
+      {:error, :captcha_expired} ->
+        Log.record_login(conn, username, 0, "验证码过期")
+        render_error(conn, :captcha_expired)
 
       {:error, :already_logged_in} ->
         Log.record_login(conn, username, 0, "该账号已经登录")
@@ -120,6 +145,24 @@ defmodule KeystonePhoenixWeb.AuthController do
     conn
     |> put_status(:unauthorized)
     |> json(ApiResponse.error(10002, "用户名或密码错误"))
+  end
+
+  defp render_error(conn, :captcha_required) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(10205, "验证码为空"))
+  end
+
+  defp render_error(conn, :captcha_invalid) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(10203, "验证码错误"))
+  end
+
+  defp render_error(conn, :captcha_expired) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(10204, "验证码过期"))
   end
 
   defp render_error(conn, :invalid_refresh_token) do

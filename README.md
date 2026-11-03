@@ -102,9 +102,11 @@ passwords, tokens, captcha values, and upload paths redacted. Login success and
 failure results are recorded without passwords or tokens.
 
 Public login bootstrap endpoints now include `/getConfig` and
-`/captchaImage`; the seeded configuration keeps captcha disabled. `/register`
-returns an explicit unsupported response until an open-registration policy is
-implemented.
+`/captchaImage`. The seeded configuration keeps captcha disabled, and setting
+`sys.account.captchaOnOff` to `true` enables Redis-backed, one-time math or
+character GIF captchas selected with `CAPTCHA_TYPE`. `/login` consumes the
+captcha key before checking credentials. `/register` returns an explicit
+unsupported response until an open-registration policy is implemented.
 
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout

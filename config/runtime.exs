@@ -48,7 +48,9 @@ if config_env() == :prod do
       For example: redis://USER:PASSWORD@HOST:6379/0
       """
 
-  config :keystone_phoenix, redis_url: redis_url
+  config :keystone_phoenix,
+    redis_url: redis_url,
+    captcha_type: System.get_env("CAPTCHA_TYPE", "math")
 
   config :keystone_phoenix,
     file_base_dir: System.get_env("FILE_BASE_DIR", "/var/lib/keystone/resources")

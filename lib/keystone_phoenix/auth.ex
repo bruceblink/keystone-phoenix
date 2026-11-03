@@ -1,22 +1,30 @@
 defmodule KeystonePhoenix.Auth do
   @moduledoc "Local password authentication and refresh token rotation."
 
-  alias KeystonePhoenix.Auth.{Session, Token}
+  alias KeystonePhoenix.Auth.{Captcha, Session, Token}
   alias KeystonePhoenix.User
 
-  @spec login(String.t(), String.t(), boolean()) :: {:ok, map()} | {:error, atom()}
-  def login(username, password, force_login \\ false)
+  @spec login(String.t(), String.t(), boolean(), String.t() | nil, String.t() | nil) ::
+          {:ok, map()} | {:error, atom()}
+  def login(username, password, force_login \\ false, captcha_code \\ nil, captcha_key \\ nil)
 
-  def login(username, password, force_login)
+  def login(username, password, force_login, captcha_code, captcha_key)
       when is_binary(username) and is_binary(password) and is_boolean(force_login) do
-    with {:ok, plaintext_password} <- Token.decrypt_password(password) do
+    with :ok <- Captcha.validate(captcha_code, captcha_key),
+         {:ok, plaintext_password} <- Token.decrypt_password(password) do
       login_plaintext(username, plaintext_password, force_login)
     else
-      _ -> {:error, :invalid_credentials}
+      {:error, reason}
+      when reason in [:captcha_required, :captcha_invalid, :captcha_expired, :unavailable] ->
+        {:error, reason}
+
+      _ ->
+        {:error, :invalid_credentials}
     end
   end
 
-  def login(_username, _password, _force_login), do: {:error, :invalid_credentials}
+  def login(_username, _password, _force_login, _captcha_code, _captcha_key),
+    do: {:error, :invalid_credentials}
 
   @doc "Authenticates a password already received over a LiveView session."
   @spec login_plaintext(String.t(), String.t(), boolean()) :: {:ok, map()} | {:error, atom()}
