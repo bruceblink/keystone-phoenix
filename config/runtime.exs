@@ -50,6 +50,9 @@ if config_env() == :prod do
 
   config :keystone_phoenix, redis_url: redis_url
 
+  config :keystone_phoenix,
+    file_base_dir: System.get_env("FILE_BASE_DIR", "/var/lib/keystone/resources")
+
   jwt_private_key =
     System.get_env("JWT_PRIVATE_KEY") ||
       raise """

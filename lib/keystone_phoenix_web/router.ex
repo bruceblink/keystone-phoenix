@@ -18,6 +18,7 @@ defmodule KeystonePhoenixWeb.Router do
     pipe_through :browser
 
     live "/", LoginLive, :index
+    get "/profile/*path", ResourceController, :show
   end
 
   scope "/", KeystonePhoenixWeb do

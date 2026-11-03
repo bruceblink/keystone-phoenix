@@ -86,7 +86,9 @@ endpoints.
 
 Authenticated users can read and update their own profile under
 `/system/user/profile`, including old-password-checked password changes and
-avatar URL updates. User create and update commands validate referenced
+avatar URL updates, and `POST /system/user/profile/avatar` accepts the original
+`avatarfile` multipart upload and stores profile resources under `FILE_BASE_DIR`.
+User create and update commands validate referenced
 departments, posts, and roles before writing.
 
 Administrators can manage notices through `/system/notices` with paginated

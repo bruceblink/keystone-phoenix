@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate
 
+  alias KeystonePhoenix.Upload
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.ApiResponse
 
@@ -34,7 +35,17 @@ defmodule KeystonePhoenixWeb.ProfileController do
     end
   end
 
-  @doc "Updates the authenticated user's avatar URL."
+  @doc "Uploads an avatar using the original multipart avatarfile contract."
+  def update_avatar(conn, %{"avatarfile" => %Plug.Upload{} = upload}) do
+    with {:ok, avatar_url} <- Upload.store_avatar(upload),
+         {:ok, _user} <- User.update_avatar(conn.assigns.current_user.user_id, avatar_url) do
+      json(conn, ApiResponse.ok(%{"imgUrl" => avatar_url}))
+    else
+      {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
   def update_avatar(conn, %{"avatar" => avatar}) do
     case User.update_avatar(conn.assigns.current_user.user_id, avatar) do
       {:ok, _user} -> json(conn, ApiResponse.ok(%{"imgUrl" => avatar}))
@@ -59,6 +70,18 @@ defmodule KeystonePhoenixWeb.ProfileController do
 
   defp render_error(conn, :invalid_avatar) do
     conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10009, "头像地址无效"))
+  end
+
+  defp render_error(conn, reason)
+       when reason in [
+              :invalid_upload,
+              :empty_upload,
+              :file_too_large,
+              :filename_too_long,
+              :type_not_allowed,
+              :storage_error
+            ] do
+    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10009, "头像文件无效"))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do

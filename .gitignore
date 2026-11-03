@@ -25,5 +25,8 @@ erl_crash.dump
 # Local environment overrides.
 .env
 
+# Uploaded profile resources.
+uploads/
+
 # Ignore package tarball (built via "mix hex.build").
 keystone_phoenix-*.tar
