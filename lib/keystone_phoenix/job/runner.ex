@@ -41,6 +41,34 @@ defmodule KeystonePhoenix.Job.Runner do
       create_time: start_time
     }
 
+    persist_log(attrs, return)
+  end
+
+  @doc "Records a skipped automatic run when a non-concurrent job is still running."
+  def record_skip(%SysJob{} = job, message) do
+    now = DateTime.utc_now()
+
+    attrs = %{
+      job_id: job.job_id,
+      job_name: job.job_name,
+      job_group: job.job_group,
+      invoke_target: job.invoke_target,
+      job_params: job.job_params,
+      cron_expression: job.cron_expression,
+      trigger_type: 1,
+      status: 2,
+      job_message: message,
+      exception_info: "",
+      start_time: now,
+      end_time: now,
+      duration_ms: 0,
+      create_time: now
+    }
+
+    persist_log(attrs, :ok)
+  end
+
+  defp persist_log(attrs, return) do
     case Repo.insert(SysJobLog.changeset(%SysJobLog{}, attrs)) do
       {:ok, _log} -> return
       {:error, _changeset} -> {:error, :log_persist_failed}

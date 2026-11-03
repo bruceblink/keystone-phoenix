@@ -15,7 +15,9 @@ config :keystone_phoenix, KeystonePhoenix.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
-config :keystone_phoenix, redis_enabled: false
+config :keystone_phoenix,
+  redis_enabled: false,
+  job_scheduler_enabled: false
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

@@ -22,7 +22,7 @@ defmodule KeystonePhoenix.Job.Cron do
            datetime.hour,
            datetime.day,
            datetime.month,
-           Date.day_of_week(datetime) - 1
+           rem(Date.day_of_week(DateTime.to_date(datetime)), 7)
          ] do
       Enum.zip(fields, values) |> Enum.all?(fn {field, value} -> value in field end)
     else

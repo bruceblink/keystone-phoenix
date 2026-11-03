@@ -22,6 +22,8 @@ defmodule KeystonePhoenix.Application do
         KeystonePhoenixWeb.Telemetry,
         KeystonePhoenix.Repo,
         redis_children,
+        {Task.Supervisor, name: KeystonePhoenix.JobTaskSupervisor},
+        scheduler_child(),
         {DNSCluster,
          query: Application.get_env(:keystone_phoenix, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: KeystonePhoenix.PubSub},
@@ -36,6 +38,14 @@ defmodule KeystonePhoenix.Application do
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: KeystonePhoenix.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  defp scheduler_child do
+    if Application.get_env(:keystone_phoenix, :job_scheduler_enabled, true) do
+      KeystonePhoenix.Job.Scheduler
+    else
+      []
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration
