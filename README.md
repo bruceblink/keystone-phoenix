@@ -49,6 +49,11 @@ The frontend is being rebuilt with Phoenix LiveView. The existing Keystone
 frontend can continue calling the JSON endpoints while LiveView owns the new
 server-rendered interactive pages and Ecto owns PostgreSQL access.
 
+The current frontend reference is
+[bruceblink/keystone-frontend](https://github.com/bruceblink/keystone-frontend).
+It remains usable during the first migration phase while the equivalent
+LiveView pages are added to this repository at the same API boundaries.
+
 Implemented API slices currently include health checks, dictionary type/data
 CRUD, Redis-backed dictionary lookups, and system configuration CRUD with
 validated option values and cache refresh support. User list/detail queries and
@@ -75,7 +80,9 @@ departments, posts, roles, menus, role-menu assignments, and the authenticated
 support administrator-only create, update, and soft-delete commands; role and
 menu resources also support administrator-only create, update, status, data
 scope, menu assignment, and soft-delete commands. Menu resources support the
-same administrator-only create, update, and soft-delete commands.
+same administrator-only create, update, and soft-delete commands. Role users
+can be queried and assigned or unassigned in bulk under the role grant
+endpoints.
 
 Authenticated users can read and update their own profile under
 `/system/user/profile`, including old-password-checked password changes and

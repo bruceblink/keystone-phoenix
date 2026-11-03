@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Role do
 
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
+  alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
 
   @role_attrs [
@@ -82,8 +83,12 @@ defmodule KeystonePhoenix.Role do
   def delete_role(id) do
     with {:ok, role} <- get_role(id) do
       cond do
-        role.role_key == "admin" -> {:error, :protected_role}
-        user_count(role.role_id) > 0 -> {:error, :has_users}
+        role.role_key == "admin" ->
+          {:error, :protected_role}
+
+        user_count(role.role_id) > 0 ->
+          {:error, :has_users}
+
         true ->
           Repo.transaction(fn ->
             Repo.delete_all(from(rm in SysRoleMenu, where: rm.role_id == ^role.role_id))
@@ -115,6 +120,52 @@ defmodule KeystonePhoenix.Role do
     |> Repo.all()
   end
 
+  @doc "Lists users currently assigned to a role."
+  def list_allocated_users(role_id, params \\ %{}) do
+    case parse_positive_integer(role_id) do
+      nil -> %{total: 0, rows: []}
+      role_id -> list_role_users(role_id, params, :allocated)
+    end
+  end
+
+  @doc "Lists active users that are not assigned to a role."
+  def list_unallocated_users(role_id, params \\ %{}) do
+    case parse_positive_integer(role_id) do
+      nil -> %{total: 0, rows: []}
+      role_id -> list_role_users(role_id, params, :unallocated)
+    end
+  end
+
+  @doc "Assigns a batch of users to an enabled role."
+  def assign_users(role_id, user_ids) do
+    with {:ok, role} <- get_role(role_id),
+         true <- role.status == 1,
+         {:ok, user_ids} <- normalize_user_ids(user_ids) do
+      Repo.update_all(
+        from(u in SysUser, where: u.deleted == false and u.user_id in ^user_ids),
+        set: [role_id: role.role_id, update_time: DateTime.utc_now()]
+      )
+
+      :ok
+    else
+      {:error, :not_found} -> {:error, :not_found}
+      {:error, :invalid_ids} -> {:error, :invalid_ids}
+      false -> {:error, :role_unavailable}
+    end
+  end
+
+  @doc "Removes role assignments from a batch of users."
+  def unassign_users(user_ids) do
+    with {:ok, user_ids} <- normalize_user_ids(user_ids) do
+      Repo.update_all(
+        from(u in SysUser, where: u.deleted == false and u.user_id in ^user_ids),
+        set: [role_id: nil, update_time: DateTime.utc_now()]
+      )
+
+      :ok
+    end
+  end
+
   defp replace_menu_ids(role_id, menu_ids) do
     Repo.delete_all(from(rm in SysRoleMenu, where: rm.role_id == ^role_id))
 
@@ -123,6 +174,51 @@ defmodule KeystonePhoenix.Role do
     end
 
     :ok
+  end
+
+  defp list_role_users(role_id, params, mode) do
+    query =
+      from u in SysUser,
+        where: u.deleted == false,
+        order_by: [desc: u.user_id]
+
+    query =
+      case mode do
+        :allocated -> where(query, [user], user.role_id == ^role_id)
+        :unallocated -> where(query, [user], is_nil(user.role_id) or user.role_id != ^role_id)
+      end
+
+    query =
+      query
+      |> filter_user_contains(:username, params["username"] || params[:username])
+      |> filter_user_contains(:phone_number, params["phoneNumber"] || params[:phone_number])
+
+    page = positive_integer(params["pageNum"] || params[:page_num], 1)
+    page_size = min(positive_integer(params["pageSize"] || params[:page_size], 10), 500)
+    total = Repo.aggregate(query, :count, :user_id)
+    rows = query |> limit(^page_size) |> offset(^((page - 1) * page_size)) |> Repo.all()
+    %{total: total, rows: Enum.map(rows, &User.user_to_map/1)}
+  end
+
+  defp normalize_user_ids(user_ids) when is_list(user_ids) do
+    normalized =
+      user_ids |> Enum.map(&parse_positive_integer/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    if normalized == [], do: {:error, :invalid_ids}, else: {:ok, normalized}
+  end
+
+  defp normalize_user_ids(user_ids) when is_binary(user_ids) do
+    user_ids |> String.split(",", trim: true) |> normalize_user_ids()
+  end
+
+  defp normalize_user_ids(_user_ids), do: {:error, :invalid_ids}
+
+  defp filter_user_contains(query, _field, nil), do: query
+  defp filter_user_contains(query, _field, ""), do: query
+
+  defp filter_user_contains(query, field, value) do
+    pattern = "%" <> String.trim(to_string(value)) <> "%"
+    where(query, [user], ilike(field(user, ^field), ^pattern))
   end
 
   defp user_count(role_id) do
@@ -182,7 +278,8 @@ defmodule KeystonePhoenix.Role do
 
   defp parse_positive_integer(_value), do: nil
 
-  defp invalid_changeset(field), do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysRole{}), field, "参数无效")
+  defp invalid_changeset(field),
+    do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysRole{}), field, "参数无效")
 
   defp filter_contains(query, _field, nil), do: query
   defp filter_contains(query, _field, ""), do: query

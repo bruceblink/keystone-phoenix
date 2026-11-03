@@ -67,6 +67,36 @@ defmodule KeystonePhoenixWeb.RoleController do
     end
   end
 
+  @doc "Lists users assigned to a role."
+  def allocated_users(conn, %{"role_id" => role_id} = params) do
+    json(conn, ApiResponse.ok(Role.list_allocated_users(role_id, params)))
+  end
+
+  @doc "Lists users that are not assigned to a role."
+  def unallocated_users(conn, %{"role_id" => role_id} = params) do
+    json(conn, ApiResponse.ok(Role.list_unallocated_users(role_id, params)))
+  end
+
+  @doc "Assigns users to a role."
+  def assign_users(conn, %{"role_id" => role_id, "user_ids" => user_ids}) do
+    case Role.assign_users(role_id, user_ids) do
+      :ok -> json(conn, ApiResponse.ok())
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
+  def assign_users(conn, _params), do: render_error(conn, :invalid_ids)
+
+  @doc "Removes role assignments from users."
+  def unassign_users(conn, %{"user_ids" => user_ids}) do
+    case Role.unassign_users(user_ids) do
+      :ok -> json(conn, ApiResponse.ok())
+      {:error, :invalid_ids} -> render_error(conn, :invalid_ids)
+    end
+  end
+
+  def unassign_users(conn, _params), do: render_error(conn, :invalid_ids)
+
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
@@ -76,6 +106,14 @@ defmodule KeystonePhoenixWeb.RoleController do
   defp render_error(conn, reason) when reason in [:protected_role, :has_users] do
     message = if reason == :protected_role, do: "管理员角色不能删除", else: "角色存在用户，不能删除"
     conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10002, message))
+  end
+
+  defp render_error(conn, :role_unavailable) do
+    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10003, "角色已停用"))
+  end
+
+  defp render_error(conn, :invalid_ids) do
+    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10004, "用户编号无效"))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
