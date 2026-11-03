@@ -41,6 +41,8 @@ defmodule KeystonePhoenixWeb do
 
       import Plug.Conn
 
+      plug KeystonePhoenixWeb.Plugs.OperationLog
+
       unquote(verified_routes())
     end
   end

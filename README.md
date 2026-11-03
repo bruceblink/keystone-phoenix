@@ -96,8 +96,10 @@ queries, detail reads, create, update, and soft-delete operations.
 
 The log foundation now provides administrator-only login and operation log
 queries and cleanup under `/logs`; authenticated users can submit operation log
-records for their own actions. Login success and failure results are recorded
-without passwords or tokens.
+records for their own actions. All authenticated POST, PUT, PATCH, and DELETE
+management requests also create an operation record on the server, with
+passwords, tokens, captcha values, and upload paths redacted. Login success and
+failure results are recorded without passwords or tokens.
 
 Public login bootstrap endpoints now include `/getConfig` and
 `/captchaImage`; the seeded configuration keeps captcha disabled. `/register`
