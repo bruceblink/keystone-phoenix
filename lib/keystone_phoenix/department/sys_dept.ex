@@ -26,7 +26,17 @@ defmodule KeystonePhoenix.Department.SysDept do
 
   def changeset(dept, attrs) do
     dept
-    |> cast(attrs, [:parent_id, :ancestors, :dept_name, :order_num, :leader_id, :leader_name, :phone, :email, :status])
+    |> cast(attrs, [
+      :parent_id,
+      :ancestors,
+      :dept_name,
+      :order_num,
+      :leader_id,
+      :leader_name,
+      :phone,
+      :email,
+      :status
+    ])
     |> validate_required([:dept_name, :status])
     |> validate_length(:dept_name, max: 64)
     |> validate_length(:ancestors, max: 1024)

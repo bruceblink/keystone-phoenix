@@ -146,7 +146,8 @@ defmodule KeystonePhoenix.Department do
     |> Repo.aggregate(:count, :user_id)
   end
 
-  defp invalid_changeset(field), do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysDept{}), field, "参数无效")
+  defp invalid_changeset(field),
+    do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysDept{}), field, "参数无效")
 
   defp attach_children(dept, depts) do
     children =

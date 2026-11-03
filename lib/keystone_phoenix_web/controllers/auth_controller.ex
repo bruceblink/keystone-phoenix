@@ -19,22 +19,28 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   @doc "Returns public login configuration and dictionary data."
   def config(conn, _params) do
-    json(conn, ApiResponse.ok(%{
-      "isCaptchaOn" => Config.get_config_value_by_key("sys.account.captchaOnOff") == "true",
-      "dictionary" => %{
-        "common.yesOrNo" => Dictionary.list_dict_data_by_type("common.yesOrNo"),
-        "common.status" => Dictionary.list_dict_data_by_type("common.status")
-      }
-    }))
+    json(
+      conn,
+      ApiResponse.ok(%{
+        "isCaptchaOn" => Config.get_config_value_by_key("sys.account.captchaOnOff") == "true",
+        "dictionary" => %{
+          "common.yesOrNo" => Dictionary.list_dict_data_by_type("common.yesOrNo"),
+          "common.status" => Dictionary.list_dict_data_by_type("common.status")
+        }
+      })
+    )
   end
 
   @doc "Returns the captcha state. Captcha generation is disabled by default."
   def captcha(conn, _params) do
-    json(conn, ApiResponse.ok(%{
-      "isCaptchaOn" => Config.get_config_value_by_key("sys.account.captchaOnOff") == "true",
-      "captchaCodeKey" => nil,
-      "captchaCodeImg" => nil
-    }))
+    json(
+      conn,
+      ApiResponse.ok(%{
+        "isCaptchaOn" => Config.get_config_value_by_key("sys.account.captchaOnOff") == "true",
+        "captchaCodeKey" => nil,
+        "captchaCodeImg" => nil
+      })
+    )
   end
 
   @doc "Registration remains disabled until an explicit registration policy is added."

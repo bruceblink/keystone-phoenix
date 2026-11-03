@@ -41,6 +41,9 @@ defmodule KeystonePhoenix.Repo.Migrations.CreateLogTables do
     end
 
     create index(:sys_operation_log, [:user_id], name: :sys_operation_log_user_id_index)
-    create index(:sys_operation_log, [:operation_time], name: :sys_operation_log_operation_time_index)
+
+    create index(:sys_operation_log, [:operation_time],
+             name: :sys_operation_log_operation_time_index
+           )
   end
 end

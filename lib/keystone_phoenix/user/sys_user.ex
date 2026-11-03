@@ -86,9 +86,7 @@ defmodule KeystonePhoenix.User.SysUser do
     )
     |> validate_length(:nickname, max: 32)
     |> validate_length(:email, max: 128)
-    |> validate_format(:email, ~r/^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-      message: "邮箱格式不正确"
-    )
+    |> validate_format(:email, ~r/^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "邮箱格式不正确")
     |> validate_length(:phone_number, max: 18)
     |> validate_inclusion(:sex, [0, 1, 2])
     |> validate_length(:avatar, max: 512)
@@ -99,8 +97,6 @@ defmodule KeystonePhoenix.User.SysUser do
   defp validate_password(changeset) do
     changeset
     |> validate_length(:password, min: 8, max: 32)
-    |> validate_format(:password, @password_pattern,
-      message: "密码首尾不能包含空格，且必须包含字母、数字和特殊符号"
-    )
+    |> validate_format(:password, @password_pattern, message: "密码首尾不能包含空格，且必须包含字母、数字和特殊符号")
   end
 end

@@ -26,7 +26,10 @@ defmodule KeystonePhoenix.Log do
       )
 
     query = filter_contains(query, :username, params["username"] || params[:username])
-    query = filter_contains(query, :request_module, params["requestModule"] || params[:request_module])
+
+    query =
+      filter_contains(query, :request_module, params["requestModule"] || params[:request_module])
+
     query = filter_integer(query, :status, params["status"] || params[:status])
     paginate(query, params, :operation_id, &operation_log_to_map/1)
   end
@@ -59,7 +62,8 @@ defmodule KeystonePhoenix.Log do
   def create_operation_log(attrs, user, request_url, request_method) when is_map(attrs) do
     normalized = %{
       business_type: attrs["businessType"] || attrs[:business_type] || 0,
-      request_method: attrs["requestMethod"] || attrs[:request_method] || request_method_code(request_method),
+      request_method:
+        attrs["requestMethod"] || attrs[:request_method] || request_method_code(request_method),
       request_module: attrs["requestModule"] || attrs[:request_module] || "",
       request_url: request_url,
       called_method: attrs["calledMethod"] || attrs[:called_method] || "",
@@ -78,7 +82,8 @@ defmodule KeystonePhoenix.Log do
     Repo.insert(Ecto.Changeset.cast(%SysOperationLog{}, normalized, Map.keys(normalized)))
   end
 
-  def create_operation_log(_attrs, _user, _request_url, _request_method), do: {:error, :invalid_log}
+  def create_operation_log(_attrs, _user, _request_url, _request_method),
+    do: {:error, :invalid_log}
 
   def login_info_to_map(log) do
     %{
@@ -128,7 +133,8 @@ defmodule KeystonePhoenix.Log do
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}
     else
-      case Repo.update_all(from(log in schema, where: field(log, ^field) in ^ids and log.deleted == false),
+      case Repo.update_all(
+             from(log in schema, where: field(log, ^field) in ^ids and log.deleted == false),
              set: [deleted: true]
            ) do
         {count, _} when count == length(ids) -> :ok

@@ -27,7 +27,18 @@ defmodule KeystonePhoenix.Menu.SysMenu do
 
   def changeset(menu, attrs) do
     menu
-    |> cast(attrs, [:menu_name, :menu_type, :router_name, :parent_id, :path, :is_button, :permission, :meta_info, :status, :remark])
+    |> cast(attrs, [
+      :menu_name,
+      :menu_type,
+      :router_name,
+      :parent_id,
+      :path,
+      :is_button,
+      :permission,
+      :meta_info,
+      :status,
+      :remark
+    ])
     |> validate_required([:menu_name, :menu_type, :parent_id, :status])
     |> validate_length(:menu_name, max: 64)
     |> validate_length(:router_name, max: 255)

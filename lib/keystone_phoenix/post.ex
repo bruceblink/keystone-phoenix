@@ -86,7 +86,9 @@ defmodule KeystonePhoenix.Post do
   defp delete_posts_in_transaction(ids) do
     Enum.each(ids, fn post_id ->
       case get_post(post_id) do
-        {:error, :not_found} -> Repo.rollback(:not_found)
+        {:error, :not_found} ->
+          Repo.rollback(:not_found)
+
         {:ok, post} ->
           if user_count(post_id) > 0 do
             Repo.rollback(:has_users)
@@ -128,7 +130,8 @@ defmodule KeystonePhoenix.Post do
 
   defp parse_positive_integer(_value), do: nil
 
-  defp invalid_changeset(field), do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysPost{}), field, "参数无效")
+  defp invalid_changeset(field),
+    do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysPost{}), field, "参数无效")
 
   defp filter_contains(query, _field, nil), do: query
   defp filter_contains(query, _field, ""), do: query

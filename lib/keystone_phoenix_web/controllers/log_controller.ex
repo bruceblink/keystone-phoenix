@@ -2,8 +2,10 @@ defmodule KeystonePhoenixWeb.LogController do
   use KeystonePhoenixWeb, :controller
 
   plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:create_operation_log]
-  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
-      when action in [:login_logs, :operation_logs, :delete_login_logs, :delete_operation_logs]
+
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+       [admin: true]
+       when action in [:login_logs, :operation_logs, :delete_login_logs, :delete_operation_logs]
 
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.ApiResponse
@@ -30,7 +32,12 @@ defmodule KeystonePhoenixWeb.LogController do
 
   @doc "Creates an operation audit record for the authenticated user."
   def create_operation_log(conn, params) do
-    case Log.create_operation_log(params, conn.assigns.current_user, conn.request_path, conn.method) do
+    case Log.create_operation_log(
+           params,
+           conn.assigns.current_user,
+           conn.request_path,
+           conn.method
+         ) do
       {:ok, _log} -> json(conn, ApiResponse.ok())
       {:error, :invalid_log} -> render_error(conn, :invalid_log)
       {:error, changeset} -> render_error(conn, changeset)

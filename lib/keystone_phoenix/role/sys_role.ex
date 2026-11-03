@@ -24,7 +24,15 @@ defmodule KeystonePhoenix.Role.SysRole do
 
   def changeset(role, attrs) do
     role
-    |> cast(attrs, [:role_name, :role_key, :role_sort, :data_scope, :dept_id_set, :status, :remark])
+    |> cast(attrs, [
+      :role_name,
+      :role_key,
+      :role_sort,
+      :data_scope,
+      :dept_id_set,
+      :status,
+      :remark
+    ])
     |> validate_required([:role_name, :role_key, :role_sort, :status])
     |> validate_length(:role_name, max: 32)
     |> validate_length(:role_key, max: 128)

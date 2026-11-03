@@ -76,7 +76,9 @@ defmodule KeystonePhoenix.Menu do
   def delete_menu(id) do
     with {:ok, menu} <- get_menu(id) do
       cond do
-        child_count(menu.menu_id) > 0 -> {:error, :has_children}
+        child_count(menu.menu_id) > 0 ->
+          {:error, :has_children}
+
         true ->
           Repo.transaction(fn ->
             Repo.delete_all(from(rm in "sys_role_menu", where: rm.menu_id == ^menu.menu_id))
@@ -179,7 +181,8 @@ defmodule KeystonePhoenix.Menu do
     |> Repo.aggregate(:count, :menu_id)
   end
 
-  defp invalid_changeset(field), do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysMenu{}), field, "参数无效")
+  defp invalid_changeset(field),
+    do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysMenu{}), field, "参数无效")
 
   defp build_tree(menus) do
     Enum.filter(menus, &(&1["parentId"] == 0))

@@ -54,7 +54,14 @@ defmodule KeystonePhoenixWeb.DepartmentController do
     |> json(ApiResponse.error(10001, "找不到请求的部门"))
   end
 
-  defp render_error(conn, reason) when reason in [:parent_not_found, :invalid_parent, :has_children, :has_users, :update_failed] do
+  defp render_error(conn, reason)
+       when reason in [
+              :parent_not_found,
+              :invalid_parent,
+              :has_children,
+              :has_users,
+              :update_failed
+            ] do
     messages = %{
       parent_not_found: "父部门不存在",
       invalid_parent: "父部门无效",

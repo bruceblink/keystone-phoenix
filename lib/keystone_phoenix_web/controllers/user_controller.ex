@@ -1,8 +1,9 @@
 defmodule KeystonePhoenixWeb.UserController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
-      when action in [:list, :show, :create, :update, :delete, :reset_password, :change_status]
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+       [admin: true]
+       when action in [:list, :show, :create, :update, :delete, :reset_password, :change_status]
 
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.ApiResponse
@@ -100,12 +101,14 @@ defmodule KeystonePhoenixWeb.UserController do
     |> json(ApiResponse.error(10006, "用户状态无效"))
   end
 
-  defp render_error(conn, reason) when reason in [:dept_not_found, :post_not_found, :role_not_found] do
-    message = %{
-      dept_not_found: "部门不存在",
-      post_not_found: "岗位不存在",
-      role_not_found: "角色不存在"
-    }[reason]
+  defp render_error(conn, reason)
+       when reason in [:dept_not_found, :post_not_found, :role_not_found] do
+    message =
+      %{
+        dept_not_found: "部门不存在",
+        post_not_found: "岗位不存在",
+        role_not_found: "角色不存在"
+      }[reason]
 
     conn
     |> put_status(:unprocessable_entity)

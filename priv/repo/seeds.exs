@@ -158,7 +158,11 @@ dept_entries = [
 ]
 
 if Repo.aggregate(KeystonePhoenix.Department.SysDept, :count, :dept_id) == 0 do
-  Repo.insert_all("sys_dept", Enum.map(dept_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now})))
+  Repo.insert_all(
+    "sys_dept",
+    Enum.map(dept_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now}))
+  )
+
   Repo.query!("SELECT setval('sys_dept_dept_id_seq', (SELECT MAX(dept_id) FROM sys_dept))")
 end
 
@@ -169,30 +173,120 @@ post_entries = [
 ]
 
 if Repo.aggregate(KeystonePhoenix.Post.SysPost, :count, :post_id) == 0 do
-  Repo.insert_all("sys_post", Enum.map(post_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now})))
+  Repo.insert_all(
+    "sys_post",
+    Enum.map(post_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now}))
+  )
+
   Repo.query!("SELECT setval('sys_post_post_id_seq', (SELECT MAX(post_id) FROM sys_post))")
 end
 
 role_entries = [
-  %{role_id: 1, role_name: "超级管理员", role_key: "admin", role_sort: 1, data_scope: 1, dept_id_set: "", status: 1, remark: "超级管理员"},
-  %{role_id: 2, role_name: "普通角色", role_key: "common", role_sort: 3, data_scope: 2, dept_id_set: "", status: 1, remark: "普通角色"}
+  %{
+    role_id: 1,
+    role_name: "超级管理员",
+    role_key: "admin",
+    role_sort: 1,
+    data_scope: 1,
+    dept_id_set: "",
+    status: 1,
+    remark: "超级管理员"
+  },
+  %{
+    role_id: 2,
+    role_name: "普通角色",
+    role_key: "common",
+    role_sort: 3,
+    data_scope: 2,
+    dept_id_set: "",
+    status: 1,
+    remark: "普通角色"
+  }
 ]
 
 if Repo.aggregate(KeystonePhoenix.Role.SysRole, :count, :role_id) == 0 do
-  Repo.insert_all("sys_role", Enum.map(role_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now})))
+  Repo.insert_all(
+    "sys_role",
+    Enum.map(role_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now}))
+  )
+
   Repo.query!("SELECT setval('sys_role_role_id_seq', (SELECT MAX(role_id) FROM sys_role))")
 end
 
 menu_entries = [
-  %{menu_id: 1, menu_name: "系统管理", menu_type: 2, router_name: "", parent_id: 0, path: "/system", is_button: false, permission: "", meta_info: Jason.encode!(%{"title" => "系统管理", "showParent" => true}), status: 1, remark: "系统管理目录"},
-  %{menu_id: 5, menu_name: "用户管理", menu_type: 1, router_name: "SystemUser", parent_id: 1, path: "/system/user/index", is_button: false, permission: "system:user:list", meta_info: Jason.encode!(%{"title" => "用户管理", "showParent" => true}), status: 1, remark: "用户管理菜单"},
-  %{menu_id: 6, menu_name: "角色管理", menu_type: 1, router_name: "SystemRole", parent_id: 1, path: "/system/role/index", is_button: false, permission: "system:role:list", meta_info: Jason.encode!(%{"title" => "角色管理", "showParent" => true}), status: 1, remark: "角色管理菜单"},
-  %{menu_id: 8, menu_name: "部门管理", menu_type: 1, router_name: "Department", parent_id: 1, path: "/system/dept/index", is_button: false, permission: "system:dept:list", meta_info: Jason.encode!(%{"title" => "部门管理", "showParent" => true}), status: 1, remark: "部门管理菜单"},
-  %{menu_id: 9, menu_name: "岗位管理", menu_type: 1, router_name: "Post", parent_id: 1, path: "/system/post/index", is_button: false, permission: "system:post:list", meta_info: Jason.encode!(%{"title" => "岗位管理", "showParent" => true}), status: 1, remark: "岗位管理菜单"}
+  %{
+    menu_id: 1,
+    menu_name: "系统管理",
+    menu_type: 2,
+    router_name: "",
+    parent_id: 0,
+    path: "/system",
+    is_button: false,
+    permission: "",
+    meta_info: Jason.encode!(%{"title" => "系统管理", "showParent" => true}),
+    status: 1,
+    remark: "系统管理目录"
+  },
+  %{
+    menu_id: 5,
+    menu_name: "用户管理",
+    menu_type: 1,
+    router_name: "SystemUser",
+    parent_id: 1,
+    path: "/system/user/index",
+    is_button: false,
+    permission: "system:user:list",
+    meta_info: Jason.encode!(%{"title" => "用户管理", "showParent" => true}),
+    status: 1,
+    remark: "用户管理菜单"
+  },
+  %{
+    menu_id: 6,
+    menu_name: "角色管理",
+    menu_type: 1,
+    router_name: "SystemRole",
+    parent_id: 1,
+    path: "/system/role/index",
+    is_button: false,
+    permission: "system:role:list",
+    meta_info: Jason.encode!(%{"title" => "角色管理", "showParent" => true}),
+    status: 1,
+    remark: "角色管理菜单"
+  },
+  %{
+    menu_id: 8,
+    menu_name: "部门管理",
+    menu_type: 1,
+    router_name: "Department",
+    parent_id: 1,
+    path: "/system/dept/index",
+    is_button: false,
+    permission: "system:dept:list",
+    meta_info: Jason.encode!(%{"title" => "部门管理", "showParent" => true}),
+    status: 1,
+    remark: "部门管理菜单"
+  },
+  %{
+    menu_id: 9,
+    menu_name: "岗位管理",
+    menu_type: 1,
+    router_name: "Post",
+    parent_id: 1,
+    path: "/system/post/index",
+    is_button: false,
+    permission: "system:post:list",
+    meta_info: Jason.encode!(%{"title" => "岗位管理", "showParent" => true}),
+    status: 1,
+    remark: "岗位管理菜单"
+  }
 ]
 
 if Repo.aggregate(KeystonePhoenix.Menu.SysMenu, :count, :menu_id) == 0 do
-  Repo.insert_all("sys_menu", Enum.map(menu_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now})))
+  Repo.insert_all(
+    "sys_menu",
+    Enum.map(menu_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now}))
+  )
+
   Repo.query!("SELECT setval('sys_menu_menu_id_seq', (SELECT MAX(menu_id) FROM sys_menu))")
 end
 
@@ -229,7 +323,10 @@ notice_entries = [
 
 if Repo.aggregate(KeystonePhoenix.Notice.SysNotice, :count, :notice_id) == 0 do
   Repo.insert_all("sys_notice", notice_entries)
-  Repo.query!("SELECT setval('sys_notice_notice_id_seq', (SELECT MAX(notice_id) FROM sys_notice))")
+
+  Repo.query!(
+    "SELECT setval('sys_notice_notice_id_seq', (SELECT MAX(notice_id) FROM sys_notice))"
+  )
 end
 
 user_entries = [

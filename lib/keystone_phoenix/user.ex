@@ -97,6 +97,8 @@ defmodule KeystonePhoenix.User do
     end
   end
 
+  def update_user(_id, _attrs), do: {:error, invalid_changeset(%SysUser{}, :username)}
+
   defp update_user_record(user, attrs) do
     case user |> SysUser.update_changeset(attrs) |> Repo.update() do
       {:ok, updated} = result ->
@@ -107,8 +109,6 @@ defmodule KeystonePhoenix.User do
         error
     end
   end
-
-  def update_user(_id, _attrs), do: {:error, invalid_changeset(%SysUser{}, :username)}
 
   @doc "Soft deletes users and prevents deleting the current or an administrator account."
   @spec delete_users(list(), integer() | String.t()) :: :ok | {:error, atom()}

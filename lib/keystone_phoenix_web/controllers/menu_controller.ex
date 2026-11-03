@@ -54,7 +54,8 @@ defmodule KeystonePhoenixWeb.MenuController do
     |> json(ApiResponse.error(10001, "找不到请求的菜单"))
   end
 
-  defp render_error(conn, reason) when reason in [:parent_not_found, :invalid_parent, :has_children] do
+  defp render_error(conn, reason)
+       when reason in [:parent_not_found, :invalid_parent, :has_children] do
     messages = %{
       parent_not_found: "父菜单不存在",
       invalid_parent: "父菜单无效",

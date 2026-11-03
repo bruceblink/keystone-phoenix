@@ -58,7 +58,8 @@ defmodule KeystonePhoenix.Notice do
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}
     else
-      case Repo.update_all(from(n in SysNotice, where: n.notice_id in ^ids and n.deleted == false),
+      case Repo.update_all(
+             from(n in SysNotice, where: n.notice_id in ^ids and n.deleted == false),
              set: [deleted: true, update_time: DateTime.utc_now()]
            ) do
         {count, _} when count == length(ids) -> :ok
@@ -129,7 +130,8 @@ defmodule KeystonePhoenix.Notice do
 
   defp parse_positive_integer(_value), do: nil
 
-  defp invalid_changeset(field), do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysNotice{}), field, "参数无效")
+  defp invalid_changeset(field),
+    do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysNotice{}), field, "参数无效")
 
   defp format_datetime(nil), do: nil
 
