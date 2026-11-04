@@ -200,7 +200,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   @impl true
   def handle_event("edit-notice", %{"notice-id" => notice_id}, socket) do
     if admin_socket?(socket) do
-      case Enum.find(socket.assigns.notice_rows, &to_string(&1["noticeId"]) == notice_id) do
+      case Enum.find(socket.assigns.notice_rows, &(to_string(&1["noticeId"]) == notice_id)) do
         nil -> {:noreply, assign(socket, notice_feedback: "找不到指定公告")}
         notice -> {:noreply, assign(socket, notice_form: notice, notice_feedback: nil)}
       end
@@ -248,7 +248,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   @impl true
-  def handle_event("toggle-notice-status", %{"notice-id" => notice_id, "status" => status}, socket) do
+  def handle_event(
+        "toggle-notice-status",
+        %{"notice-id" => notice_id, "status" => status},
+        socket
+      ) do
     if admin_socket?(socket) do
       case Notice.update_notice(notice_id, %{"status" => status}) do
         {:ok, _notice} ->
