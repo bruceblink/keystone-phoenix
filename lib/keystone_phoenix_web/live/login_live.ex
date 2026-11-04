@@ -8,6 +8,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Job
+  alias KeystonePhoenix.Log
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenix.Notice
@@ -39,6 +40,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
        notice_rows: [],
        notice_feedback: nil,
        notice_form: empty_notice_form(),
+       login_log_rows: [],
+       operation_log_rows: [],
+       log_feedback: nil,
        monitor_server_info: %{},
        monitor_cache_info: %{},
        online_user_rows: [],
@@ -82,7 +86,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
            menu_feedback: nil,
            notice_rows: dashboard.notice_rows,
            notice_feedback: nil,
-           notice_form: empty_notice_form()
+           notice_form: empty_notice_form(),
+           login_log_rows: dashboard.login_log_rows,
+           operation_log_rows: dashboard.operation_log_rows,
+           log_feedback: nil
          )}
 
       {:error, :already_logged_in} ->
@@ -108,6 +115,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
              "roles",
              "menus",
              "notices",
+             "logs",
              "users",
              "configs",
              "dicts",
@@ -168,6 +176,22 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("refresh-notices", _params, socket) do
     if admin_socket?(socket) do
       {:noreply, assign(socket, notice_rows: load_notices(), notice_feedback: nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("refresh-logs", _params, socket) do
+    if admin_socket?(socket) do
+      logs = load_logs()
+
+      {:noreply,
+       assign(socket,
+         login_log_rows: logs.login_log_rows,
+         operation_log_rows: logs.operation_log_rows,
+         log_feedback: nil
+       )}
     else
       {:noreply, socket}
     end
@@ -366,6 +390,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
        notice_rows: [],
        notice_feedback: nil,
        notice_form: empty_notice_form(),
+       login_log_rows: [],
+       operation_log_rows: [],
+       log_feedback: nil,
        monitor_server_info: %{},
        monitor_cache_info: %{},
        online_user_rows: [],
@@ -375,12 +402,16 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   defp load_dashboard do
+    logs = load_logs()
+
     %{
       user_rows: User.list_users(%{"pageSize" => 50}).rows,
       dept_rows: load_depts(),
       role_rows: load_roles(),
       menu_rows: load_menus(),
       notice_rows: load_notices(),
+      login_log_rows: logs.login_log_rows,
+      operation_log_rows: logs.operation_log_rows,
       config_rows: Config.list_configs(%{"pageSize" => 50}).rows,
       dict_type_rows: Dictionary.list_dict_types(%{"pageSize" => 50}).rows,
       job_rows: load_jobs()
@@ -394,6 +425,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
       role_rows: [],
       menu_rows: [],
       notice_rows: [],
+      login_log_rows: [],
+      operation_log_rows: [],
       config_rows: [],
       dict_type_rows: [],
       job_rows: []
@@ -402,6 +435,13 @@ defmodule KeystonePhoenixWeb.LoginLive do
   defp load_jobs, do: Job.list_jobs(%{"pageSize" => 50}).rows
 
   defp load_notices, do: Notice.list_notices(%{"pageSize" => 50}).rows
+
+  defp load_logs do
+    %{
+      login_log_rows: Log.list_login_logs(%{"pageSize" => 50}).rows,
+      operation_log_rows: Log.list_operation_logs(%{"pageSize" => 50}).rows
+    }
+  end
 
   defp empty_notice_form do
     %{
@@ -595,6 +635,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <button type="button" class={if @active_panel == "roles", do: "active", else: ""} phx-click="show-panel" phx-value-panel="roles">角色</button>
                   <button type="button" class={if @active_panel == "menus", do: "active", else: ""} phx-click="show-panel" phx-value-panel="menus">菜单</button>
                   <button type="button" class={if @active_panel == "notices", do: "active", else: ""} phx-click="show-panel" phx-value-panel="notices">公告</button>
+                  <button type="button" class={if @active_panel == "logs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="logs">日志</button>
                   <button type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" phx-value-panel="users">用户</button>
                   <button type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
                   <button type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
@@ -738,6 +779,31 @@ defmodule KeystonePhoenixWeb.LoginLive do
                                 <button type="button" class="refresh" phx-click="delete-notice" phx-value-notice-id={notice["noticeId"]}>删除</button>
                               </td>
                             </tr>
+                          <% end %>
+                        </tbody>
+                      </table>
+                    </div>
+                  <% "logs" -> %>
+                    <div class="panel">
+                      <button type="button" class="refresh" phx-click="refresh-logs">刷新日志</button>
+                      <%= if @log_feedback do %>
+                        <p class="muted" role="status">{@log_feedback}</p>
+                      <% end %>
+                      <h3>登录日志（{@login_log_rows |> length()}）</h3>
+                      <table>
+                        <thead><tr><th>用户</th><th>IP</th><th>浏览器</th><th>状态</th><th>消息</th><th>时间</th></tr></thead>
+                        <tbody>
+                          <%= for log <- @login_log_rows do %>
+                            <tr><td>{log["username"]}</td><td>{log["ipAddress"]}</td><td>{log["browser"]}</td><td>{if log["status"] == 1, do: "成功", else: "失败"}</td><td>{log["msg"]}</td><td>{log["loginTime"]}</td></tr>
+                          <% end %>
+                        </tbody>
+                      </table>
+                      <h3>操作日志（{@operation_log_rows |> length()}）</h3>
+                      <table>
+                        <thead><tr><th>用户</th><th>模块</th><th>方法</th><th>请求地址</th><th>状态</th><th>时间</th></tr></thead>
+                        <tbody>
+                          <%= for log <- @operation_log_rows do %>
+                            <tr><td>{log["username"]}</td><td>{log["requestModule"]}</td><td>{log["requestMethod"]}</td><td>{log["requestUrl"]}</td><td>{if log["status"] == 1, do: "成功", else: "失败"}</td><td>{log["operationTime"]}</td></tr>
                           <% end %>
                         </tbody>
                       </table>

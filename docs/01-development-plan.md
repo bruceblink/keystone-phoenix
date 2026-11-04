@@ -38,7 +38,7 @@ mix test
 mix precommit
 ```
 
-当前工作站缺少 `mix` 和 Docker，因此数据库、LiveView 和 Mix 验证在工具链恢复前保持未完成。
+当前工作站已配置 `mix`、Elixir、Erlang/OTP 和 WSL Docker。数据库集成测试仍需要稳定运行 PostgreSQL 与 Redis 容器；容器未保持运行时，不把编译结果当作数据库测试通过证据。
 
 ## 回滚边界
 
