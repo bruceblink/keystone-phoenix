@@ -14,7 +14,7 @@ defmodule KeystonePhoenix.Job.Scheduler do
   alias KeystonePhoenix.Job.{Cron, Runner, SysJob}
   alias KeystonePhoenix.Repo
 
-  @tick_interval_ms 250
+  @default_tick_interval_ms 1_000
 
   @doc "Starts the singleton scheduled-job poller."
   def start_link(opts \\ []) do
@@ -130,6 +130,7 @@ defmodule KeystonePhoenix.Job.Scheduler do
 
       {:error, reason} ->
         Logger.warning("could not start scheduled job #{job.job_id}: #{inspect(reason)}")
+        log_result(Runner.record_skip(job, "任务执行资源达到上限，跳过本次调度"), "skipped", job.job_id)
         state
     end
   end
@@ -196,5 +197,14 @@ defmodule KeystonePhoenix.Job.Scheduler do
     end)
   end
 
-  defp schedule_tick, do: Process.send_after(self(), :tick, @tick_interval_ms)
+  defp schedule_tick, do: Process.send_after(self(), :tick, tick_interval_ms())
+
+  defp tick_interval_ms do
+    Application.get_env(
+      :keystone_phoenix,
+      :job_scheduler_interval_ms,
+      @default_tick_interval_ms
+    )
+    |> max(250)
+  end
 end

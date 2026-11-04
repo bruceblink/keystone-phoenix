@@ -470,12 +470,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   defp load_roles do
-    Role.list_roles(%{"pageSize" => 50}).rows
+    roles = Role.list_roles(%{"pageSize" => 50}).rows
+    user_counts = Role.user_counts(Enum.map(roles, & &1["roleId"]))
+
+    roles
     |> Enum.map(fn role ->
       role
       |> Map.put("dataScopeStr", data_scope_label(role["dataScope"]))
       |> Map.put("statusStr", if(role["status"] == 1, do: "正常", else: "停用"))
-      |> Map.put("userCount", Role.list_allocated_users(role["roleId"], %{"pageSize" => 1}).total)
+      |> Map.put("userCount", Map.get(user_counts, role["roleId"], 0))
     end)
   end
 

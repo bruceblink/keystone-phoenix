@@ -136,6 +136,25 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
+  @doc "Returns active user counts keyed by role ID in one database query."
+  def user_counts(role_ids) when is_list(role_ids) do
+    role_ids = Enum.filter(role_ids, &(is_integer(&1) and &1 > 0))
+
+    if role_ids == [] do
+      %{}
+    else
+      from(u in SysUser,
+        where: u.deleted == false and u.role_id in ^role_ids,
+        group_by: u.role_id,
+        select: {u.role_id, count(u.user_id)}
+      )
+      |> Repo.all()
+      |> Map.new()
+    end
+  end
+
+  def user_counts(_role_ids), do: %{}
+
   @doc "Assigns a batch of users to an enabled role."
   def assign_users(role_id, user_ids) do
     with {:ok, role} <- get_role(role_id),

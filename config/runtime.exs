@@ -51,6 +51,10 @@ if config_env() == :prod do
   config :keystone_phoenix,
     redis_url: redis_url,
     captcha_type: System.get_env("CAPTCHA_TYPE", "math"),
+    job_scheduler_enabled: System.get_env("JOB_SCHEDULER_ENABLED", "true") in ["true", "1"],
+    job_scheduler_interval_ms:
+      String.to_integer(System.get_env("JOB_SCHEDULER_INTERVAL_MS", "1000")),
+    job_task_max_children: String.to_integer(System.get_env("JOB_TASK_MAX_CHILDREN", "64")),
     job_execution_timeout_ms:
       String.to_integer(System.get_env("JOB_EXECUTION_TIMEOUT_MS", "30000"))
 
