@@ -8,6 +8,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Job
+  alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
@@ -32,6 +33,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
        job_feedback: nil,
        role_rows: [],
        role_feedback: nil,
+       menu_rows: [],
+       menu_feedback: nil,
        monitor_server_info: %{},
        monitor_cache_info: %{},
        online_user_rows: [],
@@ -70,7 +73,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
            job_rows: dashboard.job_rows,
            job_feedback: nil,
            role_rows: dashboard.role_rows,
-           role_feedback: nil
+           role_feedback: nil,
+           menu_rows: dashboard.menu_rows,
+           menu_feedback: nil
          )}
 
       {:error, :already_logged_in} ->
@@ -90,7 +95,17 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   @impl true
   def handle_event("show-panel", %{"panel" => panel}, socket)
-      when panel in ["overview", "depts", "roles", "users", "configs", "dicts", "jobs", "monitor"] do
+      when panel in [
+             "overview",
+             "depts",
+             "roles",
+             "menus",
+             "users",
+             "configs",
+             "dicts",
+             "jobs",
+             "monitor"
+           ] do
     if admin_socket?(socket) do
       if panel == "monitor" do
         {:noreply, assign_monitor(socket)}
@@ -127,6 +142,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("refresh-roles", _params, socket) do
     if admin_socket?(socket) do
       {:noreply, assign(socket, role_rows: load_roles(), role_feedback: nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("refresh-menus", _params, socket) do
+    if admin_socket?(socket) do
+      {:noreply, assign(socket, menu_rows: load_menus(), menu_feedback: nil)}
     else
       {:noreply, socket}
     end
@@ -234,6 +258,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
        job_feedback: nil,
        role_rows: [],
        role_feedback: nil,
+       menu_rows: [],
+       menu_feedback: nil,
        monitor_server_info: %{},
        monitor_cache_info: %{},
        online_user_rows: [],
@@ -247,6 +273,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
       user_rows: User.list_users(%{"pageSize" => 50}).rows,
       dept_rows: load_depts(),
       role_rows: load_roles(),
+      menu_rows: load_menus(),
       config_rows: Config.list_configs(%{"pageSize" => 50}).rows,
       dict_type_rows: Dictionary.list_dict_types(%{"pageSize" => 50}).rows,
       job_rows: load_jobs()
@@ -258,6 +285,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
       user_rows: [],
       dept_rows: [],
       role_rows: [],
+      menu_rows: [],
       config_rows: [],
       dict_type_rows: [],
       job_rows: []
@@ -286,6 +314,37 @@ defmodule KeystonePhoenixWeb.LoginLive do
   defp data_scope_label(4), do: "本部门及以下"
   defp data_scope_label(5), do: "仅本人数据"
   defp data_scope_label(_scope), do: "未知"
+
+  defp load_menus do
+    menus = Menu.list_menus()
+    by_id = Map.new(menus, &{&1["menuId"], &1})
+
+    Enum.map(menus, fn menu ->
+      menu
+      |> Map.put("depth", menu_depth(menu["parentId"], by_id, MapSet.new([menu["menuId"]])))
+      |> Map.put("menuTypeStr", menu_type_label(menu["menuType"], menu["isButton"]))
+      |> Map.put("statusStr", if(menu["status"] == 1, do: "正常", else: "停用"))
+    end)
+  end
+
+  defp menu_depth(0, _menus, _seen), do: 0
+
+  defp menu_depth(parent_id, menus, seen) do
+    if MapSet.member?(seen, parent_id) do
+      0
+    else
+      case Map.get(menus, parent_id) do
+        nil -> 0
+        parent -> 1 + menu_depth(parent["parentId"], menus, MapSet.put(seen, parent_id))
+      end
+    end
+  end
+
+  defp menu_type_label(_type, 1), do: "按钮"
+  defp menu_type_label(2, _is_button), do: "目录"
+  defp menu_type_label(1, _is_button), do: "菜单"
+  defp menu_type_label(0, _is_button), do: "权限"
+  defp menu_type_label(_type, _is_button), do: "其他"
 
   defp dept_depth(nil), do: 0
 
@@ -407,6 +466,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <button type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" phx-value-panel="overview">概览</button>
                   <button type="button" class={if @active_panel == "depts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="depts">部门</button>
                   <button type="button" class={if @active_panel == "roles", do: "active", else: ""} phx-click="show-panel" phx-value-panel="roles">角色</button>
+                  <button type="button" class={if @active_panel == "menus", do: "active", else: ""} phx-click="show-panel" phx-value-panel="menus">菜单</button>
                   <button type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" phx-value-panel="users">用户</button>
                   <button type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
                   <button type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
@@ -417,7 +477,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <% "overview" -> %>
                     <div class="panel">
                       <p>当前登录用户：<strong>{@current_user["username"]}</strong></p>
-                      <p class="muted">部门：{@dept_rows |> length()}　角色：{@role_rows |> length()}　用户总数：{@user_rows |> length()}　配置项：{@config_rows |> length()}　字典类型：{@dict_type_rows |> length()}　定时任务：{@job_rows |> length()}</p>
+                      <p class="muted">部门：{@dept_rows |> length()}　角色：{@role_rows |> length()}　菜单：{@menu_rows |> length()}　用户总数：{@user_rows |> length()}　配置项：{@config_rows |> length()}　字典类型：{@dict_type_rows |> length()}　定时任务：{@job_rows |> length()}</p>
                     </div>
                   <% "depts" -> %>
                     <div class="panel">
@@ -459,6 +519,28 @@ defmodule KeystonePhoenixWeb.LoginLive do
                               <td>{role["statusStr"]}</td>
                               <td>{role["roleSort"]}</td>
                               <td>{role["remark"] || ""}</td>
+                            </tr>
+                          <% end %>
+                        </tbody>
+                      </table>
+                    </div>
+                  <% "menus" -> %>
+                    <div class="panel">
+                      <button type="button" class="refresh" phx-click="refresh-menus">刷新菜单</button>
+                      <%= if @menu_feedback do %>
+                        <p class="muted" role="status">{@menu_feedback}</p>
+                      <% end %>
+                      <table>
+                        <thead><tr><th>菜单名称</th><th>类型</th><th>路由</th><th>路径</th><th>权限标识</th><th>状态</th></tr></thead>
+                        <tbody>
+                          <%= for menu <- @menu_rows do %>
+                            <tr>
+                              <td>{String.duplicate("　", menu["depth"] || 0)}{menu["menuName"]}</td>
+                              <td>{menu["menuTypeStr"]}</td>
+                              <td>{menu["routerName"] || ""}</td>
+                              <td>{menu["path"] || ""}</td>
+                              <td>{menu["permission"] || ""}</td>
+                              <td>{menu["statusStr"]}</td>
                             </tr>
                           <% end %>
                         </tbody>
