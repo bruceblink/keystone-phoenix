@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Config
+  alias KeystonePhoenix.Department
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Monitor
@@ -22,6 +23,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
        refresh_token: nil,
        active_panel: "overview",
        user_rows: [],
+       dept_rows: [],
+       dept_feedback: nil,
        config_rows: [],
        dict_type_rows: [],
        job_rows: [],
@@ -57,6 +60,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
            refresh_token: tokens.refresh_token,
            active_panel: "overview",
            user_rows: dashboard.user_rows,
+           dept_rows: dashboard.dept_rows,
+           dept_feedback: nil,
            config_rows: dashboard.config_rows,
            dict_type_rows: dashboard.dict_type_rows,
            job_rows: dashboard.job_rows,
@@ -80,7 +85,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   @impl true
   def handle_event("show-panel", %{"panel" => panel}, socket)
-      when panel in ["overview", "users", "configs", "dicts", "jobs", "monitor"] do
+      when panel in ["overview", "depts", "users", "configs", "dicts", "jobs", "monitor"] do
     if admin_socket?(socket) do
       if panel == "monitor" do
         {:noreply, assign_monitor(socket)}
@@ -99,6 +104,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
     if admin_socket?(socket) do
       Config.refresh_cache()
       {:noreply, assign(socket, config_rows: Config.list_configs(%{"pageSize" => 50}).rows)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("refresh-depts", _params, socket) do
+    if admin_socket?(socket) do
+      {:noreply, assign(socket, dept_rows: load_depts(), dept_feedback: nil)}
     else
       {:noreply, socket}
     end
@@ -198,6 +212,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
        refresh_token: nil,
        active_panel: "overview",
        user_rows: [],
+       dept_rows: [],
+       dept_feedback: nil,
        config_rows: [],
        dict_type_rows: [],
        job_rows: [],
@@ -213,6 +229,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   defp load_dashboard do
     %{
       user_rows: User.list_users(%{"pageSize" => 50}).rows,
+      dept_rows: load_depts(),
       config_rows: Config.list_configs(%{"pageSize" => 50}).rows,
       dict_type_rows: Dictionary.list_dict_types(%{"pageSize" => 50}).rows,
       job_rows: load_jobs()
@@ -220,9 +237,20 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   defp empty_dashboard,
-    do: %{user_rows: [], config_rows: [], dict_type_rows: [], job_rows: []}
+    do: %{user_rows: [], dept_rows: [], config_rows: [], dict_type_rows: [], job_rows: []}
 
   defp load_jobs, do: Job.list_jobs(%{"pageSize" => 50}).rows
+
+  defp load_depts do
+    Department.list_depts()
+    |> Enum.map(fn dept -> Map.put(dept, "depth", dept_depth(dept["ancestors"])) end)
+  end
+
+  defp dept_depth(nil), do: 0
+
+  defp dept_depth(ancestors) do
+    max(length(String.split(ancestors, ",", trim: true)) - 1, 0)
+  end
 
   defp assign_monitor(socket, feedback \\ nil) do
     monitor = load_monitor()
@@ -336,6 +364,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                 </div>
                 <nav aria-label="管理模块">
                   <button type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" phx-value-panel="overview">概览</button>
+                  <button type="button" class={if @active_panel == "depts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="depts">部门</button>
                   <button type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" phx-value-panel="users">用户</button>
                   <button type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
                   <button type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
@@ -346,7 +375,29 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <% "overview" -> %>
                     <div class="panel">
                       <p>当前登录用户：<strong>{@current_user["username"]}</strong></p>
-                      <p class="muted">用户总数：{@user_rows |> length()}　配置项：{@config_rows |> length()}　字典类型：{@dict_type_rows |> length()}　定时任务：{@job_rows |> length()}</p>
+                      <p class="muted">部门：{@dept_rows |> length()}　用户总数：{@user_rows |> length()}　配置项：{@config_rows |> length()}　字典类型：{@dict_type_rows |> length()}　定时任务：{@job_rows |> length()}</p>
+                    </div>
+                  <% "depts" -> %>
+                    <div class="panel">
+                      <button type="button" class="refresh" phx-click="refresh-depts">刷新部门</button>
+                      <%= if @dept_feedback do %>
+                        <p class="muted" role="status">{@dept_feedback}</p>
+                      <% end %>
+                      <table>
+                        <thead><tr><th>部门名称</th><th>负责人</th><th>电话</th><th>邮箱</th><th>状态</th><th>排序</th></tr></thead>
+                        <tbody>
+                          <%= for dept <- @dept_rows do %>
+                            <tr>
+                              <td>{String.duplicate("　", dept["depth"] || 0)}{dept["deptName"]}</td>
+                              <td>{dept["leaderName"] || ""}</td>
+                              <td>{dept["phone"] || ""}</td>
+                              <td>{dept["email"] || ""}</td>
+                              <td>{if dept["status"] == 1, do: "正常", else: "停用"}</td>
+                              <td>{dept["orderNum"]}</td>
+                            </tr>
+                          <% end %>
+                        </tbody>
+                      </table>
                     </div>
                   <% "users" -> %>
                     <div class="panel">
