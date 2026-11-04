@@ -52,7 +52,8 @@ defmodule KeystonePhoenix.MixProject do
       {:jose, "~> 1.11"},
       {:redix, "~> 1.10"},
       {:dns_cluster, "~> 0.3"},
-      {:bandit, "~> 1.14"}
+      {:bandit, "~> 1.14"},
+      {:lazy_html, ">= 0.1.0", only: :test}
     ]
   end
 
@@ -68,7 +69,14 @@ defmodule KeystonePhoenix.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: [
+        "compile --warnings-as-errors",
+        "deps.unlock --unused",
+        "format",
+        "check.source_lines",
+        "test"
+      ],
+      "check.source_lines": "cmd scripts/check_source_lines.sh"
     ]
   end
 end

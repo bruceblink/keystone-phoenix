@@ -2,18 +2,18 @@ defmodule KeystonePhoenixWeb.LoginLive do
   use Phoenix.LiveView
 
   import Phoenix.Component
+  import KeystonePhoenixWeb.Live.AdminPages.Accounts
+  import KeystonePhoenixWeb.Live.AdminPages.Operations
+  import KeystonePhoenixWeb.Live.AdminPages.Organization
+  import KeystonePhoenixWeb.Live.AdminPages.System
 
   alias KeystonePhoenix.Auth
-  alias KeystonePhoenix.Config
-  alias KeystonePhoenix.Department
-  alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Job
-  alias KeystonePhoenix.Log
-  alias KeystonePhoenix.Menu
-  alias KeystonePhoenix.Monitor
-  alias KeystonePhoenix.Notice
-  alias KeystonePhoenix.Role
-  alias KeystonePhoenix.User
+  alias KeystonePhoenixWeb.Live.AdminSupport
+  alias KeystonePhoenixWeb.Live.AdminEvents.Accounts, as: AccountsEvents
+  alias KeystonePhoenixWeb.Live.AdminEvents.Operations, as: OperationsEvents
+  alias KeystonePhoenixWeb.Live.AdminEvents.Organization, as: OrganizationEvents
+  alias KeystonePhoenixWeb.Live.AdminEvents.System, as: SystemEvents
 
   @impl true
   def mount(_params, _session, socket) do
@@ -29,20 +29,42 @@ defmodule KeystonePhoenixWeb.LoginLive do
        user_rows: [],
        dept_rows: [],
        dept_feedback: nil,
+       dept_form: empty_dept_form(),
+       post_rows: [],
+       post_feedback: nil,
+       post_form: empty_post_form(),
        config_rows: [],
+       config_feedback: nil,
+       config_form: empty_config_form(),
        dict_type_rows: [],
+       dict_data_rows: [],
+       dict_feedback: nil,
+       dict_type_form: empty_dict_type_form(),
+       dict_data_form: empty_dict_data_form(),
+       selected_dict_type: "",
        job_rows: [],
        job_feedback: nil,
+       job_form: empty_job_form(),
+       job_targets: Job.invoke_targets(),
+       job_log_rows: [],
+       job_log_feedback: nil,
        role_rows: [],
        role_feedback: nil,
+       role_form: empty_role_form(),
        menu_rows: [],
        menu_feedback: nil,
+       menu_form: empty_menu_form(),
        notice_rows: [],
        notice_feedback: nil,
        notice_form: empty_notice_form(),
        login_log_rows: [],
        operation_log_rows: [],
        log_feedback: nil,
+       user_form: empty_user_form(),
+       user_feedback: nil,
+       profile_form: empty_profile_form(),
+       password_form: empty_password_form(),
+       profile_feedback: nil,
        monitor_server_info: %{},
        monitor_cache_info: %{},
        online_user_rows: [],
@@ -76,20 +98,42 @@ defmodule KeystonePhoenixWeb.LoginLive do
            user_rows: dashboard.user_rows,
            dept_rows: dashboard.dept_rows,
            dept_feedback: nil,
+           dept_form: empty_dept_form(),
+           post_rows: dashboard.post_rows,
+           post_feedback: nil,
+           post_form: empty_post_form(),
            config_rows: dashboard.config_rows,
+           config_feedback: nil,
+           config_form: empty_config_form(),
            dict_type_rows: dashboard.dict_type_rows,
+           dict_data_rows: dashboard.dict_data_rows,
+           dict_feedback: nil,
+           dict_type_form: empty_dict_type_form(),
+           dict_data_form: empty_dict_data_form(dashboard.selected_dict_type),
+           selected_dict_type: dashboard.selected_dict_type,
            job_rows: dashboard.job_rows,
            job_feedback: nil,
+           job_form: empty_job_form(),
+           job_targets: Job.invoke_targets(),
+           job_log_rows: dashboard.job_log_rows,
+           job_log_feedback: nil,
            role_rows: dashboard.role_rows,
            role_feedback: nil,
+           role_form: empty_role_form(),
            menu_rows: dashboard.menu_rows,
            menu_feedback: nil,
+           menu_form: empty_menu_form(),
            notice_rows: dashboard.notice_rows,
            notice_feedback: nil,
            notice_form: empty_notice_form(),
            login_log_rows: dashboard.login_log_rows,
            operation_log_rows: dashboard.operation_log_rows,
-           log_feedback: nil
+           log_feedback: nil,
+           user_form: empty_user_form(),
+           user_feedback: nil,
+           profile_form: tokens.current_user,
+           password_form: empty_password_form(),
+           profile_feedback: nil
          )}
 
       {:error, :already_logged_in} ->
@@ -112,6 +156,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
       when panel in [
              "overview",
              "depts",
+             "posts",
              "roles",
              "menus",
              "notices",
@@ -120,253 +165,52 @@ defmodule KeystonePhoenixWeb.LoginLive do
              "configs",
              "dicts",
              "jobs",
+             "job-logs",
+             "profile",
              "monitor"
            ] do
     if admin_socket?(socket) do
-      if panel == "monitor" do
-        {:noreply, assign_monitor(socket)}
-      else
-        {:noreply, assign(socket, active_panel: panel)}
+      cond do
+        panel == "monitor" ->
+          {:noreply, assign_monitor(socket)}
+
+        panel == "job-logs" ->
+          {:noreply, assign(socket, active_panel: panel, job_log_rows: load_job_logs())}
+
+        panel == "profile" ->
+          {:noreply, assign_profile(socket)}
+
+        true ->
+          {:noreply, assign(socket, active_panel: panel)}
       end
     else
-      {:noreply, socket}
+      if panel == "profile" and authenticated_socket?(socket) do
+        {:noreply, assign_profile(socket)}
+      else
+        {:noreply, socket}
+      end
     end
   end
 
   def handle_event("show-panel", _params, socket), do: {:noreply, socket}
 
-  @impl true
-  def handle_event("refresh-config", _params, socket) do
-    if admin_socket?(socket) do
-      Config.refresh_cache()
-      {:noreply, assign(socket, config_rows: Config.list_configs(%{"pageSize" => 50}).rows)}
-    else
-      {:noreply, socket}
-    end
-  end
+  @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles new-role edit-role save-role toggle-role-status delete-role refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
+  @accounts_events ~w(refresh-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar)
+  @system_events ~w(refresh-config new-config edit-config save-config refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs edit-notice cancel-notice save-notice toggle-notice-status delete-notice refresh-notices delete-login-log delete-operation-log)
+  @operations_events ~w(refresh-jobs new-job edit-job save-job delete-job run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor logout-online-user)
 
   @impl true
-  def handle_event("refresh-depts", _params, socket) do
-    if admin_socket?(socket) do
-      {:noreply, assign(socket, dept_rows: load_depts(), dept_feedback: nil)}
-    else
-      {:noreply, socket}
-    end
-  end
+  def handle_event(event, params, socket) when event in @organization_events,
+    do: OrganizationEvents.handle_event(event, params, socket)
 
-  @impl true
-  def handle_event("refresh-roles", _params, socket) do
-    if admin_socket?(socket) do
-      {:noreply, assign(socket, role_rows: load_roles(), role_feedback: nil)}
-    else
-      {:noreply, socket}
-    end
-  end
+  def handle_event(event, params, socket) when event in @accounts_events,
+    do: AccountsEvents.handle_event(event, params, socket)
 
-  @impl true
-  def handle_event("refresh-menus", _params, socket) do
-    if admin_socket?(socket) do
-      {:noreply, assign(socket, menu_rows: load_menus(), menu_feedback: nil)}
-    else
-      {:noreply, socket}
-    end
-  end
+  def handle_event(event, params, socket) when event in @system_events,
+    do: SystemEvents.handle_event(event, params, socket)
 
-  @impl true
-  def handle_event("refresh-notices", _params, socket) do
-    if admin_socket?(socket) do
-      {:noreply, assign(socket, notice_rows: load_notices(), notice_feedback: nil)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("refresh-logs", _params, socket) do
-    if admin_socket?(socket) do
-      logs = load_logs()
-
-      {:noreply,
-       assign(socket,
-         login_log_rows: logs.login_log_rows,
-         operation_log_rows: logs.operation_log_rows,
-         log_feedback: nil
-       )}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("edit-notice", %{"notice-id" => notice_id}, socket) do
-    if admin_socket?(socket) do
-      case Enum.find(socket.assigns.notice_rows, &(to_string(&1["noticeId"]) == notice_id)) do
-        nil -> {:noreply, assign(socket, notice_feedback: "找不到指定公告")}
-        notice -> {:noreply, assign(socket, notice_form: notice, notice_feedback: nil)}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("cancel-notice", _params, socket) do
-    if admin_socket?(socket) do
-      {:noreply, assign(socket, notice_form: empty_notice_form(), notice_feedback: nil)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("save-notice", params, socket) do
-    if admin_socket?(socket) do
-      notice_id = String.trim(params["noticeId"] || "")
-
-      result =
-        if notice_id == "" do
-          Notice.create_notice(params)
-        else
-          Notice.update_notice(notice_id, params)
-        end
-
-      case result do
-        {:ok, _notice} ->
-          {:noreply,
-           assign(socket,
-             notice_rows: load_notices(),
-             notice_form: empty_notice_form(),
-             notice_feedback: if(notice_id == "", do: "公告已创建", else: "公告已更新")
-           )}
-
-        {:error, changeset} ->
-          {:noreply, assign(socket, notice_feedback: notice_form_error(changeset))}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event(
-        "toggle-notice-status",
-        %{"notice-id" => notice_id, "status" => status},
-        socket
-      ) do
-    if admin_socket?(socket) do
-      case Notice.update_notice(notice_id, %{"status" => status}) do
-        {:ok, _notice} ->
-          {:noreply, assign(socket, notice_rows: load_notices(), notice_feedback: "公告状态已更新")}
-
-        {:error, :not_found} ->
-          {:noreply, assign(socket, notice_feedback: "找不到指定公告")}
-
-        {:error, changeset} ->
-          {:noreply, assign(socket, notice_feedback: notice_form_error(changeset))}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("delete-notice", %{"notice-id" => notice_id}, socket) do
-    if admin_socket?(socket) do
-      case Notice.delete_notices([notice_id]) do
-        :ok ->
-          {:noreply, assign(socket, notice_rows: load_notices(), notice_feedback: "公告已删除")}
-
-        {:error, :not_found} ->
-          {:noreply, assign(socket, notice_feedback: "找不到指定公告")}
-
-        {:error, :invalid_ids} ->
-          {:noreply, assign(socket, notice_feedback: "公告编号无效")}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("refresh-jobs", _params, socket) do
-    if admin_socket?(socket) do
-      {:noreply, assign(socket, job_rows: load_jobs(), job_feedback: nil)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("run-job", %{"job-id" => job_id}, socket) do
-    if admin_socket?(socket) do
-      feedback =
-        case Job.run_job(job_id) do
-          :ok -> "任务已执行并写入运行日志"
-          {:error, :not_found} -> "找不到指定任务"
-          {:error, reason} -> "任务执行失败：#{inspect(reason)}"
-        end
-
-      {:noreply, assign(socket, job_rows: load_jobs(), job_feedback: feedback)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("cancel-job", %{"job-id" => job_id}, socket) do
-    if admin_socket?(socket) do
-      feedback =
-        case Job.cancel_job(job_id) do
-          :ok -> "任务已取消"
-          {:error, :invalid_id} -> "任务编号无效"
-          :not_found -> "没有正在运行的任务"
-        end
-
-      {:noreply, assign(socket, job_rows: load_jobs(), job_feedback: feedback)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("toggle-job-status", %{"job-id" => job_id, "status" => status}, socket) do
-    if admin_socket?(socket) do
-      feedback =
-        case Job.update_job_status(job_id, status) do
-          {:ok, _job} -> "任务状态已更新"
-          {:error, reason} -> "任务状态更新失败：#{inspect(reason)}"
-        end
-
-      {:noreply, assign(socket, job_rows: load_jobs(), job_feedback: feedback)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("refresh-monitor", _params, socket) do
-    if admin_socket?(socket) do
-      {:noreply, assign_monitor(socket)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("logout-online-user", %{"token-id" => token_id}, socket) do
-    if admin_socket?(socket) do
-      feedback =
-        case Monitor.logout_online_user(token_id) do
-          :ok -> "在线会话已强制下线"
-          {:error, :not_found} -> "在线会话不存在或已经失效"
-          {:error, :unavailable} -> "会话服务暂不可用"
-        end
-
-      {:noreply, assign_monitor(socket, feedback)}
-    else
-      {:noreply, socket}
-    end
-  end
+  def handle_event(event, params, socket) when event in @operations_events,
+    do: OperationsEvents.handle_event(event, params, socket)
 
   @impl true
   def handle_event("logout", _params, socket) do
@@ -383,20 +227,42 @@ defmodule KeystonePhoenixWeb.LoginLive do
        user_rows: [],
        dept_rows: [],
        dept_feedback: nil,
+       dept_form: empty_dept_form(),
+       post_rows: [],
+       post_feedback: nil,
+       post_form: empty_post_form(),
        config_rows: [],
+       config_feedback: nil,
+       config_form: empty_config_form(),
        dict_type_rows: [],
+       dict_data_rows: [],
+       dict_feedback: nil,
+       dict_type_form: empty_dict_type_form(),
+       dict_data_form: empty_dict_data_form(),
+       selected_dict_type: "",
        job_rows: [],
        job_feedback: nil,
+       job_form: empty_job_form(),
+       job_targets: Job.invoke_targets(),
+       job_log_rows: [],
+       job_log_feedback: nil,
        role_rows: [],
        role_feedback: nil,
+       role_form: empty_role_form(),
        menu_rows: [],
        menu_feedback: nil,
+       menu_form: empty_menu_form(),
        notice_rows: [],
        notice_feedback: nil,
        notice_form: empty_notice_form(),
        login_log_rows: [],
        operation_log_rows: [],
        log_feedback: nil,
+       user_form: empty_user_form(),
+       user_feedback: nil,
+       profile_form: empty_profile_form(),
+       password_form: empty_password_form(),
+       profile_feedback: nil,
        monitor_server_info: %{},
        monitor_cache_info: %{},
        online_user_rows: [],
@@ -405,168 +271,25 @@ defmodule KeystonePhoenixWeb.LoginLive do
      )}
   end
 
-  defp load_dashboard do
-    logs = load_logs()
-
-    %{
-      user_rows: User.list_users(%{"pageSize" => 50}).rows,
-      dept_rows: load_depts(),
-      role_rows: load_roles(),
-      menu_rows: load_menus(),
-      notice_rows: load_notices(),
-      login_log_rows: logs.login_log_rows,
-      operation_log_rows: logs.operation_log_rows,
-      config_rows: Config.list_configs(%{"pageSize" => 50}).rows,
-      dict_type_rows: Dictionary.list_dict_types(%{"pageSize" => 50}).rows,
-      job_rows: load_jobs()
-    }
-  end
-
-  defp empty_dashboard,
-    do: %{
-      user_rows: [],
-      dept_rows: [],
-      role_rows: [],
-      menu_rows: [],
-      notice_rows: [],
-      login_log_rows: [],
-      operation_log_rows: [],
-      config_rows: [],
-      dict_type_rows: [],
-      job_rows: []
-    }
-
-  defp load_jobs, do: Job.list_jobs(%{"pageSize" => 50}).rows
-
-  defp load_notices, do: Notice.list_notices(%{"pageSize" => 50}).rows
-
-  defp load_logs do
-    %{
-      login_log_rows: Log.list_login_logs(%{"pageSize" => 50}).rows,
-      operation_log_rows: Log.list_operation_logs(%{"pageSize" => 50}).rows
-    }
-  end
-
-  defp empty_notice_form do
-    %{
-      "noticeId" => "",
-      "noticeTitle" => "",
-      "noticeType" => 2,
-      "noticeContent" => "",
-      "status" => 1,
-      "remark" => ""
-    }
-  end
-
-  defp notice_form_error(changeset) do
-    changeset
-    |> Ecto.Changeset.traverse_errors(fn {message, _opts} -> message end)
-    |> inspect()
-  end
-
-  defp load_depts do
-    Department.list_depts()
-    |> Enum.map(fn dept -> Map.put(dept, "depth", dept_depth(dept["ancestors"])) end)
-  end
-
-  defp load_roles do
-    roles = Role.list_roles(%{"pageSize" => 50}).rows
-    user_counts = Role.user_counts(Enum.map(roles, & &1["roleId"]))
-
-    roles
-    |> Enum.map(fn role ->
-      role
-      |> Map.put("dataScopeStr", data_scope_label(role["dataScope"]))
-      |> Map.put("statusStr", if(role["status"] == 1, do: "正常", else: "停用"))
-      |> Map.put("userCount", Map.get(user_counts, role["roleId"], 0))
-    end)
-  end
-
-  defp data_scope_label(1), do: "全部数据"
-  defp data_scope_label(2), do: "自定义数据"
-  defp data_scope_label(3), do: "本部门数据"
-  defp data_scope_label(4), do: "本部门及以下"
-  defp data_scope_label(5), do: "仅本人数据"
-  defp data_scope_label(_scope), do: "未知"
-
-  defp load_menus do
-    menus = Menu.list_menus()
-    by_id = Map.new(menus, &{&1["menuId"], &1})
-
-    Enum.map(menus, fn menu ->
-      menu
-      |> Map.put("depth", menu_depth(menu["parentId"], by_id, MapSet.new([menu["menuId"]])))
-      |> Map.put("menuTypeStr", menu_type_label(menu["menuType"], menu["isButton"]))
-      |> Map.put("statusStr", if(menu["status"] == 1, do: "正常", else: "停用"))
-    end)
-  end
-
-  defp menu_depth(0, _menus, _seen), do: 0
-
-  defp menu_depth(parent_id, menus, seen) do
-    if MapSet.member?(seen, parent_id) do
-      0
-    else
-      case Map.get(menus, parent_id) do
-        nil -> 0
-        parent -> 1 + menu_depth(parent["parentId"], menus, MapSet.put(seen, parent_id))
-      end
-    end
-  end
-
-  defp menu_type_label(_type, 1), do: "按钮"
-  defp menu_type_label(2, _is_button), do: "目录"
-  defp menu_type_label(1, _is_button), do: "菜单"
-  defp menu_type_label(0, _is_button), do: "权限"
-  defp menu_type_label(_type, _is_button), do: "其他"
-
-  defp dept_depth(nil), do: 0
-
-  defp dept_depth(ancestors) do
-    max(length(String.split(ancestors, ",", trim: true)) - 1, 0)
-  end
-
-  defp assign_monitor(socket, feedback \\ nil) do
-    monitor = load_monitor()
-
-    assign(socket,
-      active_panel: "monitor",
-      monitor_server_info: monitor.server_info,
-      monitor_cache_info: monitor.cache_info,
-      online_user_rows: monitor.online_users,
-      network_status: monitor.network_status,
-      monitor_feedback: feedback || monitor.feedback
-    )
-  end
-
-  defp load_monitor do
-    {:ok, server_info} = Monitor.server_info()
-
-    {cache_info, cache_error} =
-      case Monitor.redis_cache_info() do
-        {:ok, info} -> {info, nil}
-        _ -> {%{}, "Redis 监控数据暂不可用"}
-      end
-
-    {online_users, online_error} =
-      case Monitor.online_users() do
-        {:ok, %{rows: rows}} -> {rows, nil}
-        _ -> {[], "在线会话数据暂不可用"}
-      end
-
-    feedback = Enum.find([cache_error, online_error], &is_binary/1)
-
-    %{
-      server_info: server_info,
-      cache_info: cache_info,
-      online_users: online_users,
-      network_status: Monitor.network_status(),
-      feedback: feedback
-    }
-  end
-
-  defp admin_socket?(socket),
-    do: is_map(socket.assigns.current_user) and socket.assigns.current_user["isAdmin"] == 1
+  defp load_dashboard, do: AdminSupport.load_dashboard()
+  defp empty_dashboard, do: AdminSupport.empty_dashboard()
+  defp load_job_logs, do: AdminSupport.load_job_logs()
+  defp empty_notice_form, do: AdminSupport.empty_notice_form()
+  defp empty_dept_form, do: AdminSupport.empty_dept_form()
+  defp empty_post_form, do: AdminSupport.empty_post_form()
+  defp empty_role_form, do: AdminSupport.empty_role_form()
+  defp empty_menu_form, do: AdminSupport.empty_menu_form()
+  defp empty_user_form, do: AdminSupport.empty_user_form()
+  defp empty_config_form, do: AdminSupport.empty_config_form()
+  defp empty_dict_type_form, do: AdminSupport.empty_dict_type_form()
+  defp empty_job_form, do: AdminSupport.empty_job_form()
+  defp empty_profile_form, do: AdminSupport.empty_profile_form()
+  defp empty_password_form, do: AdminSupport.empty_password_form()
+  defp empty_dict_data_form(dict_type \\ ""), do: AdminSupport.empty_dict_data_form(dict_type)
+  defp assign_monitor(socket, feedback \\ nil), do: AdminSupport.assign_monitor(socket, feedback)
+  defp assign_profile(socket), do: AdminSupport.assign_profile(socket)
+  defp admin_socket?(socket), do: AdminSupport.admin_socket?(socket)
+  defp authenticated_socket?(socket), do: AdminSupport.authenticated_socket?(socket)
 
   @impl true
   def render(assigns) do
@@ -581,7 +304,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
         <style>
           :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
           body { margin: 0; min-height: 100vh; background: #101827; color: #e5edf7; }
-          main { width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 72px 0; }
+          main { width: min(1200px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0; }
           .shell { display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; align-items: center; }
           .brand h1 { margin: 0 0 12px; font-size: 42px; letter-spacing: -1px; }
           .brand p { max-width: 520px; color: #9aacbf; line-height: 1.7; }
@@ -597,11 +320,22 @@ defmodule KeystonePhoenixWeb.LoginLive do
           .dashboard { grid-column: 1 / -1; }
           .topbar { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 20px; }
           .topbar h2 { margin: 0; }
-          nav { display: flex; gap: 8px; flex-wrap: wrap; }
+          nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
           nav button { width: auto; margin: 0; padding: 8px 12px; background: #243650; }
           nav button.active { background: #4f8cff; }
           nav button.danger { background: #8b4a55; }
           .panel { overflow-x: auto; padding: 20px; border: 1px solid #27354a; border-radius: 12px; background: #172235; }
+          .panel h3 { margin: 18px 0 10px; }
+          .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin-bottom: 16px; }
+          .form-grid .wide { grid-column: 1 / -1; }
+          .form-grid input, .form-grid select, .form-grid textarea, select, textarea { box-sizing: border-box; width: 100%; padding: 10px 12px; border: 1px solid #3a4c65; border-radius: 8px; background: #0f1828; color: #e5edf7; }
+          .form-grid textarea { min-height: 76px; resize: vertical; }
+          .form-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 16px; }
+          .form-actions button, table button { width: auto; margin: 0; padding: 8px 12px; }
+          .form-actions button.secondary, table button.secondary { background: #31435c; }
+          .danger-action { background: #8b4a55 !important; }
+          .feedback { margin: 8px 0 14px; color: #9fe2b0; }
+          .table-actions { display: flex; gap: 6px; flex-wrap: wrap; }
           .monitor-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 0 24px; }
           .monitor-grid.details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
           .metric, .details > div { padding: 14px; border: 1px solid #293a52; border-radius: 10px; background: #101827; }
@@ -614,295 +348,106 @@ defmodule KeystonePhoenixWeb.LoginLive do
           th { color: #9aacbf; font-weight: 600; }
           .muted { color: #9aacbf; }
           .refresh { width: auto; margin: 0 0 14px; padding: 8px 12px; }
-          @media (max-width: 720px) { .shell { grid-template-columns: 1fr; } .monitor-grid, .monitor-grid.details { grid-template-columns: 1fr; } main { padding: 32px 0; } .brand h1 { font-size: 34px; } }
+          @media (max-width: 720px) {
+            .shell { grid-template-columns: 1fr; }
+            .monitor-grid, .monitor-grid.details { grid-template-columns: 1fr; }
+            main { padding: 32px 0; }
+            .brand h1 { font-size: 34px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .form-grid .wide { grid-column: auto; }
+          }
         </style>
       </head>
       <body>
         <main>
           <section class="shell">
             <%= if @current_user do %>
-              <%= if @current_user["isAdmin"] == 1 do %>
-                <div class="dashboard">
+              <div class="dashboard">
                 <div class="topbar">
                   <div>
                     <p class="muted">Keystone Phoenix</p>
-                    <h2>管理概览</h2>
+                    <h2><%= if @current_user["isAdmin"] == 1, do: "管理概览", else: "个人中心" %></h2>
                   </div>
                   <div class="user">
                     <div>
-                      <strong>{@current_user["nickname"] || @current_user["username"]}</strong>
-                      <span>@{@current_user["username"]}</span>
+                      <strong><%= @current_user["nickname"] || @current_user["username"] %></strong>
+                      <span>@<%= @current_user["username"] %></span>
                     </div>
                     <button type="button" class="secondary" phx-click="logout">退出</button>
                   </div>
                 </div>
-                <nav aria-label="管理模块">
-                  <button type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" phx-value-panel="overview">概览</button>
-                  <button type="button" class={if @active_panel == "depts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="depts">部门</button>
-                  <button type="button" class={if @active_panel == "roles", do: "active", else: ""} phx-click="show-panel" phx-value-panel="roles">角色</button>
-                  <button type="button" class={if @active_panel == "menus", do: "active", else: ""} phx-click="show-panel" phx-value-panel="menus">菜单</button>
-                  <button type="button" class={if @active_panel == "notices", do: "active", else: ""} phx-click="show-panel" phx-value-panel="notices">公告</button>
-                  <button type="button" class={if @active_panel == "logs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="logs">日志</button>
-                  <button type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" phx-value-panel="users">用户</button>
-                  <button type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
-                  <button type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
-                  <button type="button" class={if @active_panel == "jobs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="jobs">定时任务</button>
-                  <button type="button" class={if @active_panel == "monitor", do: "active", else: ""} phx-click="show-panel" phx-value-panel="monitor">监控</button>
-                </nav>
-                <%= case @active_panel do %>
-                  <% "overview" -> %>
-                    <div class="panel">
-                      <p>当前登录用户：<strong>{@current_user["username"]}</strong></p>
-                      <p class="muted">部门：{@dept_rows |> length()}　角色：{@role_rows |> length()}　菜单：{@menu_rows |> length()}　公告：{@notice_rows |> length()}　用户总数：{@user_rows |> length()}　配置项：{@config_rows |> length()}　字典类型：{@dict_type_rows |> length()}　定时任务：{@job_rows |> length()}</p>
-                    </div>
-                  <% "depts" -> %>
-                    <div class="panel">
-                      <button type="button" class="refresh" phx-click="refresh-depts">刷新部门</button>
-                      <%= if @dept_feedback do %>
-                        <p class="muted" role="status">{@dept_feedback}</p>
-                      <% end %>
-                      <table>
-                        <thead><tr><th>部门名称</th><th>负责人</th><th>电话</th><th>邮箱</th><th>状态</th><th>排序</th></tr></thead>
-                        <tbody>
-                          <%= for dept <- @dept_rows do %>
-                            <tr>
-                              <td>{String.duplicate("　", dept["depth"] || 0)}{dept["deptName"]}</td>
-                              <td>{dept["leaderName"] || ""}</td>
-                              <td>{dept["phone"] || ""}</td>
-                              <td>{dept["email"] || ""}</td>
-                              <td>{if dept["status"] == 1, do: "正常", else: "停用"}</td>
-                              <td>{dept["orderNum"]}</td>
-                            </tr>
-                          <% end %>
-                        </tbody>
-                      </table>
-                    </div>
-                  <% "roles" -> %>
-                    <div class="panel">
-                      <button type="button" class="refresh" phx-click="refresh-roles">刷新角色</button>
-                      <%= if @role_feedback do %>
-                        <p class="muted" role="status">{@role_feedback}</p>
-                      <% end %>
-                      <table>
-                        <thead><tr><th>角色名称</th><th>角色标识</th><th>数据范围</th><th>用户数</th><th>状态</th><th>排序</th><th>备注</th></tr></thead>
-                        <tbody>
-                          <%= for role <- @role_rows do %>
-                            <tr>
-                              <td>{role["roleName"]}</td>
-                              <td>{role["roleKey"]}</td>
-                              <td>{role["dataScopeStr"]}</td>
-                              <td>{role["userCount"]}</td>
-                              <td>{role["statusStr"]}</td>
-                              <td>{role["roleSort"]}</td>
-                              <td>{role["remark"] || ""}</td>
-                            </tr>
-                          <% end %>
-                        </tbody>
-                      </table>
-                    </div>
-                  <% "menus" -> %>
-                    <div class="panel">
-                      <button type="button" class="refresh" phx-click="refresh-menus">刷新菜单</button>
-                      <%= if @menu_feedback do %>
-                        <p class="muted" role="status">{@menu_feedback}</p>
-                      <% end %>
-                      <table>
-                        <thead><tr><th>菜单名称</th><th>类型</th><th>路由</th><th>路径</th><th>权限标识</th><th>状态</th></tr></thead>
-                        <tbody>
-                          <%= for menu <- @menu_rows do %>
-                            <tr>
-                              <td>{String.duplicate("　", menu["depth"] || 0)}{menu["menuName"]}</td>
-                              <td>{menu["menuTypeStr"]}</td>
-                              <td>{menu["routerName"] || ""}</td>
-                              <td>{menu["path"] || ""}</td>
-                              <td>{menu["permission"] || ""}</td>
-                              <td>{menu["statusStr"]}</td>
-                            </tr>
-                          <% end %>
-                        </tbody>
-                      </table>
-                    </div>
-                  <% "users" -> %>
-                    <div class="panel">
-                      <table>
-                        <thead><tr><th>用户名</th><th>昵称</th><th>邮箱</th><th>状态</th></tr></thead>
-                        <tbody>
-                          <%= for user <- @user_rows do %>
-                            <tr><td>{user["username"]}</td><td>{user["nickname"]}</td><td>{user["email"]}</td><td>{if user["status"] == 1, do: "正常", else: "停用"}</td></tr>
-                          <% end %>
-                        </tbody>
-                      </table>
-                    </div>
-                  <% "configs" -> %>
-                    <div class="panel">
-                      <button type="button" class="refresh" phx-click="refresh-config">刷新配置缓存</button>
-                      <table>
-                        <thead><tr><th>名称</th><th>键</th><th>值</th><th>允许修改</th></tr></thead>
-                        <tbody>
-                          <%= for config <- @config_rows do %>
-                            <tr><td>{config["configName"]}</td><td>{config["configKey"]}</td><td>{config["configValue"]}</td><td>{config["isAllowChangeStr"]}</td></tr>
-                          <% end %>
-                        </tbody>
-                      </table>
-                    </div>
-                  <% "notices" -> %>
-                    <div class="panel">
-                      <button type="button" class="refresh" phx-click="refresh-notices">刷新公告</button>
-                      <form phx-submit="save-notice">
-                        <input type="hidden" name="noticeId" value={@notice_form["noticeId"]} />
-                        <label for="notice-title">标题</label>
-                        <input id="notice-title" name="noticeTitle" value={@notice_form["noticeTitle"]} required />
-                        <label for="notice-type">类型</label>
-                        <select id="notice-type" name="noticeType">
-                          <option value="1" selected={@notice_form["noticeType"] == 1}>通知</option>
-                          <option value="2" selected={@notice_form["noticeType"] == 2}>公告</option>
-                        </select>
-                        <label for="notice-content">内容</label>
-                        <textarea id="notice-content" name="noticeContent" required>{@notice_form["noticeContent"]}</textarea>
-                        <label for="notice-remark">备注</label>
-                        <input id="notice-remark" name="remark" value={@notice_form["remark"] || ""} />
-                        <button type="submit" class="refresh">{if @notice_form["noticeId"] == "", do: "新增公告", else: "保存公告"}</button>
-                        <button :if={@notice_form["noticeId"] != ""} type="button" class="refresh" phx-click="cancel-notice">取消编辑</button>
-                      </form>
-                      <%= if @notice_feedback do %>
-                        <p class="muted" role="status">{@notice_feedback}</p>
-                      <% end %>
-                      <table>
-                        <thead><tr><th>标题</th><th>类型</th><th>内容</th><th>状态</th><th>备注</th><th>创建时间</th></tr></thead>
-                        <tbody>
-                          <%= for notice <- @notice_rows do %>
-                            <tr>
-                              <td>{notice["noticeTitle"]}</td>
-                              <td>{if notice["noticeType"] == 1, do: "通知", else: "公告"}</td>
-                              <td>{notice["noticeContent"]}</td>
-                              <td>{if notice["status"] == 1, do: "正常", else: "停用"}</td>
-                              <td>{notice["remark"] || ""}</td>
-                              <td>{notice["createTime"] || ""}</td>
-                              <td>
-                                <button type="button" class="refresh" phx-click="edit-notice" phx-value-notice-id={notice["noticeId"]}>编辑</button>
-                                <button type="button" class="refresh" phx-click="toggle-notice-status" phx-value-notice-id={notice["noticeId"]} phx-value-status={if notice["status"] == 1, do: 0, else: 1}>
-                                  {if notice["status"] == 1, do: "停用", else: "启用"}
-                                </button>
-                                <button type="button" class="refresh" phx-click="delete-notice" phx-value-notice-id={notice["noticeId"]}>删除</button>
-                              </td>
-                            </tr>
-                          <% end %>
-                        </tbody>
-                      </table>
-                    </div>
-                  <% "logs" -> %>
-                    <div class="panel">
-                      <button type="button" class="refresh" phx-click="refresh-logs">刷新日志</button>
-                      <%= if @log_feedback do %>
-                        <p class="muted" role="status">{@log_feedback}</p>
-                      <% end %>
-                      <h3>登录日志（{@login_log_rows |> length()}）</h3>
-                      <table>
-                        <thead><tr><th>用户</th><th>IP</th><th>浏览器</th><th>状态</th><th>消息</th><th>时间</th></tr></thead>
-                        <tbody>
-                          <%= for log <- @login_log_rows do %>
-                            <tr><td>{log["username"]}</td><td>{log["ipAddress"]}</td><td>{log["browser"]}</td><td>{if log["status"] == 1, do: "成功", else: "失败"}</td><td>{log["msg"]}</td><td>{log["loginTime"]}</td></tr>
-                          <% end %>
-                        </tbody>
-                      </table>
-                      <h3>操作日志（{@operation_log_rows |> length()}）</h3>
-                      <table>
-                        <thead><tr><th>用户</th><th>模块</th><th>方法</th><th>请求地址</th><th>状态</th><th>时间</th></tr></thead>
-                        <tbody>
-                          <%= for log <- @operation_log_rows do %>
-                            <tr><td>{log["username"]}</td><td>{log["requestModule"]}</td><td>{log["requestMethod"]}</td><td>{log["requestUrl"]}</td><td>{if log["status"] == 1, do: "成功", else: "失败"}</td><td>{log["operationTime"]}</td></tr>
-                          <% end %>
-                        </tbody>
-                      </table>
-                    </div>
-                  <% "dicts" -> %>
-                    <div class="panel">
-                      <table>
-                        <thead><tr><th>名称</th><th>类型</th><th>状态</th><th>备注</th></tr></thead>
-                        <tbody>
-                          <%= for dict <- @dict_type_rows do %>
-                            <tr><td>{dict["dictName"]}</td><td>{dict["dictType"]}</td><td>{if dict["status"] == 1, do: "正常", else: "停用"}</td><td>{dict["remark"]}</td></tr>
-                          <% end %>
-                        </tbody>
-                      </table>
-                    </div>
-                  <% "jobs" -> %>
-                    <div class="panel">
-                      <button type="button" class="refresh" phx-click="refresh-jobs">刷新任务</button>
-                      <%= if @job_feedback do %>
-                        <p class="muted" role="status">{@job_feedback}</p>
-                      <% end %>
-                      <table>
-                        <thead><tr><th>任务名称</th><th>分组</th><th>调用目标</th><th>Cron</th><th>状态</th><th>操作</th></tr></thead>
-                        <tbody>
-                          <%= for job <- @job_rows do %>
-                            <tr>
-                              <td>{job["jobName"]}</td>
-                              <td>{job["jobGroup"]}</td>
-                              <td>{job["invokeTarget"]}</td>
-                              <td>{job["cronExpression"]}</td>
-                              <td>{job["statusStr"]}</td>
-                              <td>
-                                <button type="button" class="refresh" phx-click="run-job" phx-value-job-id={job["jobId"]}>立即执行</button>
-                                <button type="button" class="refresh" phx-click="toggle-job-status" phx-value-job-id={job["jobId"]} phx-value-status={if job["status"] == 1, do: 0, else: 1}>
-                                  {if job["status"] == 1, do: "暂停", else: "启用"}
-                                </button>
-                                <button type="button" class="refresh" phx-click="cancel-job" phx-value-job-id={job["jobId"]}>取消运行</button>
-                              </td>
-                            </tr>
-                          <% end %>
-                        </tbody>
-                      </table>
-                    </div>
-                  <% "monitor" -> %>
-                    <div class="panel">
-                      <button type="button" class="refresh" phx-click="refresh-monitor">刷新监控</button>
-                      <%= if @monitor_feedback do %>
-                        <p class="muted" role="status">{@monitor_feedback}</p>
-                      <% end %>
-                      <div class="monitor-grid">
-                        <div class="metric"><span>CPU 使用率</span><strong>{get_in(@monitor_server_info, ["cpuInfo", "used"]) || 0}%</strong><small>逻辑处理器：{get_in(@monitor_server_info, ["cpuInfo", "cpuNum"]) || 0}</small></div>
-                        <div class="metric"><span>主机内存</span><strong>{get_in(@monitor_server_info, ["memoryInfo", "usage"]) || 0}%</strong><small>{get_in(@monitor_server_info, ["memoryInfo", "used"]) || 0} / {get_in(@monitor_server_info, ["memoryInfo", "total"]) || 0} GB</small></div>
-                        <div class="metric"><span>BEAM 内存</span><strong>{get_in(@monitor_server_info, ["jvmInfo", "usage"]) || 0}%</strong><small>{get_in(@monitor_server_info, ["jvmInfo", "used"]) || 0} / {get_in(@monitor_server_info, ["jvmInfo", "max"]) || 0} MB</small></div>
-                        <div class="metric"><span>网络状态</span><strong>{@network_status["status"] || "UNKNOWN"}</strong><small>{@network_status["checkedAt"] || "未检查"}</small></div>
+                <%= if @current_user["isAdmin"] == 1 do %>
+                  <nav aria-label="管理模块">
+                    <button type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" phx-value-panel="overview">概览</button>
+                    <button type="button" class={if @active_panel == "depts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="depts">部门</button>
+                    <button type="button" class={if @active_panel == "posts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="posts">岗位</button>
+                    <button type="button" class={if @active_panel == "roles", do: "active", else: ""} phx-click="show-panel" phx-value-panel="roles">角色</button>
+                    <button type="button" class={if @active_panel == "menus", do: "active", else: ""} phx-click="show-panel" phx-value-panel="menus">菜单</button>
+                    <button type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" phx-value-panel="users">用户</button>
+                    <button type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
+                    <button type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
+                    <button type="button" class={if @active_panel == "notices", do: "active", else: ""} phx-click="show-panel" phx-value-panel="notices">公告</button>
+                    <button type="button" class={if @active_panel == "logs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="logs">日志</button>
+                    <button type="button" class={if @active_panel == "jobs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="jobs">定时任务</button>
+                    <button type="button" class={if @active_panel == "job-logs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="job-logs">任务日志</button>
+                    <button type="button" class={if @active_panel == "monitor", do: "active", else: ""} phx-click="show-panel" phx-value-panel="monitor">监控</button>
+                    <button type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" phx-value-panel="profile">个人资料</button>
+                  </nav>
+                  <%= case @active_panel do %>
+                    <% "overview" -> %>
+                      <div class="panel">
+                        <p>当前登录用户：<strong><%= @current_user["username"] %></strong></p>
+                        <p class="muted">部门：<%= length(@dept_rows) %>　岗位：<%= length(@post_rows) %>　角色：<%= length(@role_rows) %>　菜单：<%= length(@menu_rows) %>　公告：<%= length(@notice_rows) %>　用户：<%= length(@user_rows) %>　配置：<%= length(@config_rows) %>　字典：<%= length(@dict_type_rows) %>　任务：<%= length(@job_rows) %></p>
                       </div>
-                      <div class="monitor-grid details">
-                        <div><h3>运行环境</h3><p>节点：{get_in(@monitor_server_info, ["systemInfo", "computerName"]) || "未知"}</p><p>系统：{get_in(@monitor_server_info, ["systemInfo", "osName"]) || "未知"}</p><p>BEAM：{get_in(@monitor_server_info, ["jvmInfo", "name"]) || "未知"}</p><p>运行时间：{get_in(@monitor_server_info, ["jvmInfo", "runTime"]) || "未知"}</p></div>
-                        <div><h3>Redis</h3><p>版本：{get_in(@monitor_cache_info, ["info", "redis_version"]) || "不可用"}</p><p>缓存键数量：{@monitor_cache_info["dbSize"] || 0}</p><p>命令统计：{length(@monitor_cache_info["commandStats"] || [])}</p></div>
-                      </div>
-                      <h3>在线会话（{@online_user_rows |> length()}）</h3>
-                      <table>
-                        <thead><tr><th>用户</th><th>部门</th><th>IP</th><th>登录时间</th><th>操作</th></tr></thead>
-                        <tbody>
-                          <%= for user <- @online_user_rows do %>
-                            <tr>
-                              <td>{user["username"]}</td>
-                              <td>{user["deptName"] || ""}</td>
-                              <td>{user["ipAddress"]}</td>
-                              <td>{user["loginTime"]}</td>
-                              <td><button type="button" class="refresh" phx-click="logout-online-user" phx-value-token-id={user["tokenId"]}>强制下线</button></td>
-                            </tr>
-                          <% end %>
-                        </tbody>
-                      </table>
+                    <% "depts" -> %>
+                      <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} />
+                    <% "posts" -> %>
+                      <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} />
+                    <% "roles" -> %>
+                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} />
+                    <% "menus" -> %>
+                      <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} />
+                    <% "users" -> %>
+                      <.users user_rows={@user_rows} user_form={@user_form} user_feedback={@user_feedback} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} />
+                    <% "configs" -> %>
+                      <.configs config_rows={@config_rows} config_form={@config_form} config_feedback={@config_feedback} />
+                    <% "dicts" -> %>
+                      <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} />
+                    <% "notices" -> %>
+                      <.notices notice_rows={@notice_rows} notice_form={@notice_form} notice_feedback={@notice_feedback} />
+                    <% "logs" -> %>
+                      <.logs login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} />
+                    <% "jobs" -> %>
+                      <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} />
+                    <% "job-logs" -> %>
+                      <.job_logs job_log_rows={@job_log_rows} job_log_feedback={@job_log_feedback} />
+                    <% "monitor" -> %>
+                      <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} network_status={@network_status} monitor_feedback={@monitor_feedback} />
+                    <% "profile" -> %>
+                      <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} />
+                    <% _ -> %>
+                      <div class="panel"><p>请选择一个管理模块。</p></div>
+                  <% end %>
+                <% else %>
+                  <nav aria-label="个人模块">
+                    <button type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" phx-value-panel="profile">个人资料</button>
+                  </nav>
+                  <%= if @active_panel == "profile" do %>
+                    <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} />
+                  <% else %>
+                    <div class="card">
+                      <h2>登录成功</h2>
+                      <p class="muted">当前账号没有管理后台权限。</p>
+                      <button type="button" class="secondary" phx-click="show-panel" phx-value-panel="profile">打开个人资料</button>
                     </div>
+                  <% end %>
                 <% end %>
-                </div>
-              <% else %>
-                <div class="card">
-                  <h2>登录成功</h2>
-                  <p class="muted">当前账号没有管理后台权限。</p>
-                  <button type="button" class="secondary" phx-click="logout">退出</button>
-                </div>
-              <% end %>
+              </div>
             <% else %>
               <div class="brand">
                 <p>Keystone Phoenix</p>
                 <h1>管理后台正在迁移到 LiveView</h1>
-                <p>
-                  这个页面运行在 Phoenix LiveView 上，认证和业务数据由 Elixir、PostgreSQL 与 Redis 提供。
-                  后续管理页面会继续在这里逐步替换原来的 Java 前端。
-                </p>
+                <p>这个页面运行在 Phoenix LiveView 上，认证和业务数据由 Elixir、PostgreSQL 与 Redis 提供。</p>
               </div>
               <div class="card">
                 <form id="login-form" phx-submit="login">
@@ -911,9 +456,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <input id="username" name="username" value={@username} autocomplete="username" required />
                   <label for="password">密码</label>
                   <input id="password" name="password" type="password" autocomplete="current-password" required />
-                  <%= if @login_error do %>
-                    <p class="error" role="alert">{@login_error}</p>
-                  <% end %>
+                  <%= if @login_error do %><p class="error" role="alert"><%= @login_error %></p><% end %>
                   <button type="submit">登录</button>
                 </form>
               </div>

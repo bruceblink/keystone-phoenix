@@ -1,0 +1,160 @@
+defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
+  @moduledoc "LiveView event handlers for the operations domain."
+
+  import Phoenix.Component, only: [assign: 2]
+  alias KeystonePhoenix.Job
+  alias KeystonePhoenix.Monitor
+  alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
+
+  def handle_event("refresh-jobs", _params, socket) do
+    if Support.admin_socket?(socket) do
+      {:noreply,
+       assign(socket,
+         job_rows: Support.load_jobs(),
+         job_form: Support.empty_job_form(),
+         job_feedback: nil
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("new-job", _params, socket) do
+    if Support.admin_socket?(socket) do
+      {:noreply, assign(socket, job_form: Support.empty_job_form(), job_feedback: nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("edit-job", %{"job-id" => job_id}, socket) do
+    if Support.admin_socket?(socket) do
+      case Enum.find(socket.assigns.job_rows, &(to_string(&1["jobId"]) == job_id)) do
+        nil ->
+          {:noreply, assign(socket, job_feedback: "找不到指定任务")}
+
+        job ->
+          {:noreply,
+           assign(socket, job_form: Map.merge(Support.empty_job_form(), job), job_feedback: nil)}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("save-job", params, socket) do
+    if Support.admin_socket?(socket) do
+      job_id = String.trim(params["jobId"] || "")
+      result = if job_id == "", do: Job.create_job(params), else: Job.update_job(job_id, params)
+
+      case result do
+        {:ok, _job} ->
+          {:noreply,
+           assign(socket,
+             job_rows: Support.load_jobs(),
+             job_form: Support.empty_job_form(),
+             job_feedback: if(job_id == "", do: "任务已创建", else: "任务已更新")
+           )}
+
+        error ->
+          {:noreply, assign(socket, job_feedback: Support.form_error(error))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("delete-job", %{"job-id" => job_id}, socket) do
+    if Support.admin_socket?(socket) do
+      case Job.delete_jobs([job_id]) do
+        :ok ->
+          {:noreply,
+           assign(socket,
+             job_rows: Support.load_jobs(),
+             job_form: Support.empty_job_form(),
+             job_feedback: "任务已删除"
+           )}
+
+        error ->
+          {:noreply, assign(socket, job_feedback: Support.form_error(error))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("run-job", %{"job-id" => job_id}, socket) do
+    if Support.admin_socket?(socket) do
+      feedback =
+        case Job.run_job(job_id) do
+          :ok -> "任务已执行并写入运行日志"
+          {:error, :not_found} -> "找不到指定任务"
+          {:error, reason} -> "任务执行失败：#{inspect(reason)}"
+        end
+
+      {:noreply, assign(socket, job_rows: Support.load_jobs(), job_feedback: feedback)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("cancel-job", %{"job-id" => job_id}, socket) do
+    if Support.admin_socket?(socket) do
+      feedback =
+        case Job.cancel_job(job_id) do
+          :ok -> "任务已取消"
+          {:error, :invalid_id} -> "任务编号无效"
+          :not_found -> "没有正在运行的任务"
+        end
+
+      {:noreply, assign(socket, job_rows: Support.load_jobs(), job_feedback: feedback)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("toggle-job-status", %{"job-id" => job_id, "status" => status}, socket) do
+    if Support.admin_socket?(socket) do
+      feedback =
+        case Job.update_job_status(job_id, status) do
+          {:ok, _job} -> "任务状态已更新"
+          {:error, reason} -> "任务状态更新失败：#{inspect(reason)}"
+        end
+
+      {:noreply, assign(socket, job_rows: Support.load_jobs(), job_feedback: feedback)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("refresh-job-logs", _params, socket) do
+    if Support.admin_socket?(socket) do
+      {:noreply, assign(socket, job_log_rows: Support.load_job_logs(), job_log_feedback: nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("refresh-monitor", _params, socket) do
+    if Support.admin_socket?(socket) do
+      {:noreply, Support.assign_monitor(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("logout-online-user", %{"token-id" => token_id}, socket) do
+    if Support.admin_socket?(socket) do
+      feedback =
+        case Monitor.logout_online_user(token_id) do
+          :ok -> "在线会话已强制下线"
+          {:error, :not_found} -> "在线会话不存在或已经失效"
+          {:error, :unavailable} -> "会话服务暂不可用"
+        end
+
+      {:noreply, Support.assign_monitor(socket, feedback)}
+    else
+      {:noreply, socket}
+    end
+  end
+end

@@ -38,7 +38,9 @@ Useful Mix commands:
 
 ```bash
 mix format
+mix check.source_lines
 mix test
+mix precommit
 mix ecto.create
 mix ecto.migrate
 mix ecto.rollback
@@ -142,12 +144,12 @@ Cron triggers.
 
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout
-action. Administrators can browse departments, roles, and menus, manage notices, inspect, run, pause, and enable
-scheduled jobs from the LiveView dashboard. The dashboard also exposes BEAM and
-host metrics, Redis status, network status, and online-session revocation
-through its monitoring panel. Phoenix and LiveView browser assets are served
-from their Mix dependencies, so the page does not need a separate Node.js
-build step.
+action. The dashboard is split into organization, account, system, and
+operations components, covering departments, posts, roles, menus, users,
+profiles, configuration, dictionaries, notices, logs, scheduled jobs, and
+monitoring. Phoenix and LiveView browser assets are served from their Mix
+dependencies, so the page does not need a separate Node.js build step. Every
+source file is kept at 600 lines or fewer and the limit is checked by CI.
 
 ## PostgreSQL and Redis configuration
 

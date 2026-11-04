@@ -24,6 +24,9 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Enforce source file size limit
+        run: ./scripts/check_source_lines.sh
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
