@@ -10,6 +10,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Monitor
+  alias KeystonePhoenix.Notice
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
 
@@ -35,6 +36,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
        role_feedback: nil,
        menu_rows: [],
        menu_feedback: nil,
+       notice_rows: [],
+       notice_feedback: nil,
        monitor_server_info: %{},
        monitor_cache_info: %{},
        online_user_rows: [],
@@ -75,7 +78,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
            role_rows: dashboard.role_rows,
            role_feedback: nil,
            menu_rows: dashboard.menu_rows,
-           menu_feedback: nil
+           menu_feedback: nil,
+           notice_rows: dashboard.notice_rows,
+           notice_feedback: nil
          )}
 
       {:error, :already_logged_in} ->
@@ -100,6 +105,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
              "depts",
              "roles",
              "menus",
+             "notices",
              "users",
              "configs",
              "dicts",
@@ -151,6 +157,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("refresh-menus", _params, socket) do
     if admin_socket?(socket) do
       {:noreply, assign(socket, menu_rows: load_menus(), menu_feedback: nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("refresh-notices", _params, socket) do
+    if admin_socket?(socket) do
+      {:noreply, assign(socket, notice_rows: load_notices(), notice_feedback: nil)}
     else
       {:noreply, socket}
     end
@@ -260,6 +275,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
        role_feedback: nil,
        menu_rows: [],
        menu_feedback: nil,
+       notice_rows: [],
+       notice_feedback: nil,
        monitor_server_info: %{},
        monitor_cache_info: %{},
        online_user_rows: [],
@@ -274,6 +291,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
       dept_rows: load_depts(),
       role_rows: load_roles(),
       menu_rows: load_menus(),
+      notice_rows: load_notices(),
       config_rows: Config.list_configs(%{"pageSize" => 50}).rows,
       dict_type_rows: Dictionary.list_dict_types(%{"pageSize" => 50}).rows,
       job_rows: load_jobs()
@@ -286,12 +304,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
       dept_rows: [],
       role_rows: [],
       menu_rows: [],
+      notice_rows: [],
       config_rows: [],
       dict_type_rows: [],
       job_rows: []
     }
 
   defp load_jobs, do: Job.list_jobs(%{"pageSize" => 50}).rows
+
+  defp load_notices, do: Notice.list_notices(%{"pageSize" => 50}).rows
 
   defp load_depts do
     Department.list_depts()
@@ -467,6 +488,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <button type="button" class={if @active_panel == "depts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="depts">部门</button>
                   <button type="button" class={if @active_panel == "roles", do: "active", else: ""} phx-click="show-panel" phx-value-panel="roles">角色</button>
                   <button type="button" class={if @active_panel == "menus", do: "active", else: ""} phx-click="show-panel" phx-value-panel="menus">菜单</button>
+                  <button type="button" class={if @active_panel == "notices", do: "active", else: ""} phx-click="show-panel" phx-value-panel="notices">公告</button>
                   <button type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" phx-value-panel="users">用户</button>
                   <button type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
                   <button type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
@@ -477,7 +499,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <% "overview" -> %>
                     <div class="panel">
                       <p>当前登录用户：<strong>{@current_user["username"]}</strong></p>
-                      <p class="muted">部门：{@dept_rows |> length()}　角色：{@role_rows |> length()}　菜单：{@menu_rows |> length()}　用户总数：{@user_rows |> length()}　配置项：{@config_rows |> length()}　字典类型：{@dict_type_rows |> length()}　定时任务：{@job_rows |> length()}</p>
+                      <p class="muted">部门：{@dept_rows |> length()}　角色：{@role_rows |> length()}　菜单：{@menu_rows |> length()}　公告：{@notice_rows |> length()}　用户总数：{@user_rows |> length()}　配置项：{@config_rows |> length()}　字典类型：{@dict_type_rows |> length()}　定时任务：{@job_rows |> length()}</p>
                     </div>
                   <% "depts" -> %>
                     <div class="panel">
@@ -565,6 +587,28 @@ defmodule KeystonePhoenixWeb.LoginLive do
                         <tbody>
                           <%= for config <- @config_rows do %>
                             <tr><td>{config["configName"]}</td><td>{config["configKey"]}</td><td>{config["configValue"]}</td><td>{config["isAllowChangeStr"]}</td></tr>
+                          <% end %>
+                        </tbody>
+                      </table>
+                    </div>
+                  <% "notices" -> %>
+                    <div class="panel">
+                      <button type="button" class="refresh" phx-click="refresh-notices">刷新公告</button>
+                      <%= if @notice_feedback do %>
+                        <p class="muted" role="status">{@notice_feedback}</p>
+                      <% end %>
+                      <table>
+                        <thead><tr><th>标题</th><th>类型</th><th>内容</th><th>状态</th><th>备注</th><th>创建时间</th></tr></thead>
+                        <tbody>
+                          <%= for notice <- @notice_rows do %>
+                            <tr>
+                              <td>{notice["noticeTitle"]}</td>
+                              <td>{if notice["noticeType"] == 1, do: "通知", else: "公告"}</td>
+                              <td>{notice["noticeContent"]}</td>
+                              <td>{if notice["status"] == 1, do: "正常", else: "停用"}</td>
+                              <td>{notice["remark"] || ""}</td>
+                              <td>{notice["createTime"] || ""}</td>
+                            </tr>
                           <% end %>
                         </tbody>
                       </table>
