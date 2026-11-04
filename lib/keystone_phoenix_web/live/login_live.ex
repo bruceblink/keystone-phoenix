@@ -38,6 +38,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
        menu_feedback: nil,
        notice_rows: [],
        notice_feedback: nil,
+       notice_form: empty_notice_form(),
        monitor_server_info: %{},
        monitor_cache_info: %{},
        online_user_rows: [],
@@ -80,7 +81,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
            menu_rows: dashboard.menu_rows,
            menu_feedback: nil,
            notice_rows: dashboard.notice_rows,
-           notice_feedback: nil
+           notice_feedback: nil,
+           notice_form: empty_notice_form()
          )}
 
       {:error, :already_logged_in} ->
@@ -166,6 +168,92 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("refresh-notices", _params, socket) do
     if admin_socket?(socket) do
       {:noreply, assign(socket, notice_rows: load_notices(), notice_feedback: nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("edit-notice", %{"notice-id" => notice_id}, socket) do
+    if admin_socket?(socket) do
+      case Enum.find(socket.assigns.notice_rows, &to_string(&1["noticeId"]) == notice_id) do
+        nil -> {:noreply, assign(socket, notice_feedback: "找不到指定公告")}
+        notice -> {:noreply, assign(socket, notice_form: notice, notice_feedback: nil)}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("cancel-notice", _params, socket) do
+    if admin_socket?(socket) do
+      {:noreply, assign(socket, notice_form: empty_notice_form(), notice_feedback: nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("save-notice", params, socket) do
+    if admin_socket?(socket) do
+      notice_id = String.trim(params["noticeId"] || "")
+
+      result =
+        if notice_id == "" do
+          Notice.create_notice(params)
+        else
+          Notice.update_notice(notice_id, params)
+        end
+
+      case result do
+        {:ok, _notice} ->
+          {:noreply,
+           assign(socket,
+             notice_rows: load_notices(),
+             notice_form: empty_notice_form(),
+             notice_feedback: if(notice_id == "", do: "公告已创建", else: "公告已更新")
+           )}
+
+        {:error, changeset} ->
+          {:noreply, assign(socket, notice_feedback: notice_form_error(changeset))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("toggle-notice-status", %{"notice-id" => notice_id, "status" => status}, socket) do
+    if admin_socket?(socket) do
+      case Notice.update_notice(notice_id, %{"status" => status}) do
+        {:ok, _notice} ->
+          {:noreply, assign(socket, notice_rows: load_notices(), notice_feedback: "公告状态已更新")}
+
+        {:error, :not_found} ->
+          {:noreply, assign(socket, notice_feedback: "找不到指定公告")}
+
+        {:error, changeset} ->
+          {:noreply, assign(socket, notice_feedback: notice_form_error(changeset))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("delete-notice", %{"notice-id" => notice_id}, socket) do
+    if admin_socket?(socket) do
+      case Notice.delete_notices([notice_id]) do
+        :ok ->
+          {:noreply, assign(socket, notice_rows: load_notices(), notice_feedback: "公告已删除")}
+
+        {:error, :not_found} ->
+          {:noreply, assign(socket, notice_feedback: "找不到指定公告")}
+
+        {:error, :invalid_ids} ->
+          {:noreply, assign(socket, notice_feedback: "公告编号无效")}
+      end
     else
       {:noreply, socket}
     end
@@ -277,6 +365,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
        menu_feedback: nil,
        notice_rows: [],
        notice_feedback: nil,
+       notice_form: empty_notice_form(),
        monitor_server_info: %{},
        monitor_cache_info: %{},
        online_user_rows: [],
@@ -313,6 +402,23 @@ defmodule KeystonePhoenixWeb.LoginLive do
   defp load_jobs, do: Job.list_jobs(%{"pageSize" => 50}).rows
 
   defp load_notices, do: Notice.list_notices(%{"pageSize" => 50}).rows
+
+  defp empty_notice_form do
+    %{
+      "noticeId" => "",
+      "noticeTitle" => "",
+      "noticeType" => 2,
+      "noticeContent" => "",
+      "status" => 1,
+      "remark" => ""
+    }
+  end
+
+  defp notice_form_error(changeset) do
+    changeset
+    |> Ecto.Changeset.traverse_errors(fn {message, _opts} -> message end)
+    |> inspect()
+  end
 
   defp load_depts do
     Department.list_depts()
@@ -594,6 +700,22 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <% "notices" -> %>
                     <div class="panel">
                       <button type="button" class="refresh" phx-click="refresh-notices">刷新公告</button>
+                      <form phx-submit="save-notice">
+                        <input type="hidden" name="noticeId" value={@notice_form["noticeId"]} />
+                        <label for="notice-title">标题</label>
+                        <input id="notice-title" name="noticeTitle" value={@notice_form["noticeTitle"]} required />
+                        <label for="notice-type">类型</label>
+                        <select id="notice-type" name="noticeType">
+                          <option value="1" selected={@notice_form["noticeType"] == 1}>通知</option>
+                          <option value="2" selected={@notice_form["noticeType"] == 2}>公告</option>
+                        </select>
+                        <label for="notice-content">内容</label>
+                        <textarea id="notice-content" name="noticeContent" required>{@notice_form["noticeContent"]}</textarea>
+                        <label for="notice-remark">备注</label>
+                        <input id="notice-remark" name="remark" value={@notice_form["remark"] || ""} />
+                        <button type="submit" class="refresh">{if @notice_form["noticeId"] == "", do: "新增公告", else: "保存公告"}</button>
+                        <button :if={@notice_form["noticeId"] != ""} type="button" class="refresh" phx-click="cancel-notice">取消编辑</button>
+                      </form>
                       <%= if @notice_feedback do %>
                         <p class="muted" role="status">{@notice_feedback}</p>
                       <% end %>
@@ -608,6 +730,13 @@ defmodule KeystonePhoenixWeb.LoginLive do
                               <td>{if notice["status"] == 1, do: "正常", else: "停用"}</td>
                               <td>{notice["remark"] || ""}</td>
                               <td>{notice["createTime"] || ""}</td>
+                              <td>
+                                <button type="button" class="refresh" phx-click="edit-notice" phx-value-notice-id={notice["noticeId"]}>编辑</button>
+                                <button type="button" class="refresh" phx-click="toggle-notice-status" phx-value-notice-id={notice["noticeId"]} phx-value-status={if notice["status"] == 1, do: 0, else: 1}>
+                                  {if notice["status"] == 1, do: "停用", else: "启用"}
+                                </button>
+                                <button type="button" class="refresh" phx-click="delete-notice" phx-value-notice-id={notice["noticeId"]}>删除</button>
+                              </td>
                             </tr>
                           <% end %>
                         </tbody>
