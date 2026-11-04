@@ -123,7 +123,7 @@ Cron triggers.
 
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout
-action. Administrators can browse departments, inspect, run, pause, and enable
+action. Administrators can browse departments and roles, inspect, run, pause, and enable
 scheduled jobs from the LiveView dashboard. The dashboard also exposes BEAM and
 host metrics, Redis status, network status, and online-session revocation
 through its monitoring panel. Phoenix and LiveView browser assets are served

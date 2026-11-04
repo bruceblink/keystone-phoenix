@@ -9,6 +9,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Monitor
+  alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
 
   @impl true
@@ -29,6 +30,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
        dict_type_rows: [],
        job_rows: [],
        job_feedback: nil,
+       role_rows: [],
+       role_feedback: nil,
        monitor_server_info: %{},
        monitor_cache_info: %{},
        online_user_rows: [],
@@ -65,7 +68,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
            config_rows: dashboard.config_rows,
            dict_type_rows: dashboard.dict_type_rows,
            job_rows: dashboard.job_rows,
-           job_feedback: nil
+           job_feedback: nil,
+           role_rows: dashboard.role_rows,
+           role_feedback: nil
          )}
 
       {:error, :already_logged_in} ->
@@ -85,7 +90,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   @impl true
   def handle_event("show-panel", %{"panel" => panel}, socket)
-      when panel in ["overview", "depts", "users", "configs", "dicts", "jobs", "monitor"] do
+      when panel in ["overview", "depts", "roles", "users", "configs", "dicts", "jobs", "monitor"] do
     if admin_socket?(socket) do
       if panel == "monitor" do
         {:noreply, assign_monitor(socket)}
@@ -113,6 +118,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("refresh-depts", _params, socket) do
     if admin_socket?(socket) do
       {:noreply, assign(socket, dept_rows: load_depts(), dept_feedback: nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("refresh-roles", _params, socket) do
+    if admin_socket?(socket) do
+      {:noreply, assign(socket, role_rows: load_roles(), role_feedback: nil)}
     else
       {:noreply, socket}
     end
@@ -218,6 +232,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
        dict_type_rows: [],
        job_rows: [],
        job_feedback: nil,
+       role_rows: [],
+       role_feedback: nil,
        monitor_server_info: %{},
        monitor_cache_info: %{},
        online_user_rows: [],
@@ -230,6 +246,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
     %{
       user_rows: User.list_users(%{"pageSize" => 50}).rows,
       dept_rows: load_depts(),
+      role_rows: load_roles(),
       config_rows: Config.list_configs(%{"pageSize" => 50}).rows,
       dict_type_rows: Dictionary.list_dict_types(%{"pageSize" => 50}).rows,
       job_rows: load_jobs()
@@ -237,7 +254,14 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   defp empty_dashboard,
-    do: %{user_rows: [], dept_rows: [], config_rows: [], dict_type_rows: [], job_rows: []}
+    do: %{
+      user_rows: [],
+      dept_rows: [],
+      role_rows: [],
+      config_rows: [],
+      dict_type_rows: [],
+      job_rows: []
+    }
 
   defp load_jobs, do: Job.list_jobs(%{"pageSize" => 50}).rows
 
@@ -245,6 +269,23 @@ defmodule KeystonePhoenixWeb.LoginLive do
     Department.list_depts()
     |> Enum.map(fn dept -> Map.put(dept, "depth", dept_depth(dept["ancestors"])) end)
   end
+
+  defp load_roles do
+    Role.list_roles(%{"pageSize" => 50}).rows
+    |> Enum.map(fn role ->
+      role
+      |> Map.put("dataScopeStr", data_scope_label(role["dataScope"]))
+      |> Map.put("statusStr", if(role["status"] == 1, do: "正常", else: "停用"))
+      |> Map.put("userCount", Role.list_allocated_users(role["roleId"], %{"pageSize" => 1}).total)
+    end)
+  end
+
+  defp data_scope_label(1), do: "全部数据"
+  defp data_scope_label(2), do: "自定义数据"
+  defp data_scope_label(3), do: "本部门数据"
+  defp data_scope_label(4), do: "本部门及以下"
+  defp data_scope_label(5), do: "仅本人数据"
+  defp data_scope_label(_scope), do: "未知"
 
   defp dept_depth(nil), do: 0
 
@@ -365,6 +406,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                 <nav aria-label="管理模块">
                   <button type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" phx-value-panel="overview">概览</button>
                   <button type="button" class={if @active_panel == "depts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="depts">部门</button>
+                  <button type="button" class={if @active_panel == "roles", do: "active", else: ""} phx-click="show-panel" phx-value-panel="roles">角色</button>
                   <button type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" phx-value-panel="users">用户</button>
                   <button type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
                   <button type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
@@ -375,7 +417,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <% "overview" -> %>
                     <div class="panel">
                       <p>当前登录用户：<strong>{@current_user["username"]}</strong></p>
-                      <p class="muted">部门：{@dept_rows |> length()}　用户总数：{@user_rows |> length()}　配置项：{@config_rows |> length()}　字典类型：{@dict_type_rows |> length()}　定时任务：{@job_rows |> length()}</p>
+                      <p class="muted">部门：{@dept_rows |> length()}　角色：{@role_rows |> length()}　用户总数：{@user_rows |> length()}　配置项：{@config_rows |> length()}　字典类型：{@dict_type_rows |> length()}　定时任务：{@job_rows |> length()}</p>
                     </div>
                   <% "depts" -> %>
                     <div class="panel">
@@ -394,6 +436,29 @@ defmodule KeystonePhoenixWeb.LoginLive do
                               <td>{dept["email"] || ""}</td>
                               <td>{if dept["status"] == 1, do: "正常", else: "停用"}</td>
                               <td>{dept["orderNum"]}</td>
+                            </tr>
+                          <% end %>
+                        </tbody>
+                      </table>
+                    </div>
+                  <% "roles" -> %>
+                    <div class="panel">
+                      <button type="button" class="refresh" phx-click="refresh-roles">刷新角色</button>
+                      <%= if @role_feedback do %>
+                        <p class="muted" role="status">{@role_feedback}</p>
+                      <% end %>
+                      <table>
+                        <thead><tr><th>角色名称</th><th>角色标识</th><th>数据范围</th><th>用户数</th><th>状态</th><th>排序</th><th>备注</th></tr></thead>
+                        <tbody>
+                          <%= for role <- @role_rows do %>
+                            <tr>
+                              <td>{role["roleName"]}</td>
+                              <td>{role["roleKey"]}</td>
+                              <td>{role["dataScopeStr"]}</td>
+                              <td>{role["userCount"]}</td>
+                              <td>{role["statusStr"]}</td>
+                              <td>{role["roleSort"]}</td>
+                              <td>{role["remark"] || ""}</td>
                             </tr>
                           <% end %>
                         </tbody>
