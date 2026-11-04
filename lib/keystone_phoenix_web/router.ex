@@ -29,6 +29,7 @@ defmodule KeystonePhoenixWeb.Router do
     pipe_through :api
 
     get "/health", HealthController, :show
+    get "/health/ready", HealthController, :readiness
     get "/monitor/cacheInfo", MonitorController, :cache_info
     get "/monitor/serverInfo", MonitorController, :server_info
     get "/monitor/onlineUsers", MonitorController, :online_users

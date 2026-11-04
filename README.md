@@ -45,6 +45,25 @@ mix ecto.rollback
 MIX_ENV=prod mix release
 ```
 
+Production releases can be built with the included multi-stage Dockerfile:
+
+```bash
+docker build -t keystone-phoenix:latest .
+docker run --rm --env-file .env --entrypoint /app/bin/migrate keystone-phoenix:latest
+docker run --rm --env-file .env -p 4000:4000 keystone-phoenix:latest start
+```
+
+GitHub Actions publishes the same release image to
+`ghcr.io/bruceblink/keystone-phoenix` for every `main` push and `v*` tag. The
+workflow also supports manual runs from the Actions tab and keeps BuildKit
+layers in the GitHub Actions cache.
+
+The release reads `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY_BASE`,
+`JWT_PRIVATE_KEY`, and `PHX_HOST` at runtime. Use `/health` for liveness and
+`/health/ready` for PostgreSQL and Redis readiness. Scheduler polling and task
+concurrency can be adjusted with `JOB_SCHEDULER_INTERVAL_MS`,
+`JOB_TASK_MAX_CHILDREN`, and `JOB_EXECUTION_TIMEOUT_MS`.
+
 The frontend is being rebuilt with Phoenix LiveView. The existing Keystone
 frontend can continue calling the JSON endpoints while LiveView owns the new
 server-rendered interactive pages and Ecto owns PostgreSQL access.

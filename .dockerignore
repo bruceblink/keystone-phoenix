@@ -1,0 +1,13 @@
+.git
+.github
+_build
+deps
+.elixir
+uploads
+.env
+.env.*
+!.env.example
+*.tar
+*.tar.gz
+Dockerfile*
+README.md
