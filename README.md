@@ -124,9 +124,10 @@ Cron triggers.
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout
 action. Administrators can also inspect, run, pause, and enable scheduled jobs
-from the LiveView dashboard. Phoenix and LiveView browser assets are served
-from their Mix dependencies, so the page does not need a separate Node.js
-build step.
+from the LiveView dashboard. The dashboard also exposes BEAM and host metrics,
+Redis status, network status, and online-session revocation through its
+monitoring panel. Phoenix and LiveView browser assets are served from their
+Mix dependencies, so the page does not need a separate Node.js build step.
 
 ## PostgreSQL and Redis configuration
 

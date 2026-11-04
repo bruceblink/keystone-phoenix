@@ -7,6 +7,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Job
+  alias KeystonePhoenix.Monitor
   alias KeystonePhoenix.User
 
   @impl true
@@ -24,7 +25,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
        config_rows: [],
        dict_type_rows: [],
        job_rows: [],
-       job_feedback: nil
+       job_feedback: nil,
+       monitor_server_info: %{},
+       monitor_cache_info: %{},
+       online_user_rows: [],
+       network_status: %{},
+       monitor_feedback: nil
      )}
   end
 
@@ -74,9 +80,13 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   @impl true
   def handle_event("show-panel", %{"panel" => panel}, socket)
-      when panel in ["overview", "users", "configs", "dicts", "jobs"] do
+      when panel in ["overview", "users", "configs", "dicts", "jobs", "monitor"] do
     if admin_socket?(socket) do
-      {:noreply, assign(socket, active_panel: panel)}
+      if panel == "monitor" do
+        {:noreply, assign_monitor(socket)}
+      else
+        {:noreply, assign(socket, active_panel: panel)}
+      end
     else
       {:noreply, socket}
     end
@@ -151,6 +161,31 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   @impl true
+  def handle_event("refresh-monitor", _params, socket) do
+    if admin_socket?(socket) do
+      {:noreply, assign_monitor(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("logout-online-user", %{"token-id" => token_id}, socket) do
+    if admin_socket?(socket) do
+      feedback =
+        case Monitor.logout_online_user(token_id) do
+          :ok -> "在线会话已强制下线"
+          {:error, :not_found} -> "在线会话不存在或已经失效"
+          {:error, :unavailable} -> "会话服务暂不可用"
+        end
+
+      {:noreply, assign_monitor(socket, feedback)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
   def handle_event("logout", _params, socket) do
     Auth.logout(socket.assigns.refresh_token)
 
@@ -166,7 +201,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
        config_rows: [],
        dict_type_rows: [],
        job_rows: [],
-       job_feedback: nil
+       job_feedback: nil,
+       monitor_server_info: %{},
+       monitor_cache_info: %{},
+       online_user_rows: [],
+       network_status: %{},
+       monitor_feedback: nil
      )}
   end
 
@@ -183,6 +223,45 @@ defmodule KeystonePhoenixWeb.LoginLive do
     do: %{user_rows: [], config_rows: [], dict_type_rows: [], job_rows: []}
 
   defp load_jobs, do: Job.list_jobs(%{"pageSize" => 50}).rows
+
+  defp assign_monitor(socket, feedback \\ nil) do
+    monitor = load_monitor()
+
+    assign(socket,
+      active_panel: "monitor",
+      monitor_server_info: monitor.server_info,
+      monitor_cache_info: monitor.cache_info,
+      online_user_rows: monitor.online_users,
+      network_status: monitor.network_status,
+      monitor_feedback: feedback || monitor.feedback
+    )
+  end
+
+  defp load_monitor do
+    {:ok, server_info} = Monitor.server_info()
+
+    {cache_info, cache_error} =
+      case Monitor.redis_cache_info() do
+        {:ok, info} -> {info, nil}
+        _ -> {%{}, "Redis 监控数据暂不可用"}
+      end
+
+    {online_users, online_error} =
+      case Monitor.online_users() do
+        {:ok, %{rows: rows}} -> {rows, nil}
+        _ -> {[], "在线会话数据暂不可用"}
+      end
+
+    feedback = Enum.find([cache_error, online_error], &is_binary/1)
+
+    %{
+      server_info: server_info,
+      cache_info: cache_info,
+      online_users: online_users,
+      network_status: Monitor.network_status(),
+      feedback: feedback
+    }
+  end
 
   defp admin_socket?(socket),
     do: is_map(socket.assigns.current_user) and socket.assigns.current_user["isAdmin"] == 1
@@ -221,12 +300,19 @@ defmodule KeystonePhoenixWeb.LoginLive do
           nav button.active { background: #4f8cff; }
           nav button.danger { background: #8b4a55; }
           .panel { overflow-x: auto; padding: 20px; border: 1px solid #27354a; border-radius: 12px; background: #172235; }
+          .monitor-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 0 24px; }
+          .monitor-grid.details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .metric, .details > div { padding: 14px; border: 1px solid #293a52; border-radius: 10px; background: #101827; }
+          .metric span, .metric small { display: block; color: #9aacbf; }
+          .metric strong { display: block; margin: 8px 0; font-size: 24px; }
+          .details h3 { margin-top: 0; }
+          .details p { margin: 8px 0; color: #b9c6d6; }
           table { width: 100%; border-collapse: collapse; font-size: 14px; }
           th, td { padding: 10px 8px; border-bottom: 1px solid #293a52; text-align: left; white-space: nowrap; }
           th { color: #9aacbf; font-weight: 600; }
           .muted { color: #9aacbf; }
           .refresh { width: auto; margin: 0 0 14px; padding: 8px 12px; }
-          @media (max-width: 720px) { .shell { grid-template-columns: 1fr; } main { padding: 32px 0; } .brand h1 { font-size: 34px; } }
+          @media (max-width: 720px) { .shell { grid-template-columns: 1fr; } .monitor-grid, .monitor-grid.details { grid-template-columns: 1fr; } main { padding: 32px 0; } .brand h1 { font-size: 34px; } }
         </style>
       </head>
       <body>
@@ -254,6 +340,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <button type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
                   <button type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
                   <button type="button" class={if @active_panel == "jobs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="jobs">定时任务</button>
+                  <button type="button" class={if @active_panel == "monitor", do: "active", else: ""} phx-click="show-panel" phx-value-panel="monitor">监控</button>
                 </nav>
                 <%= case @active_panel do %>
                   <% "overview" -> %>
@@ -318,6 +405,38 @@ defmodule KeystonePhoenixWeb.LoginLive do
                                 </button>
                                 <button type="button" class="refresh" phx-click="cancel-job" phx-value-job-id={job["jobId"]}>取消运行</button>
                               </td>
+                            </tr>
+                          <% end %>
+                        </tbody>
+                      </table>
+                    </div>
+                  <% "monitor" -> %>
+                    <div class="panel">
+                      <button type="button" class="refresh" phx-click="refresh-monitor">刷新监控</button>
+                      <%= if @monitor_feedback do %>
+                        <p class="muted" role="status">{@monitor_feedback}</p>
+                      <% end %>
+                      <div class="monitor-grid">
+                        <div class="metric"><span>CPU 使用率</span><strong>{get_in(@monitor_server_info, ["cpuInfo", "used"]) || 0}%</strong><small>逻辑处理器：{get_in(@monitor_server_info, ["cpuInfo", "cpuNum"]) || 0}</small></div>
+                        <div class="metric"><span>主机内存</span><strong>{get_in(@monitor_server_info, ["memoryInfo", "usage"]) || 0}%</strong><small>{get_in(@monitor_server_info, ["memoryInfo", "used"]) || 0} / {get_in(@monitor_server_info, ["memoryInfo", "total"]) || 0} GB</small></div>
+                        <div class="metric"><span>BEAM 内存</span><strong>{get_in(@monitor_server_info, ["jvmInfo", "usage"]) || 0}%</strong><small>{get_in(@monitor_server_info, ["jvmInfo", "used"]) || 0} / {get_in(@monitor_server_info, ["jvmInfo", "max"]) || 0} MB</small></div>
+                        <div class="metric"><span>网络状态</span><strong>{@network_status["status"] || "UNKNOWN"}</strong><small>{@network_status["checkedAt"] || "未检查"}</small></div>
+                      </div>
+                      <div class="monitor-grid details">
+                        <div><h3>运行环境</h3><p>节点：{get_in(@monitor_server_info, ["systemInfo", "computerName"]) || "未知"}</p><p>系统：{get_in(@monitor_server_info, ["systemInfo", "osName"]) || "未知"}</p><p>BEAM：{get_in(@monitor_server_info, ["jvmInfo", "name"]) || "未知"}</p><p>运行时间：{get_in(@monitor_server_info, ["jvmInfo", "runTime"]) || "未知"}</p></div>
+                        <div><h3>Redis</h3><p>版本：{get_in(@monitor_cache_info, ["info", "redis_version"]) || "不可用"}</p><p>缓存键数量：{@monitor_cache_info["dbSize"] || 0}</p><p>命令统计：{length(@monitor_cache_info["commandStats"] || [])}</p></div>
+                      </div>
+                      <h3>在线会话（{@online_user_rows |> length()}）</h3>
+                      <table>
+                        <thead><tr><th>用户</th><th>部门</th><th>IP</th><th>登录时间</th><th>操作</th></tr></thead>
+                        <tbody>
+                          <%= for user <- @online_user_rows do %>
+                            <tr>
+                              <td>{user["username"]}</td>
+                              <td>{user["deptName"] || ""}</td>
+                              <td>{user["ipAddress"]}</td>
+                              <td>{user["loginTime"]}</td>
+                              <td><button type="button" class="refresh" phx-click="logout-online-user" phx-value-token-id={user["tokenId"]}>强制下线</button></td>
                             </tr>
                           <% end %>
                         </tbody>
