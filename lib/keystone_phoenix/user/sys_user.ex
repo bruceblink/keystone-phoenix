@@ -90,6 +90,7 @@ defmodule KeystonePhoenix.User.SysUser do
     |> validate_length(:phone_number, max: 18)
     |> validate_inclusion(:sex, [0, 1, 2])
     |> validate_length(:avatar, max: 512)
+    |> validate_avatar()
     |> validate_inclusion(:status, [0, 1])
     |> validate_length(:remark, max: 512)
   end
@@ -98,5 +99,31 @@ defmodule KeystonePhoenix.User.SysUser do
     changeset
     |> validate_length(:password, min: 8, max: 32)
     |> validate_format(:password, @password_pattern, message: "密码首尾不能包含空格，且必须包含字母、数字和特殊符号")
+  end
+
+  defp validate_avatar(changeset) do
+    validate_change(changeset, :avatar, fn :avatar, value ->
+      if valid_avatar_reference?(value), do: [], else: [avatar: "头像地址无效"]
+    end)
+  end
+
+  defp valid_avatar_reference?(value) when is_binary(value) do
+    value = String.trim(value)
+
+    value == "" or
+      String.starts_with?(value, "/profile/") or
+      valid_remote_avatar_url?(value)
+  end
+
+  defp valid_avatar_reference?(_value), do: false
+
+  defp valid_remote_avatar_url?(value) do
+    case URI.parse(value) do
+      %URI{scheme: scheme, host: host} when scheme in ["http", "https"] and is_binary(host) ->
+        host != "" and not String.contains?(value, ["\r", "\n"])
+
+      _ ->
+        false
+    end
   end
 end

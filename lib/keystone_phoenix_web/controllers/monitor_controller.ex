@@ -16,7 +16,10 @@ defmodule KeystonePhoenixWeb.MonitorController do
 
   @doc "Returns host and BEAM runtime information."
   def server_info(conn, _params) do
-    json(conn, ApiResponse.ok(Monitor.server_info() |> elem(1)))
+    case Monitor.server_info() do
+      {:ok, info} -> json(conn, ApiResponse.ok(info))
+      {:error, :unavailable} -> render_error(conn, :unavailable)
+    end
   end
 
   @doc "Returns authenticated online refresh sessions."

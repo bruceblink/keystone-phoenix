@@ -45,6 +45,7 @@ defmodule KeystonePhoenix.Monitor do
   def logout_online_user(token_id), do: Session.revoke_token(token_id)
 
   @doc "Returns host and BEAM runtime metrics in the existing ServerInfo shape."
+  @spec server_info() :: {:ok, map()} | {:error, :unavailable}
   def server_info do
     {:ok,
      %{
@@ -54,6 +55,8 @@ defmodule KeystonePhoenix.Monitor do
        "systemInfo" => system_info(),
        "diskInfos" => disk_infos()
      }}
+  rescue
+    _error -> {:error, :unavailable}
   end
 
   @doc "Returns one network status snapshot for the monitoring SSE endpoint."

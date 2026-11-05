@@ -3,7 +3,7 @@ defmodule KeystonePhoenix.Upload do
 
   @max_file_size 50 * 1024 * 1024
   @max_filename_length 127
-  @allowed_extensions ~w(bmp gif jpg jpeg png doc docx xls xlsx ppt pptx html htm txt rar zip gz bz2 mp4 avi rmvb pdf)
+  @allowed_extensions ~w(bmp gif jpg jpeg png webp)
 
   @spec store_avatar(Plug.Upload.t()) :: {:ok, String.t()} | {:error, atom()}
   def store_avatar(%Plug.Upload{} = upload) do
@@ -11,6 +11,7 @@ defmodule KeystonePhoenix.Upload do
          :ok <- validate_size(stat.size),
          :ok <- validate_filename(upload.filename),
          {:ok, extension} <- extension(upload),
+         :ok <- validate_signature(upload.path, extension),
          filename <- generated_filename(upload.filename, extension),
          directory <- Path.join(base_dir(), "avatar"),
          :ok <- File.mkdir_p(directory),
@@ -76,6 +77,28 @@ defmodule KeystonePhoenix.Upload do
   end
 
   defp content_type_extension(_content_type), do: ""
+
+  defp validate_signature(path, extension) do
+    case File.open(path, [:read, :binary], fn io -> IO.binread(io, 12) end) do
+      {:ok, signature} ->
+        if valid_signature?(extension, signature), do: :ok, else: {:error, :type_not_allowed}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp valid_signature?("jpg", <<0xFF, 0xD8, 0xFF, _rest::binary>>), do: true
+  defp valid_signature?("jpeg", <<0xFF, 0xD8, 0xFF, _rest::binary>>), do: true
+  defp valid_signature?("png", <<0x89, "PNG", 0x0D, 0x0A, 0x1A, 0x0A, _rest::binary>>), do: true
+  defp valid_signature?("gif", <<"GIF87a", _rest::binary>>), do: true
+  defp valid_signature?("gif", <<"GIF89a", _rest::binary>>), do: true
+  defp valid_signature?("bmp", <<"BM", _rest::binary>>), do: true
+
+  defp valid_signature?("webp", <<"RIFF", _size::binary-size(4), "WEBP", _rest::binary>>),
+    do: true
+
+  defp valid_signature?(_extension, _signature), do: false
 
   defp generated_filename(original_filename, extension) do
     base_name =

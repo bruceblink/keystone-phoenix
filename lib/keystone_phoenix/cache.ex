@@ -90,10 +90,10 @@ defmodule KeystonePhoenix.Cache do
   defp scan_keys(cursor, pattern, keys) do
     case Redix.command(@redis_name, ["SCAN", cursor, "MATCH", pattern, "COUNT", "100"]) do
       {:ok, [next_cursor, found_keys]} when is_binary(next_cursor) and is_list(found_keys) ->
-        keys = keys ++ found_keys
+        keys = [found_keys | keys]
 
         if next_cursor == "0" do
-          keys
+          List.flatten(Enum.reverse(keys))
         else
           scan_keys(next_cursor, pattern, keys)
         end

@@ -38,4 +38,19 @@ defmodule KeystonePhoenix.User.SysUserTest do
     refute Map.has_key?(changeset.changes, :password)
     assert changeset.changes.nickname == "管理员"
   end
+
+  test "update changeset rejects executable avatar URLs" do
+    user = %SysUser{user_id: 7, username: "admin", password: "existing-hash"}
+    changeset = SysUser.update_changeset(user, %{"avatar" => "javascript:alert(1)"})
+
+    refute changeset.valid?
+    assert Keyword.has_key?(changeset.errors, :avatar)
+  end
+
+  test "update changeset accepts local and HTTPS avatar references" do
+    user = %SysUser{user_id: 7, username: "admin", password: "existing-hash"}
+
+    assert SysUser.update_changeset(user, %{"avatar" => "/profile/avatar/a.png"}).valid?
+    assert SysUser.update_changeset(user, %{"avatar" => "https://cdn.example.com/a.png"}).valid?
+  end
 end

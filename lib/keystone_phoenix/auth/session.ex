@@ -146,10 +146,10 @@ defmodule KeystonePhoenix.Auth.Session do
   defp scan_keys(cursor, keys) do
     case command(["SCAN", cursor, "MATCH", @key_prefix <> "*", "COUNT", "100"]) do
       {:ok, [next_cursor, found_keys]} when is_binary(next_cursor) and is_list(found_keys) ->
-        keys = keys ++ found_keys
+        keys = [found_keys | keys]
 
         if next_cursor == "0" do
-          {:ok, keys}
+          {:ok, List.flatten(Enum.reverse(keys))}
         else
           scan_keys(next_cursor, keys)
         end
