@@ -56,6 +56,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
        job_log_rows: [],
        job_log_feedback: nil,
        role_rows: [],
+       selected_role_id: "",
+       selected_role_name: "",
+       allocated_role_user_rows: [],
+       unallocated_role_user_rows: [],
+       role_user_feedback: nil,
        role_feedback: nil,
        role_form: empty_role_form(),
        menu_rows: [],
@@ -125,6 +130,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
            job_log_rows: dashboard.job_log_rows,
            job_log_feedback: nil,
            role_rows: dashboard.role_rows,
+           selected_role_id: "",
+           selected_role_name: "",
+           allocated_role_user_rows: [],
+           unallocated_role_user_rows: [],
+           role_user_feedback: nil,
            role_feedback: nil,
            role_form: empty_role_form(),
            menu_rows: dashboard.menu_rows,
@@ -201,7 +211,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   def handle_event("show-panel", _params, socket), do: {:noreply, socket}
 
-  @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles new-role edit-role save-role toggle-role-status delete-role refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
+  @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles new-role edit-role save-role toggle-role-status delete-role select-role assign-role-user unassign-role-user refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
   @accounts_events ~w(refresh-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
   @system_events ~w(refresh-config new-config edit-config save-config refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs edit-notice cancel-notice save-notice toggle-notice-status delete-notice refresh-notices delete-login-log delete-operation-log)
   @operations_events ~w(refresh-jobs new-job edit-job save-job delete-job run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor logout-online-user)
@@ -254,6 +264,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
        job_log_rows: [],
        job_log_feedback: nil,
        role_rows: [],
+       selected_role_id: "",
+       selected_role_name: "",
+       allocated_role_user_rows: [],
+       unallocated_role_user_rows: [],
+       role_user_feedback: nil,
        role_feedback: nil,
        role_form: empty_role_form(),
        menu_rows: [],
@@ -411,7 +426,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "posts" -> %>
                       <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} />
                     <% "roles" -> %>
-                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} />
+                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} />
                     <% "menus" -> %>
                       <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} />
                     <% "users" -> %>

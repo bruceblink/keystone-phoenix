@@ -305,6 +305,37 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     end
   end
 
+  def handle_event("select-role", %{"role-id" => role_id}, socket) do
+    if Support.admin_socket?(socket) do
+      case Enum.find(socket.assigns.role_rows, &(to_string(&1["roleId"]) == role_id)) do
+        nil ->
+          {:noreply, assign(socket, role_user_feedback: "找不到指定角色")}
+
+        role ->
+          users = Support.load_role_users(role_id)
+
+          {:noreply,
+           assign(socket,
+             selected_role_id: role_id,
+             selected_role_name: role["roleName"],
+             allocated_role_user_rows: users.allocated,
+             unallocated_role_user_rows: users.unallocated,
+             role_user_feedback: nil
+           )}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("assign-role-user", %{"user-id" => user_id}, socket) do
+    update_role_user_assignment(socket, fn role_id -> Role.assign_users(role_id, [user_id]) end)
+  end
+
+  def handle_event("unassign-role-user", %{"user-id" => user_id}, socket) do
+    update_role_user_assignment(socket, fn _role_id -> Role.unassign_users([user_id]) end)
+  end
+
   def handle_event("refresh-menus", _params, socket) do
     if Support.admin_socket?(socket) do
       {:noreply,
@@ -405,6 +436,30 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
         error ->
           {:noreply, assign(socket, menu_feedback: Support.form_error(error))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  defp update_role_user_assignment(socket, operation) do
+    if Support.admin_socket?(socket) and socket.assigns.selected_role_id != "" do
+      role_id = socket.assigns.selected_role_id
+
+      case operation.(role_id) do
+        :ok ->
+          users = Support.load_role_users(role_id)
+
+          {:noreply,
+           assign(socket,
+             role_rows: Support.load_roles(),
+             allocated_role_user_rows: users.allocated,
+             unallocated_role_user_rows: users.unallocated,
+             role_user_feedback: "角色用户已更新"
+           )}
+
+        error ->
+          {:noreply, assign(socket, role_user_feedback: Support.form_error(error))}
       end
     else
       {:noreply, socket}

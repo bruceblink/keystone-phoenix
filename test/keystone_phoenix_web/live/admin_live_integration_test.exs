@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
   import Phoenix.LiveViewTest
 
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
 
@@ -93,5 +94,37 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert render(view) =~ "用户密码已重置"
     assert {:ok, updated} = User.get_user(created.user_id)
     assert Bcrypt.verify_pass("Reset!456", updated.password)
+
+    role_name = "Live 角色 #{System.unique_integer([:positive])}"
+    role_key = "live_role_#{System.unique_integer([:positive])}"
+
+    render_click(view, "show-panel", %{"panel" => "roles"})
+
+    render_submit(view, "save-role", %{
+      "roleId" => "",
+      "roleName" => role_name,
+      "roleKey" => role_key,
+      "roleSort" => "10",
+      "dataScope" => "1",
+      "deptIdSet" => "",
+      "status" => "1",
+      "menuIds" => "",
+      "remark" => ""
+    })
+
+    assert render(view) =~ "角色已创建"
+    role = Role.list_roles(%{"roleName" => role_name, "pageSize" => 10}).rows |> List.first()
+    assert role["roleName"] == role_name
+
+    render_click(view, "select-role", %{"role-id" => to_string(role["roleId"])})
+    assert has_element?(view, "#role-user-management")
+    render_click(view, "assign-role-user", %{"user-id" => to_string(created.user_id)})
+    assert render(view) =~ "角色用户已更新"
+    assert {:ok, assigned} = User.get_user(created.user_id)
+    assert assigned.role_id == role["roleId"]
+
+    render_click(view, "unassign-role-user", %{"user-id" => to_string(created.user_id)})
+    assert {:ok, unassigned} = User.get_user(created.user_id)
+    assert is_nil(unassigned.role_id)
   end
 end

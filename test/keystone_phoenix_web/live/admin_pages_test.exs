@@ -61,6 +61,41 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
              Map.take(assigns, [:role_rows, :role_form, :role_feedback])
            ) =~ "save-role"
 
+    role_user_assigns =
+      Map.merge(assigns, %{
+        role_rows: [
+          %{
+            "roleId" => 1,
+            "roleName" => "管理员",
+            "roleKey" => "admin",
+            "dataScopeStr" => "全部数据",
+            "userCount" => 1,
+            "statusStr" => "正常",
+            "roleSort" => 1,
+            "status" => 1
+          }
+        ],
+        selected_role_id: "1",
+        selected_role_name: "管理员",
+        allocated_role_user_rows: [],
+        unallocated_role_user_rows: [%{"userId" => 2, "username" => "user", "nickname" => "普通用户"}],
+        role_user_feedback: nil
+      })
+
+    assert render_component(
+             &Organization.roles/1,
+             Map.take(role_user_assigns, [
+               :role_rows,
+               :role_form,
+               :role_feedback,
+               :selected_role_id,
+               :selected_role_name,
+               :allocated_role_user_rows,
+               :unallocated_role_user_rows,
+               :role_user_feedback
+             ])
+           ) =~ "assign-role-user"
+
     assert render_component(
              &Organization.menus/1,
              Map.take(assigns, [:menu_rows, :menu_form, :menu_feedback])

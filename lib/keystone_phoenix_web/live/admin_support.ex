@@ -24,6 +24,11 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       dept_rows: load_depts(),
       post_rows: load_posts(),
       role_rows: load_roles(),
+      selected_role_id: "",
+      selected_role_name: "",
+      allocated_role_user_rows: [],
+      unallocated_role_user_rows: [],
+      role_user_feedback: nil,
       menu_rows: load_menus(),
       notice_rows: load_notices(),
       login_log_rows: logs.login_log_rows,
@@ -43,6 +48,11 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       dept_rows: [],
       post_rows: [],
       role_rows: [],
+      selected_role_id: "",
+      selected_role_name: "",
+      allocated_role_user_rows: [],
+      unallocated_role_user_rows: [],
+      role_user_feedback: nil,
       menu_rows: [],
       notice_rows: [],
       login_log_rows: [],
@@ -244,6 +254,15 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       |> Map.put("statusStr", if(role["status"] == 1, do: "正常", else: "停用"))
       |> Map.put("userCount", Map.get(user_counts, role["roleId"], 0))
     end)
+  end
+
+  def load_role_users(role_id) do
+    params = %{"pageSize" => 50}
+
+    %{
+      allocated: Role.list_allocated_users(role_id, params).rows,
+      unallocated: Role.list_unallocated_users(role_id, params).rows
+    }
   end
 
   def data_scope_label(1), do: "全部数据"

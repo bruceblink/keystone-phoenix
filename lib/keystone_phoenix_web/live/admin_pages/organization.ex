@@ -54,6 +54,14 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
   end
 
   def roles(assigns) do
+    assigns =
+      assigns
+      |> assign_new(:selected_role_id, fn -> "" end)
+      |> assign_new(:selected_role_name, fn -> "" end)
+      |> assign_new(:allocated_role_user_rows, fn -> [] end)
+      |> assign_new(:unallocated_role_user_rows, fn -> [] end)
+      |> assign_new(:role_user_feedback, fn -> nil end)
+
     ~H"""
     <div class="panel">
       <div class="form-actions"><button type="button" class="refresh" phx-click="new-role">新建角色</button><button type="button" class="refresh secondary" phx-click="refresh-roles">刷新角色</button></div>
@@ -65,7 +73,17 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
         </div>
         <div class="form-actions"><button type="submit">保存角色</button><button :if={@role_form["roleId"] != ""} type="button" class="secondary" phx-click="new-role">取消编辑</button></div>
       </form>
-      <table><thead><tr><th>角色名称</th><th>角色标识</th><th>数据范围</th><th>用户数</th><th>状态</th><th>排序</th><th>操作</th></tr></thead><tbody><%= for role <- @role_rows do %><tr><td><%= role["roleName"] %></td><td><%= role["roleKey"] %></td><td><%= role["dataScopeStr"] %></td><td><%= role["userCount"] %></td><td><%= role["statusStr"] %></td><td><%= role["roleSort"] %></td><td class="table-actions"><button type="button" class="refresh" phx-click="edit-role" phx-value-role-id={role["roleId"]}>编辑</button><button type="button" class="refresh" phx-click="toggle-role-status" phx-value-role-id={role["roleId"]} phx-value-status={if role["status"] == 1, do: 0, else: 1}><%= if role["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-click="delete-role" phx-value-role-id={role["roleId"]}>删除</button></td></tr><% end %></tbody></table>
+      <table><thead><tr><th>角色名称</th><th>角色标识</th><th>数据范围</th><th>用户数</th><th>状态</th><th>排序</th><th>操作</th></tr></thead><tbody><%= for role <- @role_rows do %><tr><td><%= role["roleName"] %></td><td><%= role["roleKey"] %></td><td><%= role["dataScopeStr"] %></td><td><%= role["userCount"] %></td><td><%= role["statusStr"] %></td><td><%= role["roleSort"] %></td><td class="table-actions"><button type="button" class="refresh" phx-click="select-role" phx-value-role-id={role["roleId"]}>管理用户</button><button type="button" class="refresh" phx-click="edit-role" phx-value-role-id={role["roleId"]}>编辑</button><button type="button" class="refresh" phx-click="toggle-role-status" phx-value-role-id={role["roleId"]} phx-value-status={if role["status"] == 1, do: 0, else: 1}><%= if role["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-click="delete-role" phx-value-role-id={role["roleId"]}>删除</button></td></tr><% end %></tbody></table>
+      <%= if @selected_role_id != "" do %>
+        <section id="role-user-management">
+          <h3>角色用户：<%= @selected_role_name %></h3>
+          <%= if @role_user_feedback do %><p class="feedback" role="status"><%= @role_user_feedback %></p><% end %>
+          <div class="monitor-grid details">
+            <div><h3>已分配用户（<%= length(@allocated_role_user_rows) %>）</h3><table><thead><tr><th>用户名</th><th>昵称</th><th>操作</th></tr></thead><tbody><%= for user <- @allocated_role_user_rows do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button type="button" class="refresh danger-action" phx-click="unassign-role-user" phx-value-user-id={user["userId"]}>取消分配</button></td></tr><% end %></tbody></table></div>
+            <div><h3>可分配用户（<%= length(@unallocated_role_user_rows) %>）</h3><table><thead><tr><th>用户名</th><th>昵称</th><th>操作</th></tr></thead><tbody><%= for user <- @unallocated_role_user_rows do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button type="button" class="refresh" phx-click="assign-role-user" phx-value-user-id={user["userId"]}>分配</button></td></tr><% end %></tbody></table></div>
+          </div>
+        </section>
+      <% end %>
     </div>
     """
   end
