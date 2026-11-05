@@ -6,6 +6,9 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.Job
+  alias KeystonePhoenix.Config
+  alias KeystonePhoenix.Dictionary
+  alias KeystonePhoenix.Notice
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
 
@@ -150,5 +153,81 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
     render_click(view, "cancel-job", %{"job-id" => to_string(job["jobId"])})
     assert render(view) =~ "没有正在运行的任务"
+
+    config_name = "Live 配置 #{System.unique_integer([:positive])}"
+    config_key = "live.config.#{System.unique_integer([:positive])}"
+
+    render_click(view, "show-panel", %{"panel" => "configs"})
+
+    render_submit(view, "save-config", %{
+      "configId" => "",
+      "configName" => config_name,
+      "configKey" => config_key,
+      "configOptions" => "alpha,beta",
+      "configValue" => "alpha",
+      "isAllowChange" => "true",
+      "remark" => ""
+    })
+
+    assert render(view) =~ "配置已创建"
+
+    config =
+      Config.list_configs(%{"configKey" => config_key, "pageSize" => 10}).rows |> List.first()
+
+    assert config["configValue"] == "alpha"
+
+    dict_type = "live.type.#{System.unique_integer([:positive])}"
+
+    render_click(view, "show-panel", %{"panel" => "dicts"})
+
+    render_submit(view, "save-dict-type", %{
+      "dictId" => "",
+      "dictName" => "Live 字典",
+      "dictType" => dict_type,
+      "status" => "1",
+      "remark" => ""
+    })
+
+    assert render(view) =~ "字典类型已创建"
+    assert Dictionary.list_dict_types(%{"dictType" => dict_type, "pageSize" => 10}).total == 1
+
+    render_submit(view, "save-dict-data", %{
+      "dictCode" => "",
+      "dictType" => dict_type,
+      "dictLabel" => "Live 值",
+      "dictValue" => "1",
+      "dictSort" => "1",
+      "isDefault" => "false",
+      "cssClass" => "",
+      "listClass" => "",
+      "status" => "1",
+      "remark" => ""
+    })
+
+    assert render(view) =~ "字典数据已创建"
+    assert Dictionary.list_dict_data(%{"dictType" => dict_type, "pageSize" => 10}).total == 1
+
+    notice_title = "Live 公告 #{System.unique_integer([:positive])}"
+
+    render_click(view, "show-panel", %{"panel" => "notices"})
+
+    render_submit(view, "save-notice", %{
+      "noticeId" => "",
+      "noticeTitle" => notice_title,
+      "noticeType" => "2",
+      "noticeContent" => "LiveView 联调公告",
+      "status" => "1",
+      "remark" => ""
+    })
+
+    assert render(view) =~ "公告已创建"
+    assert Notice.list_notices(%{"noticeTitle" => notice_title, "pageSize" => 10}).total == 1
+
+    render_click(view, "show-panel", %{"panel" => "logs"})
+    assert has_element?(view, "button[phx-click='refresh-logs']")
+    render_click(view, "show-panel", %{"panel" => "job-logs"})
+    assert has_element?(view, "button[phx-click='refresh-job-logs']")
+    render_click(view, "show-panel", %{"panel" => "monitor"})
+    assert has_element?(view, "button[phx-click='refresh-monitor']")
   end
 end

@@ -74,9 +74,15 @@ defmodule KeystonePhoenix.Monitor do
   defp online_user_to_map(%{jti: token_id, user_id: user_id}) do
     with {:ok, user} <- User.get_user(user_id) do
       dept_name =
-        case Department.get_dept(user.dept_id) do
-          {:ok, dept} -> dept.dept_name
-          _ -> nil
+        case user.dept_id do
+          nil ->
+            nil
+
+          dept_id ->
+            case Department.get_dept(dept_id) do
+              {:ok, dept} -> dept.dept_name
+              _ -> nil
+            end
         end
 
       %{
