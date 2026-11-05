@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Menu do
 
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Tree
 
   @menu_attrs [
     {"menuName", :menu_name},
@@ -185,17 +186,7 @@ defmodule KeystonePhoenix.Menu do
     do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysMenu{}), field, "参数无效")
 
   defp build_tree(menus) do
-    Enum.filter(menus, &(&1["parentId"] == 0))
-    |> Enum.map(&attach_children(&1, menus))
-  end
-
-  defp attach_children(menu, menus) do
-    children =
-      menus
-      |> Enum.filter(&(&1["parentId"] == menu["menuId"]))
-      |> Enum.map(&attach_children(&1, menus))
-
-    if children == [], do: menu, else: Map.put(menu, "children", children)
+    Tree.nest(menus, "parentId", "menuId")
   end
 
   defp filter_status(query, nil), do: query

@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Department do
 
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Tree
   alias KeystonePhoenix.User.SysUser
 
   @dept_attrs [
@@ -30,8 +31,7 @@ defmodule KeystonePhoenix.Department do
   end
 
   def list_dropdown do
-    depts = list_depts()
-    Enum.filter(depts, &(&1["parentId"] == 0)) |> Enum.map(&attach_children(&1, depts))
+    Tree.nest(list_depts(), "parentId", "deptId")
   end
 
   def get_dept(id) do
@@ -148,15 +148,6 @@ defmodule KeystonePhoenix.Department do
 
   defp invalid_changeset(field),
     do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysDept{}), field, "参数无效")
-
-  defp attach_children(dept, depts) do
-    children =
-      depts
-      |> Enum.filter(&(&1["parentId"] == dept["deptId"]))
-      |> Enum.map(&attach_children(&1, depts))
-
-    if children == [], do: dept, else: Map.put(dept, "children", children)
-  end
 
   defp filter_status(query, nil), do: query
   defp filter_status(query, ""), do: query
