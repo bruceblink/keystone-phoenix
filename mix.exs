@@ -75,8 +75,7 @@ defmodule KeystonePhoenix.MixProject do
         "format",
         "check.source_lines",
         "test"
-      ],
-      "check.source_lines": "cmd scripts/check_source_lines.sh"
+      ]
     ]
   end
 end
