@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Auth.Session do
   @redis_name KeystonePhoenix.Redis
   @key_prefix "keystone:auth:refresh:"
   @account_prefix "keystone:auth:account:"
+  @mget_batch_size 500
 
   @spec put(String.t(), integer(), pos_integer()) :: :ok | {:error, :unavailable}
   def put(jti, user_id, ttl) do
@@ -85,18 +86,12 @@ defmodule KeystonePhoenix.Auth.Session do
   @doc "Returns the refresh sessions currently visible in Redis."
   @spec list_active() :: {:ok, list(map())} | {:error, :unavailable}
   def list_active do
-    case scan_keys("0", []) do
-      {:ok, keys} ->
-        sessions =
-          keys
-          |> Enum.map(&session_from_key/1)
-          |> Enum.reject(&is_nil/1)
-          |> Enum.filter(fn %{jti: jti, user_id: user_id} -> active?(user_id, jti) end)
-
-        {:ok, sessions}
-
-      {:error, :unavailable} = error ->
-        error
+    with {:ok, keys} <- scan_keys("0", []),
+         {:ok, user_ids} <- batch_mget(keys),
+         sessions <- session_candidates(keys, user_ids),
+         account_keys <- Enum.map(sessions, &account_key(&1.user_id)),
+         {:ok, account_jtis} <- batch_mget(account_keys) do
+      {:ok, active_sessions(sessions, account_jtis)}
     end
   end
 
@@ -128,19 +123,44 @@ defmodule KeystonePhoenix.Auth.Session do
   defp key(jti), do: @key_prefix <> jti
   defp account_key(user_id), do: @account_prefix <> to_string(user_id)
 
-  defp session_from_key(redis_key) do
-    jti = String.replace_prefix(redis_key, @key_prefix, "")
+  defp batch_mget([]), do: {:ok, []}
 
-    case command(["GET", redis_key]) do
-      {:ok, user_id} when is_binary(user_id) ->
-        case Integer.parse(user_id) do
-          {parsed_id, ""} when parsed_id > 0 -> %{jti: jti, user_id: parsed_id}
-          _ -> nil
-        end
+  defp batch_mget(keys) do
+    keys
+    |> Enum.chunk_every(@mget_batch_size)
+    |> Enum.reduce_while({:ok, []}, fn chunk, {:ok, batches} ->
+      case command(["MGET" | chunk]) do
+        {:ok, values} when is_list(values) -> {:cont, {:ok, [values | batches]}}
+        _ -> {:halt, {:error, :unavailable}}
+      end
+    end)
+    |> flatten_mget_batches()
+  end
 
-      _ ->
-        nil
-    end
+  defp flatten_mget_batches({:ok, batches}),
+    do: {:ok, batches |> Enum.reverse() |> List.flatten()}
+
+  defp flatten_mget_batches(error), do: error
+
+  defp session_candidates(keys, user_ids) do
+    keys
+    |> Enum.zip(user_ids)
+    |> Enum.flat_map(fn {redis_key, user_id} ->
+      jti = String.replace_prefix(redis_key, @key_prefix, "")
+
+      case Integer.parse(to_string(user_id)) do
+        {parsed_id, ""} when parsed_id > 0 -> [%{jti: jti, user_id: parsed_id}]
+        _ -> []
+      end
+    end)
+  end
+
+  defp active_sessions(sessions, account_jtis) do
+    sessions
+    |> Enum.zip(account_jtis)
+    |> Enum.flat_map(fn {%{jti: jti} = session, account_jti} ->
+      if account_jti == jti, do: [session], else: []
+    end)
   end
 
   defp scan_keys(cursor, keys) do
