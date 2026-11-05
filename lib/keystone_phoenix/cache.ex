@@ -7,6 +7,7 @@ defmodule KeystonePhoenix.Cache do
   """
 
   @redis_name KeystonePhoenix.Redis
+  @delete_batch_size 500
 
   @spec fetch(String.t(), pos_integer(), (-> term())) :: term()
   def fetch(key, ttl_seconds, loader) when is_function(loader, 0) do
@@ -81,7 +82,10 @@ defmodule KeystonePhoenix.Cache do
   defp delete_many([]), do: :ok
 
   defp delete_many(keys) do
-    Redix.command(@redis_name, ["DEL" | keys])
+    keys
+    |> Enum.chunk_every(@delete_batch_size)
+    |> Enum.each(fn chunk -> Redix.command(@redis_name, ["DEL" | chunk]) end)
+
     :ok
   end
 
