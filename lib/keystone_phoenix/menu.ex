@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Menu do
   import Ecto.Query
 
   alias KeystonePhoenix.Menu.SysMenu
+  alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Tree
 
@@ -162,9 +163,9 @@ defmodule KeystonePhoenix.Menu do
   defp parent_id(nil), do: {:ok, 0}
 
   defp parent_id(value) do
-    case Integer.parse(to_string(value)) do
-      {id, ""} when id >= 0 -> {:ok, id}
-      _ -> {:error, :invalid_parent}
+    case Params.non_negative_integer(value) do
+      {:ok, id} -> {:ok, id}
+      :error -> {:error, :invalid_parent}
     end
   end
 
@@ -189,23 +190,17 @@ defmodule KeystonePhoenix.Menu do
     Tree.nest(menus, "parentId", "menuId")
   end
 
-  defp filter_status(query, nil), do: query
-  defp filter_status(query, ""), do: query
-
   defp filter_status(query, value) do
-    case Integer.parse(to_string(value)) do
-      {status, ""} -> where(query, [menu], menu.status == ^status)
-      _ -> query
+    case Params.parse_integer(value) do
+      {:ok, status} -> where(query, [menu], menu.status == ^status)
+      :error -> query
     end
   end
 
-  defp filter_type(query, nil), do: query
-  defp filter_type(query, ""), do: query
-
   defp filter_type(query, value) do
-    case Integer.parse(to_string(value)) do
-      {menu_type, ""} -> where(query, [menu], menu.menu_type == ^menu_type)
-      _ -> query
+    case Params.parse_integer(value) do
+      {:ok, menu_type} -> where(query, [menu], menu.menu_type == ^menu_type)
+      :error -> query
     end
   end
 

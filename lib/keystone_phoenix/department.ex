@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Department do
   import Ecto.Query
 
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Tree
   alias KeystonePhoenix.User.SysUser
@@ -40,6 +41,21 @@ defmodule KeystonePhoenix.Department do
       dept -> {:ok, dept}
     end
   end
+
+  @doc "Returns active departments keyed by ID with one database query."
+  @spec list_depts_by_ids(list()) :: [SysDept.t()]
+  def list_depts_by_ids(ids) when is_list(ids) do
+    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    if ids == [] do
+      []
+    else
+      from(d in SysDept, where: d.deleted == false and d.dept_id in ^ids)
+      |> Repo.all()
+    end
+  end
+
+  def list_depts_by_ids(_ids), do: []
 
   def create_dept(attrs) when is_map(attrs) do
     attrs = normalize_attrs(attrs)
@@ -121,9 +137,9 @@ defmodule KeystonePhoenix.Department do
   defp positive_parent_id(nil), do: {:ok, 0}
 
   defp positive_parent_id(value) do
-    case Integer.parse(to_string(value)) do
-      {parent_id, ""} when parent_id >= 0 -> {:ok, parent_id}
-      _ -> {:error, :invalid_parent}
+    case Params.non_negative_integer(value) do
+      {:ok, parent_id} -> {:ok, parent_id}
+      :error -> {:error, :invalid_parent}
     end
   end
 
@@ -149,15 +165,23 @@ defmodule KeystonePhoenix.Department do
   defp invalid_changeset(field),
     do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysDept{}), field, "参数无效")
 
-  defp filter_status(query, nil), do: query
-  defp filter_status(query, ""), do: query
-
   defp filter_status(query, status) do
-    case Integer.parse(to_string(status)) do
-      {value, ""} -> where(query, [dept], dept.status == ^value)
-      _ -> query
+    case Params.parse_integer(status) do
+      {:ok, value} -> where(query, [dept], dept.status == ^value)
+      :error -> query
     end
   end
+
+  defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
+
+  defp parse_positive_integer(value) when is_binary(value) do
+    case Params.parse_integer(value) do
+      {:ok, number} when number > 0 -> number
+      _ -> nil
+    end
+  end
+
+  defp parse_positive_integer(_value), do: nil
 
   defp format_datetime(nil), do: nil
 
