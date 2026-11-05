@@ -9,6 +9,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Job
+  alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.AdminEvents.Accounts, as: AccountsEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.Operations, as: OperationsEvents
@@ -91,6 +92,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
     case Auth.login_plaintext(username, password) do
       {:ok, tokens} ->
+        Log.record_login_event(username, 1, "登录成功")
+
         dashboard =
           if tokens.current_user["isAdmin"] == 1 do
             load_dashboard()
@@ -154,12 +157,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
          )}
 
       {:error, :already_logged_in} ->
+        Log.record_login_event(username, 0, "该账号已经登录")
         {:noreply, assign(socket, login_error: "该账号已经登录，请先退出或使用 API 的 forceLogin 接管")}
 
       {:error, :unavailable} ->
+        Log.record_login_event(username, 0, "认证会话暂不可用")
         {:noreply, assign(socket, login_error: "认证会话暂不可用，请稍后重试")}
 
       _ ->
+        Log.record_login_event(username, 0, "用户名或密码错误")
         {:noreply, assign(socket, login_error: "用户名或密码错误")}
     end
   end
@@ -293,8 +299,34 @@ defmodule KeystonePhoenixWeb.LoginLive do
      )}
   end
 
+  @impl true
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  @impl true
+  def handle_info({:admin_job_finished, _job_id, result}, socket) do
+    if admin_socket?(socket) do
+      feedback =
+        case result do
+          :ok -> "任务已执行并写入运行日志"
+          {:error, :not_found} -> "找不到指定任务"
+          {:error, reason} -> "任务执行失败：#{inspect(reason)}"
+          _ -> "任务执行完成"
+        end
+
+      {:noreply,
+       assign(socket,
+         job_rows: load_jobs(),
+         job_log_rows: load_job_logs(),
+         job_feedback: feedback
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
   defp load_dashboard, do: AdminSupport.load_dashboard()
   defp empty_dashboard, do: AdminSupport.empty_dashboard()
+  defp load_jobs, do: AdminSupport.load_jobs()
   defp load_job_logs, do: AdminSupport.load_job_logs()
   defp empty_notice_form, do: AdminSupport.empty_notice_form()
   defp empty_dept_form, do: AdminSupport.empty_dept_form()

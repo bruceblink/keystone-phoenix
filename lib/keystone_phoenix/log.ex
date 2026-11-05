@@ -39,25 +39,39 @@ defmodule KeystonePhoenix.Log do
 
   @doc "Records a login result without persisting passwords or tokens."
   def record_login(conn, username, status, message) when is_binary(username) do
-    attrs = %{
-      username: username,
+    record_login_event(username, status, message, %{
       ip_address: to_string(remote_ip(conn)),
-      login_location: "",
-      browser: List.first(Plug.Conn.get_req_header(conn, "user-agent")) || "",
-      operation_system: "",
-      status: status,
-      msg: message,
-      login_time: DateTime.utc_now(),
-      deleted: false
-    }
+      browser: List.first(Plug.Conn.get_req_header(conn, "user-agent")) || ""
+    })
+  end
+
+  def record_login(_conn, _username, _status, _message), do: :ok
+
+  @doc "Records a login result from a non-HTTP entry point such as LiveView."
+  def record_login_event(username, status, message, metadata \\ %{})
+
+  def record_login_event(username, status, message, metadata) when is_binary(username) do
+    attrs =
+      Map.merge(
+        %{
+          username: username,
+          ip_address: "",
+          login_location: "",
+          browser: "",
+          operation_system: "",
+          status: status,
+          msg: message,
+          login_time: DateTime.utc_now(),
+          deleted: false
+        },
+        metadata
+      )
 
     case Repo.insert(Ecto.Changeset.cast(%SysLoginInfo{}, attrs, Map.keys(attrs))) do
       {:ok, _log} -> :ok
       {:error, _changeset} -> :ok
     end
   end
-
-  def record_login(_conn, _username, _status, _message), do: :ok
 
   def create_operation_log(attrs, user, request_url, request_method) when is_map(attrs) do
     normalized = %{
@@ -128,7 +142,7 @@ defmodule KeystonePhoenix.Log do
   end
 
   defp soft_delete(schema, field, ids) when is_list(ids) do
-    ids = Enum.map(ids, &parse_positive_integer/1)
+    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}

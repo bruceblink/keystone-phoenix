@@ -85,14 +85,24 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("run-job", %{"job-id" => job_id}, socket) do
     if Support.admin_socket?(socket) do
-      feedback =
-        case Job.run_job(job_id) do
-          :ok -> "任务已执行并写入运行日志"
-          {:error, :not_found} -> "找不到指定任务"
-          {:error, reason} -> "任务执行失败：#{inspect(reason)}"
-        end
+      case Job.get_job(job_id) do
+        {:ok, _job} ->
+          live_view = self()
 
-      {:noreply, assign(socket, job_rows: Support.load_jobs(), job_feedback: feedback)}
+          case Task.Supervisor.start_child(KeystonePhoenix.JobTaskSupervisor, fn ->
+                 result = Job.run_job(job_id)
+                 send(live_view, {:admin_job_finished, job_id, result})
+               end) do
+            {:ok, _pid} ->
+              {:noreply, assign(socket, job_feedback: "任务已提交，执行结果将自动刷新")}
+
+            {:error, reason} ->
+              {:noreply, assign(socket, job_feedback: "任务无法启动：#{inspect(reason)}")}
+          end
+
+        {:error, :not_found} ->
+          {:noreply, assign(socket, job_feedback: "找不到指定任务")}
+      end
     else
       {:noreply, socket}
     end

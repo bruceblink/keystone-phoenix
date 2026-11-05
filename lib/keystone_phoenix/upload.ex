@@ -25,6 +25,23 @@ defmodule KeystonePhoenix.Upload do
 
   def store_avatar(_upload), do: {:error, :invalid_upload}
 
+  @doc "Deletes a previously stored local avatar after a database write fails."
+  @spec delete_avatar(String.t()) :: :ok
+  def delete_avatar(url) when is_binary(url) do
+    path = String.split(String.trim_leading(url, "/"), "/", trim: true)
+
+    case resolve_profile_path(path) do
+      {:ok, path} ->
+        _ = File.rm(path)
+        :ok
+
+      {:error, :not_found} ->
+        :ok
+    end
+  end
+
+  def delete_avatar(_url), do: :ok
+
   @spec resolve_profile_path(list()) :: {:ok, String.t()} | {:error, :not_found}
   def resolve_profile_path(path_segments) when is_list(path_segments) do
     root = Path.expand(base_dir())

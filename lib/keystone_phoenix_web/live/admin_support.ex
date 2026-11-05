@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   import Phoenix.Component, only: [assign: 2]
 
+  alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Dictionary
@@ -323,7 +324,11 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   def load_monitor do
-    {:ok, server_info} = Monitor.server_info()
+    {server_info, server_error} =
+      case Monitor.server_info() do
+        {:ok, info} -> {info, nil}
+        {:error, :unavailable} -> {%{}, "主机监控数据暂不可用"}
+      end
 
     {cache_info, cache_error} =
       case Monitor.redis_cache_info() do
@@ -337,7 +342,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
         _ -> {[], "在线会话数据暂不可用"}
       end
 
-    feedback = Enum.find([cache_error, online_error], &is_binary/1)
+    feedback = Enum.find([server_error, cache_error, online_error], &is_binary/1)
 
     %{
       server_info: server_info,
@@ -392,6 +397,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def human_error(:invalid_params), do: "参数无效"
   def human_error(:invalid_status), do: "状态无效"
   def human_error(:role_unavailable), do: "角色已停用"
+  def human_error(:menu_not_found), do: "菜单不存在"
   def human_error(:invalid_log), do: "日志参数无效"
   def human_error(:unavailable), do: "服务暂不可用"
   def human_error(:invalid_upload), do: "头像文件无效"
@@ -406,4 +412,17 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     do: is_map(socket.assigns.current_user) and socket.assigns.current_user["isAdmin"] == 1
 
   def authenticated_socket?(socket), do: is_map(socket.assigns.current_user)
+
+  def expire_authentication(socket, message) do
+    Auth.logout(socket.assigns.refresh_token)
+
+    assign(socket,
+      current_user: nil,
+      access_token: nil,
+      refresh_token: nil,
+      active_panel: "overview",
+      password: "",
+      login_error: message
+    )
+  end
 end

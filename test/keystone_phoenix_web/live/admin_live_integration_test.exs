@@ -8,6 +8,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Dictionary
+  alias KeystonePhoenix.Log
   alias KeystonePhoenix.Notice
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
@@ -42,6 +43,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     })
 
     assert has_element?(view, "nav[aria-label='管理模块']")
+    assert Log.list_login_logs(%{"username" => admin.username, "pageSize" => 10}).total >= 1
 
     render_click(view, "show-panel", %{"panel" => "profile"})
     avatar_content = <<137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0>>

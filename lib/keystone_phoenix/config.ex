@@ -82,6 +82,7 @@ defmodule KeystonePhoenix.Config do
 
       case Repo.update(changeset) do
         {:ok, updated} = result ->
+          Cache.delete(config_cache_key(config.config_key))
           Cache.delete(config_cache_key(updated.config_key))
           result
 

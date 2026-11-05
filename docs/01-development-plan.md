@@ -37,6 +37,7 @@ docker compose up -d postgres redis
 mix format --check-formatted
 mix check.source_lines
 mix test
+mix test --include integration
 mix precommit
 ```
 

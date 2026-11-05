@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Role do
   import Ecto.Query
 
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
@@ -116,7 +117,12 @@ defmodule KeystonePhoenix.Role do
   def update_data_scope(_id, _attrs), do: {:error, invalid_changeset(:data_scope)}
 
   def menu_ids_for_role(role_id) do
-    from(rm in SysRoleMenu, where: rm.role_id == ^role_id, select: rm.menu_id)
+    from(rm in SysRoleMenu,
+      join: menu in SysMenu,
+      on: menu.menu_id == rm.menu_id,
+      where: rm.role_id == ^role_id and menu.deleted == false,
+      select: rm.menu_id
+    )
     |> Repo.all()
   end
 
@@ -164,8 +170,7 @@ defmodule KeystonePhoenix.Role do
         from(u in SysUser, where: u.deleted == false and u.user_id in ^user_ids),
         set: [role_id: role.role_id, update_time: DateTime.utc_now()]
       )
-
-      :ok
+      |> update_result(user_ids)
     else
       {:error, :not_found} -> {:error, :not_found}
       {:error, :invalid_ids} -> {:error, :invalid_ids}
@@ -180,20 +185,41 @@ defmodule KeystonePhoenix.Role do
         from(u in SysUser, where: u.deleted == false and u.user_id in ^user_ids),
         set: [role_id: nil, update_time: DateTime.utc_now()]
       )
-
-      :ok
+      |> update_result(user_ids)
     end
   end
 
   defp replace_menu_ids(role_id, menu_ids) do
-    Repo.delete_all(from(rm in SysRoleMenu, where: rm.role_id == ^role_id))
+    case validate_menu_ids(menu_ids) do
+      :ok ->
+        Repo.delete_all(from(rm in SysRoleMenu, where: rm.role_id == ^role_id))
 
-    if menu_ids != [] do
-      Repo.insert_all("sys_role_menu", Enum.map(menu_ids, &%{role_id: role_id, menu_id: &1}))
+        if menu_ids != [] do
+          Repo.insert_all("sys_role_menu", Enum.map(menu_ids, &%{role_id: role_id, menu_id: &1}))
+        end
+
+        :ok
+
+      {:error, reason} ->
+        Repo.rollback(reason)
     end
-
-    :ok
   end
+
+  defp validate_menu_ids([]), do: :ok
+
+  defp validate_menu_ids(menu_ids) do
+    count =
+      from(menu in SysMenu,
+        where: menu.menu_id in ^menu_ids and menu.deleted == false,
+        select: count(menu.menu_id)
+      )
+      |> Repo.one()
+
+    if count == length(menu_ids), do: :ok, else: {:error, :menu_not_found}
+  end
+
+  defp update_result({count, _}, ids) when count == length(ids), do: :ok
+  defp update_result(_result, _ids), do: {:error, :not_found}
 
   defp list_role_users(role_id, params, mode) do
     query =

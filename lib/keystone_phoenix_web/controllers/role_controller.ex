@@ -112,6 +112,10 @@ defmodule KeystonePhoenixWeb.RoleController do
     conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10003, "角色已停用"))
   end
 
+  defp render_error(conn, :menu_not_found) do
+    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10005, "菜单不存在"))
+  end
+
   defp render_error(conn, :invalid_ids) do
     conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10004, "用户编号无效"))
   end

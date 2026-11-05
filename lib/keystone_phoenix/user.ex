@@ -113,7 +113,7 @@ defmodule KeystonePhoenix.User do
   @doc "Soft deletes users and prevents deleting the current or an administrator account."
   @spec delete_users(list(), integer() | String.t()) :: :ok | {:error, atom()}
   def delete_users(ids, actor_id) when is_list(ids) do
-    ids = Enum.map(ids, &parse_positive_integer/1)
+    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
     actor_id = parse_positive_integer(actor_id)
 
     if Enum.any?(ids, &is_nil/1) or is_nil(actor_id) or ids == [] do

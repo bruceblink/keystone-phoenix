@@ -85,7 +85,7 @@ defmodule KeystonePhoenix.Job do
 
   @doc "Deletes task definitions while preserving their execution logs."
   def delete_jobs(ids) when is_list(ids) do
-    ids = Enum.map(ids, &parse_positive_integer/1)
+    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}

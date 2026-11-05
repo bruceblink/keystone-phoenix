@@ -57,7 +57,7 @@ defmodule KeystonePhoenix.Post do
   def update_post(_id, _attrs), do: {:error, invalid_changeset(:post_code)}
 
   def delete_posts(ids) when is_list(ids) do
-    ids = Enum.map(ids, &parse_positive_integer/1)
+    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}

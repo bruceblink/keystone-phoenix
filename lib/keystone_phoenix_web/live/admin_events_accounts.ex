@@ -76,7 +76,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     if Support.admin_socket?(socket) do
       case User.change_status(user_id, status) do
         {:ok, _user} ->
-          {:noreply, assign(socket, user_rows: Support.load_users(), user_feedback: "用户状态已更新")}
+          if to_string(socket.assigns.current_user["userId"]) == user_id and status in [0, "0"] do
+            {:noreply, Support.expire_authentication(socket, "当前账号已停用，请联系管理员")}
+          else
+            {:noreply, assign(socket, user_rows: Support.load_users(), user_feedback: "用户状态已更新")}
+          end
 
         error ->
           {:noreply, assign(socket, user_feedback: Support.form_error(error))}
@@ -112,8 +116,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       password = params["password"] || ""
 
       case User.reset_password(user_id, %{"password" => password}) do
-        {:ok, _user} -> {:noreply, assign(socket, user_feedback: "用户密码已重置")}
-        error -> {:noreply, assign(socket, user_feedback: Support.form_error(error))}
+        {:ok, _user} ->
+          if to_string(socket.assigns.current_user["userId"]) == to_string(user_id) do
+            {:noreply, Support.expire_authentication(socket, "密码已重置，请重新登录")}
+          else
+            {:noreply, assign(socket, user_feedback: "用户密码已重置")}
+          end
+
+        error ->
+          {:noreply, assign(socket, user_feedback: Support.form_error(error))}
       end
     else
       {:noreply, socket}
@@ -151,11 +162,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     if Support.authenticated_socket?(socket) do
       case User.update_password(socket.assigns.current_user["userId"], params) do
         {:ok, _user} ->
-          {:noreply,
-           assign(socket,
-             password_form: Support.empty_password_form(),
-             profile_feedback: "密码已更新，请重新登录"
-           )}
+          {:noreply, Support.expire_authentication(socket, "密码已更新，请重新登录")}
 
         error ->
           {:noreply, assign(socket, profile_feedback: Support.form_error(error))}
@@ -195,11 +202,18 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
             content_type: entry.client_type
           }
 
-          with {:ok, avatar_url} <- Upload.store_avatar(upload),
-               {:ok, _user} <- User.update_avatar(user_id, avatar_url) do
-            {:ok, avatar_url}
+          with {:ok, avatar_url} <- Upload.store_avatar(upload) do
+            case User.update_avatar(user_id, avatar_url) do
+              {:ok, _user} ->
+                {:ok, avatar_url}
+
+              {:error, reason} ->
+                Upload.delete_avatar(avatar_url)
+                {:ok, {:error, reason}}
+            end
           else
-            {:error, reason} -> {:ok, {:error, reason}}
+            {:error, reason} ->
+              {:ok, {:error, reason}}
           end
         end)
 
