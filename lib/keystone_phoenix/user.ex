@@ -59,6 +59,21 @@ defmodule KeystonePhoenix.User do
     end
   end
 
+  @doc "Returns active users keyed by ID with one database query."
+  @spec list_users_by_ids(list()) :: [SysUser.t()]
+  def list_users_by_ids(ids) when is_list(ids) do
+    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    if ids == [] do
+      []
+    else
+      from(u in SysUser, where: u.deleted == false and u.user_id in ^ids)
+      |> Repo.all()
+    end
+  end
+
+  def list_users_by_ids(_ids), do: []
+
   @spec get_user_by_username(String.t()) :: {:ok, SysUser.t()} | {:error, :not_found}
   def get_user_by_username(username) when is_binary(username) do
     case Repo.get_by(SysUser, username: username, deleted: false) do

@@ -29,9 +29,22 @@ defmodule KeystonePhoenix.Monitor do
   @doc "Returns online refresh sessions joined with local user and department data."
   def online_users(params \\ %{}) do
     with {:ok, sessions} <- Session.list_active() do
+      users =
+        sessions
+        |> Enum.map(& &1.user_id)
+        |> User.list_users_by_ids()
+        |> Map.new(&{&1.user_id, &1})
+
+      departments =
+        users
+        |> Map.values()
+        |> Enum.map(& &1.dept_id)
+        |> Department.list_depts_by_ids()
+        |> Map.new(&{&1.dept_id, &1})
+
       rows =
         sessions
-        |> Enum.map(&online_user_to_map/1)
+        |> Enum.map(&online_user_to_map(&1, users, departments))
         |> Enum.reject(&is_nil/1)
         |> Enum.filter(&matches_username?(&1, params["username"] || params[:username]))
         |> Enum.filter(&matches_ip?(&1, params["ipAddress"] || params[:ip_address]))
@@ -71,32 +84,28 @@ defmodule KeystonePhoenix.Monitor do
     }
   end
 
-  defp online_user_to_map(%{jti: token_id, user_id: user_id}) do
-    with {:ok, user} <- User.get_user(user_id) do
-      dept_name =
-        case user.dept_id do
-          nil ->
-            nil
+  defp online_user_to_map(%{jti: token_id, user_id: user_id}, users, departments) do
+    case Map.get(users, user_id) do
+      nil ->
+        nil
 
-          dept_id ->
-            case Department.get_dept(dept_id) do
-              {:ok, dept} -> dept.dept_name
-              _ -> nil
-            end
-        end
+      user ->
+        dept_name =
+          case Map.get(departments, user.dept_id) do
+            nil -> nil
+            dept -> dept.dept_name
+          end
 
-      %{
-        "tokenId" => token_id,
-        "deptName" => dept_name,
-        "username" => user.username,
-        "ipAddress" => user.login_ip || "",
-        "loginLocation" => "",
-        "browser" => "",
-        "operationSystem" => "",
-        "loginTime" => datetime_to_milliseconds(user.login_date)
-      }
-    else
-      _ -> nil
+        %{
+          "tokenId" => token_id,
+          "deptName" => dept_name,
+          "username" => user.username,
+          "ipAddress" => user.login_ip || "",
+          "loginLocation" => "",
+          "browser" => "",
+          "operationSystem" => "",
+          "loginTime" => datetime_to_milliseconds(user.login_date)
+        }
     end
   end
 
