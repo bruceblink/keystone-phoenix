@@ -7,21 +7,11 @@ defmodule KeystonePhoenix.Application do
 
   @impl true
   def start(_type, _args) do
-    redis_children =
-      if Application.get_env(:keystone_phoenix, :redis_enabled, true) do
-        [
-          {Redix,
-           {Application.fetch_env!(:keystone_phoenix, :redis_url), [name: KeystonePhoenix.Redis]}}
-        ]
-      else
-        []
-      end
-
     children =
       [
         KeystonePhoenixWeb.Telemetry,
+        KeystonePhoenix.RuntimeStore,
         KeystonePhoenix.Repo,
-        redis_children,
         {Task.Supervisor,
          name: KeystonePhoenix.JobTaskSupervisor,
          max_children: Application.get_env(:keystone_phoenix, :job_task_max_children, 64)},

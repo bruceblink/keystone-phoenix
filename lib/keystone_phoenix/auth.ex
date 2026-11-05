@@ -96,15 +96,8 @@ defmodule KeystonePhoenix.Auth do
 
   defp issue_pair(user, force_login) do
     with {:ok, refresh} <- Token.issue(user, Token.refresh_type()),
-         :ok <- Session.put(refresh.jti, user.user_id, refresh.expires_in) do
-      case Session.occupy(user.user_id, refresh.jti, refresh.expires_in, force_login) do
-        :ok ->
-          issue_access_pair(user, refresh)
-
-        {:error, reason} ->
-          Session.delete(refresh.jti)
-          {:error, reason}
-      end
+         :ok <- Session.occupy(user.user_id, refresh.jti, refresh.expires_in, force_login) do
+      issue_access_pair(user, refresh)
     else
       {:error, {:token_configuration, _reason}} -> {:error, :token_configuration}
       {:error, :unavailable} -> {:error, :unavailable}

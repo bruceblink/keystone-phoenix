@@ -1,8 +1,10 @@
 defmodule KeystonePhoenix.Monitor do
-  @moduledoc "Monitoring queries for Redis, the BEAM host, and online sessions."
+  @moduledoc "Monitoring queries for ETS, the BEAM host, and online sessions."
 
   alias KeystonePhoenix.Auth.Session
+  alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Department
+  alias KeystonePhoenix.RuntimeStore
   alias KeystonePhoenix.User
 
   @bytes_per_kilobyte 1024
@@ -10,20 +12,16 @@ defmodule KeystonePhoenix.Monitor do
   @bytes_per_gigabyte @bytes_per_megabyte * 1024
   @persistent_start_key {__MODULE__, :started_at}
 
-  @doc "Returns Redis INFO fields and command call counts for the cache page."
-  def redis_cache_info do
-    with {:ok, info} <- redis_command(["INFO"]),
-         {:ok, command_info} <- redis_command(["INFO", "commandstats"]),
-         {:ok, db_size} <- redis_command(["DBSIZE"]) do
-      {:ok,
-       %{
-         "info" => parse_info(info),
-         "dbSize" => db_size,
-         "commandStats" => parse_command_stats(command_info)
-       }}
-    else
-      _ -> {:error, :unavailable}
-    end
+  @doc "Returns local ETS cache statistics for the monitoring page."
+  def cache_info do
+    {:ok,
+     %{
+       "backend" => "ets",
+       "cacheEntries" => Cache.stats().entries,
+       "captchaEntries" => :ets.info(RuntimeStore.captcha_table(), :size)
+     }}
+  rescue
+    _error -> {:error, :unavailable}
   end
 
   @doc "Returns online refresh sessions joined with local user and department data."
@@ -125,66 +123,6 @@ defmodule KeystonePhoenix.Monitor do
   end
 
   defp datetime_to_milliseconds(_datetime), do: nil
-
-  defp redis_command(command) do
-    Redix.command(KeystonePhoenix.Redis, command)
-  rescue
-    _error -> {:error, :unavailable}
-  catch
-    :exit, _reason -> {:error, :unavailable}
-  end
-
-  defp parse_info(info) when is_binary(info) do
-    info
-    |> String.split(~r/\r?\n/)
-    |> Enum.reduce(%{}, fn line, result ->
-      case info_entry(line) do
-        {key, value} -> Map.put(result, key, value)
-        nil -> result
-      end
-    end)
-  end
-
-  defp parse_info(_info), do: %{}
-
-  defp info_entry(line) do
-    separator = if String.contains?(line, ":"), do: ":", else: "="
-
-    case String.split(line, separator, parts: 2) do
-      [key, value] when key != "" ->
-        if String.starts_with?(key, "#"), do: nil, else: {key, value}
-
-      _ ->
-        nil
-    end
-  end
-
-  defp parse_command_stats(info) when is_binary(info) do
-    info
-    |> String.split(~r/\r?\n/)
-    |> Enum.flat_map(fn line ->
-      case String.split(line, "=", parts: 2) do
-        [key, value] ->
-          if key != "" and String.starts_with?(key, "cmdstat_") do
-            [%{"name" => String.trim_leading(key, "cmdstat_"), "value" => extract_calls(value)}]
-          else
-            []
-          end
-
-        _ ->
-          []
-      end
-    end)
-  end
-
-  defp parse_command_stats(_info), do: []
-
-  defp extract_calls(value) do
-    case Regex.run(~r/(?:^|,)calls=([^,]+)/, value, capture: :all_but_first) do
-      [calls] -> calls
-      _ -> "0"
-    end
-  end
 
   defp cpu_info do
     cpu_num = :erlang.system_info(:logical_processors_available) || 1

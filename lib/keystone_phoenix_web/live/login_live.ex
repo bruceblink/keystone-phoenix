@@ -501,7 +501,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
               <div class="brand">
                 <p>Keystone Phoenix</p>
                 <h1>管理后台正在迁移到 LiveView</h1>
-                <p>这个页面运行在 Phoenix LiveView 上，认证和业务数据由 Elixir、PostgreSQL 与 Redis 提供。</p>
+                <p>这个页面运行在 Phoenix LiveView 上，认证和业务数据由 Elixir、PostgreSQL 与 ETS 提供。</p>
               </div>
               <div class="card">
                 <form id="login-form" phx-submit="login">

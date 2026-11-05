@@ -41,15 +41,7 @@ if config_env() == :prod do
     # pool_count: 4,
     socket_options: maybe_ipv6
 
-  redis_url =
-    System.get_env("REDIS_URL") ||
-      raise """
-      environment variable REDIS_URL is missing.
-      For example: redis://USER:PASSWORD@HOST:6379/0
-      """
-
   config :keystone_phoenix,
-    redis_url: redis_url,
     captcha_type: System.get_env("CAPTCHA_TYPE", "math"),
     job_scheduler_enabled: System.get_env("JOB_SCHEDULER_ENABLED", "true") in ["true", "1"],
     job_scheduler_interval_ms:

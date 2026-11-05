@@ -11,13 +11,11 @@ The project is managed with Mix and uses PostgreSQL from the first commit.
 - Phoenix 1.8.16
 - Ecto SQL 3.14.x
 - Postgrex 0.22.x
-- Redix 1.10.x
 - bcrypt_elixir 3.3.x
 - JOSE 1.11.x
 - Phoenix LiveView 1.2.x
 - Bandit 1.14.x
 - PostgreSQL 18.x
-- Redis 8.6.x
 
 The dependency versions are locked in [`mix.lock`](mix.lock). `mix.exs` keeps
 the compatible minor version ranges so security and patch releases can be
@@ -27,7 +25,7 @@ updated with the normal Mix workflow.
 
 ```bash
 cp .env.example .env
-docker compose up -d postgres redis
+docker compose up -d postgres
 mix setup
 mix phx.server
 ```
@@ -60,10 +58,10 @@ GitHub Actions publishes the same release image to
 workflow also supports manual runs from the Actions tab and keeps BuildKit
 layers in the GitHub Actions cache.
 
-The release reads `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY_BASE`,
-`JWT_PRIVATE_KEY`, and `PHX_HOST` at runtime. Use `/health` for liveness and
-`/health/ready` for PostgreSQL and Redis readiness. Scheduler polling and task
-concurrency can be adjusted with `JOB_SCHEDULER_INTERVAL_MS`,
+The release reads `DATABASE_URL`, `SECRET_KEY_BASE`, `JWT_PRIVATE_KEY`, and
+`PHX_HOST` at runtime. Use `/health` for liveness and `/health/ready` for
+PostgreSQL readiness; rebuildable cache data is kept in the local ETS store.
+Scheduler polling and task concurrency can be adjusted with `JOB_SCHEDULER_INTERVAL_MS`,
 `JOB_TASK_MAX_CHILDREN`, and `JOB_EXECUTION_TIMEOUT_MS`.
 
 The frontend is being rebuilt with Phoenix LiveView. The existing Keystone
@@ -76,7 +74,7 @@ It remains usable during the first migration phase while the equivalent
 LiveView pages are added to this repository at the same API boundaries.
 
 Implemented API slices currently include health checks, dictionary type/data
-CRUD, Redis-backed dictionary lookups, and system configuration CRUD with
+CRUD, ETS-backed dictionary lookups, and system configuration CRUD with
 validated option values and cache refresh support. User list/detail queries and
 default local accounts are also available as the foundation for authentication.
 Local login, RS256 access/refresh tokens, refresh rotation, single-account
@@ -124,14 +122,14 @@ failure results are recorded without passwords or tokens.
 
 Public login bootstrap endpoints now include `/getConfig` and
 `/captchaImage`. The seeded configuration keeps captcha disabled, and setting
-`sys.account.captchaOnOff` to `true` enables Redis-backed, one-time math or
+`sys.account.captchaOnOff` to `true` enables ETS-backed, one-time math or
 character GIF captchas selected with `CAPTCHA_TYPE`. `/login` consumes the
 captcha key before checking credentials. `/register` returns an explicit
 unsupported response until an open-registration policy is implemented.
 
-Administrator monitoring endpoints now cover Redis metrics at
+Administrator monitoring endpoints now cover ETS cache metrics at
 `/monitor/cacheInfo`, BEAM host metrics at `/monitor/serverInfo`, current online
-sessions at `/monitor/onlineUsers`, and forced logout at
+sessions backed by PostgreSQL at `/monitor/onlineUsers`, and forced logout at
 `DELETE /monitor/onlineUser/:tokenId`. The network status endpoint emits a
 server-sent event snapshot at `/monitor/networkStatus/stream`, which the
 frontend can reconnect to as needed.
@@ -151,17 +149,23 @@ monitoring. Phoenix and LiveView browser assets are served from their Mix
 dependencies, so the page does not need a separate Node.js build step. Every
 source file is kept at 600 lines or fewer and the limit is checked by CI.
 
-## PostgreSQL and Redis configuration
+## PostgreSQL and ETS configuration
 
 Development and test configuration reads `POSTGRES_*` environment variables.
-Dictionary lookups by type use Redis with a five-minute TTL; writes invalidate
-the corresponding key. Development reads `REDIS_URL`, while production
-releases require `DATABASE_URL`, `REDIS_URL`, and `SECRET_KEY_BASE` from the
-runtime environment. Production authentication also requires the PEM encoded
+Dictionary lookups by type use ETS with a five-minute TTL; writes invalidate
+the corresponding key. Refresh token sessions are stored in the PostgreSQL
+`auth_sessions` table, so sessions survive application restarts and can be
+shared by multiple application instances. Production releases require
+`DATABASE_URL` and `SECRET_KEY_BASE` from the runtime environment. Production
+authentication also requires the PEM encoded
 `JWT_PRIVATE_KEY` value; `JWT_PUBLIC_KEY` is optional and is derived from the
 private key when omitted. The private key signs JWTs and decrypts RSA login
 passwords. Development generates an ephemeral RSA key pair when those values
 are omitted. No database password is committed to the repository.
+
+ETS is local to one BEAM node and is used only for data that can be rebuilt,
+such as captcha challenges and dictionary/configuration caches. The session
+table remains the source of truth for authentication and online-user control.
 
 The seeded development users use password `123456`; replace those credentials
 before exposing a deployment outside local development.

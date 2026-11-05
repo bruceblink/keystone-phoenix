@@ -58,7 +58,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       </div>
       <div class="monitor-grid details">
         <div><h3>运行环境</h3><p>节点：<%= get_in(@monitor_server_info, ["systemInfo", "computerName"]) || "未知" %></p><p>系统：<%= get_in(@monitor_server_info, ["systemInfo", "osName"]) || "未知" %></p><p>BEAM：<%= get_in(@monitor_server_info, ["jvmInfo", "name"]) || "未知" %></p><p>运行时间：<%= get_in(@monitor_server_info, ["jvmInfo", "runTime"]) || "未知" %></p></div>
-        <div><h3>Redis</h3><p>版本：<%= get_in(@monitor_cache_info, ["info", "redis_version"]) || "不可用" %></p><p>缓存键数量：<%= @monitor_cache_info["dbSize"] || 0 %></p><p>命令统计：<%= length(@monitor_cache_info["commandStats"] || []) %></p></div>
+        <div><h3>ETS 缓存</h3><p>后端：<%= @monitor_cache_info["backend"] || "不可用" %></p><p>缓存条目：<%= @monitor_cache_info["cacheEntries"] || 0 %></p><p>验证码条目：<%= @monitor_cache_info["captchaEntries"] || 0 %></p></div>
       </div>
       <h3>在线会话（<%= length(@online_user_rows) %>）</h3>
       <table><thead><tr><th>用户</th><th>部门</th><th>IP</th><th>登录时间</th><th>操作</th></tr></thead><tbody>

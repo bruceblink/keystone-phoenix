@@ -1,6 +1,6 @@
 defmodule KeystonePhoenix.Auth.Captcha do
   @moduledoc """
-  Redis-backed one-time login captchas.
+  ETS-backed one-time login captchas.
 
   The original Keystone contract returns a raw Base64 image and the frontend
   supplies the `data:image/gif;base64,` prefix. The image is generated as a
@@ -10,6 +10,7 @@ defmodule KeystonePhoenix.Auth.Captcha do
   import Bitwise
 
   alias KeystonePhoenix.Config
+  alias KeystonePhoenix.RuntimeStore
 
   @config_key "sys.account.captchaOnOff"
   @captcha_prefix "keystone:auth:captcha:"
@@ -110,42 +111,36 @@ defmodule KeystonePhoenix.Auth.Captcha do
   end
 
   defp store(key, answer) do
-    case Redix.command(KeystonePhoenix.Redis, [
-           "SET",
-           @captcha_prefix <> key,
-           answer,
-           "EX",
-           Integer.to_string(@captcha_ttl)
-         ]) do
-      {:ok, "OK"} -> :ok
-      _ -> {:error, :unavailable}
-    end
+    :ets.insert(
+      RuntimeStore.captcha_table(),
+      {@captcha_prefix <> key, answer, expires_at()}
+    )
+
+    :ok
   rescue
     _error -> {:error, :unavailable}
-  catch
-    :exit, _reason -> {:error, :unavailable}
   end
 
   defp consume_and_compare(key, code) do
-    case Redix.command(KeystonePhoenix.Redis, ["GETDEL", @captcha_prefix <> key]) do
-      {:ok, nil} ->
+    now = System.monotonic_time(:millisecond)
+
+    case :ets.take(RuntimeStore.captcha_table(), @captcha_prefix <> key) do
+      [] ->
         {:error, :captcha_expired}
 
-      {:ok, answer} when is_binary(answer) ->
-        if String.downcase(String.trim(answer)) == String.downcase(String.trim(code)) do
-          :ok
-        else
-          {:error, :captcha_invalid}
-        end
+      [{_key, answer, expires_at}] when expires_at > now ->
+        if String.downcase(String.trim(answer)) == String.downcase(String.trim(code)),
+          do: :ok,
+          else: {:error, :captcha_invalid}
 
       _ ->
-        {:error, :unavailable}
+        {:error, :captcha_expired}
     end
   rescue
     _error -> {:error, :unavailable}
-  catch
-    :exit, _reason -> {:error, :unavailable}
   end
+
+  defp expires_at, do: System.monotonic_time(:millisecond) + @captcha_ttl * 1_000
 
   defp blank?(value) when is_binary(value), do: String.trim(value) == ""
   defp blank?(_value), do: true

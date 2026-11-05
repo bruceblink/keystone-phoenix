@@ -50,7 +50,6 @@ defmodule KeystonePhoenix.MixProject do
       {:castore, "~> 1.0"},
       {:bcrypt_elixir, "~> 3.2"},
       {:jose, "~> 1.11"},
-      {:redix, "~> 1.10"},
       {:dns_cluster, "~> 0.3"},
       {:bandit, "~> 1.14"},
       {:lazy_html, ">= 0.1.0", only: :test}

@@ -331,9 +331,9 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       end
 
     {cache_info, cache_error} =
-      case Monitor.redis_cache_info() do
+      case Monitor.cache_info() do
         {:ok, info} -> {info, nil}
-        _ -> {%{}, "Redis 监控数据暂不可用"}
+        _ -> {%{}, "ETS 缓存数据暂不可用"}
       end
 
     {online_users, online_error} =

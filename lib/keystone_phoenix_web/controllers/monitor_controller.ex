@@ -6,9 +6,9 @@ defmodule KeystonePhoenixWeb.MonitorController do
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenixWeb.ApiResponse
 
-  @doc "Returns Redis server information and command statistics."
+  @doc "Returns ETS cache statistics."
   def cache_info(conn, _params) do
-    case Monitor.redis_cache_info() do
+    case Monitor.cache_info() do
       {:ok, info} -> json(conn, ApiResponse.ok(info))
       {:error, :unavailable} -> render_error(conn, :unavailable)
     end

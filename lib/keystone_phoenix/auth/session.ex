@@ -1,199 +1,206 @@
 defmodule KeystonePhoenix.Auth.Session do
-  @moduledoc "Redis-backed refresh token sessions."
+  @moduledoc "PostgreSQL-backed refresh token sessions."
 
-  @redis_name KeystonePhoenix.Redis
-  @key_prefix "keystone:auth:refresh:"
-  @account_prefix "keystone:auth:account:"
-  @mget_batch_size 500
+  import Ecto.Query
 
-  @spec put(String.t(), integer(), pos_integer()) :: :ok | {:error, :unavailable}
-  def put(jti, user_id, ttl) do
-    case command(["SET", key(jti), to_string(user_id), "EX", Integer.to_string(ttl)]) do
-      {:ok, "OK"} -> :ok
-      _ -> {:error, :unavailable}
-    end
-  end
+  alias KeystonePhoenix.Auth.AuthSession
+  alias KeystonePhoenix.Repo
 
-  @spec valid?(String.t(), integer()) :: boolean()
-  def valid?(jti, user_id) do
-    command(["GET", key(jti)]) == {:ok, to_string(user_id)}
-  end
-
-  @spec active?(integer(), String.t()) :: boolean()
-  def active?(user_id, jti) do
-    command(["GET", account_key(user_id)]) == {:ok, jti}
-  end
-
+  @doc "Claims the only active refresh session allowed for a user."
   @spec occupy(integer(), String.t(), pos_integer(), boolean()) :: :ok | {:error, atom()}
   def occupy(user_id, jti, ttl, force_login \\ false) do
-    account_key = account_key(user_id)
+    now = DateTime.utc_now()
+    expires_at = DateTime.add(now, ttl, :second)
 
-    case command(["GET", account_key]) do
-      {:ok, nil} ->
-        claim_account(account_key, jti, ttl)
+    Repo.transaction(fn ->
+      lock_user(user_id)
+      expire_user_sessions(user_id, now)
 
-      {:ok, ^jti} ->
-        :ok
+      case active_session(user_id, now) do
+        nil ->
+          activate_session(user_id, jti, expires_at)
 
-      {:ok, current_jti} when force_login ->
-        delete(current_jti)
-        command(["DEL", account_key])
-        claim_account(account_key, jti, ttl)
+        %{jti: ^jti} ->
+          activate_session(user_id, jti, expires_at)
 
-      {:ok, _current_jti} ->
-        {:error, :already_logged_in}
+        _session when force_login ->
+          revoke_user_sessions(user_id)
+          activate_session(user_id, jti, expires_at)
 
-      {:error, :unavailable} ->
-        {:error, :unavailable}
-
-      _ ->
-        {:error, :unavailable}
-    end
+        _session ->
+          Repo.rollback(:already_logged_in)
+      end
+    end)
+    |> occupy_result()
+  rescue
+    _error -> {:error, :unavailable}
   end
 
+  @doc "Checks whether a refresh token belongs to an active user session."
+  @spec valid?(String.t(), integer()) :: boolean()
+  def valid?(jti, user_id) do
+    now = DateTime.utc_now()
+
+    Repo.exists?(
+      from(session in AuthSession,
+        where:
+          session.jti == ^jti and session.user_id == ^user_id and session.active == true and
+            is_nil(session.revoked_at) and session.expires_at > ^now
+      )
+    )
+  rescue
+    _error -> false
+  end
+
+  @doc "Checks whether a token is the current active session for a user."
+  @spec active?(integer(), String.t()) :: boolean()
+  def active?(user_id, jti), do: valid?(jti, user_id)
+
+  @doc "Revokes a user's current session."
   @spec release(integer(), String.t()) :: :ok
   def release(user_id, jti) do
-    account_key = account_key(user_id)
-
-    if command(["GET", account_key]) == {:ok, jti} do
-      command(["DEL", account_key])
-    end
+    Repo.delete_all(
+      from(session in AuthSession, where: session.user_id == ^user_id and session.jti == ^jti)
+    )
 
     :ok
+  rescue
+    _error -> :ok
   end
 
   @spec revoke(integer(), String.t()) :: :ok
-  def revoke(user_id, jti) do
-    delete(jti)
-    release(user_id, jti)
-  end
+  def revoke(user_id, jti), do: release(user_id, jti)
 
   @doc "Revokes the refresh session currently associated with a user account."
   @spec revoke_account(integer()) :: :ok
   def revoke_account(user_id) do
-    case command(["GET", account_key(user_id)]) do
-      {:ok, jti} when is_binary(jti) -> revoke(user_id, jti)
-      _ -> :ok
-    end
+    Repo.delete_all(from(session in AuthSession, where: session.user_id == ^user_id))
+
+    :ok
+  rescue
+    _error -> :ok
   end
 
+  @doc "Removes a refresh session by its token identifier."
   @spec delete(String.t()) :: :ok
   def delete(jti) do
-    command(["DEL", key(jti)])
+    Repo.delete_all(from(session in AuthSession, where: session.jti == ^jti))
     :ok
+  rescue
+    _error -> :ok
   end
 
-  @doc "Returns the refresh sessions currently visible in Redis."
+  @doc "Returns active refresh sessions from PostgreSQL."
   @spec list_active() :: {:ok, list(map())} | {:error, :unavailable}
   def list_active do
-    with {:ok, keys} <- scan_keys("0", []),
-         {:ok, user_ids} <- batch_mget(keys),
-         sessions <- session_candidates(keys, user_ids),
-         account_keys <- Enum.map(sessions, &account_key(&1.user_id)),
-         {:ok, account_jtis} <- batch_mget(account_keys) do
-      {:ok, active_sessions(sessions, account_jtis)}
-    end
+    now = DateTime.utc_now()
+
+    Repo.delete_all(from(session in AuthSession, where: session.expires_at <= ^now))
+
+    sessions =
+      from(session in AuthSession,
+        where:
+          session.active == true and is_nil(session.revoked_at) and session.expires_at > ^now,
+        order_by: [desc: session.inserted_at]
+      )
+      |> Repo.all()
+
+    {:ok, Enum.map(sessions, &%{jti: &1.jti, user_id: &1.user_id})}
+  rescue
+    _error -> {:error, :unavailable}
   end
 
-  @doc "Revokes a refresh session by its public online-user token id."
+  @doc "Revokes an online session by its public token identifier."
   @spec revoke_token(String.t()) :: :ok | {:error, :not_found | :unavailable}
   def revoke_token(jti) when is_binary(jti) and jti != "" do
-    case command(["GET", key(jti)]) do
-      {:ok, user_id} when is_binary(user_id) ->
-        with {parsed_id, ""} <- Integer.parse(user_id),
-             true <- parsed_id > 0 do
-          revoke(parsed_id, jti)
-        else
-          _ -> {:error, :not_found}
-        end
+    now = DateTime.utc_now()
 
-      {:ok, nil} ->
-        {:error, :not_found}
+    {count, _sessions} =
+      Repo.delete_all(
+        from(session in AuthSession,
+          where:
+            session.jti == ^jti and session.active == true and is_nil(session.revoked_at) and
+              session.expires_at > ^now
+        )
+      )
 
-      {:error, :unavailable} ->
-        {:error, :unavailable}
-
-      _ ->
-        {:error, :not_found}
-    end
+    if count == 1, do: :ok, else: {:error, :not_found}
+  rescue
+    _error -> {:error, :unavailable}
   end
 
   def revoke_token(_jti), do: {:error, :not_found}
 
-  defp key(jti), do: @key_prefix <> jti
-  defp account_key(user_id), do: @account_prefix <> to_string(user_id)
-
-  defp batch_mget([]), do: {:ok, []}
-
-  defp batch_mget(keys) do
-    keys
-    |> Enum.chunk_every(@mget_batch_size)
-    |> Enum.reduce_while({:ok, []}, fn chunk, {:ok, batches} ->
-      case command(["MGET" | chunk]) do
-        {:ok, values} when is_list(values) -> {:cont, {:ok, [values | batches]}}
-        _ -> {:halt, {:error, :unavailable}}
-      end
-    end)
-    |> flatten_mget_batches()
+  defp lock_user(user_id) do
+    Repo.query!("SELECT pg_advisory_xact_lock($1)", [user_id])
   end
 
-  defp flatten_mget_batches({:ok, batches}),
-    do: {:ok, batches |> Enum.reverse() |> List.flatten()}
-
-  defp flatten_mget_batches(error), do: error
-
-  defp session_candidates(keys, user_ids) do
-    keys
-    |> Enum.zip(user_ids)
-    |> Enum.flat_map(fn {redis_key, user_id} ->
-      jti = String.replace_prefix(redis_key, @key_prefix, "")
-
-      case Integer.parse(to_string(user_id)) do
-        {parsed_id, ""} when parsed_id > 0 -> [%{jti: jti, user_id: parsed_id}]
-        _ -> []
-      end
-    end)
+  defp expire_user_sessions(user_id, now) do
+    Repo.delete_all(
+      from(session in AuthSession,
+        where:
+          session.user_id == ^user_id and session.active == true and is_nil(session.revoked_at) and
+            session.expires_at <= ^now
+      )
+    )
   end
 
-  defp active_sessions(sessions, account_jtis) do
-    sessions
-    |> Enum.zip(account_jtis)
-    |> Enum.flat_map(fn {%{jti: jti} = session, account_jti} ->
-      if account_jti == jti, do: [session], else: []
-    end)
+  defp active_session(user_id, now) do
+    Repo.one(
+      from(session in AuthSession,
+        where:
+          session.user_id == ^user_id and session.active == true and is_nil(session.revoked_at) and
+            session.expires_at > ^now,
+        order_by: [desc: session.inserted_at],
+        limit: 1
+      )
+    )
   end
 
-  defp scan_keys(cursor, keys) do
-    case command(["SCAN", cursor, "MATCH", @key_prefix <> "*", "COUNT", "100"]) do
-      {:ok, [next_cursor, found_keys]} when is_binary(next_cursor) and is_list(found_keys) ->
-        keys = [found_keys | keys]
+  defp revoke_user_sessions(user_id) do
+    Repo.delete_all(
+      from(session in AuthSession,
+        where:
+          session.user_id == ^user_id and session.active == true and is_nil(session.revoked_at)
+      )
+    )
+  end
 
-        if next_cursor == "0" do
-          {:ok, List.flatten(Enum.reverse(keys))}
-        else
-          scan_keys(next_cursor, keys)
+  defp activate_session(user_id, jti, expires_at) do
+    case Repo.get_by(AuthSession, jti: jti) do
+      nil ->
+        case Repo.insert(
+               AuthSession.changeset(%AuthSession{}, %{
+                 user_id: user_id,
+                 jti: jti,
+                 expires_at: expires_at
+               })
+             ) do
+          {:ok, _session} -> :ok
+          {:error, _changeset} -> Repo.rollback(:unavailable)
         end
 
-      {:error, :unavailable} ->
-        {:error, :unavailable}
+      %{user_id: ^user_id} = session ->
+        case Repo.update(
+               Ecto.Changeset.change(session,
+                 active: true,
+                 revoked_at: nil,
+                 expires_at: expires_at
+               )
+             ) do
+          {:ok, _session} -> :ok
+          {:error, _changeset} -> Repo.rollback(:unavailable)
+        end
 
-      _ ->
-        {:error, :unavailable}
+      _session ->
+        Repo.rollback(:invalid_session)
     end
   end
 
-  defp claim_account(account_key, jti, ttl) do
-    case command(["SET", account_key, jti, "EX", Integer.to_string(ttl), "NX"]) do
-      {:ok, "OK"} -> :ok
-      {:ok, nil} -> {:error, :already_logged_in}
-      {:error, :unavailable} -> {:error, :unavailable}
-      _ -> {:error, :unavailable}
-    end
-  end
+  defp occupy_result({:ok, :ok}), do: :ok
 
-  defp command(command) do
-    Redix.command(@redis_name, command)
-  catch
-    :exit, _ -> {:error, :unavailable}
-  end
+  defp occupy_result({:error, reason}) when reason in [:already_logged_in, :invalid_session],
+    do: {:error, reason}
+
+  defp occupy_result({:error, _reason}), do: {:error, :unavailable}
 end

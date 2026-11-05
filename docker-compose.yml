@@ -1,14 +1,4 @@
 services:
-  redis:
-    image: redis:8.6.2-alpine
-    container_name: keystone_phoenix_redis
-    restart: unless-stopped
-    command: redis-server --appendonly no
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - keystone_phoenix_redis_data:/data
-
   postgres:
     image: postgres:18
     container_name: keystone_phoenix_postgres
@@ -29,5 +19,4 @@ services:
       retries: 10
 
 volumes:
-  keystone_phoenix_redis_data:
   keystone_phoenix_postgres_data:

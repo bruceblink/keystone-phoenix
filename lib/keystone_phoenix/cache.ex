@@ -1,13 +1,7 @@
 defmodule KeystonePhoenix.Cache do
-  @moduledoc """
-  Small Redis cache boundary with a database fallback.
+  @moduledoc "Small ETS cache boundary for rebuildable application data."
 
-  Cache failures are deliberately ignored so Redis availability does not make
-  dictionary reads unavailable.
-  """
-
-  @redis_name KeystonePhoenix.Redis
-  @delete_batch_size 500
+  alias KeystonePhoenix.RuntimeStore
 
   @spec fetch(String.t(), pos_integer(), (-> term())) :: term()
   def fetch(key, ttl_seconds, loader) when is_function(loader, 0) do
@@ -23,87 +17,61 @@ defmodule KeystonePhoenix.Cache do
   end
 
   @spec put(String.t(), term(), pos_integer()) :: :ok
-  def put(key, value, ttl_seconds) do
-    with {:ok, encoded} <- Jason.encode(value),
-         {:ok, "OK"} <-
-           Redix.command(@redis_name, ["SET", key, encoded, "EX", Integer.to_string(ttl_seconds)]) do
-      :ok
-    else
-      _ -> :ok
-    end
+  def put(key, value, ttl_seconds) when is_binary(key) and is_integer(ttl_seconds) do
+    :ets.insert(RuntimeStore.cache_table(), {key, value, expires_at(ttl_seconds)})
+    :ok
   rescue
     _ -> :ok
-  catch
-    :exit, _ -> :ok
   end
 
   @spec delete(String.t()) :: :ok
   def delete(key) do
-    Redix.command(@redis_name, ["DEL", key])
+    :ets.delete(RuntimeStore.cache_table(), key)
     :ok
   rescue
     _ -> :ok
-  catch
-    :exit, _ -> :ok
   end
 
   @spec delete_prefix(String.t()) :: :ok
-  def delete_prefix(prefix) do
-    prefix
-    |> scan_keys()
-    |> delete_many()
+  def delete_prefix(prefix) when is_binary(prefix) do
+    RuntimeStore.cache_table()
+    |> :ets.tab2list()
+    |> Enum.each(fn {key, _value, _expires_at} ->
+      if String.starts_with?(key, prefix), do: :ets.delete(RuntimeStore.cache_table(), key)
+    end)
 
     :ok
   rescue
     _ -> :ok
-  catch
-    :exit, _ -> :ok
+  end
+
+  def delete_prefix(_prefix), do: :ok
+
+  @doc "Returns the number of live ETS cache entries."
+  def stats do
+    %{entries: :ets.info(RuntimeStore.cache_table(), :size)}
+  rescue
+    _ -> %{entries: 0}
   end
 
   defp get(key) do
-    case Redix.command(@redis_name, ["GET", key]) do
-      {:ok, nil} -> :miss
-      {:ok, encoded} -> decode(encoded)
-      _ -> :miss
+    current_time = now()
+
+    case :ets.lookup(RuntimeStore.cache_table(), key) do
+      [{^key, value, expires_at}] when expires_at > current_time ->
+        {:ok, value}
+
+      [{^key, _value, _expires_at}] ->
+        :ets.delete(RuntimeStore.cache_table(), key)
+        :miss
+
+      [] ->
+        :miss
     end
   rescue
     _ -> :miss
-  catch
-    :exit, _ -> :miss
   end
 
-  defp decode(encoded) do
-    case Jason.decode(encoded) do
-      {:ok, value} -> {:ok, value}
-      _ -> :miss
-    end
-  end
-
-  defp delete_many([]), do: :ok
-
-  defp delete_many(keys) do
-    keys
-    |> Enum.chunk_every(@delete_batch_size)
-    |> Enum.each(fn chunk -> Redix.command(@redis_name, ["DEL" | chunk]) end)
-
-    :ok
-  end
-
-  defp scan_keys(prefix), do: scan_keys("0", "#{prefix}*", [])
-
-  defp scan_keys(cursor, pattern, keys) do
-    case Redix.command(@redis_name, ["SCAN", cursor, "MATCH", pattern, "COUNT", "100"]) do
-      {:ok, [next_cursor, found_keys]} when is_binary(next_cursor) and is_list(found_keys) ->
-        keys = [found_keys | keys]
-
-        if next_cursor == "0" do
-          List.flatten(Enum.reverse(keys))
-        else
-          scan_keys(next_cursor, pattern, keys)
-        end
-
-      _ ->
-        keys
-    end
-  end
+  defp expires_at(ttl_seconds), do: now() + max(ttl_seconds, 1) * 1_000
+  defp now, do: System.monotonic_time(:millisecond)
 end
