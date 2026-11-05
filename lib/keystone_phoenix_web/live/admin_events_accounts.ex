@@ -1,7 +1,9 @@
 defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   @moduledoc "LiveView event handlers for the accounts domain."
 
+  import Phoenix.LiveView, only: [consume_uploaded_entries: 3]
   import Phoenix.Component, only: [assign: 2]
+  alias KeystonePhoenix.Upload
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
@@ -104,8 +106,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     end
   end
 
-  def handle_event("reset-user-password", %{"user-id" => user_id, "password" => password}, socket) do
+  def handle_event("reset-user-password", params, socket) do
     if Support.admin_socket?(socket) do
+      user_id = params["userId"] || params["user-id"]
+      password = params["password"] || ""
+
       case User.reset_password(user_id, %{"password" => password}) do
         {:ok, _user} -> {:noreply, assign(socket, user_feedback: "用户密码已重置")}
         error -> {:noreply, assign(socket, user_feedback: Support.form_error(error))}
@@ -172,6 +177,46 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
         error ->
           {:noreply, assign(socket, profile_feedback: Support.form_error(error))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("save-profile-avatar-upload", _params, socket) do
+    if Support.authenticated_socket?(socket) do
+      user_id = socket.assigns.current_user["userId"]
+
+      results =
+        consume_uploaded_entries(socket, :avatar, fn %{path: path}, entry ->
+          upload = %Plug.Upload{
+            path: path,
+            filename: entry.client_name,
+            content_type: entry.client_type
+          }
+
+          with {:ok, avatar_url} <- Upload.store_avatar(upload),
+               {:ok, _user} <- User.update_avatar(user_id, avatar_url) do
+            {:ok, avatar_url}
+          else
+            {:error, reason} -> {:ok, {:error, reason}}
+          end
+        end)
+
+      case results do
+        [{:error, reason}] ->
+          {:noreply, assign(socket, profile_feedback: Support.form_error({:error, reason}))}
+
+        [avatar_url] when is_binary(avatar_url) ->
+          {:noreply,
+           assign(socket,
+             current_user: Map.put(socket.assigns.current_user, "avatar", avatar_url),
+             profile_form: Map.put(socket.assigns.profile_form, "avatar", avatar_url),
+             profile_feedback: "头像已上传"
+           )}
+
+        [] ->
+          {:noreply, assign(socket, profile_feedback: "请选择头像文件")}
       end
     else
       {:noreply, socket}

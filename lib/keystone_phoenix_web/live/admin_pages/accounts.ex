@@ -30,6 +30,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         </div>
         <div class="form-actions"><button type="submit">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="new-user">取消编辑</button></div>
       </form>
+      <form :if={@user_form["userId"] != ""} id="user-reset-password-form" phx-submit="reset-user-password">
+        <input type="hidden" name="userId" value={@user_form["userId"]} />
+        <div class="form-grid">
+          <div><label for="user-reset-password">重置密码</label><input id="user-reset-password" type="password" name="password" minlength="8" required /></div>
+        </div>
+        <div class="form-actions"><button type="submit" class="secondary">重置用户密码</button></div>
+      </form>
       <table>
         <thead><tr><th>用户名</th><th>昵称</th><th>部门</th><th>角色</th><th>邮箱</th><th>手机号</th><th>状态</th><th>操作</th></tr></thead>
         <tbody>
@@ -46,6 +53,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
   end
 
   def profile(assigns) do
+    assigns = assign_new(assigns, :avatar_upload, fn -> nil end)
+
     ~H"""
     <div class="panel">
       <h3>个人资料</h3>
@@ -63,6 +72,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         <label for="profile-avatar">头像地址</label><input id="profile-avatar" name="avatar" value={@profile_form["avatar"] || ""} placeholder="https://..." />
         <div class="form-actions"><button type="submit" class="secondary">更新头像</button></div>
       </form>
+      <%= if @avatar_upload do %>
+        <form id="profile-avatar-upload-form" phx-submit="save-profile-avatar-upload">
+          <label for="profile-avatar-file">头像文件</label>
+          <.live_file_input upload={@avatar_upload} id="profile-avatar-file" />
+          <%= for entry <- @avatar_upload.entries do %>
+            <progress value={entry.progress} max="100"><%= entry.progress %>%</progress>
+          <% end %>
+          <%= for entry <- @avatar_upload.errors do %>
+            <p class="error" role="alert">头像文件无效：<%= inspect(entry) %></p>
+          <% end %>
+          <div class="form-actions"><button type="submit" class="secondary">上传头像</button></div>
+        </form>
+      <% end %>
       <h3>修改密码</h3>
       <form phx-submit="change-profile-password">
         <div class="form-grid">

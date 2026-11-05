@@ -17,6 +17,13 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    socket =
+      allow_upload(socket, :avatar,
+        accept: ~w(.bmp .gif .jpg .jpeg .png .webp),
+        max_entries: 1,
+        max_file_size: 50 * 1024 * 1024
+      )
+
     {:ok,
      assign(socket,
        username: "",
@@ -195,7 +202,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("show-panel", _params, socket), do: {:noreply, socket}
 
   @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles new-role edit-role save-role toggle-role-status delete-role refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
-  @accounts_events ~w(refresh-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar)
+  @accounts_events ~w(refresh-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
   @system_events ~w(refresh-config new-config edit-config save-config refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs edit-notice cancel-notice save-notice toggle-notice-status delete-notice refresh-notices delete-login-log delete-operation-log)
   @operations_events ~w(refresh-jobs new-job edit-job save-job delete-job run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor logout-online-user)
 
@@ -424,7 +431,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "monitor" -> %>
                       <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} network_status={@network_status} monitor_feedback={@monitor_feedback} />
                     <% "profile" -> %>
-                      <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} />
+                      <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} avatar_upload={@uploads.avatar} />
                     <% _ -> %>
                       <div class="panel"><p>请选择一个管理模块。</p></div>
                   <% end %>
@@ -433,7 +440,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <button type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" phx-value-panel="profile">个人资料</button>
                   </nav>
                   <%= if @active_panel == "profile" do %>
-                    <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} />
+                    <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} avatar_upload={@uploads.avatar} />
                   <% else %>
                     <div class="card">
                       <h2>登录成功</h2>

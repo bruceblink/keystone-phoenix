@@ -375,6 +375,12 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def human_error(:role_unavailable), do: "角色已停用"
   def human_error(:invalid_log), do: "日志参数无效"
   def human_error(:unavailable), do: "服务暂不可用"
+  def human_error(:invalid_upload), do: "头像文件无效"
+  def human_error(:empty_upload), do: "头像文件不能为空"
+  def human_error(:file_too_large), do: "头像文件不能超过 50 MB"
+  def human_error(:filename_too_long), do: "头像文件名过长"
+  def human_error(:type_not_allowed), do: "头像文件类型不支持"
+  def human_error(:storage_error), do: "头像文件保存失败"
   def human_error(reason), do: "操作失败：#{inspect(reason)}"
 
   def admin_socket?(socket),

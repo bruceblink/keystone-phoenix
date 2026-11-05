@@ -16,8 +16,11 @@ config :keystone_phoenix, KeystonePhoenix.Repo,
   pool_size: System.schedulers_online() * 2
 
 config :keystone_phoenix,
-  redis_enabled: false,
+  redis_enabled: System.get_env("REDIS_ENABLED", "false") in ["true", "1"],
+  redis_url: System.get_env("REDIS_URL", "redis://localhost:6379/0"),
   job_scheduler_enabled: false
+
+config :ex_unit, exclude: [:integration]
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

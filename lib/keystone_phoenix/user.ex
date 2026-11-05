@@ -299,12 +299,42 @@ defmodule KeystonePhoenix.User do
   defp normalize_attrs(attrs) when is_map(attrs) do
     Enum.reduce(@user_attrs, %{}, fn {json_key, atom_key}, normalized ->
       cond do
-        Map.has_key?(attrs, json_key) -> Map.put(normalized, atom_key, Map.get(attrs, json_key))
-        Map.has_key?(attrs, atom_key) -> Map.put(normalized, atom_key, Map.get(attrs, atom_key))
-        true -> normalized
+        Map.has_key?(attrs, json_key) ->
+          Map.put(
+            normalized,
+            atom_key,
+            normalize_relation_value(atom_key, Map.get(attrs, json_key))
+          )
+
+        Map.has_key?(attrs, atom_key) ->
+          Map.put(
+            normalized,
+            atom_key,
+            normalize_relation_value(atom_key, Map.get(attrs, atom_key))
+          )
+
+        true ->
+          normalized
       end
     end)
   end
+
+  defp normalize_relation_value(field, value) when field in [:dept_id, :post_id, :role_id] do
+    case value do
+      value when is_binary(value) ->
+        case Integer.parse(String.trim(value)) do
+          {id, ""} when id > 0 -> id
+          {0, ""} -> nil
+          {_, ""} -> value
+          _ -> if String.trim(value) == "", do: nil, else: value
+        end
+
+      value ->
+        value
+    end
+  end
+
+  defp normalize_relation_value(_field, value), do: value
 
   defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
 
