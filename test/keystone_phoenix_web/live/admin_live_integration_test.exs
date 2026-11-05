@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role
+  alias KeystonePhoenix.Job
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
 
@@ -126,5 +127,28 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     render_click(view, "unassign-role-user", %{"user-id" => to_string(created.user_id)})
     assert {:ok, unassigned} = User.get_user(created.user_id)
     assert is_nil(unassigned.role_id)
+
+    job_name = "Live 任务 #{System.unique_integer([:positive])}"
+
+    render_click(view, "show-panel", %{"panel" => "jobs"})
+
+    render_submit(view, "save-job", %{
+      "jobId" => "",
+      "jobName" => job_name,
+      "jobGroup" => "DEFAULT",
+      "invokeTarget" => "demoJobTask.printHeartbeat()",
+      "jobParams" => "",
+      "cronExpression" => "* * * * * *",
+      "concurrent" => "0",
+      "status" => "1",
+      "remark" => ""
+    })
+
+    assert render(view) =~ "任务已创建"
+    job = Job.list_jobs(%{"jobName" => job_name, "pageSize" => 10}).rows |> List.first()
+    assert job["jobName"] == job_name
+
+    render_click(view, "cancel-job", %{"job-id" => to_string(job["jobId"])})
+    assert render(view) =~ "没有正在运行的任务"
   end
 end

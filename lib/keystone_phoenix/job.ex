@@ -108,8 +108,15 @@ defmodule KeystonePhoenix.Job do
   @doc "Cancels automatic runs currently executing for a task."
   def cancel_job(id) do
     case parse_positive_integer(id) do
-      nil -> {:error, :invalid_id}
-      job_id -> KeystonePhoenix.Job.Scheduler.cancel(job_id)
+      nil ->
+        {:error, :invalid_id}
+
+      job_id ->
+        if Process.whereis(KeystonePhoenix.Job.Scheduler) do
+          KeystonePhoenix.Job.Scheduler.cancel(job_id)
+        else
+          :not_found
+        end
     end
   end
 

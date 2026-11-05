@@ -212,7 +212,18 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
            ) =~ "refresh-logs"
 
     operations_assigns = %{
-      job_rows: [],
+      job_rows: [
+        %{
+          "jobId" => 1,
+          "jobName" => "健康检查",
+          "jobGroup" => "DEFAULT",
+          "invokeTarget" => "system:health",
+          "cronExpression" => "* * * * * *",
+          "concurrent" => 0,
+          "status" => 1,
+          "statusStr" => "正常"
+        }
+      ],
       job_form: %{
         "jobId" => "",
         "jobName" => "",
@@ -221,7 +232,9 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
         "cronExpression" => "* * * * * *",
         "status" => 1
       },
-      job_targets: [],
+      job_targets: [
+        %{"name" => "健康检查", "invokeTarget" => "system:health"}
+      ],
       job_feedback: nil,
       job_log_rows: [],
       job_log_feedback: nil,
@@ -235,7 +248,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     assert render_component(
              &Operations.jobs/1,
              Map.take(operations_assigns, [:job_rows, :job_form, :job_targets, :job_feedback])
-           ) =~ "save-job"
+           ) =~ "cancel-job"
 
     assert render_component(
              &Operations.job_logs/1,
