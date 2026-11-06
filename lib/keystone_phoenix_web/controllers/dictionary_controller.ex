@@ -49,14 +49,14 @@ defmodule KeystonePhoenixWeb.DictionaryController do
   end
 
   def create_type(conn, params) do
-    case Dictionary.create_dict_type(params) do
+    case Dictionary.create_dict_type(params, conn.assigns.current_user.user_id) do
       {:ok, _dict_type} -> conn |> put_status(:created) |> json(ApiResponse.ok())
       {:error, changeset} -> render_error(conn, changeset)
     end
   end
 
   def update_type(conn, %{"dict_id" => dict_id} = params) do
-    case Dictionary.update_dict_type(dict_id, params) do
+    case Dictionary.update_dict_type(dict_id, params, conn.assigns.current_user.user_id) do
       {:ok, _dict_type} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
@@ -72,14 +72,14 @@ defmodule KeystonePhoenixWeb.DictionaryController do
   end
 
   def create_data(conn, params) do
-    case Dictionary.create_dict_data(params) do
+    case Dictionary.create_dict_data(params, conn.assigns.current_user.user_id) do
       {:ok, _dict_data} -> conn |> put_status(:created) |> json(ApiResponse.ok())
       {:error, changeset} -> render_error(conn, changeset)
     end
   end
 
   def update_data(conn, %{"dict_code" => dict_code} = params) do
-    case Dictionary.update_dict_data(dict_code, params) do
+    case Dictionary.update_dict_data(dict_code, params, conn.assigns.current_user.user_id) do
       {:ok, _dict_data} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)

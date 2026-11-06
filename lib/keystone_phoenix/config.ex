@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Config do
 
   import Ecto.Query
 
+  alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Config.SysConfig
   alias KeystonePhoenix.Repo
@@ -61,8 +62,11 @@ defmodule KeystonePhoenix.Config do
   def get_config_value_by_key(_config_key), do: ""
 
   @spec create_config(map()) :: {:ok, SysConfig.t()} | {:error, Ecto.Changeset.t()}
-  def create_config(attrs) do
+  def create_config(attrs, actor_id \\ nil)
+
+  def create_config(attrs, actor_id) do
     changeset = SysConfig.changeset(%SysConfig{}, normalize_attrs(attrs))
+    changeset = Audit.put_actor(changeset, :creator_id, actor_id)
 
     case Repo.insert(changeset) do
       {:ok, config} = result ->
@@ -76,9 +80,12 @@ defmodule KeystonePhoenix.Config do
 
   @spec update_config(integer() | String.t(), map()) ::
           {:ok, SysConfig.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def update_config(id, attrs) do
+  def update_config(id, attrs, actor_id \\ nil)
+
+  def update_config(id, attrs, actor_id) do
     with {:ok, config} <- get_config(id) do
       changeset = SysConfig.changeset(config, normalize_attrs(attrs))
+      changeset = Audit.put_actor(changeset, :updater_id, actor_id)
 
       case Repo.update(changeset) do
         {:ok, updated} = result ->

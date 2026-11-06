@@ -61,8 +61,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
       result =
         if config_id == "",
-          do: Config.create_config(params),
-          else: Config.update_config(config_id, params)
+          do: Config.create_config(params, current_user_id(socket)),
+          else: Config.update_config(config_id, params, current_user_id(socket))
 
       case result do
         {:ok, _config} ->
@@ -153,8 +153,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
       result =
         if dict_id == "",
-          do: Dictionary.create_dict_type(params),
-          else: Dictionary.update_dict_type(dict_id, params)
+          do: Dictionary.create_dict_type(params, current_user_id(socket)),
+          else: Dictionary.update_dict_type(dict_id, params, current_user_id(socket))
 
       case result do
         {:ok, _dict_type} ->
@@ -236,8 +236,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
       result =
         if dict_code == "",
-          do: Dictionary.create_dict_data(params),
-          else: Dictionary.update_dict_data(dict_code, params)
+          do: Dictionary.create_dict_data(params, current_user_id(socket)),
+          else: Dictionary.update_dict_data(dict_code, params, current_user_id(socket))
 
       case result do
         {:ok, _dict_data} ->

@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Dictionary do
 
   import Ecto.Query
 
+  alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Dictionary.{DictData, DictType}
   alias KeystonePhoenix.Repo
@@ -50,17 +51,21 @@ defmodule KeystonePhoenix.Dictionary do
   end
 
   @spec create_dict_type(map()) :: {:ok, DictType.t()} | {:error, Ecto.Changeset.t()}
-  def create_dict_type(attrs) do
-    %DictType{}
-    |> DictType.changeset(normalize_attrs(attrs, @dict_type_attrs))
-    |> Repo.insert()
+  def create_dict_type(attrs, actor_id \\ nil)
+
+  def create_dict_type(attrs, actor_id) do
+    changeset = DictType.changeset(%DictType{}, normalize_attrs(attrs, @dict_type_attrs))
+    Repo.insert(Audit.put_actor(changeset, :creator_id, actor_id))
   end
 
   @spec update_dict_type(integer() | String.t(), map()) ::
           {:ok, DictType.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def update_dict_type(id, attrs) do
+  def update_dict_type(id, attrs, actor_id \\ nil)
+
+  def update_dict_type(id, attrs, actor_id) do
     with {:ok, dict_type} <- get_dict_type(id) do
       changeset = DictType.changeset(dict_type, normalize_attrs(attrs, @dict_type_attrs))
+      changeset = Audit.put_actor(changeset, :updater_id, actor_id)
 
       if changeset.valid? do
         old_dict_type = dict_type.dict_type
@@ -122,8 +127,11 @@ defmodule KeystonePhoenix.Dictionary do
   end
 
   @spec create_dict_data(map()) :: {:ok, DictData.t()} | {:error, Ecto.Changeset.t()}
-  def create_dict_data(attrs) do
+  def create_dict_data(attrs, actor_id \\ nil)
+
+  def create_dict_data(attrs, actor_id) do
     changeset = DictData.changeset(%DictData{}, normalize_attrs(attrs, @dict_data_attrs))
+    changeset = Audit.put_actor(changeset, :creator_id, actor_id)
 
     case Repo.insert(changeset) do
       {:ok, dict_data} = result ->
@@ -137,10 +145,13 @@ defmodule KeystonePhoenix.Dictionary do
 
   @spec update_dict_data(integer() | String.t(), map()) ::
           {:ok, DictData.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def update_dict_data(id, attrs) do
+  def update_dict_data(id, attrs, actor_id \\ nil)
+
+  def update_dict_data(id, attrs, actor_id) do
     with {:ok, dict_data} <- get_dict_data(id) do
       old_dict_type = dict_data.dict_type
       changeset = DictData.changeset(dict_data, normalize_attrs(attrs, @dict_data_attrs))
+      changeset = Audit.put_actor(changeset, :updater_id, actor_id)
 
       case Repo.update(changeset) do
         {:ok, updated} = result ->

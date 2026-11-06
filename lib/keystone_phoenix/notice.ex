@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.Notice do
 
   import Ecto.Query
 
+  alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Notice.SysNotice
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.User
@@ -44,7 +45,7 @@ defmodule KeystonePhoenix.Notice do
 
   def create_notice(attrs, actor_id) when is_map(attrs) do
     changeset = SysNotice.changeset(%SysNotice{}, normalize_attrs(attrs))
-    Repo.insert(put_actor(changeset, :creator_id, actor_id))
+    Repo.insert(Audit.put_actor(changeset, :creator_id, actor_id))
   end
 
   def create_notice(_attrs, _actor_id), do: {:error, invalid_changeset(:notice_title)}
@@ -54,7 +55,7 @@ defmodule KeystonePhoenix.Notice do
   def update_notice(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, notice} <- get_notice(id) do
       changeset = SysNotice.changeset(notice, normalize_attrs(attrs))
-      Repo.update(put_actor(changeset, :updater_id, actor_id))
+      Repo.update(Audit.put_actor(changeset, :updater_id, actor_id))
     end
   end
 
@@ -112,15 +113,6 @@ defmodule KeystonePhoenix.Notice do
     |> Enum.uniq()
     |> User.list_users_by_ids()
     |> Map.new(&{&1.user_id, &1.username})
-  end
-
-  defp put_actor(changeset, _field, actor_id) when actor_id in [nil, ""], do: changeset
-
-  defp put_actor(changeset, field, actor_id) do
-    case parse_positive_integer(actor_id) do
-      nil -> changeset
-      actor_id -> Ecto.Changeset.put_change(changeset, field, actor_id)
-    end
   end
 
   defp filter_contains(query, _field, nil), do: query
