@@ -281,7 +281,7 @@ defmodule KeystonePhoenix.Dictionary do
       "dictLabel" => dict_data.dict_label,
       "dictValue" => dict_data.dict_value,
       "dictSort" => dict_data.dict_sort,
-      "isDefault" => dict_data.is_default,
+      "isDefault" => if(dict_data.is_default, do: 1, else: 0),
       "cssClass" => dict_data.css_class,
       "listClass" => dict_data.list_class,
       "status" => dict_data.status,
@@ -301,12 +301,26 @@ defmodule KeystonePhoenix.Dictionary do
     do: Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
 
   defp normalize_attrs(attrs, fields) when is_map(attrs) do
-    Enum.reduce(fields, %{}, fn {json_key, atom_key}, normalized ->
-      cond do
-        Map.has_key?(attrs, json_key) -> Map.put(normalized, atom_key, Map.get(attrs, json_key))
-        Map.has_key?(attrs, atom_key) -> Map.put(normalized, atom_key, Map.get(attrs, atom_key))
-        true -> normalized
-      end
-    end)
+    attrs =
+      Enum.reduce(fields, %{}, fn {json_key, atom_key}, normalized ->
+        cond do
+          Map.has_key?(attrs, json_key) -> Map.put(normalized, atom_key, Map.get(attrs, json_key))
+          Map.has_key?(attrs, atom_key) -> Map.put(normalized, atom_key, Map.get(attrs, atom_key))
+          true -> normalized
+        end
+      end)
+
+    normalize_default(attrs)
   end
+
+  defp normalize_default(attrs) do
+    case Map.fetch(attrs, :is_default) do
+      {:ok, value} -> Map.put(attrs, :is_default, normalize_default_value(value))
+      :error -> attrs
+    end
+  end
+
+  defp normalize_default_value(value) when value in [true, 1, "1", "true", "TRUE"], do: true
+  defp normalize_default_value(value) when value in [false, 0, "0", "false", "FALSE"], do: false
+  defp normalize_default_value(value), do: value
 end

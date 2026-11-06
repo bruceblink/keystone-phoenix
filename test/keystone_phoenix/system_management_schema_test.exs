@@ -2,6 +2,8 @@ defmodule KeystonePhoenix.SystemManagementSchemaTest do
   use ExUnit.Case, async: true
 
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Dictionary.DictData
+  alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Notice.SysNotice
   alias KeystonePhoenix.Log.{SysLoginInfo, SysOperationLog}
@@ -69,5 +71,20 @@ defmodule KeystonePhoenix.SystemManagementSchemaTest do
 
     refute Map.has_key?(KeystonePhoenix.Log.login_info_to_map(login), "deleted")
     refute Map.has_key?(KeystonePhoenix.Log.operation_log_to_map(operation), "deleted")
+  end
+
+  test "dictionary default values use the frontend's numeric contract" do
+    changeset =
+      DictData.changeset(%DictData{}, %{
+        dict_type: "common.yesOrNo",
+        dict_label: "是",
+        dict_value: 1,
+        dict_sort: 1,
+        is_default: "1",
+        status: 1
+      })
+
+    assert changeset.valid?
+    assert Dictionary.dict_data_to_map(Ecto.Changeset.apply_changes(changeset))["isDefault"] == 1
   end
 end
