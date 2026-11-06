@@ -368,7 +368,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
             menu
             |> Map.merge(Support.empty_menu_form())
             |> Map.put("metaInfo", Jason.encode!(menu["meta"] || %{}))
-            |> Map.put("isButton", if(menu["isButton"] == 1, do: "true", else: "false"))
+            |> Map.put("isButton", if(menu["isButton"], do: "true", else: "false"))
 
           {:noreply, assign(socket, menu_form: form, menu_feedback: nil)}
       end

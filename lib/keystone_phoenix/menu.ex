@@ -31,6 +31,7 @@ defmodule KeystonePhoenix.Menu do
 
     query = filter_status(query, params["status"] || params[:status])
     query = filter_type(query, params["menuType"] || params[:menu_type])
+    query = filter_button(query, params["isButton"] || params[:is_button])
     Repo.all(query) |> Enum.map(&menu_to_map/1)
   end
 
@@ -132,22 +133,30 @@ defmodule KeystonePhoenix.Menu do
   @doc "Builds the authenticated user's router tree."
   def routers_for_user(user) do
     menus_for_user(user)
-    |> Enum.reject(&(&1["isButton"] == 1))
+    |> Enum.reject(& &1["isButton"])
     |> build_tree()
   end
 
   def menu_to_map(menu) do
+    meta = decode_meta(menu.meta_info)
+    menu_type = if menu.is_button, do: 0, else: menu.menu_type
+
     %{
       "menuId" => menu.menu_id,
+      "id" => menu.menu_id,
       "menuName" => menu.menu_name,
-      "menuType" => menu.menu_type,
+      "menuType" => menu_type,
+      "menuTypeStr" => menu_type_label(menu_type, menu.is_button),
       "routerName" => menu.router_name,
       "parentId" => menu.parent_id,
       "path" => menu.path,
-      "isButton" => if(menu.is_button, do: 1, else: 0),
+      "isButton" => menu.is_button,
       "permission" => menu.permission,
-      "meta" => decode_meta(menu.meta_info),
+      "meta" => meta,
+      "rank" => Map.get(meta, "rank"),
+      "icon" => Map.get(meta, "icon"),
       "status" => menu.status,
+      "statusStr" => status_label(menu.status),
       "remark" => menu.remark,
       "createTime" => format_datetime(menu.create_time)
     }
@@ -328,6 +337,32 @@ defmodule KeystonePhoenix.Menu do
       :error -> query
     end
   end
+
+  defp filter_button(query, value) when value in [true, false],
+    do: where(query, [menu], menu.is_button == ^value)
+
+  defp filter_button(query, value) when is_binary(value) do
+    case String.downcase(String.trim(value)) do
+      "true" -> where(query, [menu], menu.is_button == true)
+      "false" -> where(query, [menu], menu.is_button == false)
+      "1" -> where(query, [menu], menu.is_button == true)
+      "0" -> where(query, [menu], menu.is_button == false)
+      _ -> query
+    end
+  end
+
+  defp filter_button(query, _value), do: query
+
+  defp menu_type_label(_menu_type, true), do: "按钮"
+  defp menu_type_label(1, false), do: "页面"
+  defp menu_type_label(2, false), do: "目录"
+  defp menu_type_label(3, false), do: "内嵌Iframe"
+  defp menu_type_label(4, false), do: "外链跳转"
+  defp menu_type_label(_menu_type, false), do: "权限"
+
+  defp status_label(1), do: "正常"
+  defp status_label(0), do: "停用"
+  defp status_label(status), do: to_string(status || "")
 
   defp decode_meta(meta_info) when is_binary(meta_info) do
     case Jason.decode(meta_info) do

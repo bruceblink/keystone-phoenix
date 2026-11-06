@@ -298,7 +298,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     end
   end
 
-  def menu_type_label(_type, 1), do: "按钮"
+  def menu_type_label(_type, true), do: "按钮"
   def menu_type_label(2, _is_button), do: "目录"
   def menu_type_label(1, _is_button), do: "菜单"
   def menu_type_label(0, _is_button), do: "权限"

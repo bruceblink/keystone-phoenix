@@ -54,6 +54,23 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     assert {:error, :invalid_token} = Auth.authenticate_access_token(tokens.token)
   end
 
+  @tag :integration
+  test "role details include the frontend selection lists", %{conn: conn} do
+    role = insert_role()
+    role = Repo.update!(Ecto.Changeset.change(role, dept_id_set: "11,12"))
+    menu = insert_menu(role.role_id, "system:role:query")
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
+
+    response = get(authorized_conn, "/system/role/#{role.role_id}")
+    assert %{"code" => 0, "data" => data} = json_response(response, 200)
+    assert data["menuIds"] == [menu.menu_id]
+    assert data["selectedMenuList"] == [menu.menu_id]
+    assert data["selectedDeptList"] == [11, 12]
+  end
+
   defp insert_role do
     %SysRole{}
     |> SysRole.changeset(%{

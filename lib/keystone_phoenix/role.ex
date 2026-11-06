@@ -140,6 +140,9 @@ defmodule KeystonePhoenix.Role do
     |> Repo.all()
   end
 
+  @doc "Returns the department IDs selected for a role data scope."
+  def dept_ids_for_role(%SysRole{dept_id_set: dept_id_set}), do: parse_id_set(dept_id_set)
+
   @doc "Lists users currently assigned to a role."
   def list_allocated_users(role_id, params \\ %{}) do
     case parse_positive_integer(role_id) do
@@ -331,6 +334,17 @@ defmodule KeystonePhoenix.Role do
   end
 
   defp normalize_ids(_ids), do: []
+
+  defp parse_id_set(ids) when is_binary(ids) do
+    ids
+    |> String.split(",", trim: true)
+    |> Enum.map(&parse_positive_integer/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  defp parse_id_set(ids) when is_list(ids), do: normalize_ids(ids)
+  defp parse_id_set(_ids), do: []
 
   defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
 

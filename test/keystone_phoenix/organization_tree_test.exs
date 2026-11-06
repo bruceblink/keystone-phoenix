@@ -88,6 +88,39 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
     assert {:error, :assigned_to_role} = Menu.delete_menu(page.menu_id)
   end
 
+  test "menu maps expose the frontend tree contract and button filter" do
+    page =
+      %SysMenu{menu_id: 401}
+      |> SysMenu.changeset(%{
+        parent_id: 0,
+        menu_name: "前端页面",
+        menu_type: 1,
+        is_button: false,
+        meta_info: ~s({"rank":5,"icon":"ri-home-line"}),
+        path: "/home",
+        status: 1
+      })
+      |> Repo.insert!()
+
+    button = insert_menu(402, 0, 0, true, "前端按钮")
+    rows = Menu.list_menus()
+    page_row = Enum.find(rows, &(&1["menuId"] == page.menu_id))
+    button_row = Enum.find(rows, &(&1["menuId"] == button.menu_id))
+
+    assert page_row["id"] == page.menu_id
+    assert page_row["isButton"] == false
+    assert page_row["menuType"] == 1
+    assert page_row["menuTypeStr"] == "页面"
+    assert page_row["statusStr"] == "正常"
+    assert page_row["rank"] == 5
+    assert page_row["icon"] == "ri-home-line"
+    assert Enum.map(Menu.list_menus(%{"isButton" => "false"}), & &1["menuId"]) == [page.menu_id]
+    assert button_row["id"] == button.menu_id
+    assert button_row["isButton"] == true
+    assert button_row["menuType"] == 0
+    assert button_row["menuTypeStr"] == "按钮"
+  end
+
   defp insert_dept(id, parent_id, ancestors, name, status \\ 1) do
     %SysDept{dept_id: id}
     |> SysDept.changeset(%{

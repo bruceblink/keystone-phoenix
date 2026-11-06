@@ -45,7 +45,17 @@ defmodule KeystonePhoenixWeb.RoleController do
   def show(conn, %{"role_id" => role_id}) do
     case Role.get_role(role_id) do
       {:ok, role} ->
-        data = Role.role_to_map(role) |> Map.put("menuIds", Role.menu_ids_for_role(role.role_id))
+        menu_ids = Role.menu_ids_for_role(role.role_id)
+
+        data =
+          role
+          |> Role.role_to_map()
+          |> Map.merge(%{
+            "menuIds" => menu_ids,
+            "selectedMenuList" => menu_ids,
+            "selectedDeptList" => Role.dept_ids_for_role(role)
+          })
+
         json(conn, ApiResponse.ok(data))
 
       {:error, :not_found} ->
