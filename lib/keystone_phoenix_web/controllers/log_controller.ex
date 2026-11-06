@@ -136,7 +136,7 @@ defmodule KeystonePhoenixWeb.LogController do
     [
       row["operationId"],
       business_type_label(row["businessType"]),
-      request_method_label(row["requestMethod"]),
+      row["requestMethodStr"] || request_method_label(row["requestMethod"]),
       row["requestModule"],
       row["requestUrl"],
       row["calledMethod"],

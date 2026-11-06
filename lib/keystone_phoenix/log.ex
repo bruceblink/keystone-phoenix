@@ -101,6 +101,7 @@ defmodule KeystonePhoenix.Log do
 
   def login_info_to_map(log) do
     %{
+      "logId" => to_string(log.info_id),
       "infoId" => log.info_id,
       "username" => log.username,
       "ipAddress" => log.ip_address,
@@ -108,6 +109,7 @@ defmodule KeystonePhoenix.Log do
       "browser" => log.browser,
       "operationSystem" => log.operation_system,
       "status" => log.status,
+      "statusStr" => login_status_label(log.status),
       "msg" => log.msg,
       "loginTime" => format_datetime(log.login_time)
     }
@@ -117,17 +119,24 @@ defmodule KeystonePhoenix.Log do
     %{
       "operationId" => log.operation_id,
       "businessType" => log.business_type,
-      "requestMethod" => log.request_method,
+      "businessTypeStr" => business_type_label(log.business_type),
+      "requestMethod" => request_method_label(log.request_method),
+      "requestMethodCode" => log.request_method,
       "requestModule" => log.request_module,
       "requestUrl" => log.request_url,
       "calledMethod" => log.called_method,
       "operatorType" => log.operator_type,
+      "operatorTypeStr" => operator_type_label(log.operator_type),
       "userId" => log.user_id,
       "username" => log.username,
       "operatorIp" => log.operator_ip,
+      "operatorLocation" => log.operator_location,
+      "deptId" => log.dept_id,
+      "deptName" => log.dept_name,
       "operationParam" => log.operation_param,
       "operationResult" => log.operation_result,
       "status" => log.status,
+      "statusStr" => operation_status_label(log.status),
       "errorStack" => log.error_stack,
       "operationTime" => format_datetime(log.operation_time)
     }
@@ -185,6 +194,37 @@ defmodule KeystonePhoenix.Log do
       _ -> default
     end
   end
+
+  defp login_status_label(1), do: "登录成功"
+  defp login_status_label(2), do: "退出成功"
+  defp login_status_label(3), do: "注册"
+  defp login_status_label(0), do: "登录失败"
+  defp login_status_label(status), do: to_string(status || "")
+
+  defp operation_status_label(1), do: "成功"
+  defp operation_status_label(0), do: "失败"
+  defp operation_status_label(status), do: to_string(status || "")
+
+  defp request_method_label(1), do: "GET"
+  defp request_method_label(2), do: "POST"
+  defp request_method_label(3), do: "PUT"
+  defp request_method_label(4), do: "DELETE"
+  defp request_method_label(_status), do: "UNKNOWN"
+
+  defp business_type_label(0), do: "其他操作"
+  defp business_type_label(1), do: "添加"
+  defp business_type_label(2), do: "修改"
+  defp business_type_label(3), do: "删除"
+  defp business_type_label(4), do: "授权"
+  defp business_type_label(5), do: "导出"
+  defp business_type_label(6), do: "导入"
+  defp business_type_label(7), do: "强退"
+  defp business_type_label(type), do: to_string(type || "")
+
+  defp operator_type_label(1), do: "其他"
+  defp operator_type_label(2), do: "Web用户"
+  defp operator_type_label(3), do: "手机端用户"
+  defp operator_type_label(type), do: to_string(type || "")
 
   defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
 

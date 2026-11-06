@@ -67,10 +67,27 @@ defmodule KeystonePhoenix.SystemManagementSchemaTest do
 
   test "log maps omit database-only deletion fields" do
     login = %SysLoginInfo{info_id: 1, username: "admin", status: 1}
-    operation = %SysOperationLog{operation_id: 2, username: "admin", status: 1}
 
-    refute Map.has_key?(KeystonePhoenix.Log.login_info_to_map(login), "deleted")
-    refute Map.has_key?(KeystonePhoenix.Log.operation_log_to_map(operation), "deleted")
+    operation = %SysOperationLog{
+      operation_id: 2,
+      username: "admin",
+      business_type: 1,
+      request_method: 2,
+      operator_type: 2,
+      status: 1
+    }
+
+    login_map = KeystonePhoenix.Log.login_info_to_map(login)
+    operation_map = KeystonePhoenix.Log.operation_log_to_map(operation)
+
+    refute Map.has_key?(login_map, "deleted")
+    refute Map.has_key?(operation_map, "deleted")
+    assert login_map["logId"] == "1"
+    assert login_map["statusStr"] == "登录成功"
+    assert operation_map["businessTypeStr"] == "添加"
+    assert operation_map["requestMethod"] == "POST"
+    assert operation_map["operatorTypeStr"] == "Web用户"
+    assert operation_map["statusStr"] == "成功"
   end
 
   test "dictionary default values use the frontend's numeric contract" do
