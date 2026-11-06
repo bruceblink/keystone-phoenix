@@ -21,6 +21,10 @@ The dependency versions are locked in [`mix.lock`](mix.lock). `mix.exs` keeps
 the compatible minor version ranges so security and patch releases can be
 updated with the normal Mix workflow.
 
+The current release baseline is `0.3.0`. Release tags are created only after
+the production smoke checks in [`docs/04-deployment-runbook.md`](docs/04-deployment-runbook.md)
+pass against the built image.
+
 ## Local development
 
 ```bash

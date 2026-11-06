@@ -28,7 +28,7 @@
 
 ### P0：发布准备
 
-`mix.exs` 仍为 `0.2.0`，仓库的 `v0.2.0` 标签早于最近的功能修复。下一次发布前需要把版本提升到 `0.3.0`（或明确的实际版本），重新生成 release image，执行空库迁移和种子启动检查，并验证 `/health/ready`、登录、刷新、退出、文件下载和 LiveView 首页。
+仓库的 `v0.2.0` 标签早于最近的功能修复，代码版本现已提升到 `0.3.0`。创建 `v0.3.0` 标签前，需要重新生成 release image，执行空库迁移和种子启动检查，并验证 `/health/ready`、登录、刷新、退出、文件下载和 LiveView 首页。
 
 生产环境必须通过 secret 注入 `DATABASE_URL`、`SECRET_KEY_BASE` 和 `JWT_PRIVATE_KEY`；PostgreSQL TLS、连接池、文件目录和 worker 间隔已经支持环境变量，但还需要一份可执行的部署与备份恢复手册。
 
