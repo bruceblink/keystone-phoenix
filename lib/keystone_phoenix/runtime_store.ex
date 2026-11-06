@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.RuntimeStore do
 
   @cache_table :keystone_phoenix_cache
   @captcha_table :keystone_phoenix_captcha
+  @rate_limit_table :keystone_phoenix_rate_limit
   @sweep_interval_ms 60_000
 
   def start_link(opts \\ []) do
@@ -13,11 +14,13 @@ defmodule KeystonePhoenix.RuntimeStore do
 
   def cache_table, do: @cache_table
   def captcha_table, do: @captcha_table
+  def rate_limit_table, do: @rate_limit_table
 
   @impl true
   def init(_opts) do
     create_table(@cache_table)
     create_table(@captcha_table)
+    create_table(@rate_limit_table)
     schedule_sweep()
     {:ok, %{}}
   end
@@ -27,6 +30,7 @@ defmodule KeystonePhoenix.RuntimeStore do
     expires_at = System.monotonic_time(:millisecond)
     sweep_table(@cache_table, expires_at)
     sweep_table(@captcha_table, expires_at)
+    sweep_table(@rate_limit_table, expires_at)
     schedule_sweep()
     {:noreply, state}
   end

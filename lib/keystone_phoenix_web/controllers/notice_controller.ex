@@ -10,6 +10,8 @@ defmodule KeystonePhoenixWeb.NoticeController do
       delete: "system:notice:remove"
     }
 
+  plug KeystonePhoenixWeb.Plugs.NoRepeat, [interval: 60] when action in [:create]
+
   alias KeystonePhoenix.Notice
   alias KeystonePhoenixWeb.ApiResponse
 

@@ -3,6 +3,18 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:current_user, :routers]
 
+  plug KeystonePhoenixWeb.Plugs.RateLimit,
+       [key: "getConfig", limit: 5, window: 10, scope: :global]
+       when action in [:config]
+
+  plug KeystonePhoenixWeb.Plugs.RateLimit,
+       [key: "captchaImage", limit: 10, window: 10, scope: :ip]
+       when action in [:captcha]
+
+  plug KeystonePhoenixWeb.Plugs.RateLimit,
+       [key: "rsa-public-key", limit: 60, window: 60, scope: :ip]
+       when action in [:public_key]
+
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Captcha
   alias KeystonePhoenix.Auth.Token
