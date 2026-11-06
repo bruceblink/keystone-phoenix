@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.NoticeController do
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
       list: "system:notice:list",
+      list_slave: "system:notice:list",
       show: "system:notice:query",
       create: "system:notice:add",
       update: "system:notice:edit",
@@ -19,6 +20,9 @@ defmodule KeystonePhoenixWeb.NoticeController do
   def list(conn, params) do
     json(conn, ApiResponse.ok(Notice.list_notices(params)))
   end
+
+  @doc "Compatibility alias for the original read-replica demonstration route."
+  def list_slave(conn, params), do: list(conn, params)
 
   @doc "Returns a notice."
   def show(conn, %{"notice_id" => notice_id}) do

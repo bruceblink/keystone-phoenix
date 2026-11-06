@@ -53,6 +53,16 @@ defmodule KeystonePhoenixWeb.PostController do
 
   @doc "Updates a post."
   def update(conn, %{"post_id" => post_id} = params) do
+    update_post(conn, post_id, params)
+  end
+
+  def update(conn, %{"postId" => post_id} = params) do
+    update_post(conn, post_id, params)
+  end
+
+  def update(conn, _params), do: render_error(conn, :invalid_id)
+
+  defp update_post(conn, post_id, params) do
     case Post.update_post(post_id, params) do
       {:ok, _post} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
@@ -98,6 +108,8 @@ defmodule KeystonePhoenixWeb.PostController do
   defp render_error(conn, :invalid_ids) do
     conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10002, "岗位编号无效"))
   end
+
+  defp render_error(conn, :invalid_id), do: render_error(conn, :invalid_ids)
 
   defp render_error(conn, reason) when reason in [:has_users, :update_failed] do
     message = if reason == :has_users, do: "岗位存在用户，不能删除", else: "岗位更新失败"

@@ -1,7 +1,7 @@
 defmodule KeystonePhoenixWeb.AuthController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:current_user, :routers]
+  plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:current_user, :routers, :logout]
 
   plug KeystonePhoenixWeb.Plugs.RateLimit,
        [key: "getConfig", limit: 5, window: 10, scope: :global]
@@ -131,6 +131,16 @@ defmodule KeystonePhoenixWeb.AuthController do
   end
 
   def logout_refresh_token(conn, _params), do: json(conn, ApiResponse.ok())
+
+  @doc "Revokes the current access token's refresh session."
+  def logout(conn, _params) do
+    case get_req_header(conn, "authorization") do
+      ["Bearer " <> token] -> Auth.logout_access(token)
+      _ -> :ok
+    end
+
+    json(conn, ApiResponse.ok())
+  end
 
   @doc "Returns the current authenticated user."
   def current_user(conn, _params) do

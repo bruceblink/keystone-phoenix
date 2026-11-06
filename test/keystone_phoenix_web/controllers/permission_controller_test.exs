@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Menu.SysMenu
+  alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.User.SysUser
@@ -12,6 +13,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     role = insert_role()
     menu = insert_menu(role.role_id, "system:post:list")
     insert_menu(role.role_id, "system:post:query")
+    insert_menu(role.role_id, "system:post:edit")
     assert menu.permission == "system:post:list"
     user = insert_user(role.role_id)
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
@@ -22,6 +24,34 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     forbidden_conn = put_req_header(build_conn(), "authorization", "Bearer #{tokens.token}")
     response = post(forbidden_conn, "/system/post", %{"postCode" => "x", "postName" => "x"})
     assert json_response(response, 403)["code"] == 40302
+
+    post_record =
+      %SysPost{}
+      |> SysPost.changeset(%{
+        post_code: unique("post"),
+        post_name: "旧岗位",
+        post_sort: 1,
+        status: 1
+      })
+      |> Repo.insert!()
+
+    update_conn = put_req_header(build_conn(), "authorization", "Bearer #{tokens.token}")
+
+    assert %{"code" => 0} =
+             json_response(
+               put(update_conn, "/system/post", %{
+                 "postId" => post_record.post_id,
+                 "postCode" => post_record.post_code,
+                 "postName" => "新岗位",
+                 "postSort" => 1,
+                 "status" => 1
+               }),
+               200
+             )
+
+    logout_conn = put_req_header(build_conn(), "authorization", "Bearer #{tokens.token}")
+    assert %{"code" => 0} = json_response(post(logout_conn, "/logout", %{}), 200)
+    assert {:error, :invalid_token} = Auth.authenticate_access_token(tokens.token)
   end
 
   defp insert_role do

@@ -82,6 +82,20 @@ defmodule KeystonePhoenix.Auth do
 
   def logout(_refresh_token), do: :ok
 
+  @doc "Revokes the refresh session referenced by an authenticated access token."
+  @spec logout_access(String.t()) :: :ok
+  def logout_access(token) when is_binary(token) do
+    with {:ok, claims} <- Token.verify(token, Token.access_type()),
+         {:ok, user_id} <- parse_user_id(claims["sub"]),
+         session_id when is_binary(session_id) <- claims["sid"] do
+      Session.revoke(user_id, session_id)
+    else
+      _ -> :ok
+    end
+  end
+
+  def logout_access(_token), do: :ok
+
   @spec authenticate_access_token(String.t()) :: {:ok, map()} | {:error, :invalid_token}
   def authenticate_access_token(token) do
     with {:ok, claims} <- Token.verify(token, Token.access_type()),

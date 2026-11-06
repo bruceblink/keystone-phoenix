@@ -53,6 +53,7 @@ defmodule KeystonePhoenixWeb.Router do
     get "/captchaImage", AuthController, :captcha
     post "/login", AuthController, :login
     post "/refresh-token", AuthController, :refresh
+    post "/logout", AuthController, :logout
     post "/logout-refresh-token", AuthController, :logout_refresh_token
     post "/register", AuthController, :register
     get "/getLoginUserInfo", AuthController, :current_user
@@ -93,6 +94,7 @@ defmodule KeystonePhoenixWeb.Router do
     delete "/system/dept/:dept_id", DepartmentController, :delete
     get "/system/post/list", PostController, :list
     get "/system/post/excel", PostController, :export
+    put "/system/post", PostController, :update
     get "/system/post/:post_id", PostController, :show
     post "/system/post", PostController, :create
     put "/system/post/:post_id", PostController, :update
@@ -116,6 +118,7 @@ defmodule KeystonePhoenixWeb.Router do
     put "/system/menus/:menu_id", MenuController, :update
     delete "/system/menus/:menu_id", MenuController, :delete
     get "/system/notices", NoticeController, :list
+    get "/system/notices/database/slave", NoticeController, :list_slave
     get "/system/notices/:notice_id", NoticeController, :show
     post "/system/notices", NoticeController, :create
     put "/system/notices/:notice_id", NoticeController, :update
