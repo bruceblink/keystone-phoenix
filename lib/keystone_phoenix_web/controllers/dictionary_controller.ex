@@ -1,7 +1,20 @@
 defmodule KeystonePhoenixWeb.DictionaryController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+    permissions: %{
+      list_types: "system:dict:list",
+      list_data: "system:dict:list",
+      show_type: "system:dict:query",
+      show_data: "system:dict:query",
+      create_type: "system:dict:add",
+      update_type: "system:dict:edit",
+      delete_type: "system:dict:remove",
+      create_data: "system:dict:add",
+      update_data: "system:dict:edit",
+      delete_data: "system:dict:remove",
+      refresh_cache: "system:dict:remove"
+    }
 
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenixWeb.ApiResponse

@@ -1,7 +1,15 @@
 defmodule KeystonePhoenixWeb.DepartmentController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+    permissions: %{
+      list: "system:dept:list",
+      show: "system:dept:query",
+      create: "system:dept:add",
+      update: "system:dept:edit",
+      delete: "system:dept:remove"
+    },
+    data_scope: %{update: {:dept, "dept_id"}, delete: {:dept, "dept_id"}}
 
   alias KeystonePhoenix.Department
   alias KeystonePhoenixWeb.ApiResponse

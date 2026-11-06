@@ -1,7 +1,14 @@
 defmodule KeystonePhoenixWeb.NoticeController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+    permissions: %{
+      list: "system:notice:list",
+      show: "system:notice:query",
+      create: "system:notice:add",
+      update: "system:notice:edit",
+      delete: "system:notice:remove"
+    }
 
   alias KeystonePhoenix.Notice
   alias KeystonePhoenixWeb.ApiResponse

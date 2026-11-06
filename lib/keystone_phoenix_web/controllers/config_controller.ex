@@ -1,7 +1,14 @@
 defmodule KeystonePhoenixWeb.ConfigController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+    permissions: %{
+      list: "system:config:list",
+      show: "system:config:query",
+      create: "system:config:add",
+      update: "system:config:edit",
+      refresh_cache: "system:config:refresh"
+    }
 
   alias KeystonePhoenix.Config
   alias KeystonePhoenixWeb.ApiResponse

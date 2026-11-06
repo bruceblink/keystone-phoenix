@@ -10,7 +10,6 @@ defmodule KeystonePhoenixWeb.AuthController do
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Log
   alias KeystonePhoenix.Menu
-  alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.ApiResponse
 
   @doc "Returns the public key used to verify RS256 access tokens."
@@ -123,7 +122,7 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   @doc "Returns the current authenticated user."
   def current_user(conn, _params) do
-    json(conn, ApiResponse.ok(User.user_to_map(conn.assigns.current_user)))
+    json(conn, ApiResponse.ok(Auth.current_login_user(conn.assigns.current_user)))
   end
 
   @doc "Returns the authenticated user's menu router tree."

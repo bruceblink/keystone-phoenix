@@ -4,7 +4,16 @@ defmodule KeystonePhoenixWeb.LogController do
   plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:create_operation_log]
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
-       [admin: true]
+       [
+         permissions: %{
+           login_logs: "monitor:logininfor:list",
+           export_login_logs: "monitor:logininfor:export",
+           delete_login_logs: "monitor:logininfor:remove",
+           operation_logs: "monitor:operlog:list",
+           export_operation_logs: "monitor:operlog:export",
+           delete_operation_logs: "monitor:operlog:remove"
+         }
+       ]
        when action in [
               :login_logs,
               :operation_logs,

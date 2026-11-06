@@ -1,7 +1,19 @@
 defmodule KeystonePhoenixWeb.JobController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+    permissions: %{
+      list: "system:job:list",
+      invoke_targets: "system:job:list",
+      logs: "system:job:list",
+      show: "system:job:query",
+      create: "system:job:add",
+      update: "system:job:edit",
+      change_status: "system:job:changeStatus",
+      run: "system:job:run",
+      cancel: "system:job:run",
+      delete: "system:job:remove"
+    }
 
   alias KeystonePhoenix.Job
   alias KeystonePhoenixWeb.ApiResponse

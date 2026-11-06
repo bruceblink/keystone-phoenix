@@ -2,7 +2,27 @@ defmodule KeystonePhoenixWeb.UserController do
   use KeystonePhoenixWeb, :controller
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
-       [admin: true]
+       [
+         permissions: %{
+           list: "system:user:list",
+           show: "system:user:query",
+           create: "system:user:add",
+           update: "system:user:edit",
+           delete: "system:user:remove",
+           reset_password: "system:user:resetPwd",
+           change_status: "system:user:edit",
+           export: "system:user:export",
+           import: "system:user:import"
+         },
+         data_scope: %{
+           list: {:dept_optional, "deptId"},
+           create: {:dept, "deptId"},
+           update: {:user, "user_id"},
+           delete: {:users, "user_ids"},
+           reset_password: {:user, "user_id"},
+           change_status: {:user, "user_id"}
+         }
+       ]
        when action in [
               :list,
               :show,

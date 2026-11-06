@@ -2,6 +2,8 @@ defmodule KeystonePhoenix.Auth do
   @moduledoc "Local password authentication and refresh token rotation."
 
   alias KeystonePhoenix.Auth.{Captcha, Session, Token}
+  alias KeystonePhoenix.Menu
+  alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
 
   @spec login(String.t(), String.t(), boolean(), String.t() | nil, String.t() | nil) ::
@@ -36,7 +38,7 @@ defmodule KeystonePhoenix.Auth do
          true <- user.status == 1,
          true <- Bcrypt.verify_pass(password, user.password || ""),
          {:ok, tokens} <- issue_pair(user, force_login) do
-      {:ok, Map.put(tokens, :current_user, User.user_to_map(user))}
+      {:ok, Map.put(tokens, :current_user, current_login_user(user))}
     else
       {:error, reason} when reason in [:unavailable, :token_configuration, :already_logged_in] ->
         {:error, reason}
@@ -58,7 +60,7 @@ defmodule KeystonePhoenix.Auth do
          true <- user.status == 1,
          :ok <- Session.revoke(user_id, claims["jti"]),
          {:ok, tokens} <- issue_pair(user, false) do
-      {:ok, Map.put(tokens, :current_user, User.user_to_map(user))}
+      {:ok, Map.put(tokens, :current_user, current_login_user(user))}
     else
       {:error, :unavailable} -> {:error, :unavailable}
       _ -> {:error, :invalid_refresh_token}
@@ -92,6 +94,18 @@ defmodule KeystonePhoenix.Auth do
     else
       _ -> {:error, :invalid_token}
     end
+  end
+
+  @doc "Builds the frontend-compatible current login user payload."
+  @spec current_login_user(map()) :: map()
+  def current_login_user(user) do
+    {role_key, permissions} = role_permissions(user)
+
+    %{
+      "userInfo" => User.user_to_map(user),
+      "roleKey" => role_key,
+      "permissions" => permissions
+    }
   end
 
   defp issue_pair(user, force_login) do
@@ -129,4 +143,16 @@ defmodule KeystonePhoenix.Auth do
   end
 
   defp parse_user_id(_value), do: {:error, :invalid_token}
+
+  defp role_permissions(%{is_admin: true}), do: {"admin", ["*:*:*"]}
+
+  defp role_permissions(user) do
+    role_key =
+      case Role.get_role(user.role_id) do
+        {:ok, role} -> role.role_key
+        {:error, :not_found} -> ""
+      end
+
+    {role_key, Menu.permissions_for_user(user)}
+  end
 end

@@ -1,7 +1,13 @@
 defmodule KeystonePhoenixWeb.MonitorController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+    permissions: %{
+      cache_info: "monitor:cache:list",
+      server_info: "monitor:server:list",
+      online_users: "monitor:online:list",
+      logout_online_user: "monitor:online:forceLogout"
+    }
 
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenixWeb.ApiResponse

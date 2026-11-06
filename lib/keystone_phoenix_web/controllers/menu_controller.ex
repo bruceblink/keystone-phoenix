@@ -1,7 +1,14 @@
 defmodule KeystonePhoenixWeb.MenuController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+    permissions: %{
+      list: "system:menu:list",
+      show: "system:menu:query",
+      create: "system:menu:add",
+      update: "system:menu:edit",
+      delete: "system:menu:remove"
+    }
 
   alias KeystonePhoenix.Menu
   alias KeystonePhoenixWeb.ApiResponse

@@ -1,7 +1,15 @@
 defmodule KeystonePhoenixWeb.PostController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+    permissions: %{
+      list: "system:post:list",
+      export: "system:post:export",
+      show: "system:post:query",
+      create: "system:post:add",
+      update: "system:post:edit",
+      delete: "system:post:remove"
+    }
 
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Post

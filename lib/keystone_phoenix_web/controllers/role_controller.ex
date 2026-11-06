@@ -1,7 +1,21 @@
 defmodule KeystonePhoenixWeb.RoleController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+    permissions: %{
+      list: "system:role:list",
+      export: "system:role:export",
+      show: "system:role:query",
+      create: "system:role:add",
+      update: "system:role:edit",
+      delete: "system:role:remove",
+      change_status: "system:role:edit",
+      data_scope: "system:role:edit",
+      allocated_users: "system:role:list",
+      unallocated_users: "system:role:list",
+      assign_users: "system:role:edit",
+      unassign_users: "system:role:edit"
+    }
 
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Role

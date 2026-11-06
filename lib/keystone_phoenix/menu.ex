@@ -115,6 +115,19 @@ defmodule KeystonePhoenix.Menu do
     end
   end
 
+  @doc "Returns the button and route permission strings for an authenticated user."
+  @spec permissions_for_user(map()) :: [String.t()]
+  def permissions_for_user(%{is_admin: true}), do: ["*:*:*"]
+
+  def permissions_for_user(%{"isAdmin" => 1}), do: ["*:*:*"]
+
+  def permissions_for_user(user) do
+    menus_for_user(user)
+    |> Enum.map(&Map.get(&1, "permission"))
+    |> Enum.filter(&(is_binary(&1) and String.trim(&1) != ""))
+    |> Enum.uniq()
+  end
+
   @doc "Builds the authenticated user's router tree."
   def routers_for_user(user) do
     menus_for_user(user)
