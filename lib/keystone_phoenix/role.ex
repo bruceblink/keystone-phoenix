@@ -324,6 +324,12 @@ defmodule KeystonePhoenix.Role do
     |> Enum.uniq()
   end
 
+  defp normalize_ids(ids) when is_binary(ids) do
+    ids
+    |> String.split(",", trim: true)
+    |> normalize_ids()
+  end
+
   defp normalize_ids(_ids), do: []
 
   defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value

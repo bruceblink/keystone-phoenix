@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.PermissionTest do
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Role
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
 
   test "checks exact role menu permissions and admin bypass" do
@@ -48,6 +49,33 @@ defmodule KeystonePhoenix.PermissionTest do
     assert Permission.data_scope_allowed?(custom_user, :dept, other.dept_id)
     refute Permission.data_scope_allowed?(custom_user, :dept, child.dept_id)
     refute Permission.data_scope_allowed?(custom_user, :dept, nil)
+  end
+
+  test "accepts comma separated menu IDs from LiveView forms" do
+    role = insert_role(%{role_key: unique("form_role")})
+
+    menu =
+      %SysMenu{}
+      |> SysMenu.changeset(%{
+        menu_name: "角色菜单",
+        menu_type: 0,
+        parent_id: 0,
+        permission: "system:role:list",
+        status: 1
+      })
+      |> Repo.insert!()
+
+    assert {:ok, _updated} =
+             KeystonePhoenix.Role.update_role(role.role_id, %{
+               "roleName" => role.role_name,
+               "roleKey" => role.role_key,
+               "roleSort" => role.role_sort,
+               "dataScope" => role.data_scope,
+               "status" => role.status,
+               "menuIds" => Integer.to_string(menu.menu_id)
+             })
+
+    assert Role.menu_ids_for_role(role.role_id) == [menu.menu_id]
   end
 
   defp insert_role(attrs) do
