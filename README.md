@@ -124,7 +124,7 @@ the same paths as the Java application. `/logout` revokes the current access
 token's PostgreSQL-backed session, while `/logout-refresh-token` remains
 available for clients that only have a refresh token.
 
-The log foundation now provides administrator-only login and operation log
+The log foundation now provides permission-protected login and operation log
 queries and cleanup under `/logs`; authenticated users can submit operation log
 records for their own actions. All authenticated POST, PUT, PATCH, and DELETE
 management requests also create an operation record on the server, with
