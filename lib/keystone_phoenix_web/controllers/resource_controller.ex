@@ -18,7 +18,14 @@ defmodule KeystonePhoenixWeb.ResourceController do
           |> put_resp_header("cache-control", "public, max-age=31536000")
           |> send_file(200, file)
         else
-          send_resp(conn, :not_found, "Not found")
+          conn
+          |> put_resp_content_type("application/octet-stream")
+          |> put_resp_header("x-content-type-options", "nosniff")
+          |> put_resp_header(
+            "content-disposition",
+            ~s(attachment; filename="#{Path.basename(file)}")
+          )
+          |> send_file(200, file)
         end
 
       {:error, :not_found} ->

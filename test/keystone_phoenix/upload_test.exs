@@ -1,7 +1,10 @@
 defmodule KeystonePhoenix.UploadTest do
   use ExUnit.Case, async: false
 
+  import Plug.Test
+
   alias KeystonePhoenix.Upload
+  alias KeystonePhoenixWeb.ResourceController
 
   setup do
     directory =
@@ -49,6 +52,12 @@ defmodule KeystonePhoenix.UploadTest do
 
     assert {:error, :invalid_file_name} = Upload.resolve_download_path("../secret.txt")
     assert {:error, :type_not_allowed} = Upload.resolve_download_path("secret.sh")
+
+    conn =
+      ResourceController.show(conn(:get, url), %{"path" => ["upload", filename]})
+
+    assert conn.status == 200
+    assert conn.resp_body == "hello"
     File.rm!(path)
   end
 
