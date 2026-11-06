@@ -45,7 +45,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   def handle_event("save-job", params, socket) do
     if Support.admin_socket?(socket) do
       job_id = String.trim(params["jobId"] || "")
-      result = if job_id == "", do: Job.create_job(params), else: Job.update_job(job_id, params)
+
+      result =
+        if job_id == "",
+          do: Job.create_job(params, socket.assigns.current_user["userId"]),
+          else: Job.update_job(job_id, params, socket.assigns.current_user["userId"])
 
       case result do
         {:ok, _job} ->
@@ -126,7 +130,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   def handle_event("toggle-job-status", %{"job-id" => job_id, "status" => status}, socket) do
     if Support.admin_socket?(socket) do
       feedback =
-        case Job.update_job_status(job_id, status) do
+        case Job.update_job_status(job_id, status, socket.assigns.current_user["userId"]) do
           {:ok, _job} -> "任务状态已更新"
           {:error, reason} -> "任务状态更新失败：#{inspect(reason)}"
         end

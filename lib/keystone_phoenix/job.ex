@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.Job do
 
   import Ecto.Query
 
+  alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Job.{Invoke, Runner, SysJob, SysJobLog}
   alias KeystonePhoenix.Repo
 
@@ -35,11 +36,13 @@ defmodule KeystonePhoenix.Job do
   end
 
   @doc "Creates and validates a task definition."
-  def create_job(attrs) when is_map(attrs) do
+  def create_job(attrs, actor_id \\ nil)
+
+  def create_job(attrs, actor_id) when is_map(attrs) do
     attrs = normalize_attrs(attrs)
 
     with :ok <- Invoke.validate_target(attrs[:invoke_target], attrs[:job_params]),
-         changeset = SysJob.changeset(%SysJob{}, attrs),
+         changeset = SysJob.changeset(%SysJob{}, attrs) |> Audit.put_actor(:creator_id, actor_id),
          true <- changeset.valid? do
       Repo.insert(changeset)
     else
@@ -48,21 +51,27 @@ defmodule KeystonePhoenix.Job do
     end
   end
 
-  def create_job(_attrs), do: {:error, :invalid_params}
+  def create_job(_attrs, _actor_id), do: {:error, :invalid_params}
 
   @doc "Updates and validates a task definition."
-  def update_job(id, attrs) when is_map(attrs) do
+  def update_job(id, attrs, actor_id \\ nil)
+
+  def update_job(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, job} <- get_job(id),
          attrs <- normalize_attrs(attrs),
          :ok <- Invoke.validate_target(attrs[:invoke_target], attrs[:job_params]),
-         changeset = SysJob.changeset(job, attrs),
+         changeset = SysJob.changeset(job, attrs) |> Audit.put_actor(:updater_id, actor_id),
          true <- changeset.valid? do
       Repo.update(changeset)
     else
       false ->
         case get_job(id) do
-          {:ok, job} -> {:error, SysJob.changeset(job, normalize_attrs(attrs))}
-          error -> error
+          {:ok, job} ->
+            changeset = SysJob.changeset(job, normalize_attrs(attrs))
+            {:error, Audit.put_actor(changeset, :updater_id, actor_id)}
+
+          error ->
+            error
         end
 
       {:error, reason} ->
@@ -73,13 +82,16 @@ defmodule KeystonePhoenix.Job do
     end
   end
 
-  def update_job(_id, _attrs), do: {:error, :invalid_params}
+  def update_job(_id, _attrs, _actor_id), do: {:error, :invalid_params}
 
   @doc "Changes a task status and returns the updated definition."
-  def update_job_status(id, status) do
+  def update_job_status(id, status, actor_id \\ nil) do
     with {:ok, job} <- get_job(id),
          {:ok, status} <- positive_status(status) do
-      Repo.update(Ecto.Changeset.change(job, status: status))
+      job
+      |> Ecto.Changeset.change(status: status)
+      |> Audit.put_actor(:updater_id, actor_id)
+      |> Repo.update()
     end
   end
 

@@ -37,7 +37,7 @@ defmodule KeystonePhoenixWeb.JobController do
 
   @doc "Creates a scheduled job."
   def create(conn, params) do
-    case Job.create_job(params) do
+    case Job.create_job(params, conn.assigns.current_user.user_id) do
       {:ok, _job} -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end
@@ -45,7 +45,7 @@ defmodule KeystonePhoenixWeb.JobController do
 
   @doc "Updates a scheduled job."
   def update(conn, %{"job_id" => job_id} = params) do
-    case Job.update_job(job_id, params) do
+    case Job.update_job(job_id, params, conn.assigns.current_user.user_id) do
       {:ok, _job} -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end
@@ -53,7 +53,7 @@ defmodule KeystonePhoenixWeb.JobController do
 
   @doc "Changes a scheduled job status."
   def change_status(conn, %{"job_id" => job_id, "status" => status}) do
-    case Job.update_job_status(job_id, status) do
+    case Job.update_job_status(job_id, status, conn.assigns.current_user.user_id) do
       {:ok, _job} -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end
