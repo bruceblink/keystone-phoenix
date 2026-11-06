@@ -108,8 +108,6 @@ defmodule KeystonePhoenix.Auth.Session do
   def list_active do
     now = DateTime.utc_now()
 
-    Repo.delete_all(from(session in AuthSession, where: session.expires_at <= ^now))
-
     sessions =
       from(session in AuthSession,
         where:
