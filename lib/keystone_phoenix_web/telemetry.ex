@@ -2,6 +2,10 @@ defmodule KeystonePhoenixWeb.Telemetry do
   use Supervisor
   import Telemetry.Metrics
 
+  alias KeystonePhoenix.Auth.Session
+  alias KeystonePhoenix.Cache
+  alias KeystonePhoenix.RuntimeStore
+
   def start_link(arg) do
     Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
   end
@@ -11,7 +15,7 @@ defmodule KeystonePhoenixWeb.Telemetry do
     children = [
       # Telemetry poller will execute the given period measurements
       # every 10_000ms. Learn more here: https://telemetry-metrics.hexdocs.pm
-      {:telemetry_poller, measurements: periodic_measurements(), period: 10_000}
+      {:telemetry_poller, measurements: periodic_measurements(), period: telemetry_period()}
       # Add reporters as children of your supervision tree.
       # {Telemetry.Metrics.ConsoleReporter, metrics: metrics()}
     ]
@@ -79,15 +83,50 @@ defmodule KeystonePhoenixWeb.Telemetry do
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),
       summary("vm.total_run_queue_lengths.cpu"),
-      summary("vm.total_run_queue_lengths.io")
+      summary("vm.total_run_queue_lengths.io"),
+
+      # Keystone runtime metrics
+      last_value("keystone_phoenix.runtime.cache_entries"),
+      last_value("keystone_phoenix.runtime.captcha_entries"),
+      last_value("keystone_phoenix.runtime.auth_sessions"),
+      summary("keystone_phoenix.job.run.duration",
+        tags: [:job_id, :trigger_type, :status],
+        unit: {:native, :millisecond}
+      )
     ]
+  end
+
+  @doc "Emits low-cost runtime gauges for ETS and PostgreSQL-backed sessions."
+  def measure_runtime do
+    sessions =
+      case Session.list_active() do
+        {:ok, sessions} -> length(sessions)
+        _ -> 0
+      end
+
+    :telemetry.execute(
+      [:keystone_phoenix, :runtime],
+      %{
+        cache_entries: Cache.stats().entries,
+        captcha_entries: :ets.info(RuntimeStore.captcha_table(), :size),
+        auth_sessions: sessions
+      },
+      %{}
+    )
+  rescue
+    _error -> :ok
   end
 
   defp periodic_measurements do
     [
       # A module, function and arguments to be invoked periodically.
       # This function must call :telemetry.execute/3 and a metric must be added above.
-      # {KeystonePhoenixWeb, :count_users, []}
+      {__MODULE__, :measure_runtime, []}
     ]
+  end
+
+  defp telemetry_period do
+    Application.get_env(:keystone_phoenix, :telemetry_period_ms, 10_000)
+    |> max(1_000)
   end
 end

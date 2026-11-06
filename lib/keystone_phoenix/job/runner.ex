@@ -23,6 +23,13 @@ defmodule KeystonePhoenix.Job.Runner do
 
     {status, message, exception_info, return} = result_fields(result)
     end_time = DateTime.utc_now()
+    duration_ms = System.monotonic_time(:millisecond) - started_at
+
+    :telemetry.execute(
+      [:keystone_phoenix, :job, :run],
+      %{duration_ms: duration_ms},
+      %{job_id: job.job_id, trigger_type: trigger_type, status: status}
+    )
 
     attrs = %{
       job_id: job.job_id,
@@ -37,7 +44,7 @@ defmodule KeystonePhoenix.Job.Runner do
       exception_info: exception_info,
       start_time: start_time,
       end_time: end_time,
-      duration_ms: System.monotonic_time(:millisecond) - started_at,
+      duration_ms: duration_ms,
       create_time: start_time
     }
 

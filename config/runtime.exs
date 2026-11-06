@@ -66,7 +66,8 @@ if config_env() == :prod do
     auth_session_cleanup_interval_ms:
       String.to_integer(System.get_env("AUTH_SESSION_CLEANUP_INTERVAL_MS", "60000")),
     monitor_snapshot_interval_ms:
-      String.to_integer(System.get_env("MONITOR_SNAPSHOT_INTERVAL_MS", "1000"))
+      String.to_integer(System.get_env("MONITOR_SNAPSHOT_INTERVAL_MS", "1000")),
+    telemetry_period_ms: String.to_integer(System.get_env("TELEMETRY_PERIOD_MS", "10000"))
 
   config :keystone_phoenix,
     file_base_dir: System.get_env("FILE_BASE_DIR", "/var/lib/keystone/resources")
