@@ -212,6 +212,10 @@ defmodule KeystonePhoenix.Dictionary do
     end)
   end
 
+  @doc "Clears all cached dictionary data values."
+  @spec refresh_cache() :: :ok
+  def refresh_cache, do: Cache.delete_prefix("keystone:dictionary:data:")
+
   defp page_query(query, params, count_field, mapper) do
     page = positive_integer(params["pageNum"] || params[:page_num], @default_page)
     page_size = positive_integer(params["pageSize"] || params[:page_size], @default_page_size)

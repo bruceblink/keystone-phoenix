@@ -69,12 +69,16 @@ defmodule KeystonePhoenixWeb.Router do
     post "/system/dict/data", DictionaryController, :create_data
     put "/system/dict/data/:dict_code", DictionaryController, :update_data
     delete "/system/dict/data/:dict_code", DictionaryController, :delete_data
+    delete "/system/dict/cache", DictionaryController, :refresh_cache
     get "/system/configs", ConfigController, :list
     get "/system/config/:config_id", ConfigController, :show
     post "/system/config", ConfigController, :create
     put "/system/config/:config_id", ConfigController, :update
     delete "/system/configs/cache", ConfigController, :refresh_cache
     get "/system/users", UserController, :list
+    get "/system/users/excel", UserController, :export
+    post "/system/users/excel", UserController, :import
+    get "/system/users/excelTemplate", UserController, :template
     get "/system/users/:user_id", UserController, :show
     post "/system/users", UserController, :create
     put "/system/users/:user_id", UserController, :update
@@ -88,11 +92,13 @@ defmodule KeystonePhoenixWeb.Router do
     put "/system/dept/:dept_id", DepartmentController, :update
     delete "/system/dept/:dept_id", DepartmentController, :delete
     get "/system/post/list", PostController, :list
+    get "/system/post/excel", PostController, :export
     get "/system/post/:post_id", PostController, :show
     post "/system/post", PostController, :create
     put "/system/post/:post_id", PostController, :update
     delete "/system/post", PostController, :delete
     get "/system/role/list", RoleController, :list
+    post "/system/role/export", RoleController, :export
     get "/system/role/:role_id", RoleController, :show
     post "/system/role", RoleController, :create
     put "/system/role", RoleController, :update
@@ -115,8 +121,10 @@ defmodule KeystonePhoenixWeb.Router do
     put "/system/notices/:notice_id", NoticeController, :update
     delete "/system/notices", NoticeController, :delete
     get "/logs/loginLogs", LogController, :login_logs
+    get "/logs/loginLogs/excel", LogController, :export_login_logs
     delete "/logs/loginLogs", LogController, :delete_login_logs
     get "/logs/operationLogs", LogController, :operation_logs
+    get "/logs/operationLogs/excel", LogController, :export_operation_logs
     post "/logs/operationLogs", LogController, :create_operation_log
     delete "/logs/operationLogs", LogController, :delete_operation_logs
     get "/system/user/profile", ProfileController, :show

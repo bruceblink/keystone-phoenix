@@ -3,12 +3,28 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
 
+  alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.ApiResponse
+  alias KeystonePhoenixWeb.ExcelResponse
+
+  @role_export_headers ["角色ID", "角色名称", "角色标识", "角色排序", "角色状态", "备注", "创建时间", "数据范围"]
 
   @doc "Returns a paginated list of roles."
   def list(conn, params) do
     json(conn, ApiResponse.ok(Role.list_roles(params)))
+  end
+
+  @doc "Exports all roles matching the current filters."
+  def export(conn, params) do
+    rows = Excel.all_rows(&Role.list_roles/1, params)
+
+    ExcelResponse.send_xlsx(
+      conn,
+      "roles.xlsx",
+      @role_export_headers,
+      Enum.map(rows, &role_export_row/1)
+    )
   end
 
   @doc "Returns a role."
@@ -96,6 +112,19 @@ defmodule KeystonePhoenixWeb.RoleController do
   end
 
   def unassign_users(conn, _params), do: render_error(conn, :invalid_ids)
+
+  defp role_export_row(row) do
+    [
+      row["roleId"],
+      row["roleName"],
+      row["roleKey"],
+      row["roleSort"],
+      row["status"],
+      row["remark"],
+      row["createTime"],
+      row["dataScope"]
+    ]
+  end
 
   defp render_error(conn, :not_found) do
     conn

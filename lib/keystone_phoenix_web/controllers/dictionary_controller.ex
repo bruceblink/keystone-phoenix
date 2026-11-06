@@ -80,6 +80,12 @@ defmodule KeystonePhoenixWeb.DictionaryController do
     end
   end
 
+  @doc "Clears cached dictionary data values."
+  def refresh_cache(conn, _params) do
+    Dictionary.refresh_cache()
+    json(conn, ApiResponse.ok())
+  end
+
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)

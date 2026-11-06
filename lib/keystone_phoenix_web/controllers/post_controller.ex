@@ -3,12 +3,28 @@ defmodule KeystonePhoenixWeb.PostController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate, admin: true
 
+  alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Post
   alias KeystonePhoenixWeb.ApiResponse
+  alias KeystonePhoenixWeb.ExcelResponse
+
+  @post_export_headers ["岗位ID", "岗位编码", "岗位名称", "岗位排序", "备注", "状态", "创建时间"]
 
   @doc "Returns a paginated list of posts."
   def list(conn, params) do
     json(conn, ApiResponse.ok(Post.list_posts(params)))
+  end
+
+  @doc "Exports all posts matching the current filters."
+  def export(conn, params) do
+    rows = Excel.all_rows(&Post.list_posts/1, params)
+
+    ExcelResponse.send_xlsx(
+      conn,
+      "posts.xlsx",
+      @post_export_headers,
+      Enum.map(rows, &post_export_row/1)
+    )
   end
 
   @doc "Returns a post."
@@ -48,6 +64,22 @@ defmodule KeystonePhoenixWeb.PostController do
   end
 
   def delete(conn, _params), do: render_error(conn, :invalid_ids)
+
+  defp post_export_row(row) do
+    [
+      row["postId"],
+      row["postCode"],
+      row["postName"],
+      row["postSort"],
+      row["remark"],
+      status_label(row["status"]),
+      row["createTime"]
+    ]
+  end
+
+  defp status_label(1), do: "正常"
+  defp status_label(0), do: "停用"
+  defp status_label(status), do: to_string(status || "")
 
   defp render_error(conn, :not_found) do
     conn

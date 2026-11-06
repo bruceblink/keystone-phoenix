@@ -43,6 +43,20 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
+  @doc "Returns active roles keyed by ID with one database query."
+  def list_roles_by_ids(ids) when is_list(ids) do
+    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    if ids == [] do
+      []
+    else
+      from(role in SysRole, where: role.deleted == false and role.role_id in ^ids)
+      |> Repo.all()
+    end
+  end
+
+  def list_roles_by_ids(_ids), do: []
+
   def create_role(attrs) when is_map(attrs) do
     menu_ids = menu_ids_from(attrs) || []
     attrs = normalize_attrs(attrs)

@@ -40,6 +40,20 @@ defmodule KeystonePhoenix.Post do
     end
   end
 
+  @doc "Returns active posts keyed by ID with one database query."
+  def list_posts_by_ids(ids) when is_list(ids) do
+    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    if ids == [] do
+      []
+    else
+      from(post in SysPost, where: post.deleted == false and post.post_id in ^ids)
+      |> Repo.all()
+    end
+  end
+
+  def list_posts_by_ids(_ids), do: []
+
   def create_post(attrs) when is_map(attrs) do
     %SysPost{}
     |> SysPost.changeset(normalize_attrs(attrs))
