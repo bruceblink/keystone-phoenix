@@ -92,6 +92,7 @@ defmodule KeystonePhoenix.Post do
       "postName" => post.post_name,
       "postSort" => post.post_sort,
       "status" => post.status,
+      "statusStr" => status_label(post.status),
       "remark" => post.remark,
       "createTime" => format_datetime(post.create_time)
     }
@@ -143,6 +144,10 @@ defmodule KeystonePhoenix.Post do
   end
 
   defp parse_positive_integer(_value), do: nil
+
+  defp status_label(1), do: "正常"
+  defp status_label(0), do: "停用"
+  defp status_label(status), do: to_string(status || "")
 
   defp invalid_changeset(field),
     do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysPost{}), field, "参数无效")

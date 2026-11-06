@@ -111,6 +111,7 @@ defmodule KeystonePhoenix.Department do
   def dept_to_map(dept) do
     %{
       "deptId" => dept.dept_id,
+      "id" => dept.dept_id,
       "parentId" => dept.parent_id,
       "ancestors" => dept.ancestors,
       "deptName" => dept.dept_name,
@@ -120,6 +121,7 @@ defmodule KeystonePhoenix.Department do
       "phone" => dept.phone,
       "email" => dept.email,
       "status" => dept.status,
+      "statusStr" => status_label(dept.status),
       "createTime" => format_datetime(dept.create_time)
     }
   end
@@ -269,6 +271,10 @@ defmodule KeystonePhoenix.Department do
   end
 
   defp parse_positive_integer(_value), do: nil
+
+  defp status_label(1), do: "正常"
+  defp status_label(0), do: "停用"
+  defp status_label(status), do: to_string(status || "")
 
   defp format_datetime(nil), do: nil
 

@@ -5,6 +5,8 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Menu.SysMenu
+  alias KeystonePhoenix.Post
+  alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
 
@@ -119,6 +121,30 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
     assert button_row["isButton"] == true
     assert button_row["menuType"] == 0
     assert button_row["menuTypeStr"] == "按钮"
+  end
+
+  test "department and post maps expose frontend identifiers and labels" do
+    dept = insert_dept(403, 0, "0", "前端部门")
+
+    assert %{
+             "id" => 403,
+             "deptId" => 403,
+             "statusStr" => "正常"
+           } = Department.dept_to_map(dept)
+
+    assert [%{"id" => 403, "deptName" => "前端部门"}] = Department.list_dropdown()
+
+    post =
+      %SysPost{post_id: 404}
+      |> SysPost.changeset(%{
+        post_code: "frontend_post",
+        post_name: "前端岗位",
+        post_sort: 1,
+        status: 0
+      })
+      |> Repo.insert!()
+
+    assert Post.post_to_map(post)["statusStr"] == "停用"
   end
 
   defp insert_dept(id, parent_id, ancestors, name, status \\ 1) do
