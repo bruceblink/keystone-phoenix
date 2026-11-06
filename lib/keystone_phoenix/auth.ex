@@ -116,7 +116,7 @@ defmodule KeystonePhoenix.Auth do
     {role_key, permissions} = role_permissions(user)
 
     %{
-      "userInfo" => User.user_to_map(user),
+      "userInfo" => User.user_to_map_with_relations(user),
       "roleKey" => role_key,
       "permissions" => permissions
     }

@@ -18,6 +18,8 @@ defmodule KeystonePhoenix.User do
   @default_page_size 10
   @max_page_size 500
 
+  @empty_relation_names %{departments: %{}, posts: %{}, roles: %{}, users: %{}}
+
   @user_attrs [
     {"postId", :post_id},
     {"roleId", :role_id},
@@ -171,10 +173,32 @@ defmodule KeystonePhoenix.User do
   @doc "Returns the profile view for an authenticated user."
   def profile(id) do
     case get_user(id) do
-      {:ok, user} -> {:ok, user_to_map(user)}
-      error -> error
+      {:ok, user} ->
+        user = user_to_map_with_relations(user)
+
+        {:ok,
+         %{
+           "user" => user,
+           "roleName" => user["roleName"] || "",
+           "postName" => user["postName"] || ""
+         }}
+
+      error ->
+        error
     end
   end
+
+  @doc "Maps users with the department, role, post, and audit actor names used by the frontend."
+  def user_maps(users) when is_list(users) do
+    names = relation_names(users)
+    Enum.map(users, &user_to_map(&1, names))
+  end
+
+  def user_maps(_users), do: []
+
+  @doc "Maps one user with the related display names required by profile and login responses."
+  def user_to_map_with_relations(user),
+    do: user |> List.wrap() |> user_maps() |> List.first() || user_to_map(user)
 
   @doc "Updates editable profile fields without allowing account privilege changes."
   def update_profile(id, attrs) when is_map(attrs) do
@@ -258,6 +282,10 @@ defmodule KeystonePhoenix.User do
 
   @spec user_to_map(SysUser.t()) :: map()
   def user_to_map(user) do
+    user_to_map(user, @empty_relation_names)
+  end
+
+  defp user_to_map(user, names) do
     %{
       "userId" => user.user_id,
       "postId" => user.post_id,
@@ -274,6 +302,11 @@ defmodule KeystonePhoenix.User do
       "loginIp" => user.login_ip,
       "loginDate" => format_datetime(user.login_date),
       "isAdmin" => if(user.is_admin, do: 1, else: 0),
+      "deptName" => Map.get(names.departments, user.dept_id, ""),
+      "postName" => Map.get(names.posts, user.post_id, ""),
+      "roleName" => Map.get(names.roles, user.role_id, ""),
+      "creatorName" => Map.get(names.users, user.creator_id, ""),
+      "updaterName" => Map.get(names.users, user.updater_id, ""),
       "creatorId" => user.creator_id,
       "createTime" => format_datetime(user.create_time),
       "updaterId" => user.updater_id,
@@ -375,8 +408,43 @@ defmodule KeystonePhoenix.User do
     query = query |> limit(^page_size) |> offset(^((page - 1) * page_size))
     rows = Repo.all(query)
 
-    %{total: total, rows: Enum.map(rows, &user_to_map/1)}
+    %{total: total, rows: user_maps(rows)}
   end
+
+  defp relation_names(users) do
+    %{
+      departments:
+        users
+        |> relation_ids(:dept_id)
+        |> Department.list_depts_by_ids()
+        |> names_by_id(:dept_id, :dept_name),
+      posts:
+        users
+        |> relation_ids(:post_id)
+        |> Post.list_posts_by_ids()
+        |> names_by_id(:post_id, :post_name),
+      roles:
+        users
+        |> relation_ids(:role_id)
+        |> Role.list_roles_by_ids()
+        |> names_by_id(:role_id, :role_name),
+      users:
+        (relation_ids(users, :creator_id) ++ relation_ids(users, :updater_id))
+        |> Enum.uniq()
+        |> list_users_by_ids()
+        |> names_by_id(:user_id, :username)
+    }
+  end
+
+  defp relation_ids(users, field) do
+    users
+    |> Enum.map(&Map.get(&1, field))
+    |> Enum.filter(&(is_integer(&1) and &1 > 0))
+    |> Enum.uniq()
+  end
+
+  defp names_by_id(records, id_field, name_field),
+    do: Map.new(records, &{Map.get(&1, id_field), Map.get(&1, name_field)})
 
   defp filter_integer(query, _field, nil), do: query
   defp filter_integer(query, _field, ""), do: query

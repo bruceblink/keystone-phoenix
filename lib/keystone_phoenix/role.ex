@@ -259,7 +259,7 @@ defmodule KeystonePhoenix.Role do
     page_size = min(positive_integer(params["pageSize"] || params[:page_size], 10), 500)
     total = Repo.aggregate(query, :count, :user_id)
     rows = query |> limit(^page_size) |> offset(^((page - 1) * page_size)) |> Repo.all()
-    %{total: total, rows: Enum.map(rows, &User.user_to_map/1)}
+    %{total: total, rows: User.user_maps(rows)}
   end
 
   defp normalize_user_ids(user_ids) when is_list(user_ids) do
