@@ -7,6 +7,7 @@ defmodule KeystonePhoenix.User do
 
   import Ecto.Query
 
+  alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Post
@@ -88,36 +89,43 @@ defmodule KeystonePhoenix.User do
 
   @doc "Creates a local user and stores only a bcrypt password hash."
   @spec create_user(map()) :: {:ok, SysUser.t()} | {:error, Ecto.Changeset.t()}
-  def create_user(attrs) when is_map(attrs) do
+  def create_user(attrs, actor_id \\ nil)
+
+  def create_user(attrs, actor_id) when is_map(attrs) do
     attrs = normalize_attrs(attrs)
 
     with :ok <- validate_relations(attrs) do
       %SysUser{}
       |> SysUser.create_changeset(attrs)
+      |> Audit.put_actor(:creator_id, actor_id)
       |> Repo.insert()
     end
   end
 
-  def create_user(_attrs), do: {:error, invalid_changeset(%SysUser{}, :username)}
+  def create_user(_attrs, _actor_id), do: {:error, invalid_changeset(%SysUser{}, :username)}
 
   @doc "Updates editable user fields and revokes a disabled user's session."
   @spec update_user(integer() | String.t(), map()) ::
           {:ok, SysUser.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def update_user(id, attrs) when is_map(attrs) do
+  def update_user(id, attrs, actor_id \\ nil)
+
+  def update_user(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, user} <- get_user(id) do
       attrs = normalize_attrs(attrs)
 
       case validate_relations(attrs) do
-        :ok -> update_user_record(user, attrs)
+        :ok -> update_user_record(user, attrs, actor_id)
         error -> error
       end
     end
   end
 
-  def update_user(_id, _attrs), do: {:error, invalid_changeset(%SysUser{}, :username)}
+  def update_user(_id, _attrs, _actor_id), do: {:error, invalid_changeset(%SysUser{}, :username)}
 
-  defp update_user_record(user, attrs) do
-    case user |> SysUser.update_changeset(attrs) |> Repo.update() do
+  defp update_user_record(user, attrs, actor_id) do
+    changeset = SysUser.update_changeset(user, attrs) |> Audit.put_actor(:updater_id, actor_id)
+
+    case Repo.update(changeset) do
       {:ok, updated} = result ->
         revoke_if_disabled(user, updated)
         result
@@ -148,9 +156,16 @@ defmodule KeystonePhoenix.User do
   @doc "Replaces a user's password and invalidates the active refresh session."
   @spec reset_password(integer() | String.t(), map()) ::
           {:ok, SysUser.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def reset_password(id, attrs) when is_map(attrs) do
+  def reset_password(id, attrs, actor_id \\ nil)
+
+  def reset_password(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, user} <- get_user(id) do
-      case user |> SysUser.password_changeset(normalize_attrs(attrs)) |> Repo.update() do
+      changeset =
+        user
+        |> SysUser.password_changeset(normalize_attrs(attrs))
+        |> Audit.put_actor(:updater_id, actor_id)
+
+      case Repo.update(changeset) do
         {:ok, updated} = result ->
           Session.revoke_account(updated.user_id)
           result
@@ -161,13 +176,14 @@ defmodule KeystonePhoenix.User do
     end
   end
 
-  def reset_password(_id, _attrs), do: {:error, invalid_changeset(%SysUser{}, :password)}
+  def reset_password(_id, _attrs, _actor_id),
+    do: {:error, invalid_changeset(%SysUser{}, :password)}
 
   @doc "Changes a user's enabled status and invalidates disabled sessions."
   @spec change_status(integer() | String.t(), term()) ::
           {:ok, SysUser.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def change_status(id, status) do
-    update_user(id, %{"status" => status})
+  def change_status(id, status, actor_id \\ nil) do
+    update_user(id, %{"status" => status}, actor_id)
   end
 
   @doc "Returns the profile view for an authenticated user."
@@ -201,7 +217,9 @@ defmodule KeystonePhoenix.User do
     do: user |> List.wrap() |> user_maps() |> List.first() || user_to_map(user)
 
   @doc "Updates editable profile fields without allowing account privilege changes."
-  def update_profile(id, attrs) when is_map(attrs) do
+  def update_profile(id, attrs, actor_id \\ nil)
+
+  def update_profile(id, attrs, actor_id) when is_map(attrs) do
     attrs =
       %{}
       |> maybe_put(attrs, "nickname", ["nickName", "nickname"])
@@ -209,18 +227,25 @@ defmodule KeystonePhoenix.User do
       |> maybe_put(attrs, "email", ["email"])
       |> maybe_put(attrs, "sex", ["sex"])
 
-    update_user(id, attrs)
+    update_user(id, attrs, actor_id)
   end
 
-  def update_profile(_id, _attrs), do: {:error, invalid_changeset(%SysUser{}, :nickname)}
+  def update_profile(_id, _attrs, _actor_id),
+    do: {:error, invalid_changeset(%SysUser{}, :nickname)}
 
   @doc "Changes a password after checking the current password."
-  def update_password(id, attrs) when is_map(attrs) do
+  def update_password(id, attrs, actor_id \\ nil)
+
+  def update_password(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, user} <- get_user(id),
          {:ok, old_password, new_password} <- password_inputs(attrs),
          true <- Bcrypt.verify_pass(old_password, user.password || ""),
          false <- Bcrypt.verify_pass(new_password, user.password || "") do
-      case Repo.update(SysUser.password_changeset(user, %{password: new_password})) do
+      changeset =
+        SysUser.password_changeset(user, %{password: new_password})
+        |> Audit.put_actor(:updater_id, actor_id)
+
+      case Repo.update(changeset) do
         {:ok, updated} = result ->
           Session.revoke_account(updated.user_id)
           result
@@ -236,14 +261,17 @@ defmodule KeystonePhoenix.User do
     end
   end
 
-  def update_password(_id, _attrs), do: {:error, invalid_changeset(%SysUser{}, :password)}
+  def update_password(_id, _attrs, _actor_id),
+    do: {:error, invalid_changeset(%SysUser{}, :password)}
 
   @doc "Updates an avatar URL supplied by the file service."
-  def update_avatar(id, avatar) when is_binary(avatar) do
-    update_user(id, %{"avatar" => avatar})
+  def update_avatar(id, avatar, actor_id \\ nil)
+
+  def update_avatar(id, avatar, actor_id) when is_binary(avatar) do
+    update_user(id, %{"avatar" => avatar}, actor_id)
   end
 
-  def update_avatar(_id, _avatar), do: {:error, invalid_changeset(%SysUser{}, :avatar)}
+  def update_avatar(_id, _avatar, _actor_id), do: {:error, invalid_changeset(%SysUser{}, :avatar)}
 
   defp maybe_put(target, source, target_key, source_keys) do
     case Enum.find(source_keys, &Map.has_key?(source, &1)) do
@@ -325,7 +353,10 @@ defmodule KeystonePhoenix.User do
           if user.user_id == actor_id or user.is_admin do
             Repo.rollback(:protected_user)
           else
-            case Repo.update(Ecto.Changeset.change(user, deleted: true)) do
+            changeset = Ecto.Changeset.change(user, deleted: true)
+            changeset = Audit.put_actor(changeset, :updater_id, actor_id)
+
+            case Repo.update(changeset) do
               {:ok, _deleted} ->
                 Session.revoke_account(user.user_id)
                 {:cont, :ok}

@@ -17,7 +17,11 @@ defmodule KeystonePhoenixWeb.ProfileController do
 
   @doc "Updates the authenticated user's profile."
   def update(conn, params) do
-    case User.update_profile(conn.assigns.current_user.user_id, params) do
+    case User.update_profile(
+           conn.assigns.current_user.user_id,
+           params,
+           conn.assigns.current_user.user_id
+         ) do
       {:ok, _user} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
@@ -26,7 +30,11 @@ defmodule KeystonePhoenixWeb.ProfileController do
 
   @doc "Changes the authenticated user's password."
   def update_password(conn, params) do
-    case User.update_password(conn.assigns.current_user.user_id, params) do
+    case User.update_password(
+           conn.assigns.current_user.user_id,
+           params,
+           conn.assigns.current_user.user_id
+         ) do
       {:ok, _user} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, :invalid_old_password} -> render_error(conn, :invalid_old_password)
@@ -38,7 +46,11 @@ defmodule KeystonePhoenixWeb.ProfileController do
   @doc "Uploads an avatar using the original multipart avatarfile contract."
   def update_avatar(conn, %{"avatarfile" => %Plug.Upload{} = upload}) do
     with {:ok, avatar_url} <- Upload.store_avatar(upload) do
-      case User.update_avatar(conn.assigns.current_user.user_id, avatar_url) do
+      case User.update_avatar(
+             conn.assigns.current_user.user_id,
+             avatar_url,
+             conn.assigns.current_user.user_id
+           ) do
         {:ok, _user} ->
           json(conn, ApiResponse.ok(%{"imgUrl" => avatar_url}))
 
@@ -56,7 +68,11 @@ defmodule KeystonePhoenixWeb.ProfileController do
   end
 
   def update_avatar(conn, %{"avatar" => avatar}) do
-    case User.update_avatar(conn.assigns.current_user.user_id, avatar) do
+    case User.update_avatar(
+           conn.assigns.current_user.user_id,
+           avatar,
+           conn.assigns.current_user.user_id
+         ) do
       {:ok, _user} -> json(conn, ApiResponse.ok(%{"imgUrl" => avatar}))
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)

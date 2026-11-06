@@ -356,9 +356,11 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def assign_profile(socket) do
     case User.profile(socket.assigns.current_user["userId"]) do
       {:ok, profile} ->
+        profile_user = profile["user"] || profile
+
         assign(socket,
           active_panel: "profile",
-          profile_form: profile,
+          profile_form: profile_user,
           password_form: empty_password_form(),
           profile_feedback: nil
         )

@@ -101,7 +101,7 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Creates a local user."
   def create(conn, params) do
-    case User.create_user(params) do
+    case User.create_user(params, conn.assigns.current_user.user_id) do
       {:ok, _user} -> conn |> put_status(:created) |> json(ApiResponse.ok())
       {:error, changeset} -> render_error(conn, changeset)
     end
@@ -109,7 +109,7 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Updates editable fields for a local user."
   def update(conn, %{"user_id" => user_id} = params) do
-    case User.update_user(user_id, params) do
+    case User.update_user(user_id, params, conn.assigns.current_user.user_id) do
       {:ok, _user} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
@@ -129,7 +129,7 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Replaces a user's password."
   def reset_password(conn, %{"user_id" => user_id} = params) do
-    case User.reset_password(user_id, params) do
+    case User.reset_password(user_id, params, conn.assigns.current_user.user_id) do
       {:ok, _user} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
@@ -138,7 +138,7 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Enables or disables a local user."
   def change_status(conn, %{"user_id" => user_id, "status" => status}) do
-    case User.change_status(user_id, status) do
+    case User.change_status(user_id, status, conn.assigns.current_user.user_id) do
       {:ok, _user} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
@@ -165,7 +165,7 @@ defmodule KeystonePhoenixWeb.UserController do
   def import(conn, %{"file" => %Plug.Upload{} = upload}) do
     with {:ok, rows} <- Excel.import_rows(upload.path),
          {:ok, records} <- Excel.rows_to_maps(rows) do
-      json(conn, ApiResponse.ok(import_records(records)))
+      json(conn, ApiResponse.ok(import_records(records, conn.assigns.current_user.user_id)))
     else
       {:error, reason} -> ExcelResponse.render_error(conn, import_error_message(reason))
     end
@@ -235,12 +235,12 @@ defmodule KeystonePhoenixWeb.UserController do
     )
   end
 
-  defp import_records(records) do
+  defp import_records(records, actor_id) do
     {success, failed} =
       records
       |> Enum.with_index(2)
       |> Enum.reduce({0, []}, fn {record, row_number}, {success, failed} ->
-        case User.create_user(normalize_import_params(record)) do
+        case User.create_user(normalize_import_params(record), actor_id) do
           {:ok, _user} -> {success + 1, failed}
           {:error, reason} -> {success, [import_failure(row_number, record, reason) | failed]}
         end

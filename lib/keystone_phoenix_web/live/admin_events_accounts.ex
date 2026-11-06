@@ -52,7 +52,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       params = if user_id == "", do: params, else: Map.delete(params, "password")
 
       result =
-        if user_id == "", do: User.create_user(params), else: User.update_user(user_id, params)
+        if user_id == "",
+          do: User.create_user(params, socket.assigns.current_user["userId"]),
+          else: User.update_user(user_id, params, socket.assigns.current_user["userId"])
 
       case result do
         {:ok, _user} ->
@@ -74,7 +76,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   def handle_event("toggle-user-status", %{"user-id" => user_id, "status" => status}, socket) do
     if Support.admin_socket?(socket) do
-      case User.change_status(user_id, status) do
+      case User.change_status(user_id, status, socket.assigns.current_user["userId"]) do
         {:ok, _user} ->
           if to_string(socket.assigns.current_user["userId"]) == user_id and status in [0, "0"] do
             {:noreply, Support.expire_authentication(socket, "当前账号已停用，请联系管理员")}
@@ -115,7 +117,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       user_id = params["userId"] || params["user-id"]
       password = params["password"] || ""
 
-      case User.reset_password(user_id, %{"password" => password}) do
+      case User.reset_password(
+             user_id,
+             %{"password" => password},
+             socket.assigns.current_user["userId"]
+           ) do
         {:ok, _user} ->
           if to_string(socket.assigns.current_user["userId"]) == to_string(user_id) do
             {:noreply, Support.expire_authentication(socket, "密码已重置，请重新登录")}
@@ -135,14 +141,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     if Support.authenticated_socket?(socket) do
       user_id = socket.assigns.current_user["userId"]
 
-      case User.update_profile(user_id, params) do
+      case User.update_profile(user_id, params, socket.assigns.current_user["userId"]) do
         {:ok, _user} ->
           case User.profile(user_id) do
             {:ok, profile} ->
+              profile_user = profile["user"] || profile
+
               {:noreply,
                assign(socket,
-                 current_user: profile,
-                 profile_form: profile,
+                 current_user: profile_user,
+                 profile_form: profile_user,
                  profile_feedback: "个人资料已保存"
                )}
 
@@ -160,7 +168,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   def handle_event("change-profile-password", params, socket) do
     if Support.authenticated_socket?(socket) do
-      case User.update_password(socket.assigns.current_user["userId"], params) do
+      case User.update_password(
+             socket.assigns.current_user["userId"],
+             params,
+             socket.assigns.current_user["userId"]
+           ) do
         {:ok, _user} ->
           {:noreply, Support.expire_authentication(socket, "密码已更新，请重新登录")}
 
@@ -174,7 +186,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   def handle_event("update-profile-avatar", %{"avatar" => avatar}, socket) do
     if Support.authenticated_socket?(socket) do
-      case User.update_avatar(socket.assigns.current_user["userId"], avatar) do
+      case User.update_avatar(
+             socket.assigns.current_user["userId"],
+             avatar,
+             socket.assigns.current_user["userId"]
+           ) do
         {:ok, _user} ->
           {:noreply,
            assign(socket,
@@ -203,7 +219,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           }
 
           with {:ok, avatar_url} <- Upload.store_avatar(upload) do
-            case User.update_avatar(user_id, avatar_url) do
+            case User.update_avatar(user_id, avatar_url, user_id) do
               {:ok, _user} ->
                 {:ok, avatar_url}
 
