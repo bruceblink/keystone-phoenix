@@ -47,6 +47,7 @@ defmodule KeystonePhoenix.PermissionTest do
     custom_user = %{user | role_id: custom_role.role_id}
     assert Permission.data_scope_allowed?(custom_user, :dept, other.dept_id)
     refute Permission.data_scope_allowed?(custom_user, :dept, child.dept_id)
+    refute Permission.data_scope_allowed?(custom_user, :dept, nil)
   end
 
   defp insert_role(attrs) do

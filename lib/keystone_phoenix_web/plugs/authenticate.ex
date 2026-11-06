@@ -79,7 +79,6 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
     end
   end
 
-  defp optional_dept_allowed?(_user, value) when value in [nil, "", 0, "0"], do: true
   defp optional_dept_allowed?(user, value), do: Permission.data_scope_allowed?(user, :dept, value)
 
   defp param(params, key), do: Map.get(params, key, Map.get(params, String.to_atom(key)))
