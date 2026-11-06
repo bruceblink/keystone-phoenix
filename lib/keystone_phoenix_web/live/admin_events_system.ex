@@ -318,9 +318,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
       result =
         if notice_id == "" do
-          Notice.create_notice(params)
+          Notice.create_notice(params, current_user_id(socket))
         else
-          Notice.update_notice(notice_id, params)
+          Notice.update_notice(notice_id, params, current_user_id(socket))
         end
 
       case result do
@@ -346,7 +346,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
         socket
       ) do
     if Support.admin_socket?(socket) do
-      case Notice.update_notice(notice_id, %{"status" => status}) do
+      case Notice.update_notice(notice_id, %{"status" => status}, current_user_id(socket)) do
         {:ok, _notice} ->
           {:noreply,
            assign(socket, notice_rows: Support.load_notices(), notice_feedback: "公告状态已更新")}
@@ -414,5 +414,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     else
       {:noreply, socket}
     end
+  end
+
+  defp current_user_id(socket) do
+    user = socket.assigns[:current_user] || %{}
+    Map.get(user, "userId") || Map.get(user, :user_id)
   end
 end

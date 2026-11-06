@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Notice do
 
   alias KeystonePhoenix.Notice.SysNotice
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.User
 
   @attrs [
     {"noticeTitle", :notice_title},
@@ -28,7 +29,8 @@ defmodule KeystonePhoenix.Notice do
     page_size = min(positive_integer(params["pageSize"] || params[:page_size], 10), 500)
     total = Repo.aggregate(query, :count, :notice_id)
     rows = query |> limit(^page_size) |> offset(^((page - 1) * page_size)) |> Repo.all()
-    %{total: total, rows: Enum.map(rows, &notice_to_map/1)}
+    creator_names = creator_names(rows)
+    %{total: total, rows: Enum.map(rows, &notice_to_map(&1, creator_names))}
   end
 
   def get_notice(id) do
@@ -38,19 +40,25 @@ defmodule KeystonePhoenix.Notice do
     end
   end
 
-  def create_notice(attrs) when is_map(attrs) do
-    Repo.insert(SysNotice.changeset(%SysNotice{}, normalize_attrs(attrs)))
+  def create_notice(attrs, actor_id \\ nil)
+
+  def create_notice(attrs, actor_id) when is_map(attrs) do
+    changeset = SysNotice.changeset(%SysNotice{}, normalize_attrs(attrs))
+    Repo.insert(put_actor(changeset, :creator_id, actor_id))
   end
 
-  def create_notice(_attrs), do: {:error, invalid_changeset(:notice_title)}
+  def create_notice(_attrs, _actor_id), do: {:error, invalid_changeset(:notice_title)}
 
-  def update_notice(id, attrs) when is_map(attrs) do
+  def update_notice(id, attrs, actor_id \\ nil)
+
+  def update_notice(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, notice} <- get_notice(id) do
-      Repo.update(SysNotice.changeset(notice, normalize_attrs(attrs)))
+      changeset = SysNotice.changeset(notice, normalize_attrs(attrs))
+      Repo.update(put_actor(changeset, :updater_id, actor_id))
     end
   end
 
-  def update_notice(_id, _attrs), do: {:error, invalid_changeset(:notice_title)}
+  def update_notice(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:notice_title)}
 
   def delete_notices(ids) when is_list(ids) do
     ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
@@ -71,12 +79,17 @@ defmodule KeystonePhoenix.Notice do
   def delete_notices(_ids), do: {:error, :invalid_ids}
 
   def notice_to_map(notice) do
+    notice_to_map(notice, %{})
+  end
+
+  def notice_to_map(notice, creator_names) do
     %{
       "noticeId" => notice.notice_id,
       "noticeTitle" => notice.notice_title,
       "noticeType" => notice.notice_type,
       "noticeContent" => notice.notice_content,
       "status" => notice.status,
+      "creatorName" => Map.get(creator_names, notice.creator_id, ""),
       "remark" => notice.remark,
       "createTime" => format_datetime(notice.create_time)
     }
@@ -90,6 +103,24 @@ defmodule KeystonePhoenix.Notice do
         true -> normalized
       end
     end)
+  end
+
+  defp creator_names(notices) do
+    notices
+    |> Enum.map(& &1.creator_id)
+    |> Enum.filter(&(is_integer(&1) and &1 > 0))
+    |> Enum.uniq()
+    |> User.list_users_by_ids()
+    |> Map.new(&{&1.user_id, &1.username})
+  end
+
+  defp put_actor(changeset, _field, actor_id) when actor_id in [nil, ""], do: changeset
+
+  defp put_actor(changeset, field, actor_id) do
+    case parse_positive_integer(actor_id) do
+      nil -> changeset
+      actor_id -> Ecto.Changeset.put_change(changeset, field, actor_id)
+    end
   end
 
   defp filter_contains(query, _field, nil), do: query

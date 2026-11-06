@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Dictionary.{DictData, DictType}
   alias KeystonePhoenix.Menu.SysMenu
+  alias KeystonePhoenix.Notice.SysNotice
   alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
@@ -59,6 +60,12 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
 
     dict = Enum.find(dict_data, &(&1["dictCode"] == fixtures.dict_data.dict_code))
     assert dict["isDefault"] == 1
+
+    assert %{"code" => 0, "data" => %{"rows" => notices}} =
+             json_response(get(conn, "/system/notices?pageSize=10"), 200)
+
+    notice = Enum.find(notices, &(&1["noticeId"] == fixtures.notice.notice_id))
+    assert notice["creatorName"] == fixtures.user.username
   end
 
   defp fixtures do
@@ -95,6 +102,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     insert_permission(role.role_id, "system:post:list", 0, true)
     insert_permission(role.role_id, "system:user:list", 0, true)
     insert_permission(role.role_id, "system:dict:list", 0, true)
+    insert_permission(role.role_id, "system:notice:list", 0, true)
 
     user =
       %SysUser{user_id: 604}
@@ -107,6 +115,17 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
         role_id: role.role_id,
         status: 1
       })
+      |> Repo.insert!()
+
+    notice =
+      %SysNotice{notice_id: 607}
+      |> SysNotice.changeset(%{
+        notice_title: "契约公告",
+        notice_type: 1,
+        notice_content: "契约内容",
+        status: 1
+      })
+      |> Ecto.Changeset.put_change(:creator_id, user.user_id)
       |> Repo.insert!()
 
     dict_type =
@@ -139,7 +158,8 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
       role: role,
       page_menu: page_menu,
       user: user,
-      dict_data: dict_data
+      dict_data: dict_data,
+      notice: notice
     }
   end
 

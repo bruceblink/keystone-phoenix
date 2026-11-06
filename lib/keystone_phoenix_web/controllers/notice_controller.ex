@@ -34,7 +34,7 @@ defmodule KeystonePhoenixWeb.NoticeController do
 
   @doc "Creates a notice."
   def create(conn, params) do
-    case Notice.create_notice(params) do
+    case Notice.create_notice(params, conn.assigns.current_user.user_id) do
       {:ok, _notice} -> conn |> put_status(:created) |> json(ApiResponse.ok())
       {:error, changeset} -> render_error(conn, changeset)
     end
@@ -42,7 +42,7 @@ defmodule KeystonePhoenixWeb.NoticeController do
 
   @doc "Updates a notice."
   def update(conn, %{"notice_id" => notice_id} = params) do
-    case Notice.update_notice(notice_id, params) do
+    case Notice.update_notice(notice_id, params, conn.assigns.current_user.user_id) do
       {:ok, _notice} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)

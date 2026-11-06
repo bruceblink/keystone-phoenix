@@ -11,6 +11,7 @@ defmodule KeystonePhoenix.NoticeTest do
       notice_type: 1,
       notice_content: "服务将在周末维护。",
       status: 1,
+      creator_id: 7,
       remark: "管理员",
       deleted: false,
       create_time: ~U[2026-11-04 04:00:00Z]
@@ -22,9 +23,12 @@ defmodule KeystonePhoenix.NoticeTest do
              "noticeType" => 1,
              "noticeContent" => "服务将在周末维护。",
              "status" => 1,
+             "creatorName" => "",
              "remark" => "管理员",
              "createTime" => "2026-11-04 04:00:00"
            }
+
+    assert Notice.notice_to_map(notice, %{7 => "admin"})["creatorName"] == "admin"
   end
 
   test "rejects non-map create and update inputs at the domain boundary" do
