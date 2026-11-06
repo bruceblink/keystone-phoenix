@@ -32,13 +32,27 @@ if config_env() == :prod do
       """
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
+  database_ssl = System.get_env("DATABASE_SSL", "false") in ["true", "1"]
+
+  database_ssl_opts =
+    if database_ssl do
+      case System.get_env("DATABASE_SSL_CA") do
+        ca_file when is_binary(ca_file) and ca_file != "" ->
+          [verify: :verify_peer, cacertfile: ca_file]
+
+        _ ->
+          [verify: :verify_peer, cacerts: :public_key.cacerts_get()]
+      end
+    else
+      []
+    end
 
   config :keystone_phoenix, KeystonePhoenix.Repo,
-    # ssl: true,
+    ssl: database_ssl,
+    ssl_opts: database_ssl_opts,
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    # For machines with several cores, consider starting multiple pools of `pool_size`
-    # pool_count: 4,
+    pool_count: String.to_integer(System.get_env("POOL_COUNT") || "1"),
     socket_options: maybe_ipv6
 
   config :keystone_phoenix,
@@ -48,7 +62,11 @@ if config_env() == :prod do
       String.to_integer(System.get_env("JOB_SCHEDULER_INTERVAL_MS", "1000")),
     job_task_max_children: String.to_integer(System.get_env("JOB_TASK_MAX_CHILDREN", "64")),
     job_execution_timeout_ms:
-      String.to_integer(System.get_env("JOB_EXECUTION_TIMEOUT_MS", "30000"))
+      String.to_integer(System.get_env("JOB_EXECUTION_TIMEOUT_MS", "30000")),
+    auth_session_cleanup_interval_ms:
+      String.to_integer(System.get_env("AUTH_SESSION_CLEANUP_INTERVAL_MS", "60000")),
+    monitor_snapshot_interval_ms:
+      String.to_integer(System.get_env("MONITOR_SNAPSHOT_INTERVAL_MS", "1000"))
 
   config :keystone_phoenix,
     file_base_dir: System.get_env("FILE_BASE_DIR", "/var/lib/keystone/resources")

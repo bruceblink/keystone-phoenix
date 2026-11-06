@@ -61,6 +61,10 @@ layers in the GitHub Actions cache.
 The release reads `DATABASE_URL`, `SECRET_KEY_BASE`, `JWT_PRIVATE_KEY`, and
 `PHX_HOST` at runtime. Use `/health` for liveness and `/health/ready` for
 PostgreSQL readiness; rebuildable cache data is kept in the local ETS store.
+Set `DATABASE_SSL=true` for verified PostgreSQL TLS and optionally set
+`DATABASE_SSL_CA` to a CA bundle path. `POOL_SIZE` and `POOL_COUNT` control
+the PostgreSQL connection pools. `AUTH_SESSION_CLEANUP_INTERVAL_MS` and
+`MONITOR_SNAPSHOT_INTERVAL_MS` control the OTP cleanup and monitoring workers.
 Scheduler polling and task concurrency can be adjusted with `JOB_SCHEDULER_INTERVAL_MS`,
 `JOB_TASK_MAX_CHILDREN`, and `JOB_EXECUTION_TIMEOUT_MS`.
 
@@ -96,12 +100,12 @@ The organization and permission foundation now includes PostgreSQL-backed
 departments, posts, roles, menus, role-menu assignments, and the authenticated
 `/getRouters` menu tree. Read endpoints are available under `/system/depts`,
 `/system/post`, `/system/role`, and `/system/menus`. Departments and posts also
-support administrator-only create, update, and soft-delete commands; role and
-menu resources also support administrator-only create, update, status, data
-scope, menu assignment, and soft-delete commands. Menu resources support the
-same administrator-only create, update, and soft-delete commands. Role users
-can be queried and assigned or unassigned in bulk under the role grant
-endpoints.
+support role-permission checked create, update, and soft-delete commands; role
+and menu resources also support permission checked update, status, data scope,
+menu assignment, and soft-delete commands. Data-scope checks cover all data,
+custom departments, the current department tree, the current department, and
+the current user. Role users can be queried and assigned or unassigned in bulk
+under the role grant endpoints.
 
 Authenticated users can read and update their own profile under
 `/system/user/profile`, including old-password-checked password changes and
@@ -112,6 +116,12 @@ departments, posts, and roles before writing.
 
 Administrators can manage notices through `/system/notices` with paginated
 queries, detail reads, create, update, and soft-delete operations.
+
+Generic file upload/download endpoints, user/post/role/log Excel export, user
+Excel import/template download, and dictionary cache refresh are available at
+the same paths as the Java application. `/logout` revokes the current access
+token's PostgreSQL-backed session, while `/logout-refresh-token` remains
+available for clients that only have a refresh token.
 
 The log foundation now provides administrator-only login and operation log
 queries and cleanup under `/logs`; authenticated users can submit operation log
@@ -139,6 +149,10 @@ allow-listed invocation targets, job definition CRUD, enable/disable status,
 manual execution, and execution logs at `/system/jobs/logs`. Manual execution
 uses the same persisted log format that the scheduler will use for automatic
 Cron triggers.
+
+Public configuration, captcha, and RSA public-key endpoints use ETS-backed
+per-node rate limits. Notice creation uses a per-user repeat-submission guard;
+expired authentication sessions are removed by an OTP worker.
 
 The LiveView login page is available at `/`. It keeps the authenticated user
 and refresh session on the LiveView process and provides a server-side logout
