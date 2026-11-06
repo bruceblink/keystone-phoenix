@@ -37,11 +37,20 @@ defmodule KeystonePhoenixWeb.ProfileController do
 
   @doc "Uploads an avatar using the original multipart avatarfile contract."
   def update_avatar(conn, %{"avatarfile" => %Plug.Upload{} = upload}) do
-    with {:ok, avatar_url} <- Upload.store_avatar(upload),
-         {:ok, _user} <- User.update_avatar(conn.assigns.current_user.user_id, avatar_url) do
-      json(conn, ApiResponse.ok(%{"imgUrl" => avatar_url}))
+    with {:ok, avatar_url} <- Upload.store_avatar(upload) do
+      case User.update_avatar(conn.assigns.current_user.user_id, avatar_url) do
+        {:ok, _user} ->
+          json(conn, ApiResponse.ok(%{"imgUrl" => avatar_url}))
+
+        {:error, :not_found} ->
+          Upload.delete_avatar(avatar_url)
+          render_error(conn, :not_found)
+
+        {:error, reason} ->
+          Upload.delete_avatar(avatar_url)
+          render_error(conn, reason)
+      end
     else
-      {:error, :not_found} -> render_error(conn, :not_found)
       {:error, reason} -> render_error(conn, reason)
     end
   end

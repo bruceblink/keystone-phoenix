@@ -12,6 +12,7 @@ defmodule KeystonePhoenixWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug KeystonePhoenixWeb.Plugs.OperationLog
   end
 
   pipeline :event_stream do
