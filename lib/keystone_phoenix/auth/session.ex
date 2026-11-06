@@ -90,6 +90,19 @@ defmodule KeystonePhoenix.Auth.Session do
     _error -> :ok
   end
 
+  @doc "Deletes expired refresh sessions and returns the number removed."
+  @spec cleanup_expired() :: {:ok, non_neg_integer()} | {:error, :unavailable}
+  def cleanup_expired do
+    {count, _} =
+      Repo.delete_all(
+        from(session in AuthSession, where: session.expires_at <= ^DateTime.utc_now())
+      )
+
+    {:ok, count}
+  rescue
+    _error -> {:error, :unavailable}
+  end
+
   @doc "Returns active refresh sessions from PostgreSQL."
   @spec list_active() :: {:ok, list(map())} | {:error, :unavailable}
   def list_active do
