@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.Post do
 
   import Ecto.Query
 
+  alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.User.SysUser
@@ -54,36 +55,47 @@ defmodule KeystonePhoenix.Post do
 
   def list_posts_by_ids(_ids), do: []
 
-  def create_post(attrs) when is_map(attrs) do
-    %SysPost{}
-    |> SysPost.changeset(normalize_attrs(attrs))
+  def create_post(attrs, actor_id \\ nil)
+
+  def create_post(attrs, actor_id) when is_map(attrs) do
+    attrs
+    |> normalize_attrs()
+    |> then(&SysPost.changeset(%SysPost{}, &1))
+    |> Audit.put_actor(:creator_id, actor_id)
     |> Repo.insert()
   end
 
-  def create_post(_attrs), do: {:error, invalid_changeset(:post_code)}
+  def create_post(_attrs, _actor_id), do: {:error, invalid_changeset(:post_code)}
 
-  def update_post(id, attrs) when is_map(attrs) do
+  def update_post(id, attrs, actor_id \\ nil)
+
+  def update_post(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, post} <- get_post(id) do
-      Repo.update(SysPost.changeset(post, normalize_attrs(attrs)))
+      post
+      |> SysPost.changeset(normalize_attrs(attrs))
+      |> Audit.put_actor(:updater_id, actor_id)
+      |> Repo.update()
     end
   end
 
-  def update_post(_id, _attrs), do: {:error, invalid_changeset(:post_code)}
+  def update_post(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:post_code)}
 
-  def delete_posts(ids) when is_list(ids) do
+  def delete_posts(ids, actor_id \\ nil)
+
+  def delete_posts(ids, actor_id) when is_list(ids) do
     ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}
     else
-      case Repo.transaction(fn -> delete_posts_in_transaction(ids) end) do
+      case Repo.transaction(fn -> delete_posts_in_transaction(ids, actor_id) end) do
         {:ok, :ok} -> :ok
         {:error, reason} -> {:error, reason}
       end
     end
   end
 
-  def delete_posts(_ids), do: {:error, :invalid_ids}
+  def delete_posts(_ids, _actor_id), do: {:error, :invalid_ids}
 
   def post_to_map(post) do
     %{
@@ -98,7 +110,7 @@ defmodule KeystonePhoenix.Post do
     }
   end
 
-  defp delete_posts_in_transaction(ids) do
+  defp delete_posts_in_transaction(ids, actor_id) do
     Enum.each(ids, fn post_id ->
       case get_post(post_id) do
         {:error, :not_found} ->
@@ -108,7 +120,10 @@ defmodule KeystonePhoenix.Post do
           if user_count(post_id) > 0 do
             Repo.rollback(:has_users)
           else
-            case Repo.update(Ecto.Changeset.change(post, deleted: true)) do
+            changeset = Ecto.Changeset.change(post, deleted: true)
+            changeset = Audit.put_actor(changeset, :updater_id, actor_id)
+
+            case Repo.update(changeset) do
               {:ok, _deleted} -> :ok
               {:error, _changeset} -> Repo.rollback(:update_failed)
             end

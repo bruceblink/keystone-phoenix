@@ -53,8 +53,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
       result =
         if dept_id == "",
-          do: Department.create_dept(params),
-          else: Department.update_dept(dept_id, params)
+          do: Department.create_dept(params, current_user_id(socket)),
+          else: Department.update_dept(dept_id, params, current_user_id(socket))
 
       case result do
         {:ok, _dept} ->
@@ -75,7 +75,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("toggle-dept-status", %{"dept-id" => dept_id, "status" => status}, socket) do
     if Support.admin_socket?(socket) do
-      case Department.update_dept(dept_id, %{"status" => status}) do
+      case Department.update_dept(dept_id, %{"status" => status}, current_user_id(socket)) do
         {:ok, _dept} ->
           {:noreply, assign(socket, dept_rows: Support.load_depts(), dept_feedback: "部门状态已更新")}
 
@@ -89,7 +89,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("delete-dept", %{"dept-id" => dept_id}, socket) do
     if Support.admin_socket?(socket) do
-      case Department.delete_dept(dept_id) do
+      case Department.delete_dept(dept_id, current_user_id(socket)) do
         :ok ->
           {:noreply,
            assign(socket,
@@ -150,7 +150,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       post_id = String.trim(params["postId"] || "")
 
       result =
-        if post_id == "", do: Post.create_post(params), else: Post.update_post(post_id, params)
+        if post_id == "",
+          do: Post.create_post(params, current_user_id(socket)),
+          else: Post.update_post(post_id, params, current_user_id(socket))
 
       case result do
         {:ok, _post} ->
@@ -171,7 +173,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("toggle-post-status", %{"post-id" => post_id, "status" => status}, socket) do
     if Support.admin_socket?(socket) do
-      case Post.update_post(post_id, %{"status" => status}) do
+      case Post.update_post(post_id, %{"status" => status}, current_user_id(socket)) do
         {:ok, _post} ->
           {:noreply, assign(socket, post_rows: Support.load_posts(), post_feedback: "岗位状态已更新")}
 
@@ -185,7 +187,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("delete-post", %{"post-id" => post_id}, socket) do
     if Support.admin_socket?(socket) do
-      case Post.delete_posts([post_id]) do
+      case Post.delete_posts([post_id], current_user_id(socket)) do
         :ok ->
           {:noreply,
            assign(socket,
@@ -245,7 +247,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       params = Map.update(params, "menuIds", "", &String.trim/1)
 
       result =
-        if role_id == "", do: Role.create_role(params), else: Role.update_role(role_id, params)
+        if role_id == "",
+          do: Role.create_role(params, current_user_id(socket)),
+          else: Role.update_role(role_id, params, current_user_id(socket))
 
       case result do
         {:ok, _role} ->
@@ -266,7 +270,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("toggle-role-status", %{"role-id" => role_id, "status" => status}, socket) do
     if Support.admin_socket?(socket) do
-      case Role.change_status(role_id, status) do
+      case Role.change_status(role_id, status, current_user_id(socket)) do
         {:ok, _role} ->
           {:noreply, assign(socket, role_rows: Support.load_roles(), role_feedback: "角色状态已更新")}
 
@@ -280,7 +284,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("delete-role", %{"role-id" => role_id}, socket) do
     if Support.admin_socket?(socket) do
-      case Role.delete_role(role_id) do
+      case Role.delete_role(role_id, current_user_id(socket)) do
         {:ok, _} ->
           {:noreply,
            assign(socket,
@@ -382,7 +386,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       menu_id = String.trim(params["menuId"] || "")
 
       result =
-        if menu_id == "", do: Menu.create_menu(params), else: Menu.update_menu(menu_id, params)
+        if menu_id == "",
+          do: Menu.create_menu(params, current_user_id(socket)),
+          else: Menu.update_menu(menu_id, params, current_user_id(socket))
 
       case result do
         {:ok, _menu} ->
@@ -403,7 +409,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("toggle-menu-status", %{"menu-id" => menu_id, "status" => status}, socket) do
     if Support.admin_socket?(socket) do
-      case Menu.update_menu(menu_id, %{"status" => status}) do
+      case Menu.update_menu(menu_id, %{"status" => status}, current_user_id(socket)) do
         {:ok, _menu} ->
           {:noreply, assign(socket, menu_rows: Support.load_menus(), menu_feedback: "菜单状态已更新")}
 
@@ -417,7 +423,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("delete-menu", %{"menu-id" => menu_id}, socket) do
     if Support.admin_socket?(socket) do
-      case Menu.delete_menu(menu_id) do
+      case Menu.delete_menu(menu_id, current_user_id(socket)) do
         :ok ->
           {:noreply,
            assign(socket,
@@ -456,5 +462,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     else
       {:noreply, socket}
     end
+  end
+
+  defp current_user_id(socket) do
+    user = socket.assigns[:current_user] || %{}
+    Map.get(user, "userId") || Map.get(user, :user_id)
   end
 end

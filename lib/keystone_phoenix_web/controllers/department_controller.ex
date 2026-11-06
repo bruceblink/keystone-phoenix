@@ -34,7 +34,7 @@ defmodule KeystonePhoenixWeb.DepartmentController do
 
   @doc "Creates a department."
   def create(conn, params) do
-    case Department.create_dept(params) do
+    case Department.create_dept(params, conn.assigns.current_user.user_id) do
       {:ok, _dept} -> conn |> put_status(:created) |> json(ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end
@@ -42,7 +42,7 @@ defmodule KeystonePhoenixWeb.DepartmentController do
 
   @doc "Updates a department."
   def update(conn, %{"dept_id" => dept_id} = params) do
-    case Department.update_dept(dept_id, params) do
+    case Department.update_dept(dept_id, params, conn.assigns.current_user.user_id) do
       {:ok, _dept} -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end
@@ -50,7 +50,7 @@ defmodule KeystonePhoenixWeb.DepartmentController do
 
   @doc "Soft deletes a department."
   def delete(conn, %{"dept_id" => dept_id}) do
-    case Department.delete_dept(dept_id) do
+    case Department.delete_dept(dept_id, conn.assigns.current_user.user_id) do
       :ok -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end

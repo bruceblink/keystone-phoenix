@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.Role do
 
   import Ecto.Query
 
+  alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
@@ -57,13 +58,17 @@ defmodule KeystonePhoenix.Role do
 
   def list_roles_by_ids(_ids), do: []
 
-  def create_role(attrs) when is_map(attrs) do
+  def create_role(attrs, actor_id \\ nil)
+
+  def create_role(attrs, actor_id) when is_map(attrs) do
     menu_ids = menu_ids_from(attrs) || []
     attrs = normalize_attrs(attrs)
 
     Repo.transaction(fn ->
+      changeset = SysRole.changeset(%SysRole{}, attrs) |> Audit.put_actor(:creator_id, actor_id)
+
       role =
-        case Repo.insert(SysRole.changeset(%SysRole{}, attrs)) do
+        case Repo.insert(changeset) do
           {:ok, role} -> role
           {:error, changeset} -> Repo.rollback(changeset)
         end
@@ -73,16 +78,20 @@ defmodule KeystonePhoenix.Role do
     end)
   end
 
-  def create_role(_attrs), do: {:error, invalid_changeset(:role_name)}
+  def create_role(_attrs, _actor_id), do: {:error, invalid_changeset(:role_name)}
 
-  def update_role(id, attrs) when is_map(attrs) do
+  def update_role(id, attrs, actor_id \\ nil)
+
+  def update_role(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, role} <- get_role(id) do
       menu_ids = menu_ids_from(attrs)
       attrs = normalize_attrs(attrs)
 
       Repo.transaction(fn ->
+        changeset = SysRole.changeset(role, attrs) |> Audit.put_actor(:updater_id, actor_id)
+
         updated =
-          case Repo.update(SysRole.changeset(role, attrs)) do
+          case Repo.update(changeset) do
             {:ok, updated} -> updated
             {:error, changeset} -> Repo.rollback(changeset)
           end
@@ -93,9 +102,9 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
-  def update_role(_id, _attrs), do: {:error, invalid_changeset(:role_name)}
+  def update_role(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:role_name)}
 
-  def delete_role(id) do
+  def delete_role(id, actor_id \\ nil) do
     with {:ok, role} <- get_role(id) do
       cond do
         role.role_key == "admin" ->
@@ -108,7 +117,10 @@ defmodule KeystonePhoenix.Role do
           Repo.transaction(fn ->
             Repo.delete_all(from(rm in SysRoleMenu, where: rm.role_id == ^role.role_id))
 
-            case Repo.update(Ecto.Changeset.change(role, deleted: true)) do
+            changeset = Ecto.Changeset.change(role, deleted: true)
+            changeset = Audit.put_actor(changeset, :updater_id, actor_id)
+
+            case Repo.update(changeset) do
               {:ok, _deleted} -> :ok
               {:error, changeset} -> Repo.rollback(changeset)
             end
@@ -117,18 +129,24 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
-  def change_status(id, status) do
-    update_role(id, %{"status" => status, "menuIds" => menu_ids_for_role(id)})
+  def change_status(id, status, actor_id \\ nil) do
+    update_role(id, %{"status" => status, "menuIds" => menu_ids_for_role(id)}, actor_id)
   end
 
-  def update_data_scope(id, attrs) when is_map(attrs) do
+  def update_data_scope(id, attrs, actor_id \\ nil)
+
+  def update_data_scope(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, role} <- get_role(id) do
       attrs = normalize_attrs(attrs)
-      Repo.update(SysRole.changeset(role, attrs))
+
+      role
+      |> SysRole.changeset(attrs)
+      |> Audit.put_actor(:updater_id, actor_id)
+      |> Repo.update()
     end
   end
 
-  def update_data_scope(_id, _attrs), do: {:error, invalid_changeset(:data_scope)}
+  def update_data_scope(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:data_scope)}
 
   def menu_ids_for_role(role_id) do
     from(rm in SysRoleMenu,

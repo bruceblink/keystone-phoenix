@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.Department do
 
   import Ecto.Query
 
+  alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
@@ -57,20 +58,28 @@ defmodule KeystonePhoenix.Department do
 
   def list_depts_by_ids(_ids), do: []
 
-  def create_dept(attrs) when is_map(attrs) do
+  def create_dept(attrs, actor_id \\ nil)
+
+  def create_dept(attrs, actor_id) when is_map(attrs) do
     attrs = normalize_attrs(attrs)
 
     with {:ok, parent_id} <- positive_parent_id(attrs[:parent_id]),
          :ok <- ensure_name_available(attrs[:dept_name], parent_id, nil),
          {:ok, ancestors} <- build_ancestors(parent_id) do
       attrs = Map.merge(attrs, %{parent_id: parent_id, ancestors: ancestors})
-      Repo.insert(SysDept.changeset(%SysDept{}, attrs))
+
+      attrs
+      |> then(&SysDept.changeset(%SysDept{}, &1))
+      |> Audit.put_actor(:creator_id, actor_id)
+      |> Repo.insert()
     end
   end
 
-  def create_dept(_attrs), do: {:error, invalid_changeset(:dept_name)}
+  def create_dept(_attrs, _actor_id), do: {:error, invalid_changeset(:dept_name)}
 
-  def update_dept(id, attrs) when is_map(attrs) do
+  def update_dept(id, attrs, actor_id \\ nil)
+
+  def update_dept(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, dept} <- get_dept(id),
          attrs <- normalize_attrs(attrs),
          {:ok, parent_id} <- positive_parent_id(Map.get(attrs, :parent_id, dept.parent_id)),
@@ -80,15 +89,16 @@ defmodule KeystonePhoenix.Department do
          {:ok, ancestors} <- build_ancestors(parent_id),
          :ok <- ensure_status_change_allowed(dept, attrs) do
       attrs = Map.merge(attrs, %{parent_id: parent_id, ancestors: ancestors})
-      update_with_descendants(dept, SysDept.changeset(dept, attrs), ancestors)
+      changeset = SysDept.changeset(dept, attrs) |> Audit.put_actor(:updater_id, actor_id)
+      update_with_descendants(dept, changeset, ancestors)
     else
       error -> error
     end
   end
 
-  def update_dept(_id, _attrs), do: {:error, invalid_changeset(:dept_name)}
+  def update_dept(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:dept_name)}
 
-  def delete_dept(id) do
+  def delete_dept(id, actor_id \\ nil) do
     with {:ok, dept} <- get_dept(id) do
       cond do
         child_count(dept.dept_id) > 0 ->
@@ -98,7 +108,10 @@ defmodule KeystonePhoenix.Department do
           {:error, :has_users}
 
         true ->
-          case Repo.update(Ecto.Changeset.change(dept, deleted: true)) do
+          changeset = Ecto.Changeset.change(dept, deleted: true)
+          changeset = Audit.put_actor(changeset, :updater_id, actor_id)
+
+          case Repo.update(changeset) do
             {:ok, _deleted} -> :ok
             {:error, _changeset} -> {:error, :update_failed}
           end

@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.Menu do
 
   import Ecto.Query
 
+  alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
@@ -46,7 +47,9 @@ defmodule KeystonePhoenix.Menu do
     end
   end
 
-  def create_menu(attrs) when is_map(attrs) do
+  def create_menu(attrs, actor_id \\ nil)
+
+  def create_menu(attrs, actor_id) when is_map(attrs) do
     attrs = normalize_attrs(attrs)
 
     with {:ok, parent_id} <- parent_id(attrs[:parent_id]),
@@ -54,13 +57,19 @@ defmodule KeystonePhoenix.Menu do
          :ok <- ensure_name_available(attrs[:menu_name], parent_id, nil),
          :ok <- validate_menu_rules(attrs, parent_id, nil) do
       attrs = Map.put(attrs, :parent_id, parent_id)
-      Repo.insert(SysMenu.changeset(%SysMenu{}, attrs))
+
+      attrs
+      |> then(&SysMenu.changeset(%SysMenu{}, &1))
+      |> Audit.put_actor(:creator_id, actor_id)
+      |> Repo.insert()
     end
   end
 
-  def create_menu(_attrs), do: {:error, invalid_changeset(:menu_name)}
+  def create_menu(_attrs, _actor_id), do: {:error, invalid_changeset(:menu_name)}
 
-  def update_menu(id, attrs) when is_map(attrs) do
+  def update_menu(id, attrs, actor_id \\ nil)
+
+  def update_menu(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, menu} <- get_menu(id) do
       attrs = normalize_attrs(attrs)
 
@@ -70,15 +79,18 @@ defmodule KeystonePhoenix.Menu do
              :ok <-
                ensure_name_available(attrs[:menu_name] || menu.menu_name, parent_id, menu.menu_id),
              :ok <- validate_menu_rules(attrs, parent_id, menu) do
-          Repo.update(SysMenu.changeset(menu, Map.put(attrs, :parent_id, parent_id)))
+          menu
+          |> SysMenu.changeset(Map.put(attrs, :parent_id, parent_id))
+          |> Audit.put_actor(:updater_id, actor_id)
+          |> Repo.update()
         end
       end
     end
   end
 
-  def update_menu(_id, _attrs), do: {:error, invalid_changeset(:menu_name)}
+  def update_menu(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:menu_name)}
 
-  def delete_menu(id) do
+  def delete_menu(id, actor_id \\ nil) do
     with {:ok, menu} <- get_menu(id) do
       cond do
         child_count(menu.menu_id) > 0 ->
@@ -88,7 +100,10 @@ defmodule KeystonePhoenix.Menu do
           {:error, :assigned_to_role}
 
         true ->
-          case Repo.update(Ecto.Changeset.change(menu, deleted: true)) do
+          changeset = Ecto.Changeset.change(menu, deleted: true)
+          changeset = Audit.put_actor(changeset, :updater_id, actor_id)
+
+          case Repo.update(changeset) do
             {:ok, _deleted} -> :ok
             {:error, changeset} -> {:error, changeset}
           end

@@ -65,7 +65,7 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Creates a role and assigns its menus."
   def create(conn, params) do
-    case Role.create_role(params) do
+    case Role.create_role(params, conn.assigns.current_user.user_id) do
       {:ok, _role} -> conn |> put_status(:created) |> json(ApiResponse.ok())
       {:error, changeset} -> render_error(conn, changeset)
     end
@@ -73,7 +73,11 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Updates a role and optionally replaces its menu assignments."
   def update(conn, params) do
-    case Role.update_role(params["roleId"] || params[:role_id], params) do
+    case Role.update_role(
+           params["roleId"] || params[:role_id],
+           params,
+           conn.assigns.current_user.user_id
+         ) do
       {:ok, _role} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
@@ -82,7 +86,7 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Soft deletes a role."
   def delete(conn, %{"role_id" => role_id}) do
-    case Role.delete_role(role_id) do
+    case Role.delete_role(role_id, conn.assigns.current_user.user_id) do
       {:ok, _} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, reason} -> render_error(conn, reason)
@@ -91,7 +95,11 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Changes a role's enabled status."
   def change_status(conn, %{"role_id" => role_id} = params) do
-    case Role.change_status(role_id, params["status"] || params[:status]) do
+    case Role.change_status(
+           role_id,
+           params["status"] || params[:status],
+           conn.assigns.current_user.user_id
+         ) do
       {:ok, _role} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
@@ -100,7 +108,7 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Changes a role's data scope and department set."
   def data_scope(conn, %{"role_id" => role_id} = params) do
-    case Role.update_data_scope(role_id, params) do
+    case Role.update_data_scope(role_id, params, conn.assigns.current_user.user_id) do
       {:ok, _role} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
