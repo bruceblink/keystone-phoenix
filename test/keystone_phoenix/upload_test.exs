@@ -40,6 +40,33 @@ defmodule KeystonePhoenix.UploadTest do
     File.rm!(path)
   end
 
+  test "stores generic files and rejects unsafe download paths" do
+    path = temporary_file("report.txt", "hello")
+    upload = %Plug.Upload{path: path, filename: "report.txt", content_type: "text/plain"}
+
+    assert {:ok, %{"url" => url, "newFileName" => filename}} = Upload.store_file(upload)
+    assert url == "/profile/upload/" <> filename
+
+    assert {:error, :invalid_file_name} = Upload.resolve_download_path("../secret.txt")
+    assert {:error, :type_not_allowed} = Upload.resolve_download_path("secret.sh")
+    File.rm!(path)
+  end
+
+  test "stores a batch of generic files" do
+    first = temporary_file("first.txt", "one")
+    second = temporary_file("second.pdf", "two")
+
+    uploads = [
+      %Plug.Upload{path: first, filename: "first.txt", content_type: "text/plain"},
+      %Plug.Upload{path: second, filename: "second.pdf", content_type: "application/pdf"}
+    ]
+
+    assert {:ok, stored} = Upload.store_files(uploads)
+    assert length(stored) == 2
+    File.rm!(first)
+    File.rm!(second)
+  end
+
   defp temporary_file(filename, content) do
     path =
       Path.join(

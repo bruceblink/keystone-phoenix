@@ -4,6 +4,77 @@ defmodule KeystonePhoenix.Upload do
   @max_file_size 50 * 1024 * 1024
   @max_filename_length 127
   @allowed_extensions ~w(bmp gif jpg jpeg png webp)
+  @file_extensions ~w(bmp gif jpg jpeg png doc docx xls xlsx ppt pptx html htm txt rar zip gz bz2 mp4 avi rmvb pdf)
+
+  @doc "Stores one generic file under the upload resource directory."
+  @spec store_file(Plug.Upload.t()) :: {:ok, map()} | {:error, atom()}
+  def store_file(%Plug.Upload{} = upload) do
+    with {:ok, filename, extension} <- validate_generic_upload(upload),
+         directory <- Path.join(base_dir(), "upload"),
+         :ok <- File.mkdir_p(directory),
+         destination <- Path.join(directory, filename),
+         :ok <- copy_file(upload.path, destination) do
+      relative = "/profile/upload/#{filename}"
+
+      {:ok,
+       %{
+         "url" => relative,
+         "fileName" => relative,
+         "newFileName" => filename,
+         "originalFilename" => upload.filename,
+         "extension" => extension
+       }}
+    else
+      {:error, reason} when reason in [:enoent, :eacces, :enospc] -> {:error, :storage_error}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def store_file(_upload), do: {:error, :invalid_upload}
+
+  @doc "Stores a batch of generic files."
+  @spec store_files(list()) :: {:ok, list(map())} | {:error, atom()}
+  def store_files(uploads) when is_list(uploads) and uploads != [] do
+    Enum.reduce_while(uploads, {:ok, []}, fn upload, {:ok, stored} ->
+      case store_file(upload) do
+        {:ok, file} -> {:cont, {:ok, [file | stored]}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+    |> case do
+      {:ok, stored} -> {:ok, Enum.reverse(stored)}
+      error -> error
+    end
+  end
+
+  def store_files(_uploads), do: {:error, :empty_upload}
+
+  @doc "Resolves a generic download resource while preventing path traversal."
+  @spec resolve_download_path(String.t()) :: {:ok, String.t()} | {:error, atom()}
+  def resolve_download_path(file_name) when is_binary(file_name) do
+    cond do
+      file_name == "" or String.contains?(file_name, ["..", "\\", "\n", "\r"]) ->
+        {:error, :invalid_file_name}
+
+      (Path.extname(file_name)
+       |> String.trim_leading(".")
+       |> String.downcase()) not in @file_extensions ->
+        {:error, :type_not_allowed}
+
+      true ->
+        root = Path.expand(Path.join(base_dir(), "download"))
+        path = Path.expand(Path.join(root, file_name))
+
+        if String.starts_with?(path, root <> "/") and File.regular?(path),
+          do: {:ok, path},
+          else: {:error, :not_found}
+    end
+  end
+
+  def resolve_download_path(_file_name), do: {:error, :invalid_file_name}
+
+  @doc "Returns generic file extensions accepted by the original Keystone API."
+  def allowed_file_extensions, do: @file_extensions
 
   @spec store_avatar(Plug.Upload.t()) :: {:ok, String.t()} | {:error, atom()}
   def store_avatar(%Plug.Upload{} = upload) do
@@ -84,6 +155,26 @@ defmodule KeystonePhoenix.Upload do
     else
       {:error, :type_not_allowed}
     end
+  end
+
+  defp validate_generic_upload(%Plug.Upload{} = upload) do
+    with {:ok, stat} <- File.stat(upload.path),
+         :ok <- validate_size(stat.size),
+         :ok <- validate_filename(upload.filename),
+         {:ok, extension} <- generic_extension(upload),
+         filename <- generated_filename(upload.filename, extension) do
+      {:ok, filename, extension}
+    else
+      {:error, reason} when reason in [:enoent, :eacces, :enospc] -> {:error, :storage_error}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp generic_extension(%Plug.Upload{filename: filename, content_type: content_type}) do
+    extension = filename |> Path.extname() |> String.trim_leading(".") |> String.downcase()
+    extension = if extension == "", do: content_type_extension(content_type), else: extension
+
+    if extension in @file_extensions, do: {:ok, extension}, else: {:error, :type_not_allowed}
   end
 
   defp content_type_extension(content_type) when is_binary(content_type) do
