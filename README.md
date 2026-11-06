@@ -92,9 +92,9 @@ Administrator access tokens can also create, update, soft-delete, disable, and
 reset passwords for local users through the write endpoints under
 `/system/users`. Passwords are validated and bcrypt-hashed before persistence;
 disabling, deleting, or resetting a user revokes that user's active refresh
-session. The system configuration and dictionary management endpoints use the
-same administrator check. Non-administrator access tokens receive `403` for
-these management endpoints.
+session. Management endpoints use the role menu permission strings from
+`sys_role_menu`; administrator access bypasses those checks and other roles are
+constrained by their configured data scope.
 
 The organization and permission foundation now includes PostgreSQL-backed
 departments, posts, roles, menus, role-menu assignments, and the authenticated
