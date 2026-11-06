@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Monitor do
   alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Department
+  alias KeystonePhoenix.Monitor.CpuSampler
   alias KeystonePhoenix.RuntimeStore
   alias KeystonePhoenix.User
 
@@ -48,7 +49,12 @@ defmodule KeystonePhoenix.Monitor do
         |> Enum.filter(&matches_ip?(&1, params["ipAddress"] || params[:ip_address]))
         |> Enum.sort_by(& &1["loginTime"], :desc)
 
-      {:ok, %{total: length(rows), rows: rows}}
+      page = positive_integer(params["pageNum"] || params[:page_num], 1)
+      page_size = min(positive_integer(params["pageSize"] || params[:page_size], 50), 500)
+      total = length(rows)
+      rows = rows |> Enum.drop((page - 1) * page_size) |> Enum.take(page_size)
+
+      {:ok, %{total: total, rows: rows}}
     end
   end
 
@@ -124,90 +130,7 @@ defmodule KeystonePhoenix.Monitor do
 
   defp datetime_to_milliseconds(_datetime), do: nil
 
-  defp cpu_info do
-    cpu_num = :erlang.system_info(:logical_processors_available) || 1
-
-    case cpu_ticks() do
-      {:ok, first} ->
-        Process.sleep(50)
-
-        case cpu_ticks() do
-          {:ok, second} -> cpu_percentages(cpu_num, first, second)
-          _ -> zero_cpu(cpu_num)
-        end
-
-      _ ->
-        zero_cpu(cpu_num)
-    end
-  end
-
-  defp cpu_ticks do
-    case File.read("/proc/stat") do
-      {:ok, content} ->
-        case Enum.find(String.split(content, "\n"), &String.starts_with?(&1, "cpu ")) do
-          nil ->
-            {:error, :unavailable}
-
-          line ->
-            values =
-              line
-              |> String.split()
-              |> Enum.drop(1)
-              |> Enum.map(&parse_integer/1)
-
-            {:ok, values}
-        end
-
-      error ->
-        error
-    end
-  end
-
-  defp cpu_percentages(cpu_num, first, second) do
-    [user, _nice, system, idle, wait, irq, soft_irq, steal] = pad_ticks(second, 8)
-
-    [
-      first_user,
-      _first_nice,
-      first_system,
-      first_idle,
-      first_wait,
-      first_irq,
-      first_soft_irq,
-      first_steal
-    ] =
-      pad_ticks(first, 8)
-
-    user = user - first_user
-    system = system - first_system
-    idle = idle - first_idle
-    wait = wait - first_wait
-
-    total =
-      user + system + idle + wait + (irq - first_irq) + (soft_irq - first_soft_irq) +
-        (steal - first_steal)
-
-    %{
-      "cpuNum" => cpu_num,
-      "total" => percent(total, total),
-      "sys" => percent(system, total),
-      "used" => percent(user, total),
-      "wait" => percent(wait, total),
-      "free" => percent(idle, total)
-    }
-  end
-
-  defp pad_ticks(values, count), do: Enum.take(values ++ List.duplicate(0, count), count)
-
-  defp zero_cpu(cpu_num),
-    do: %{
-      "cpuNum" => cpu_num,
-      "total" => 0.0,
-      "sys" => 0.0,
-      "used" => 0.0,
-      "wait" => 0.0,
-      "free" => 0.0
-    }
+  defp cpu_info, do: CpuSampler.snapshot()
 
   defp percent(_value, 0), do: 0.0
   defp percent(value, total), do: Float.round(value * 100 / total, 2)
@@ -356,6 +279,15 @@ defmodule KeystonePhoenix.Monitor do
     case Integer.parse(to_string(value)) do
       {number, _} -> number
       _ -> 0
+    end
+  end
+
+  defp positive_integer(nil, default), do: default
+
+  defp positive_integer(value, default) do
+    case Integer.parse(to_string(value)) do
+      {number, ""} when number > 0 -> number
+      _ -> default
     end
   end
 

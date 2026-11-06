@@ -11,6 +11,7 @@ defmodule KeystonePhoenix.Application do
       [
         KeystonePhoenixWeb.Telemetry,
         KeystonePhoenix.RuntimeStore,
+        KeystonePhoenix.Monitor.CpuSampler,
         KeystonePhoenix.Repo,
         KeystonePhoenix.Auth.SessionCleanup,
         {Task.Supervisor,
