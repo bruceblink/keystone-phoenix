@@ -4,16 +4,18 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
   use Phoenix.Component
 
   def users(assigns) do
+    assigns = assign_new(assigns, :read_only, fn -> false end)
+
     ~H"""
     <div class="panel">
       <div class="form-actions">
-        <button type="button" class="refresh" phx-click="new-user">新建用户</button>
+        <button :if={!@read_only} type="button" class="refresh" phx-click="new-user">新建用户</button>
         <button type="button" class="refresh secondary" phx-click="refresh-users">刷新用户</button>
       </div>
       <%= if @user_feedback do %>
         <p class="feedback" role="status"><%= @user_feedback %></p>
       <% end %>
-      <form phx-submit="save-user">
+      <form :if={!@read_only} phx-submit="save-user">
         <input type="hidden" name="userId" value={@user_form["userId"]} />
         <div class="form-grid">
           <div><label for="user-username">用户名</label><input id="user-username" name="username" value={@user_form["username"] || ""} required /></div>
@@ -30,7 +32,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         </div>
         <div class="form-actions"><button type="submit">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="new-user">取消编辑</button></div>
       </form>
-      <form :if={@user_form["userId"] != ""} id="user-reset-password-form" phx-submit="reset-user-password">
+      <form :if={!@read_only and @user_form["userId"] != ""} id="user-reset-password-form" phx-submit="reset-user-password">
         <input type="hidden" name="userId" value={@user_form["userId"]} />
         <div class="form-grid">
           <div><label for="user-reset-password">重置密码</label><input id="user-reset-password" type="password" name="password" minlength="8" required /></div>
@@ -43,7 +45,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <%= for user <- @user_rows do %>
             <tr>
               <td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><%= user["deptName"] || "" %></td><td><%= user["roleName"] || "" %></td><td><%= user["email"] || "" %></td><td><%= user["phoneNumber"] || "" %></td><td><%= if user["status"] == 1, do: "正常", else: "停用" %></td>
-              <td class="table-actions"><button type="button" class="refresh" phx-click="edit-user" phx-value-user-id={user["userId"]}>编辑</button><button type="button" class="refresh" phx-click="toggle-user-status" phx-value-user-id={user["userId"]} phx-value-status={if user["status"] == 1, do: 0, else: 1}><%= if user["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-click="delete-user" phx-value-user-id={user["userId"]}>删除</button></td>
+              <td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-user" phx-value-user-id={user["userId"]}>编辑</button><button type="button" class="refresh" phx-click="toggle-user-status" phx-value-user-id={user["userId"]} phx-value-status={if user["status"] == 1, do: 0, else: 1}><%= if user["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-click="delete-user" phx-value-user-id={user["userId"]}>删除</button></td>
             </tr>
           <% end %>
         </tbody>

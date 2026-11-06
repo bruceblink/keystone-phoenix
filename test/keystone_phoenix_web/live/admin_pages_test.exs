@@ -102,6 +102,19 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
            ) =~ "save-menu"
   end
 
+  test "read-only organization panels hide mutation controls" do
+    assigns = %{
+      dept_rows: [],
+      dept_form: %{"deptId" => "", "parentId" => 0, "deptName" => "", "status" => 1},
+      dept_feedback: nil,
+      read_only: true
+    }
+
+    html = render_component(&Organization.departments/1, assigns)
+    refute html =~ "new-dept"
+    refute html =~ "save-dept"
+  end
+
   test "account, system, and operations panels render without a dashboard process" do
     account_assigns = %{
       user_rows: [],

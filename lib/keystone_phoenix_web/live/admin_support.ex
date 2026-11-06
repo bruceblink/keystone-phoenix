@@ -12,6 +12,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenix.Notice
+  alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
@@ -81,7 +82,57 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       job_log_rows: []
     }
 
+  @doc "Loads only list data granted to a non-admin LiveView session."
+  def load_dashboard_for_permissions(user, permissions) do
+    access = panel_access(permissions)
+    dashboard = empty_dashboard()
+
+    dashboard
+    |> Map.put(:dept_rows, if(access["depts"], do: load_depts(), else: []))
+    |> Map.put(:post_rows, if(access["posts"], do: load_posts(), else: []))
+    |> Map.put(:role_rows, if(access["roles"], do: load_roles(), else: []))
+    |> Map.put(:menu_rows, if(access["menus"], do: load_menus(), else: []))
+    |> Map.put(:user_rows, if(access["users"], do: load_users_for_user(user), else: []))
+    |> Map.put(:config_rows, if(access["configs"], do: load_configs(), else: []))
+    |> Map.put(
+      :dict_type_rows,
+      if(access["dicts"], do: Dictionary.list_dict_types(%{"pageSize" => 50}).rows, else: [])
+    )
+    |> Map.put(:notice_rows, if(access["notices"], do: load_notices(), else: []))
+    |> Map.put(:job_rows, if(access["jobs"], do: load_jobs(), else: []))
+    |> Map.put(:job_log_rows, if(access["job-logs"], do: load_job_logs(), else: []))
+    |> Map.put(
+      :login_log_rows,
+      if("monitor:logininfor:list" in permissions,
+        do: Log.list_login_logs(%{"pageSize" => 50}).rows,
+        else: []
+      )
+    )
+    |> Map.put(
+      :operation_log_rows,
+      if("monitor:operlog:list" in permissions,
+        do: Log.list_operation_logs(%{"pageSize" => 50}).rows,
+        else: []
+      )
+    )
+  end
+
+  @doc "Returns panel visibility for a permission list."
+  def panel_access(permissions, is_admin \\ false) do
+    Enum.into(@panel_permissions, %{}, fn {panel, required} ->
+      {panel, is_admin or Enum.any?(required, &(&1 in List.wrap(permissions)))}
+    end)
+    |> Map.put("overview", true)
+    |> Map.put("profile", true)
+  end
+
   def load_users, do: User.list_users(%{"pageSize" => 50}).rows
+
+  def load_users_for_user(user) do
+    User.list_users(%{"pageSize" => 50}).rows
+    |> Enum.filter(&Permission.data_scope_allowed?(user, :user, &1["userId"]))
+  end
+
   def load_posts, do: Post.list_posts(%{"pageSize" => 50}).rows
   def load_configs, do: Config.list_configs(%{"pageSize" => 50}).rows
   def load_jobs, do: Job.list_jobs(%{"pageSize" => 50}).rows

@@ -32,6 +32,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
        login_error: nil,
        current_user: nil,
        permissions: [],
+       panel_access: %{},
+       read_only: true,
        access_token: nil,
        refresh_token: nil,
        active_panel: "overview",
@@ -97,12 +99,14 @@ defmodule KeystonePhoenixWeb.LoginLive do
         current_user = Map.get(tokens.current_user, "userInfo", tokens.current_user)
         permissions = Map.get(tokens.current_user, "permissions", [])
 
+        is_admin = current_user["isAdmin"] == 1
+
         dashboard =
-          if current_user["isAdmin"] == 1 do
-            load_dashboard()
-          else
-            empty_dashboard()
-          end
+          if is_admin,
+            do: load_dashboard(),
+            else: load_dashboard_for_permissions(current_user, permissions)
+
+        panel_access = AdminSupport.panel_access(permissions, is_admin)
 
         {:noreply,
          assign(socket,
@@ -111,6 +115,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
            login_error: nil,
            current_user: current_user,
            permissions: permissions,
+           panel_access: panel_access,
+           read_only: not is_admin,
            access_token: tokens.token,
            refresh_token: tokens.refresh_token,
            active_panel: "overview",
@@ -211,8 +217,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
           {:noreply, assign(socket, active_panel: panel)}
       end
     else
-      if panel == "profile" and authenticated_socket?(socket) do
-        {:noreply, assign_profile(socket)}
+      if authenticated_socket?(socket) and AdminSupport.panel_allowed?(socket, panel) do
+        if panel == "profile",
+          do: {:noreply, assign_profile(socket)},
+          else: {:noreply, assign(socket, active_panel: panel)}
       else
         {:noreply, socket}
       end
@@ -249,6 +257,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
        login_error: nil,
        current_user: nil,
        permissions: [],
+       panel_access: %{},
+       read_only: true,
        access_token: nil,
        refresh_token: nil,
        active_panel: "overview",
@@ -330,7 +340,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   defp load_dashboard, do: AdminSupport.load_dashboard()
-  defp empty_dashboard, do: AdminSupport.empty_dashboard()
+
+  defp load_dashboard_for_permissions(user, permissions),
+    do: AdminSupport.load_dashboard_for_permissions(user, permissions)
+
   defp load_jobs, do: AdminSupport.load_jobs()
   defp load_job_logs, do: AdminSupport.load_job_logs()
   defp empty_notice_form, do: AdminSupport.empty_notice_form()
@@ -435,21 +448,21 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <button type="button" class="secondary" phx-click="logout">退出</button>
                   </div>
                 </div>
-                <%= if @current_user["isAdmin"] == 1 do %>
+                <%= if @current_user["isAdmin"] == 1 or Enum.any?(Map.values(@panel_access)) do %>
                   <nav aria-label="管理模块">
                     <button type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" phx-value-panel="overview">概览</button>
-                    <button type="button" class={if @active_panel == "depts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="depts">部门</button>
-                    <button type="button" class={if @active_panel == "posts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="posts">岗位</button>
-                    <button type="button" class={if @active_panel == "roles", do: "active", else: ""} phx-click="show-panel" phx-value-panel="roles">角色</button>
-                    <button type="button" class={if @active_panel == "menus", do: "active", else: ""} phx-click="show-panel" phx-value-panel="menus">菜单</button>
-                    <button type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" phx-value-panel="users">用户</button>
-                    <button type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
-                    <button type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
-                    <button type="button" class={if @active_panel == "notices", do: "active", else: ""} phx-click="show-panel" phx-value-panel="notices">公告</button>
-                    <button type="button" class={if @active_panel == "logs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="logs">日志</button>
-                    <button type="button" class={if @active_panel == "jobs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="jobs">定时任务</button>
-                    <button type="button" class={if @active_panel == "job-logs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="job-logs">任务日志</button>
-                    <button type="button" class={if @active_panel == "monitor", do: "active", else: ""} phx-click="show-panel" phx-value-panel="monitor">监控</button>
+                    <button :if={@panel_access["depts"]} type="button" class={if @active_panel == "depts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="depts">部门</button>
+                    <button :if={@panel_access["posts"]} type="button" class={if @active_panel == "posts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="posts">岗位</button>
+                    <button :if={@panel_access["roles"]} type="button" class={if @active_panel == "roles", do: "active", else: ""} phx-click="show-panel" phx-value-panel="roles">角色</button>
+                    <button :if={@panel_access["menus"]} type="button" class={if @active_panel == "menus", do: "active", else: ""} phx-click="show-panel" phx-value-panel="menus">菜单</button>
+                    <button :if={@panel_access["users"]} type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" phx-value-panel="users">用户</button>
+                    <button :if={@panel_access["configs"]} type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
+                    <button :if={@panel_access["dicts"]} type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
+                    <button :if={@panel_access["notices"]} type="button" class={if @active_panel == "notices", do: "active", else: ""} phx-click="show-panel" phx-value-panel="notices">公告</button>
+                    <button :if={@panel_access["logs"]} type="button" class={if @active_panel == "logs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="logs">日志</button>
+                    <button :if={@panel_access["jobs"]} type="button" class={if @active_panel == "jobs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="jobs">定时任务</button>
+                    <button :if={@panel_access["job-logs"]} type="button" class={if @active_panel == "job-logs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="job-logs">任务日志</button>
+                    <button :if={@panel_access["monitor"]} type="button" class={if @active_panel == "monitor", do: "active", else: ""} phx-click="show-panel" phx-value-panel="monitor">监控</button>
                     <button type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" phx-value-panel="profile">个人资料</button>
                   </nav>
                   <%= case @active_panel do %>
@@ -459,29 +472,29 @@ defmodule KeystonePhoenixWeb.LoginLive do
                         <p class="muted">部门：<%= length(@dept_rows) %>　岗位：<%= length(@post_rows) %>　角色：<%= length(@role_rows) %>　菜单：<%= length(@menu_rows) %>　公告：<%= length(@notice_rows) %>　用户：<%= length(@user_rows) %>　配置：<%= length(@config_rows) %>　字典：<%= length(@dict_type_rows) %>　任务：<%= length(@job_rows) %></p>
                       </div>
                     <% "depts" -> %>
-                      <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} />
+                      <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} read_only={@read_only} />
                     <% "posts" -> %>
-                      <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} />
+                      <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} read_only={@read_only} />
                     <% "roles" -> %>
-                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} />
+                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} read_only={@read_only} />
                     <% "menus" -> %>
-                      <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} />
+                      <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} read_only={@read_only} />
                     <% "users" -> %>
-                      <.users user_rows={@user_rows} user_form={@user_form} user_feedback={@user_feedback} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} />
+                      <.users user_rows={@user_rows} user_form={@user_form} user_feedback={@user_feedback} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} read_only={@read_only} />
                     <% "configs" -> %>
-                      <.configs config_rows={@config_rows} config_form={@config_form} config_feedback={@config_feedback} />
+                      <.configs config_rows={@config_rows} config_form={@config_form} config_feedback={@config_feedback} read_only={@read_only} />
                     <% "dicts" -> %>
-                      <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} />
+                      <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} read_only={@read_only} />
                     <% "notices" -> %>
-                      <.notices notice_rows={@notice_rows} notice_form={@notice_form} notice_feedback={@notice_feedback} />
+                      <.notices notice_rows={@notice_rows} notice_form={@notice_form} notice_feedback={@notice_feedback} read_only={@read_only} />
                     <% "logs" -> %>
-                      <.logs login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} />
+                      <.logs login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} read_only={@read_only} />
                     <% "jobs" -> %>
-                      <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} />
+                      <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} read_only={@read_only} />
                     <% "job-logs" -> %>
-                      <.job_logs job_log_rows={@job_log_rows} job_log_feedback={@job_log_feedback} />
+                      <.job_logs job_log_rows={@job_log_rows} job_log_feedback={@job_log_feedback} read_only={@read_only} />
                     <% "monitor" -> %>
-                      <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} network_status={@network_status} monitor_feedback={@monitor_feedback} />
+                      <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} network_status={@network_status} monitor_feedback={@monitor_feedback} read_only={@read_only} />
                     <% "profile" -> %>
                       <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} avatar_upload={@uploads.avatar} />
                     <% _ -> %>
