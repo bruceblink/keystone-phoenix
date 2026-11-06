@@ -37,8 +37,13 @@ defmodule KeystonePhoenix.Job.Scheduler do
 
     state =
       case Repo.all(from job in SysJob, where: job.status == 1) do
-        jobs when is_list(jobs) -> trigger_due_jobs(jobs, now, state)
-        _ -> state
+        jobs when is_list(jobs) ->
+          state
+          |> prune_last_triggers(jobs)
+          |> trigger_due_jobs(jobs, now)
+
+        _ ->
+          state
       end
 
     schedule_tick()
@@ -84,7 +89,13 @@ defmodule KeystonePhoenix.Job.Scheduler do
     end
   end
 
-  defp trigger_due_jobs(jobs, now, state) do
+  @doc "Drops trigger timestamps for jobs that are no longer enabled."
+  def prune_last_triggers(state, jobs) when is_map(state) and is_list(jobs) do
+    active_job_ids = Enum.map(jobs, & &1.job_id)
+    %{state | last_trigger: Map.take(state.last_trigger, active_job_ids)}
+  end
+
+  defp trigger_due_jobs(state, jobs, now) do
     Enum.reduce(jobs, state, fn job, state ->
       trigger_job(job, now, state)
     end)
