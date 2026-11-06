@@ -31,6 +31,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
        password: "",
        login_error: nil,
        current_user: nil,
+       permissions: [],
        access_token: nil,
        refresh_token: nil,
        active_panel: "overview",
@@ -94,6 +95,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
       {:ok, tokens} ->
         Log.record_login_event(username, 1, "登录成功")
         current_user = Map.get(tokens.current_user, "userInfo", tokens.current_user)
+        permissions = Map.get(tokens.current_user, "permissions", [])
 
         dashboard =
           if current_user["isAdmin"] == 1 do
@@ -108,6 +110,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
            password: "",
            login_error: nil,
            current_user: current_user,
+           permissions: permissions,
            access_token: tokens.token,
            refresh_token: tokens.refresh_token,
            active_panel: "overview",
@@ -245,6 +248,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
        password: "",
        login_error: nil,
        current_user: nil,
+       permissions: [],
        access_token: nil,
        refresh_token: nil,
        active_panel: "overview",

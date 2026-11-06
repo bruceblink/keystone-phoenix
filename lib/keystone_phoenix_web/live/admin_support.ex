@@ -16,6 +16,21 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
 
+  @panel_permissions %{
+    "depts" => ["system:dept:list"],
+    "posts" => ["system:post:list"],
+    "roles" => ["system:role:list"],
+    "menus" => ["system:menu:list"],
+    "users" => ["system:user:list"],
+    "configs" => ["system:config:list"],
+    "dicts" => ["system:dict:list"],
+    "notices" => ["system:notice:list"],
+    "logs" => ["monitor:logininfor:list", "monitor:operlog:list"],
+    "jobs" => ["system:job:list"],
+    "job-logs" => ["system:job:list"],
+    "monitor" => ["monitor:cache:list", "monitor:server:list", "monitor:online:list"]
+  }
+
   def load_dashboard do
     logs = load_logs()
     dictionary = load_dictionary("")
@@ -415,11 +430,25 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def authenticated_socket?(socket), do: is_map(socket.assigns.current_user)
 
+  @doc "Checks a permission retained by the authenticated LiveView session."
+  def permission_socket?(socket, permission) when is_binary(permission) do
+    admin_socket?(socket) or permission in List.wrap(socket.assigns[:permissions])
+  end
+
+  def permission_socket?(_socket, _permission), do: false
+
+  @doc "Checks whether a dashboard panel has at least one required permission."
+  def panel_allowed?(socket, panel) do
+    admin_socket?(socket) or
+      Enum.any?(Map.get(@panel_permissions, panel, []), &permission_socket?(socket, &1))
+  end
+
   def expire_authentication(socket, message) do
     Auth.logout(socket.assigns.refresh_token)
 
     assign(socket,
       current_user: nil,
+      permissions: [],
       access_token: nil,
       refresh_token: nil,
       active_panel: "overview",
