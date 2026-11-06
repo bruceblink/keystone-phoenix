@@ -65,14 +65,20 @@ defmodule KeystonePhoenixWeb.DepartmentController do
   defp render_error(conn, reason)
        when reason in [
               :parent_not_found,
+              :parent_disabled,
               :invalid_parent,
+              :name_exists,
+              :status_invalid,
               :has_children,
               :has_users,
               :update_failed
             ] do
     messages = %{
       parent_not_found: "父部门不存在",
+      parent_disabled: "父部门已停用",
       invalid_parent: "父部门无效",
+      name_exists: "同级部门名称已存在",
+      status_invalid: "部门存在启用的子部门，不能停用",
       has_children: "部门存在子部门，不能删除",
       has_users: "部门存在用户，不能删除",
       update_failed: "部门更新失败"

@@ -50,7 +50,7 @@ defmodule KeystonePhoenixWeb.MenuController do
   @doc "Soft deletes a menu or button permission."
   def delete(conn, %{"menu_id" => menu_id}) do
     case Menu.delete_menu(menu_id) do
-      {:ok, _} -> json(conn, ApiResponse.ok())
+      :ok -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end
   end
@@ -62,11 +62,27 @@ defmodule KeystonePhoenixWeb.MenuController do
   end
 
   defp render_error(conn, reason)
-       when reason in [:parent_not_found, :invalid_parent, :has_children] do
+       when reason in [
+              :parent_not_found,
+              :invalid_parent,
+              :name_exists,
+              :has_children,
+              :assigned_to_role,
+              :menu_type_locked,
+              :button_parent_invalid,
+              :menu_parent_invalid,
+              :external_link_invalid
+            ] do
     messages = %{
       parent_not_found: "父菜单不存在",
       invalid_parent: "父菜单无效",
-      has_children: "菜单存在子菜单，不能删除"
+      name_exists: "同级菜单名称已存在",
+      has_children: "菜单存在子菜单，不能删除",
+      assigned_to_role: "菜单已分配给角色，不能删除",
+      menu_type_locked: "非按钮菜单不能修改菜单类型",
+      button_parent_invalid: "内嵌或外链菜单下不能创建按钮",
+      menu_parent_invalid: "只有目录菜单下可以创建子菜单",
+      external_link_invalid: "外链菜单地址必须使用 HTTP 或 HTTPS"
     }
 
     conn

@@ -61,6 +61,7 @@ defmodule KeystonePhoenix.Department do
     attrs = normalize_attrs(attrs)
 
     with {:ok, parent_id} <- positive_parent_id(attrs[:parent_id]),
+         :ok <- ensure_name_available(attrs[:dept_name], parent_id, nil),
          {:ok, ancestors} <- build_ancestors(parent_id) do
       attrs = Map.merge(attrs, %{parent_id: parent_id, ancestors: ancestors})
       Repo.insert(SysDept.changeset(%SysDept{}, attrs))
@@ -72,15 +73,14 @@ defmodule KeystonePhoenix.Department do
   def update_dept(id, attrs) when is_map(attrs) do
     with {:ok, dept} <- get_dept(id),
          attrs <- normalize_attrs(attrs),
-         {:ok, parent_id} <- positive_parent_id(Map.get(attrs, :parent_id, dept.parent_id)) do
-      if parent_id == dept.dept_id do
-        {:error, :invalid_parent}
-      else
-        with {:ok, ancestors} <- build_ancestors(parent_id) do
-          attrs = Map.merge(attrs, %{parent_id: parent_id, ancestors: ancestors})
-          Repo.update(SysDept.changeset(dept, attrs))
-        end
-      end
+         {:ok, parent_id} <- positive_parent_id(Map.get(attrs, :parent_id, dept.parent_id)),
+         :ok <- ensure_not_descendant(dept, parent_id),
+         :ok <-
+           ensure_name_available(attrs[:dept_name] || dept.dept_name, parent_id, dept.dept_id),
+         {:ok, ancestors} <- build_ancestors(parent_id),
+         :ok <- ensure_status_change_allowed(dept, attrs) do
+      attrs = Map.merge(attrs, %{parent_id: parent_id, ancestors: ancestors})
+      update_with_descendants(dept, SysDept.changeset(dept, attrs), ancestors)
     else
       error -> error
     end
@@ -147,9 +147,96 @@ defmodule KeystonePhoenix.Department do
 
   defp build_ancestors(parent_id) do
     case get_dept(parent_id) do
-      {:ok, parent} -> {:ok, parent.ancestors <> "," <> Integer.to_string(parent.dept_id)}
-      {:error, :not_found} -> {:error, :parent_not_found}
+      {:ok, %{status: 1} = parent} ->
+        {:ok, parent.ancestors <> "," <> Integer.to_string(parent.dept_id)}
+
+      {:ok, _parent} ->
+        {:error, :parent_disabled}
+
+      {:error, :not_found} ->
+        {:error, :parent_not_found}
     end
+  end
+
+  defp ensure_name_available(nil, _parent_id, _dept_id), do: :ok
+
+  defp ensure_name_available(name, parent_id, dept_id) do
+    query =
+      from d in SysDept,
+        where: d.deleted == false and d.parent_id == ^parent_id and d.dept_name == ^name
+
+    query = if dept_id, do: where(query, [dept], dept.dept_id != ^dept_id), else: query
+    if Repo.exists?(query), do: {:error, :name_exists}, else: :ok
+  end
+
+  defp ensure_not_descendant(%SysDept{dept_id: dept_id}, parent_id) when dept_id == parent_id,
+    do: {:error, :invalid_parent}
+
+  defp ensure_not_descendant(%SysDept{dept_id: dept_id}, parent_id) do
+    if parent_id == 0 or not descendant_id?(dept_id, parent_id),
+      do: :ok,
+      else: {:error, :invalid_parent}
+  end
+
+  defp descendant_id?(ancestor_id, candidate_id) do
+    case get_dept(candidate_id) do
+      {:ok, candidate} -> ancestor_id in ancestor_ids(candidate.ancestors)
+      {:error, :not_found} -> false
+    end
+  end
+
+  defp ancestor_ids(ancestors) do
+    ancestors
+    |> to_string()
+    |> String.split(",", trim: true)
+    |> Enum.map(&parse_positive_integer/1)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp ensure_status_change_allowed(%SysDept{status: 1, dept_id: dept_id}, attrs) do
+    case Params.parse_integer(attrs[:status]) do
+      {:ok, 0} ->
+        query =
+          from child in SysDept,
+            where: child.parent_id == ^dept_id and child.deleted == false and child.status == 1
+
+        if Repo.exists?(query), do: {:error, :status_invalid}, else: :ok
+
+      _status ->
+        :ok
+    end
+  end
+
+  defp ensure_status_change_allowed(_dept, _attrs), do: :ok
+
+  defp update_with_descendants(dept, changeset, ancestors) do
+    Repo.transaction(fn ->
+      updated =
+        case Repo.update(changeset) do
+          {:ok, value} -> value
+          {:error, changeset} -> Repo.rollback(changeset)
+        end
+
+      descendants =
+        from(child in SysDept, where: child.deleted == false and child.dept_id != ^dept.dept_id)
+        |> Repo.all()
+        |> Enum.filter(&(dept.dept_id in ancestor_ids(&1.ancestors)))
+        |> Enum.sort_by(&length(ancestor_ids(&1.ancestors)))
+
+      Enum.reduce(descendants, %{dept.dept_id => ancestors}, fn child, ancestor_map ->
+        parent_ancestors = Map.fetch!(ancestor_map, child.parent_id)
+        child_ancestors = parent_ancestors <> "," <> Integer.to_string(child.parent_id)
+
+        Repo.update_all(
+          from(record in SysDept, where: record.dept_id == ^child.dept_id),
+          set: [ancestors: child_ancestors, update_time: DateTime.utc_now()]
+        )
+
+        Map.put(ancestor_map, child.dept_id, child_ancestors)
+      end)
+
+      updated
+    end)
   end
 
   defp child_count(parent_id) do

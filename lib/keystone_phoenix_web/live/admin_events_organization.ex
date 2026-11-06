@@ -418,14 +418,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   def handle_event("delete-menu", %{"menu-id" => menu_id}, socket) do
     if Support.admin_socket?(socket) do
       case Menu.delete_menu(menu_id) do
-        {:ok, _} ->
-          {:noreply,
-           assign(socket,
-             menu_rows: Support.load_menus(),
-             menu_form: Support.empty_menu_form(),
-             menu_feedback: "菜单已删除"
-           )}
-
         :ok ->
           {:noreply,
            assign(socket,

@@ -49,7 +49,9 @@ defmodule KeystonePhoenix.Menu do
     attrs = normalize_attrs(attrs)
 
     with {:ok, parent_id} <- parent_id(attrs[:parent_id]),
-         :ok <- ensure_parent(parent_id) do
+         :ok <- ensure_parent(parent_id),
+         :ok <- ensure_name_available(attrs[:menu_name], parent_id, nil),
+         :ok <- validate_menu_rules(attrs, parent_id, nil) do
       attrs = Map.put(attrs, :parent_id, parent_id)
       Repo.insert(SysMenu.changeset(%SysMenu{}, attrs))
     end
@@ -62,12 +64,12 @@ defmodule KeystonePhoenix.Menu do
       attrs = normalize_attrs(attrs)
 
       with {:ok, parent_id} <- parent_id(Map.get(attrs, :parent_id, menu.parent_id)) do
-        if parent_id == menu.menu_id do
-          {:error, :invalid_parent}
-        else
-          with :ok <- ensure_parent(parent_id) do
-            Repo.update(SysMenu.changeset(menu, Map.put(attrs, :parent_id, parent_id)))
-          end
+        with :ok <- ensure_not_descendant(menu.menu_id, parent_id),
+             :ok <- ensure_parent(parent_id),
+             :ok <-
+               ensure_name_available(attrs[:menu_name] || menu.menu_name, parent_id, menu.menu_id),
+             :ok <- validate_menu_rules(attrs, parent_id, menu) do
+          Repo.update(SysMenu.changeset(menu, Map.put(attrs, :parent_id, parent_id)))
         end
       end
     end
@@ -81,15 +83,14 @@ defmodule KeystonePhoenix.Menu do
         child_count(menu.menu_id) > 0 ->
           {:error, :has_children}
 
-        true ->
-          Repo.transaction(fn ->
-            Repo.delete_all(from(rm in "sys_role_menu", where: rm.menu_id == ^menu.menu_id))
+        assigned_to_role?(menu.menu_id) ->
+          {:error, :assigned_to_role}
 
-            case Repo.update(Ecto.Changeset.change(menu, deleted: true)) do
-              {:ok, _deleted} -> :ok
-              {:error, changeset} -> Repo.rollback(changeset)
-            end
-          end)
+        true ->
+          case Repo.update(Ecto.Changeset.change(menu, deleted: true)) do
+            {:ok, _deleted} -> :ok
+            {:error, changeset} -> {:error, changeset}
+          end
       end
     end
   end
@@ -191,9 +192,120 @@ defmodule KeystonePhoenix.Menu do
     end
   end
 
+  defp ensure_not_descendant(menu_id, parent_id) when menu_id == parent_id,
+    do: {:error, :invalid_parent}
+
+  defp ensure_not_descendant(_menu_id, 0), do: :ok
+
+  defp ensure_not_descendant(menu_id, parent_id) do
+    if parent_chain_contains?(parent_id, menu_id, MapSet.new()),
+      do: {:error, :invalid_parent},
+      else: :ok
+  end
+
+  defp parent_chain_contains?(current_id, target_id, visited) do
+    cond do
+      current_id == target_id ->
+        true
+
+      MapSet.member?(visited, current_id) ->
+        true
+
+      true ->
+        case get_menu(current_id) do
+          {:ok, %{parent_id: 0}} ->
+            false
+
+          {:ok, parent} ->
+            parent_chain_contains?(parent.parent_id, target_id, MapSet.put(visited, current_id))
+
+          {:error, :not_found} ->
+            false
+        end
+    end
+  end
+
+  defp ensure_name_available(nil, _parent_id, _menu_id), do: :ok
+
+  defp ensure_name_available(name, parent_id, menu_id) do
+    query =
+      from m in SysMenu,
+        where: m.deleted == false and m.parent_id == ^parent_id and m.menu_name == ^name
+
+    query = if menu_id, do: where(query, [menu], menu.menu_id != ^menu_id), else: query
+    if Repo.exists?(query), do: {:error, :name_exists}, else: :ok
+  end
+
+  defp validate_menu_rules(attrs, parent_id, current_menu) do
+    menu_type = menu_type_value(attrs, current_menu)
+    is_button = boolean_value(Map.get(attrs, :is_button, current_menu && current_menu.is_button))
+
+    with :ok <- validate_type_change(current_menu, menu_type),
+         :ok <- validate_parent_type(parent_id, is_button),
+         :ok <-
+           validate_external_link(
+             menu_type,
+             Map.get(attrs, :path, current_menu && current_menu.path)
+           ) do
+      :ok
+    end
+  end
+
+  defp menu_type_value(attrs, current_menu) do
+    value = Map.get(attrs, :menu_type, current_menu && current_menu.menu_type)
+
+    case Params.parse_integer(value) do
+      {:ok, menu_type} -> menu_type
+      :error -> value
+    end
+  end
+
+  defp validate_type_change(nil, _menu_type), do: :ok
+
+  defp validate_type_change(%{is_button: false, menu_type: current_type}, menu_type)
+       when is_integer(menu_type) and menu_type != current_type,
+       do: {:error, :menu_type_locked}
+
+  defp validate_type_change(_current_menu, _menu_type), do: :ok
+
+  defp validate_parent_type(0, _is_button), do: :ok
+
+  defp validate_parent_type(parent_id, is_button) do
+    case get_menu(parent_id) do
+      {:ok, %{menu_type: parent_type}} when is_button and parent_type in [3, 4] ->
+        {:error, :button_parent_invalid}
+
+      {:ok, %{menu_type: parent_type}} when not is_button and parent_type != 2 ->
+        {:error, :menu_parent_invalid}
+
+      {:ok, _parent} ->
+        :ok
+
+      {:error, :not_found} ->
+        {:error, :parent_not_found}
+    end
+  end
+
+  defp validate_external_link(4, path) when is_binary(path) do
+    case URI.parse(path) do
+      %URI{scheme: scheme} when scheme in ["http", "https"] -> :ok
+      _ -> {:error, :external_link_invalid}
+    end
+  end
+
+  defp validate_external_link(4, _path), do: {:error, :external_link_invalid}
+  defp validate_external_link(_menu_type, _path), do: :ok
+
+  defp boolean_value(value) when value in [true, 1, "true", "1"], do: true
+  defp boolean_value(_value), do: false
+
   defp child_count(parent_id) do
     from(menu in SysMenu, where: menu.parent_id == ^parent_id and menu.deleted == false)
     |> Repo.aggregate(:count, :menu_id)
+  end
+
+  defp assigned_to_role?(menu_id) do
+    Repo.exists?(from role_menu in "sys_role_menu", where: role_menu.menu_id == ^menu_id)
   end
 
   defp invalid_changeset(field),
