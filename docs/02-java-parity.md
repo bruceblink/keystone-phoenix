@@ -1,8 +1,9 @@
 # Java Keystone parity audit
 
-The first migration phase targets the Java API contract and the existing
-`bruceblink/keystone-frontend`. The following compatibility slices are now
-implemented in Phoenix:
+The first migration phase targets a fully usable Keystone replacement. The
+Java API and existing frontend are compatibility references, not a requirement
+for visual or implementation-level 1:1 reproduction. The following functional
+slices are implemented in Phoenix:
 
 | Area | Phoenix status |
 | --- | --- |
@@ -15,16 +16,15 @@ implemented in Phoenix:
 | Jobs, allow-listed invocation, cron scheduling, execution logs | Complete |
 | ETS cache replacement, rate limits, repeat protection, session cleanup | Complete for the current single-node deployment model |
 | Java route aliases (`PUT /system/post`, `POST /logout`, notice replica demo) | Complete; the replica route uses the PostgreSQL query boundary |
-| LiveView management pages | Functional coverage is complete; visual interaction parity remains an optimization task |
+| LiveView management pages | Functional coverage is complete; visual differences are optional follow-up work |
 
+The current `main` branch is the usable baseline for subsequent iterations.
 The Java project has no automatic PostgreSQL data migration because its
-production data may still be in MySQL. Existing deployments need an explicit
-ETL or dump/transform/import run for `sys_*` tables and a verification of
-sequence values before switching traffic. The Phoenix migrations and seeds
-cover a new PostgreSQL database only.
+production data may still be in MySQL. Existing deployments can add an
+explicit ETL or dump/transform/import run for `sys_*` tables later; this does
+not block development or use of a new PostgreSQL deployment. The Phoenix
+migrations and seeds cover a new PostgreSQL database.
 
-Remaining second-phase work is operational rather than missing core API
-behavior: provide a repeatable MySQL-to-PostgreSQL migration command with
-checksums, broaden browser-level LiveView compatibility tests, unify repeated
-domain pagination helpers, and publish a release after a production database
-restore rehearsal.
+Future work is iterative optimization: optional MySQL ETL tooling, broader
+browser-level tests, shared domain pagination helpers, and observability
+improvements. None of these are prerequisites for the current usable version.

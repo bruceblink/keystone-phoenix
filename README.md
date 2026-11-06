@@ -74,8 +74,9 @@ server-rendered interactive pages and Ecto owns PostgreSQL access.
 
 The current frontend reference is
 [bruceblink/keystone-frontend](https://github.com/bruceblink/keystone-frontend).
-It remains usable during the first migration phase while the equivalent
-LiveView pages are added to this repository at the same API boundaries.
+The current `main` branch is the usable replacement baseline. The reference
+frontend remains useful for API compatibility checks, while LiveView owns the
+new interactive pages; visual 1:1 parity is not a release requirement.
 
 Implemented API slices currently include health checks, dictionary type/data
 CRUD, ETS-backed dictionary lookups, and system configuration CRUD with
