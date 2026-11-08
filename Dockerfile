@@ -1,12 +1,19 @@
 ARG ELIXIR_VERSION=1.20.5
 ARG OTP_VERSION=29
+ARG IMAGE_REGISTRY=m.daocloud.io/docker.io/library/
+ARG HEX_MIRROR=https://hexpm.upyun.com
 
-FROM elixir:${ELIXIR_VERSION}-otp-${OTP_VERSION} AS build
+FROM ${IMAGE_REGISTRY}elixir:${ELIXIR_VERSION}-otp-${OTP_VERSION} AS build
+
+ARG HEX_MIRROR
 
 ENV MIX_ENV=prod \
-    LANG=C.UTF-8
+    LANG=C.UTF-8 \
+    HEX_MIRROR=${HEX_MIRROR}
 
-RUN apt-get update \
+RUN sed -i 's|http://deb.debian.org/|http://mirrors.tuna.tsinghua.edu.cn/|g' \
+      /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
     && apt-get install -y --no-install-recommends build-essential ca-certificates git openssl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -26,7 +33,7 @@ COPY rel rel
 RUN mix compile --warnings-as-errors \
     && mix release
 
-FROM debian:trixie-slim AS runtime
+FROM ${IMAGE_REGISTRY}debian:trixie-slim AS runtime
 
 ENV LANG=C.UTF-8 \
     HOME=/app \

@@ -37,7 +37,11 @@ Docker Engine 使用 containerd image store，CLI 和 Engine API 的大小口径
 
 后一个镜像的输入包括 113 个文件，指纹为 `9edeaad4dee26bc8e2807e28e59ccc07dd3ccec20832c3b21bb57c4e8bed414d`。计算方法：递归读取上述目录中的文件，将相对路径统一为 `/`，对 `相对路径=文件 SHA256` 按 Ordinal 顺序排序，以 LF 连接且末尾不加换行，再计算 UTF-8 字节的 SHA256。
 
-同机两次构建中，Debian 软件包索引下载从官方源约 198 秒降为清华源约 2 秒。两次存在缓存和网络状态差异，这不是稳定速度承诺。镜像站的安全更新可能有同步延迟；软件包仍通过 Debian 软件源签名校验。Docker Hub 基础镜像和 Hex 源没有切换到国内地址。
+同机两次构建中，Debian 软件包索引下载从官方源约 198 秒降为清华源约 2 秒。两次存在缓存和网络状态差异，这不是稳定速度承诺。镜像站的安全更新可能有同步延迟；软件包仍通过 Debian 软件源签名校验。
+
+后续将 Docker Hub 基础镜像地址切换为 DaoCloud 镜像地址，将 Hex 源切换为 UPYUN 提供的非官方镜像。2026-11-08 核验的 Elixir 和 Debian 镜像摘要与本次测试使用的官方镜像摘要一致；本机下载的 `phoenix_live_view-1.2.13` 包与 UPYUN 镜像内容的 SHA-256 一致。镜像内容可能存在同步延迟；构建回退命令见 [`04-deployment-runbook.md`](04-deployment-runbook.md)。
+
+最终使用仓库 Dockerfile 的国内地址完成构建，没有注入本机 Hex 包缓存。9 项空库迁移成功，首页和数据库就绪检查均返回 `200`。该镜像 `keystone-phoenix:domestic-mirrors-20261108` 的 Docker CLI 大小为 238 MB，Engine `Size` 为 61,830,163 字节，压缩归档为 61,353,673 字节，镜像 ID 为 `sha256:66c59d446575acad31e52bf8177990d5c626136afbd332a8861eac4195327fea`。本次没有对最终镜像重新执行性能负载；下文数据仍对应先前的测量镜像。
 
 ## 测试环境与方法
 

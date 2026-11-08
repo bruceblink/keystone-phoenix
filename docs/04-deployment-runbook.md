@@ -10,6 +10,15 @@
 docker build -t keystone-phoenix:0.3.0 .
 ```
 
+默认从 DaoCloud 镜像地址读取 Elixir 和 Debian 基础镜像，从 UPYUN 的非官方 Hex 镜像读取依赖，并在两个阶段从清华大学开源软件镜像站读取 Debian 软件包。镜像同步可能延迟。Hex 包继续按 `mix.lock` 校验，Debian 软件包继续验证软件源签名。
+
+如果国内基础镜像或 Hex 镜像不可用，可显式使用 Docker Hub 和官方 Hex 地址：
+
+```bash
+docker build --build-arg IMAGE_REGISTRY= --build-arg HEX_MIRROR=https://repo.hex.pm \
+  -t keystone-phoenix:0.3.0 .
+```
+
 准备生产环境文件，至少包含 `DATABASE_URL`、`SECRET_KEY_BASE`、`JWT_PRIVATE_KEY`、`PHX_HOST` 和 `FILE_BASE_DIR`。PostgreSQL 已经可用后，先执行迁移：
 
 ```bash
