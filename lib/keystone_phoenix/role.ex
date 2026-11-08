@@ -201,11 +201,7 @@ defmodule KeystonePhoenix.Role do
     with {:ok, role} <- get_role(role_id),
          true <- role.status == 1,
          {:ok, user_ids} <- normalize_user_ids(user_ids) do
-      Repo.update_all(
-        from(u in SysUser, where: u.deleted == false and u.user_id in ^user_ids),
-        set: [role_id: role.role_id, update_time: DateTime.utc_now()]
-      )
-      |> update_result(user_ids)
+      update_user_assignments(user_ids, role.role_id)
     else
       {:error, :not_found} -> {:error, :not_found}
       {:error, :invalid_ids} -> {:error, :invalid_ids}
@@ -216,11 +212,7 @@ defmodule KeystonePhoenix.Role do
   @doc "Removes role assignments from a batch of users."
   def unassign_users(user_ids) do
     with {:ok, user_ids} <- normalize_user_ids(user_ids) do
-      Repo.update_all(
-        from(u in SysUser, where: u.deleted == false and u.user_id in ^user_ids),
-        set: [role_id: nil, update_time: DateTime.utc_now()]
-      )
-      |> update_result(user_ids)
+      update_user_assignments(user_ids, nil)
     end
   end
 
@@ -253,8 +245,24 @@ defmodule KeystonePhoenix.Role do
     if count == length(menu_ids), do: :ok, else: {:error, :menu_not_found}
   end
 
+  defp update_user_assignments(user_ids, role_id) do
+    result =
+      Repo.transaction(fn ->
+        Repo.update_all(
+          from(u in SysUser, where: u.deleted == false and u.user_id in ^user_ids),
+          set: [role_id: role_id, update_time: DateTime.utc_now()]
+        )
+        |> update_result(user_ids)
+      end)
+
+    case result do
+      {:ok, :ok} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   defp update_result({count, _}, ids) when count == length(ids), do: :ok
-  defp update_result(_result, _ids), do: {:error, :not_found}
+  defp update_result(_result, _ids), do: Repo.rollback(:not_found)
 
   defp list_role_users(role_id, params, mode) do
     query =
