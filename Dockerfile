@@ -26,13 +26,15 @@ COPY rel rel
 RUN mix compile --warnings-as-errors \
     && mix release
 
-FROM debian:bookworm-slim AS runtime
+FROM debian:trixie-slim AS runtime
 
 ENV LANG=C.UTF-8 \
     HOME=/app \
     PHX_SERVER=true
 
-RUN apt-get update \
+RUN sed -i 's|http://deb.debian.org/|http://mirrors.tuna.tsinghua.edu.cn/|g' \
+      /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates libstdc++6 openssl ncurses-bin \
     && rm -rf /var/lib/apt/lists/*
 
