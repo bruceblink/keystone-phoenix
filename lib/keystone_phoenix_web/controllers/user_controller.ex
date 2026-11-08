@@ -132,6 +132,7 @@ defmodule KeystonePhoenixWeb.UserController do
     case User.reset_password(user_id, params, conn.assigns.current_user.user_id) do
       {:ok, _user} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, :unavailable} -> render_error(conn, :unavailable)
       {:error, changeset} -> render_error(conn, changeset)
     end
   end
@@ -315,6 +316,12 @@ defmodule KeystonePhoenixWeb.UserController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(10005, "用户更新失败"))
+  end
+
+  defp render_error(conn, :unavailable) do
+    conn
+    |> put_status(:service_unavailable)
+    |> json(ApiResponse.error(50301, "认证会话暂不可用"))
   end
 
   defp render_error(conn, :invalid_status) do

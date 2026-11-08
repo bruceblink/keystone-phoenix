@@ -39,6 +39,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, :invalid_old_password} -> render_error(conn, :invalid_old_password)
       {:error, :same_password} -> render_error(conn, :same_password)
+      {:error, :unavailable} -> render_error(conn, :unavailable)
       {:error, changeset} -> render_error(conn, changeset)
     end
   end
@@ -91,6 +92,12 @@ defmodule KeystonePhoenixWeb.ProfileController do
 
   defp render_error(conn, :same_password) do
     conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10008, "新密码不能与旧密码相同"))
+  end
+
+  defp render_error(conn, :unavailable) do
+    conn
+    |> put_status(:service_unavailable)
+    |> json(ApiResponse.error(50301, "认证会话暂不可用"))
   end
 
   defp render_error(conn, :invalid_avatar) do

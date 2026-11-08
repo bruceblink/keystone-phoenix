@@ -34,11 +34,21 @@ defmodule KeystonePhoenix.Auth do
 
   def login_plaintext(username, password, force_login)
       when is_binary(username) and is_binary(password) and is_boolean(force_login) do
-    with {:ok, user} <- User.get_user_by_username(username),
-         true <- user.status == 1,
-         true <- Bcrypt.verify_pass(password, user.password || ""),
-         {:ok, tokens} <- issue_pair(user, force_login) do
-      {:ok, Map.put(tokens, :current_user, current_login_user(user))}
+    with {:ok, candidate} <- User.get_user_by_username(username),
+         {:ok, tokens} <-
+           Session.with_user_lock(candidate.user_id, fn ->
+             with {:ok, user} <- User.get_user(candidate.user_id),
+                  true <- user.status == 1,
+                  true <- Bcrypt.verify_pass(password, user.password || ""),
+                  {:ok, tokens} <- issue_pair(user, force_login) do
+               {:ok, Map.put(tokens, :current_user, current_login_user(user))}
+             else
+               {:error, :not_found} -> {:error, :invalid_credentials}
+               false -> {:error, :invalid_credentials}
+               {:error, reason} -> {:error, reason}
+             end
+           end) do
+      {:ok, tokens}
     else
       {:error, reason} when reason in [:unavailable, :token_configuration, :already_logged_in] ->
         {:error, reason}
@@ -54,13 +64,14 @@ defmodule KeystonePhoenix.Auth do
   def refresh(refresh_token) when is_binary(refresh_token) do
     with {:ok, claims} <- Token.verify(refresh_token, Token.refresh_type()),
          {:ok, user_id} <- parse_user_id(claims["sub"]),
-         true <- Session.valid?(claims["jti"], user_id),
-         true <- Session.active?(user_id, claims["jti"]),
-         {:ok, user} <- User.get_user(user_id),
-         true <- user.status == 1,
-         :ok <- Session.revoke(user_id, claims["jti"]),
-         {:ok, tokens} <- issue_pair(user, false) do
-      {:ok, Map.put(tokens, :current_user, current_login_user(user))}
+         jti when is_binary(jti) <- claims["jti"],
+         {:ok, tokens} <-
+           Session.rotate(user_id, jti, fn user ->
+             with {:ok, tokens} <- issue_pair(user, false) do
+               {:ok, Map.put(tokens, :current_user, current_login_user(user))}
+             end
+           end) do
+      {:ok, tokens}
     else
       {:error, :unavailable} -> {:error, :unavailable}
       _ -> {:error, :invalid_refresh_token}
@@ -127,6 +138,7 @@ defmodule KeystonePhoenix.Auth do
          :ok <- Session.occupy(user.user_id, refresh.jti, refresh.expires_in, force_login) do
       issue_access_pair(user, refresh)
     else
+      {:error, :already_logged_in} -> {:error, :already_logged_in}
       {:error, {:token_configuration, _reason}} -> {:error, :token_configuration}
       {:error, :unavailable} -> {:error, :unavailable}
     end
@@ -162,9 +174,15 @@ defmodule KeystonePhoenix.Auth do
 
   defp role_permissions(user) do
     role_key =
-      case Role.get_role(user.role_id) do
-        {:ok, role} -> role.role_key
-        {:error, :not_found} -> ""
+      case user.role_id do
+        nil ->
+          ""
+
+        role_id ->
+          case Role.get_role(role_id) do
+            {:ok, role} -> role.role_key
+            {:error, :not_found} -> ""
+          end
       end
 
     {role_key, Menu.permissions_for_user(user)}

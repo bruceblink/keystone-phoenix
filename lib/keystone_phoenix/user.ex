@@ -163,24 +163,21 @@ defmodule KeystonePhoenix.User do
 
   @doc "Replaces a user's password and invalidates the active refresh session."
   @spec reset_password(integer() | String.t(), map()) ::
-          {:ok, SysUser.t()} | {:error, :not_found | Ecto.Changeset.t()}
+          {:ok, SysUser.t()} | {:error, :not_found | :unavailable | Ecto.Changeset.t()}
   def reset_password(id, attrs, actor_id \\ nil)
 
   def reset_password(id, attrs, actor_id) when is_map(attrs) do
-    with {:ok, user} <- get_user(id) do
-      changeset =
-        user
-        |> SysUser.password_changeset(normalize_attrs(attrs))
-        |> Audit.put_actor(:updater_id, actor_id)
-
-      case Repo.update(changeset) do
-        {:ok, updated} = result ->
-          Session.revoke_account(updated.user_id)
-          result
-
-        error ->
-          error
-      end
+    with {:ok, user_id} <- parse_user_id(id) do
+      Session.update_account_and_revoke(user_id, fn ->
+        with {:ok, user} <- get_user(user_id) do
+          user
+          |> SysUser.password_changeset(normalize_attrs(attrs))
+          |> Audit.put_actor(:updater_id, actor_id)
+          |> Repo.update()
+        end
+      end)
+    else
+      :error -> {:error, :not_found}
     end
   end
 
@@ -242,30 +239,29 @@ defmodule KeystonePhoenix.User do
     do: {:error, invalid_changeset(%SysUser{}, :nickname)}
 
   @doc "Changes a password after checking the current password."
+  @spec update_password(integer() | String.t(), map(), term()) ::
+          {:ok, SysUser.t()} | {:error, term()}
   def update_password(id, attrs, actor_id \\ nil)
 
   def update_password(id, attrs, actor_id) when is_map(attrs) do
-    with {:ok, user} <- get_user(id),
-         {:ok, old_password, new_password} <- password_inputs(attrs),
-         true <- Bcrypt.verify_pass(old_password, user.password || ""),
-         false <- Bcrypt.verify_pass(new_password, user.password || "") do
-      changeset =
-        SysUser.password_changeset(user, %{password: new_password})
-        |> Audit.put_actor(:updater_id, actor_id)
-
-      case Repo.update(changeset) do
-        {:ok, updated} = result ->
-          Session.revoke_account(updated.user_id)
-          result
-
-        error ->
-          error
-      end
+    with {:ok, user_id} <- parse_user_id(id),
+         {:ok, old_password, new_password} <- password_inputs(attrs) do
+      Session.update_account_and_revoke(user_id, fn ->
+        with {:ok, user} <- get_user(user_id),
+             true <- Bcrypt.verify_pass(old_password, user.password || ""),
+             false <- Bcrypt.verify_pass(new_password, user.password || "") do
+          SysUser.password_changeset(user, %{password: new_password})
+          |> Audit.put_actor(:updater_id, actor_id)
+          |> Repo.update()
+        else
+          {:error, :not_found} -> {:error, :not_found}
+          false -> {:error, :invalid_old_password}
+          true -> {:error, :same_password}
+        end
+      end)
     else
-      {:error, :not_found} -> {:error, :not_found}
       {:error, :invalid_password_input} -> {:error, invalid_changeset(%SysUser{}, :password)}
-      false -> {:error, :invalid_old_password}
-      _ -> {:error, :same_password}
+      :error -> {:error, :not_found}
     end
   end
 
@@ -433,6 +429,17 @@ defmodule KeystonePhoenix.User do
   end
 
   defp parse_positive_integer(_value), do: nil
+
+  defp parse_user_id(value) when is_integer(value) and value > 0, do: {:ok, value}
+
+  defp parse_user_id(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {user_id, ""} when user_id > 0 -> {:ok, user_id}
+      _ -> :error
+    end
+  end
+
+  defp parse_user_id(_value), do: :error
 
   defp invalid_changeset(schema, field) do
     Ecto.Changeset.add_error(Ecto.Changeset.change(schema), field, "参数无效")

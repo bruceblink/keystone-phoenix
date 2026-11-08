@@ -111,25 +111,23 @@ defmodule KeystonePhoenix.Menu do
     end
   end
 
-  def menus_for_user(user) do
-    query =
-      from(m in SysMenu,
-        join: rm in "sys_role_menu",
-        on: rm.menu_id == m.menu_id,
-        join: role in "sys_role",
-        on: role.role_id == rm.role_id,
-        where:
-          m.deleted == false and m.status == 1 and role.deleted == false and role.status == 1 and
-            rm.role_id == ^user.role_id,
-        order_by: [asc: m.parent_id, asc: m.menu_id],
-        distinct: true
-      )
+  def menus_for_user(%{is_admin: true}), do: list_menus(%{"status" => 1})
+  def menus_for_user(%{role_id: nil}), do: []
 
-    if user.is_admin do
-      list_menus(%{"status" => 1})
-    else
-      Repo.all(query) |> Enum.map(&menu_to_map/1)
-    end
+  def menus_for_user(user) do
+    from(m in SysMenu,
+      join: rm in "sys_role_menu",
+      on: rm.menu_id == m.menu_id,
+      join: role in "sys_role",
+      on: role.role_id == rm.role_id,
+      where:
+        m.deleted == false and m.status == 1 and role.deleted == false and role.status == 1 and
+          rm.role_id == ^user.role_id,
+      order_by: [asc: m.parent_id, asc: m.menu_id],
+      distinct: true
+    )
+    |> Repo.all()
+    |> Enum.map(&menu_to_map/1)
   end
 
   @doc "Returns the button and route permission strings for an authenticated user."

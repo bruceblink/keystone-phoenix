@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Auth.Session do
 
   alias KeystonePhoenix.Auth.AuthSession
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.User
 
   @doc "Claims the only active refresh session allowed for a user."
   @spec occupy(integer(), String.t(), pos_integer(), boolean()) :: :ok | {:error, atom()}
@@ -32,6 +33,75 @@ defmodule KeystonePhoenix.Auth.Session do
       end
     end)
     |> occupy_result()
+  rescue
+    _error -> {:error, :unavailable}
+  end
+
+  @doc "Validates and replaces a refresh session while holding the user lock."
+  @spec rotate(integer(), String.t(), (map() -> {:ok, map()} | {:error, atom()})) ::
+          {:ok, map()} | {:error, atom()}
+  def rotate(user_id, jti, issue_tokens) when is_function(issue_tokens, 1) do
+    now = DateTime.utc_now()
+
+    Repo.transaction(fn ->
+      lock_user(user_id)
+
+      with true <- valid_in_transaction?(jti, user_id, now),
+           {:ok, user} <- User.get_user(user_id),
+           true <- user.status == 1,
+           :ok <- revoke_in_transaction(user_id, jti),
+           {:ok, tokens} <- issue_tokens.(user) do
+        Map.put(tokens, :current_user, KeystonePhoenix.Auth.current_login_user(user))
+      else
+        {:error, reason} -> Repo.rollback(reason)
+        _ -> Repo.rollback(:invalid_refresh_token)
+      end
+    end)
+    |> rotate_result()
+  rescue
+    _error -> {:error, :unavailable}
+  end
+
+  @doc "Runs a login check while holding the user's session lock."
+  @spec with_user_lock(integer(), (-> {:ok, term()} | {:error, term()})) ::
+          {:ok, term()} | {:error, term()}
+  def with_user_lock(user_id, authenticate) when is_function(authenticate, 0) do
+    Repo.transaction(fn ->
+      lock_user(user_id)
+
+      case authenticate.() do
+        {:ok, value} -> value
+        {:error, reason} -> Repo.rollback({:locked_operation_failed, reason})
+        _ -> Repo.rollback(:unavailable)
+      end
+    end)
+    |> locked_operation_result()
+  rescue
+    _error -> {:error, :unavailable}
+  end
+
+  @doc """
+  Runs an account update and session revocation in one transaction.
+
+  The user lock serializes this operation with refresh rotation. A failed
+  account update rolls back without revoking the current session.
+  """
+  @spec update_account_and_revoke(integer(), (-> {:ok, term()} | {:error, term()})) ::
+          {:ok, term()} | {:error, term()}
+  def update_account_and_revoke(user_id, update_account) when is_function(update_account, 0) do
+    Repo.transaction(fn ->
+      lock_user(user_id)
+
+      case update_account.() do
+        {:ok, value} ->
+          revoke_user_sessions(user_id)
+          {:ok, value}
+
+        {:error, reason} ->
+          Repo.rollback({:account_update_failed, reason})
+      end
+    end)
+    |> account_update_result()
   rescue
     _error -> {:error, :unavailable}
   end
@@ -74,7 +144,10 @@ defmodule KeystonePhoenix.Auth.Session do
   @doc "Revokes the refresh session currently associated with a user account."
   @spec revoke_account(integer()) :: :ok
   def revoke_account(user_id) do
-    Repo.delete_all(from(session in AuthSession, where: session.user_id == ^user_id))
+    Repo.transaction(fn ->
+      lock_user(user_id)
+      revoke_user_sessions(user_id)
+    end)
 
     :ok
   rescue
@@ -146,6 +219,29 @@ defmodule KeystonePhoenix.Auth.Session do
     Repo.query!("SELECT pg_advisory_xact_lock($1)", [user_id])
   end
 
+  defp valid_in_transaction?(jti, user_id, now) do
+    Repo.exists?(
+      from(session in AuthSession,
+        where:
+          session.jti == ^jti and session.user_id == ^user_id and session.active == true and
+            is_nil(session.revoked_at) and session.expires_at > ^now
+      )
+    )
+  end
+
+  defp revoke_in_transaction(user_id, jti) do
+    {count, _sessions} =
+      Repo.delete_all(
+        from(session in AuthSession,
+          where:
+            session.user_id == ^user_id and session.jti == ^jti and session.active == true and
+              is_nil(session.revoked_at)
+        )
+      )
+
+    if count == 1, do: :ok, else: Repo.rollback(:invalid_refresh_token)
+  end
+
   defp expire_user_sessions(user_id, now) do
     Repo.delete_all(
       from(session in AuthSession,
@@ -171,8 +267,7 @@ defmodule KeystonePhoenix.Auth.Session do
   defp revoke_user_sessions(user_id) do
     Repo.delete_all(
       from(session in AuthSession,
-        where:
-          session.user_id == ^user_id and session.active == true and is_nil(session.revoked_at)
+        where: session.user_id == ^user_id
       )
     )
   end
@@ -214,4 +309,35 @@ defmodule KeystonePhoenix.Auth.Session do
     do: {:error, reason}
 
   defp occupy_result({:error, _reason}), do: {:error, :unavailable}
+
+  defp rotate_result({:ok, tokens}), do: {:ok, tokens}
+
+  defp rotate_result({:error, reason})
+       when reason in [
+              :invalid_refresh_token,
+              :already_logged_in,
+              :not_found,
+              :token_configuration
+            ] do
+    case reason do
+      :not_found -> {:error, :invalid_refresh_token}
+      _ -> {:error, reason}
+    end
+  end
+
+  defp rotate_result({:error, _reason}), do: {:error, :unavailable}
+
+  defp account_update_result({:ok, {:ok, value}}), do: {:ok, value}
+
+  defp account_update_result({:error, {:account_update_failed, reason}}),
+    do: {:error, reason}
+
+  defp account_update_result({:error, _reason}), do: {:error, :unavailable}
+
+  defp locked_operation_result({:ok, value}), do: {:ok, value}
+
+  defp locked_operation_result({:error, {:locked_operation_failed, reason}}),
+    do: {:error, reason}
+
+  defp locked_operation_result({:error, _reason}), do: {:error, :unavailable}
 end
