@@ -9,6 +9,30 @@ defmodule KeystonePhoenix.Job.Runner do
 
   @doc "Runs a job once and records a manual or automatic execution log."
   def run(%SysJob{} = job, trigger_type) when trigger_type in [1, 2] do
+    run_with_concurrency(job, trigger_type)
+  end
+
+  defp run_with_concurrency(%SysJob{concurrent: 0} = job, trigger_type) do
+    lock = {{__MODULE__, job.job_id}, self()}
+    nodes = [node()]
+
+    if :global.set_lock(lock, nodes, 0) do
+      try do
+        run_unlocked(job, trigger_type)
+      after
+        :global.del_lock(lock, nodes)
+      end
+    else
+      case record_skip(job, trigger_type, "任务正在执行，本次触发已跳过") do
+        :ok -> {:skipped, :already_running}
+        error -> error
+      end
+    end
+  end
+
+  defp run_with_concurrency(job, trigger_type), do: run_unlocked(job, trigger_type)
+
+  defp run_unlocked(job, trigger_type) do
     start_time = DateTime.utc_now()
     started_at = System.monotonic_time(:millisecond)
 
@@ -51,8 +75,13 @@ defmodule KeystonePhoenix.Job.Runner do
     persist_log(attrs, return)
   end
 
-  @doc "Records a skipped automatic run when a non-concurrent job is still running."
+  @doc "Records a skipped automatic or manual run when a non-concurrent job is running."
   def record_skip(%SysJob{} = job, message) do
+    record_skip(job, 1, message)
+  end
+
+  @doc "Records a skipped run for the trigger that could not acquire the job lock."
+  def record_skip(%SysJob{} = job, trigger_type, message) when trigger_type in [1, 2] do
     now = DateTime.utc_now()
 
     attrs = %{
@@ -62,7 +91,7 @@ defmodule KeystonePhoenix.Job.Runner do
       invoke_target: job.invoke_target,
       job_params: job.job_params,
       cron_expression: job.cron_expression,
-      trigger_type: 1,
+      trigger_type: trigger_type,
       status: 2,
       job_message: message,
       exception_info: "",

@@ -235,9 +235,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
       feedback =
         case result do
           :ok -> "任务已执行并写入运行日志"
+          {:skipped, :already_running} -> "任务正在执行，本次触发已跳过"
           {:error, :not_found} -> "找不到指定任务"
           {:error, reason} -> "任务执行失败：#{inspect(reason)}"
-          _ -> "任务执行完成"
+          _ -> "任务状态未知，请检查运行日志"
         end
 
       {:noreply,

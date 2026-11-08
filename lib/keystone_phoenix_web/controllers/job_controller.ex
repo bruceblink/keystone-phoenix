@@ -64,9 +64,17 @@ defmodule KeystonePhoenixWeb.JobController do
   @doc "Runs a scheduled job immediately and stores its execution log."
   def run(conn, %{"job_id" => job_id}) do
     case Job.run_job(job_id) do
-      :ok -> json(conn, ApiResponse.ok())
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, reason} -> render_error(conn, reason)
+      :ok ->
+        json(conn, ApiResponse.ok())
+
+      {:skipped, :already_running} ->
+        json(conn, ApiResponse.ok(%{status: 2, message: "任务正在执行，本次触发已跳过"}))
+
+      {:error, :not_found} ->
+        render_error(conn, :not_found)
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
