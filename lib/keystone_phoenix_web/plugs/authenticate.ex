@@ -70,16 +70,25 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
 
   defp data_scope_allowed?(user, conn, scopes) do
     case Map.get(scopes, conn.private[:phoenix_action]) do
-      {:dept, key} -> Permission.data_scope_allowed?(user, :dept, param(conn.params, key))
-      {:dept_optional, key} -> optional_dept_allowed?(user, param(conn.params, key))
-      {:user, key} -> Permission.data_scope_allowed?(user, :user, param(conn.params, key))
-      {:users, key} -> Permission.data_scope_users_allowed?(user, param(conn.params, key))
-      nil -> true
-      _scope -> false
+      {:dept, key} ->
+        Permission.data_scope_allowed?(user, :dept, param(conn.params, key))
+
+      {:user, key} ->
+        Permission.data_scope_allowed?(user, :user, param(conn.params, key))
+
+      {:user_update, key} ->
+        Permission.user_update_allowed?(user, param(conn.params, key), conn.params)
+
+      {:users, key} ->
+        Permission.data_scope_users_allowed?(user, param(conn.params, key))
+
+      nil ->
+        true
+
+      _scope ->
+        false
     end
   end
-
-  defp optional_dept_allowed?(user, value), do: Permission.data_scope_allowed?(user, :dept, value)
 
   defp param(params, key), do: Map.get(params, key, Map.get(params, String.to_atom(key)))
 end

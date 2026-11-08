@@ -37,6 +37,37 @@ defmodule KeystonePhoenix.Permission do
 
   def allowed?(_user, _permission), do: false
 
+  @doc "Adds the current role's user data scope before counting or pagination."
+  def scope_users(query, %{is_admin: true}), do: query
+  def scope_users(query, %{"isAdmin" => 1}), do: query
+
+  def scope_users(query, user) do
+    role_id = user_value(user, :role_id, "roleId")
+
+    with true <- positive_integer?(role_id),
+         %SysRole{status: 1} = role <- Repo.get_by(SysRole, role_id: role_id, deleted: false) do
+      scope_user_query(query, role, user)
+    else
+      _ -> where(query, false)
+    end
+  end
+
+  @doc "Checks the existing user and a changed destination department at the write entrance."
+  def user_update_allowed?(user, target_user_id, attrs) do
+    with target_id when is_integer(target_id) <- parse_positive_integer(target_user_id) do
+      case Repo.get_by(SysUser, user_id: target_id, deleted: false) do
+        nil ->
+          true
+
+        target ->
+          check_scope(user, target.dept_id, target.user_id) and
+            destination_allowed?(user, target, attrs)
+      end
+    else
+      _ -> false
+    end
+  end
+
   @doc "Checks a department or user target against the user's role data scope."
   @spec data_scope_allowed?(map(), :dept | :user, term()) :: boolean()
   def data_scope_allowed?(user, :dept, target_dept_id) do
@@ -71,6 +102,56 @@ defmodule KeystonePhoenix.Permission do
   end
 
   def data_scope_users_allowed?(_user, _ids), do: false
+
+  defp destination_allowed?(user, target, attrs) do
+    if Map.has_key?(attrs, "deptId") or Map.has_key?(attrs, :dept_id) do
+      destination = parse_positive_integer(Map.get(attrs, "deptId", attrs[:dept_id]))
+      destination == target.dept_id or check_scope(user, destination, nil)
+    else
+      true
+    end
+  end
+
+  defp scope_user_query(query, %{data_scope: 1}, _user), do: query
+
+  defp scope_user_query(query, %{data_scope: 2, dept_id_set: ids}, _user) do
+    dept_ids = parse_id_set(ids)
+    where(query, [target], target.dept_id in ^dept_ids)
+  end
+
+  defp scope_user_query(query, %{data_scope: 3}, user) do
+    case user_value(user, :dept_id, "deptId") do
+      nil -> where(query, false)
+      dept_id -> where(query, [target], target.dept_id == ^dept_id)
+    end
+  end
+
+  defp scope_user_query(query, %{data_scope: 4}, user) do
+    case user_value(user, :dept_id, "deptId") do
+      nil ->
+        where(query, false)
+
+      dept_id ->
+        ancestor = Integer.to_string(dept_id)
+
+        departments =
+          from dept in SysDept,
+            where:
+              dept.deleted == false and
+                (dept.dept_id == ^dept_id or
+                   fragment("? = ANY(string_to_array(?, ','))", ^ancestor, dept.ancestors)),
+            select: dept.dept_id
+
+        where(query, [target], target.dept_id in subquery(departments))
+    end
+  end
+
+  defp scope_user_query(query, %{data_scope: 5}, user) do
+    user_id = user_value(user, :user_id, "userId")
+    where(query, [target], target.user_id == ^user_id)
+  end
+
+  defp scope_user_query(query, _role, _user), do: where(query, false)
 
   defp check_scope(%{is_admin: true}, _target_dept_id, _target_user_id), do: true
 

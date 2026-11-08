@@ -12,7 +12,6 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenix.Notice
-  alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
@@ -129,8 +128,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def load_users, do: User.list_users(%{"pageSize" => 50}).rows
 
   def load_users_for_user(user) do
-    User.list_users(%{"pageSize" => 50}).rows
-    |> Enum.filter(&Permission.data_scope_allowed?(user, :user, &1["userId"]))
+    User.list_users(%{"pageSize" => 50}, user).rows
   end
 
   def load_posts, do: Post.list_posts(%{"pageSize" => 50}).rows

@@ -11,6 +11,7 @@ defmodule KeystonePhoenix.User do
   alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Post
+  alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User.SysUser
@@ -38,20 +39,27 @@ defmodule KeystonePhoenix.User do
 
   @spec list_users(map()) :: %{rows: list(), total: non_neg_integer()}
   def list_users(params \\ %{}) do
+    params |> users_query() |> page_query(params)
+  end
+
+  @doc "Lists only users in the authenticated actor's data scope."
+  @spec list_users(map(), map()) :: %{rows: list(), total: non_neg_integer()}
+  def list_users(params, actor) do
+    params |> users_query() |> Permission.scope_users(actor) |> page_query(params)
+  end
+
+  defp users_query(params) do
     query =
       from u in SysUser,
         where: u.deleted == false,
         order_by: [desc: u.user_id]
 
-    query =
-      query
-      |> filter_integer(:user_id, params["userId"] || params[:user_id])
-      |> filter_contains(:username, params["username"] || params[:username])
-      |> filter_contains(:phone_number, params["phoneNumber"] || params[:phone_number])
-      |> filter_integer(:status, params["status"] || params[:status])
-      |> filter_integer(:dept_id, params["deptId"] || params[:dept_id])
-
-    page_query(query, params)
+    query
+    |> filter_integer(:user_id, params["userId"] || params[:user_id])
+    |> filter_contains(:username, params["username"] || params[:username])
+    |> filter_contains(:phone_number, params["phoneNumber"] || params[:phone_number])
+    |> filter_integer(:status, params["status"] || params[:status])
+    |> filter_integer(:dept_id, params["deptId"] || params[:dept_id])
   end
 
   @spec get_user(integer() | String.t()) :: {:ok, SysUser.t()} | {:error, :not_found}

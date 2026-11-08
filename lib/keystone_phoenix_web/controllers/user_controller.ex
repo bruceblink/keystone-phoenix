@@ -15,9 +15,9 @@ defmodule KeystonePhoenixWeb.UserController do
            import: "system:user:import"
          },
          data_scope: %{
-           list: {:dept_optional, "deptId"},
+           show: {:user, "user_id"},
            create: {:dept, "deptId"},
-           update: {:user, "user_id"},
+           update: {:user_update, "user_id"},
            delete: {:users, "user_ids"},
            reset_password: {:user, "user_id"},
            change_status: {:user, "user_id"}
@@ -88,7 +88,7 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Returns a paginated list of users."
   def list(conn, params) do
-    json(conn, ApiResponse.ok(User.list_users(params)))
+    json(conn, ApiResponse.ok(User.list_users(params, conn.assigns.current_user)))
   end
 
   @doc "Returns a user without exposing its password."
@@ -151,7 +151,9 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Exports all users matching the current filters."
   def export(conn, params) do
-    rows = Excel.all_rows(&User.list_users/1, params) |> enrich_export_rows()
+    rows =
+      Excel.all_rows(&User.list_users(&1, conn.assigns.current_user), params)
+      |> enrich_export_rows()
 
     ExcelResponse.send_xlsx(
       conn,
