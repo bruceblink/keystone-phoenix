@@ -233,7 +233,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
         role ->
           menu_ids = Role.menu_ids_for_role(role_id) |> Enum.join(",")
-          form = role |> Map.merge(Support.empty_role_form()) |> Map.put("menuIds", menu_ids)
+          form = Support.empty_role_form() |> Map.merge(role) |> Map.put("menuIds", menu_ids)
           {:noreply, assign(socket, role_form: form, role_feedback: nil)}
       end
     else
@@ -369,8 +369,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
         menu ->
           form =
-            menu
-            |> Map.merge(Support.empty_menu_form())
+            Support.empty_menu_form()
+            |> Map.merge(menu)
             |> Map.put("metaInfo", Jason.encode!(menu["meta"] || %{}))
             |> Map.put("isButton", if(menu["isButton"], do: "true", else: "false"))
 

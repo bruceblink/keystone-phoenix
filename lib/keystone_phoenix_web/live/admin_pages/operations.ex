@@ -42,7 +42,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       <%= if @job_log_feedback do %><p class="feedback" role="status"><%= @job_log_feedback %></p><% end %>
       <table><thead><tr><th>任务</th><th>分组</th><th>调用目标</th><th>状态</th><th>消息</th><th>开始时间</th><th>结束时间</th></tr></thead><tbody>
         <%= for log <- @job_log_rows do %>
-          <tr><td><%= log["jobName"] %></td><td><%= log["jobGroup"] %></td><td><%= log["invokeTarget"] %></td><td><%= log["statusStr"] || if(log["status"] == 1, do: "成功", else: "失败") %></td><td><%= log["jobMessage"] || log["exceptionInfo"] || "" %></td><td><%= log["startTime"] || "" %></td><td><%= log["stopTime"] || "" %></td></tr>
+          <tr><td><%= log["jobName"] %></td><td><%= log["jobGroup"] %></td><td><%= log["invokeTarget"] %></td><td><%= log["statusStr"] || if(log["status"] == 1, do: "成功", else: "失败") %></td><td><%= log["jobMessage"] || log["exceptionInfo"] || "" %></td><td><%= log["startTime"] || "" %></td><td><%= log["endTime"] || "" %></td></tr>
         <% end %>
       </tbody></table>
     </div>

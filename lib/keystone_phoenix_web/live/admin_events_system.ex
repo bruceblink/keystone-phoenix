@@ -39,8 +39,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
         config ->
           form =
-            config
-            |> Map.merge(Support.empty_config_form())
+            Support.empty_config_form()
+            |> Map.merge(config)
             |> Map.put("configOptions", Enum.join(config["configOptions"] || [], ","))
             |> Map.put(
               "isAllowChange",
@@ -221,7 +221,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
         dict_data ->
           form =
             Map.merge(Support.empty_dict_data_form(), dict_data)
-            |> Map.put("isDefault", if(dict_data["isDefault"], do: "true", else: "false"))
+            |> Map.put("isDefault", if(dict_data["isDefault"] == 1, do: "true", else: "false"))
 
           {:noreply, assign(socket, dict_data_form: form, dict_feedback: nil)}
       end

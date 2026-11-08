@@ -73,7 +73,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       </form>
       <table><thead><tr><th>标签</th><th>值</th><th>排序</th><th>默认</th><th>状态</th><th>操作</th></tr></thead><tbody>
         <%= for data <- @dict_data_rows do %>
-          <tr><td><%= data["dictLabel"] %></td><td><%= data["dictValue"] %></td><td><%= data["dictSort"] %></td><td><%= if data["isDefault"], do: "是", else: "否" %></td><td><%= if data["status"] == 1, do: "正常", else: "停用" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-dict-data" phx-value-dict-code={data["dictCode"]}>编辑</button><button type="button" class="refresh danger-action" phx-click="delete-dict-data" phx-value-dict-code={data["dictCode"]}>删除</button></td></tr>
+          <tr><td><%= data["dictLabel"] %></td><td><%= data["dictValue"] %></td><td><%= data["dictSort"] %></td><td><%= if data["isDefault"] == 1, do: "是", else: "否" %></td><td><%= if data["status"] == 1, do: "正常", else: "停用" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-dict-data" phx-value-dict-code={data["dictCode"]}>编辑</button><button type="button" class="refresh danger-action" phx-click="delete-dict-data" phx-value-dict-code={data["dictCode"]}>删除</button></td></tr>
         <% end %>
       </tbody></table>
     </div>
@@ -123,7 +123,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       <h3>操作日志（<%= length(@operation_log_rows) %>）</h3>
       <table><thead><tr><th>用户</th><th>模块</th><th>方法</th><th>请求地址</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
         <%= for log <- @operation_log_rows do %>
-          <tr><td><%= log["username"] %></td><td><%= log["requestModule"] %></td><td><%= log["requestMethod"] %></td><td><%= log["requestUrl"] %></td><td><%= if log["status"] == 1, do: "成功", else: "失败" %></td><td><%= log["operationTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-click="delete-operation-log" phx-value-log-id={log["operId"] || log["id"]}>删除</button></td></tr>
+          <tr><td><%= log["username"] %></td><td><%= log["requestModule"] %></td><td><%= log["requestMethod"] %></td><td><%= log["requestUrl"] %></td><td><%= if log["status"] == 1, do: "成功", else: "失败" %></td><td><%= log["operationTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-click="delete-operation-log" phx-value-log-id={log["operationId"]}>删除</button></td></tr>
         <% end %>
       </tbody></table>
     </div>
