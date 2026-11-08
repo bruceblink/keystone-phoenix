@@ -9,7 +9,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-depts", _params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.panel_allowed?(socket, "depts") do
       {:noreply,
        assign(socket,
          dept_rows: Support.load_depts(),
@@ -107,7 +107,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("refresh-posts", _params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.panel_allowed?(socket, "posts") do
       {:noreply,
        assign(socket,
          post_rows: Support.load_posts(),
@@ -205,7 +205,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("refresh-roles", _params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.panel_allowed?(socket, "roles") do
       {:noreply,
        assign(socket,
          role_rows: Support.load_roles(),
@@ -341,7 +341,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("refresh-menus", _params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.panel_allowed?(socket, "menus") do
       {:noreply,
        assign(socket,
          menu_rows: Support.load_menus(),

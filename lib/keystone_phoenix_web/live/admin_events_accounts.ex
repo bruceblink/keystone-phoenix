@@ -8,10 +8,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-users", _params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.panel_allowed?(socket, "users") do
       {:noreply,
        assign(socket,
-         user_rows: Support.load_users(),
+         user_rows: Support.load_users_for_socket(socket),
          user_form: Support.empty_user_form(),
          user_feedback: nil
        )}

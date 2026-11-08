@@ -9,14 +9,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-config", _params, socket) do
-    if Support.admin_socket?(socket) do
-      Config.refresh_cache()
+    if Support.panel_allowed?(socket, "configs") do
+      admin? = Support.admin_socket?(socket)
+      if admin?, do: Config.refresh_cache()
 
       {:noreply,
        assign(socket,
          config_rows: Support.load_configs(),
          config_form: Support.empty_config_form(),
-         config_feedback: "配置缓存已刷新"
+         config_feedback: if(admin?, do: "配置缓存已刷新", else: nil)
        )}
     else
       {:noreply, socket}
@@ -82,7 +83,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   end
 
   def handle_event("refresh-notices", _params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.panel_allowed?(socket, "notices") do
       {:noreply, assign(socket, notice_rows: Support.load_notices(), notice_feedback: nil)}
     else
       {:noreply, socket}
@@ -90,7 +91,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   end
 
   def handle_event("refresh-dicts", _params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.panel_allowed?(socket, "dicts") do
       dictionary = Support.load_dictionary(socket.assigns.selected_dict_type)
 
       {:noreply,
@@ -108,11 +109,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   end
 
   def handle_event("select-dict-type", %{"dict-type" => dict_type}, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.panel_allowed?(socket, "dicts") and
+         Support.dict_type_allowed?(socket, dict_type) do
       {:noreply,
        assign(socket,
          selected_dict_type: dict_type,
-         dict_data_rows: Support.load_dict_data(dict_type),
+         dict_data_rows: Support.load_dict_data_for_socket(socket, dict_type),
          dict_data_form: Support.empty_dict_data_form(dict_type)
        )}
     else
@@ -279,8 +281,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   end
 
   def handle_event("refresh-logs", _params, socket) do
-    if Support.admin_socket?(socket) do
-      logs = Support.load_logs()
+    if Support.panel_allowed?(socket, "logs") do
+      logs = Support.load_logs_for_socket(socket)
 
       {:noreply,
        assign(socket,

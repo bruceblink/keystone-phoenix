@@ -15,6 +15,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
+  alias KeystonePhoenixWeb.Live.Authentication
 
   @panel_permissions %{
     "depts" => ["system:dept:list"],
@@ -85,6 +86,8 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def load_dashboard_for_permissions(user, permissions) do
     access = panel_access(permissions)
     dashboard = empty_dashboard()
+    dictionary = if access["dicts"], do: load_dictionary(""), else: empty_dictionary()
+    logs = logs_for_permissions(permissions)
 
     dashboard
     |> Map.put(:dept_rows, if(access["depts"], do: load_depts(), else: []))
@@ -93,27 +96,14 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     |> Map.put(:menu_rows, if(access["menus"], do: load_menus(), else: []))
     |> Map.put(:user_rows, if(access["users"], do: load_users_for_user(user), else: []))
     |> Map.put(:config_rows, if(access["configs"], do: load_configs(), else: []))
-    |> Map.put(
-      :dict_type_rows,
-      if(access["dicts"], do: Dictionary.list_dict_types(%{"pageSize" => 50}).rows, else: [])
-    )
+    |> Map.put(:dict_type_rows, dictionary.types)
+    |> Map.put(:dict_data_rows, dictionary.data)
+    |> Map.put(:selected_dict_type, dictionary.selected)
     |> Map.put(:notice_rows, if(access["notices"], do: load_notices(), else: []))
     |> Map.put(:job_rows, if(access["jobs"], do: load_jobs(), else: []))
     |> Map.put(:job_log_rows, if(access["job-logs"], do: load_job_logs(), else: []))
-    |> Map.put(
-      :login_log_rows,
-      if("monitor:logininfor:list" in permissions,
-        do: Log.list_login_logs(%{"pageSize" => 50}).rows,
-        else: []
-      )
-    )
-    |> Map.put(
-      :operation_log_rows,
-      if("monitor:operlog:list" in permissions,
-        do: Log.list_operation_logs(%{"pageSize" => 50}).rows,
-        else: []
-      )
-    )
+    |> Map.put(:login_log_rows, logs.login_log_rows)
+    |> Map.put(:operation_log_rows, logs.operation_log_rows)
   end
 
   @doc "Returns panel visibility for a permission list."
@@ -131,6 +121,12 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     User.list_users(%{"pageSize" => 50}, user).rows
   end
 
+  def load_users_for_socket(socket) do
+    if admin_socket?(socket),
+      do: load_users(),
+      else: load_users_for_user(socket.assigns.current_user)
+  end
+
   def load_posts, do: Post.list_posts(%{"pageSize" => 50}).rows
   def load_configs, do: Config.list_configs(%{"pageSize" => 50}).rows
   def load_jobs, do: Job.list_jobs(%{"pageSize" => 50}).rows
@@ -142,6 +138,18 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def load_dict_data(dict_type),
     do: Dictionary.list_dict_data(%{"dictType" => dict_type, "pageSize" => 100}).rows
+
+  def load_dict_data_for_socket(socket, dict_type) do
+    if dict_type_allowed?(socket, dict_type), do: load_dict_data(dict_type), else: []
+  end
+
+  def dict_type_allowed?(socket, dict_type) when is_binary(dict_type) do
+    admin_socket?(socket) or
+      ("system:dict:list" in List.wrap(socket.assigns[:permissions]) and
+         Enum.any?(socket.assigns[:dict_type_rows] || [], &(&1["dictType"] == dict_type)))
+  end
+
+  def dict_type_allowed?(_socket, _dict_type), do: false
 
   def load_dictionary(selected) do
     types = Dictionary.list_dict_types(%{"pageSize" => 50}).rows
@@ -160,6 +168,33 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       operation_log_rows: Log.list_operation_logs(%{"pageSize" => 50}).rows
     }
   end
+
+  def load_logs_for_socket(socket) do
+    if admin_socket?(socket) do
+      load_logs()
+    else
+      logs_for_permissions(socket.assigns.permissions)
+    end
+  end
+
+  defp logs_for_permissions(permissions) do
+    permissions = List.wrap(permissions)
+
+    %{
+      login_log_rows:
+        if("monitor:logininfor:list" in permissions,
+          do: Log.list_login_logs(%{"pageSize" => 50}).rows,
+          else: []
+        ),
+      operation_log_rows:
+        if("monitor:operlog:list" in permissions,
+          do: Log.list_operation_logs(%{"pageSize" => 50}).rows,
+          else: []
+        )
+    }
+  end
+
+  defp empty_dictionary, do: %{types: [], selected: "", data: []}
 
   def empty_notice_form do
     %{
@@ -375,7 +410,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   def assign_monitor(socket, feedback \\ nil) do
-    monitor = load_monitor()
+    monitor = load_monitor(socket)
 
     assign(socket,
       active_panel: "monitor",
@@ -387,33 +422,59 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     )
   end
 
-  def load_monitor do
+  def monitor_access?(socket) do
+    admin_socket?(socket) or
+      Enum.any?(
+        ["monitor:cache:list", "monitor:server:list", "monitor:online:list"],
+        &permission_socket?(socket, &1)
+      )
+  end
+
+  defp load_monitor(socket) do
+    admin? = admin_socket?(socket)
+    permissions = List.wrap(socket.assigns[:permissions])
+
     {server_info, server_error} =
-      case Monitor.server_info() do
-        {:ok, info} -> {info, nil}
-        {:error, :unavailable} -> {%{}, "主机监控数据暂不可用"}
+      if admin? or "monitor:server:list" in permissions do
+        case Monitor.server_info() do
+          {:ok, info} -> {info, nil}
+          {:error, :unavailable} -> {%{}, "主机监控数据暂不可用"}
+        end
+      else
+        {%{}, nil}
       end
 
     {cache_info, cache_error} =
-      case Monitor.cache_info() do
-        {:ok, info} -> {info, nil}
-        _ -> {%{}, "ETS 缓存数据暂不可用"}
+      if admin? or "monitor:cache:list" in permissions do
+        case Monitor.cache_info() do
+          {:ok, info} -> {info, nil}
+          _ -> {%{}, "ETS 缓存数据暂不可用"}
+        end
+      else
+        {%{}, nil}
       end
 
     {online_users, online_error} =
-      case Monitor.online_users() do
-        {:ok, %{rows: rows}} -> {rows, nil}
-        _ -> {[], "在线会话数据暂不可用"}
+      if admin? or "monitor:online:list" in permissions do
+        case Monitor.online_users() do
+          {:ok, %{rows: rows}} -> {rows, nil}
+          _ -> {[], "在线会话数据暂不可用"}
+        end
+      else
+        {[], nil}
       end
 
-    feedback = Enum.find([server_error, cache_error, online_error], &is_binary/1)
+    network_status =
+      if admin? or "monitor:server:list" in permissions,
+        do: Monitor.network_status(),
+        else: %{}
 
     %{
       server_info: server_info,
       cache_info: cache_info,
       online_users: online_users,
-      network_status: Monitor.network_status(),
-      feedback: feedback
+      network_status: network_status,
+      feedback: Enum.find([server_error, cache_error, online_error], &is_binary/1)
     }
   end
 
@@ -489,20 +550,13 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   @doc "Checks whether a dashboard panel has at least one required permission."
   def panel_allowed?(socket, panel) do
     admin_socket?(socket) or
-      Enum.any?(Map.get(@panel_permissions, panel, []), &permission_socket?(socket, &1))
+      (authenticated_socket?(socket) and
+         (panel in ["overview", "profile"] or
+            Enum.any?(Map.get(@panel_permissions, panel, []), &permission_socket?(socket, &1))))
   end
 
   def expire_authentication(socket, message) do
     Auth.logout(socket.assigns.refresh_token)
-
-    assign(socket,
-      current_user: nil,
-      permissions: [],
-      access_token: nil,
-      refresh_token: nil,
-      active_panel: "overview",
-      password: "",
-      login_error: message
-    )
+    Authentication.expire(socket, message)
   end
 end

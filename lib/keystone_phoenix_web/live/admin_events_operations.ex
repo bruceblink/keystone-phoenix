@@ -7,7 +7,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-jobs", _params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.panel_allowed?(socket, "jobs") do
       {:noreply,
        assign(socket,
          job_rows: Support.load_jobs(),
@@ -142,7 +142,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   end
 
   def handle_event("refresh-job-logs", _params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.panel_allowed?(socket, "job-logs") do
       {:noreply, assign(socket, job_log_rows: Support.load_job_logs(), job_log_feedback: nil)}
     else
       {:noreply, socket}
@@ -150,7 +150,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   end
 
   def handle_event("refresh-monitor", _params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.monitor_access?(socket) do
       {:noreply, Support.assign_monitor(socket)}
     else
       {:noreply, socket}

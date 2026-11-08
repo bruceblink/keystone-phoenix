@@ -8,9 +8,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
   import KeystonePhoenixWeb.Live.AdminPages.System
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Auth.Captcha
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.Live.AdminSupport
+  alias KeystonePhoenixWeb.Live.Authentication
+  alias KeystonePhoenixWeb.Live.LoginState
   alias KeystonePhoenixWeb.Live.AdminEvents.Accounts, as: AccountsEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.Operations, as: OperationsEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.Organization, as: OrganizationEvents
@@ -26,74 +29,23 @@ defmodule KeystonePhoenixWeb.LoginLive do
       )
 
     {:ok,
-     assign(socket,
-       username: "",
-       password: "",
-       login_error: nil,
-       current_user: nil,
-       permissions: [],
-       panel_access: %{},
-       read_only: true,
-       access_token: nil,
-       refresh_token: nil,
-       active_panel: "overview",
-       user_rows: [],
-       dept_rows: [],
-       dept_feedback: nil,
-       dept_form: empty_dept_form(),
-       post_rows: [],
-       post_feedback: nil,
-       post_form: empty_post_form(),
-       config_rows: [],
-       config_feedback: nil,
-       config_form: empty_config_form(),
-       dict_type_rows: [],
-       dict_data_rows: [],
-       dict_feedback: nil,
-       dict_type_form: empty_dict_type_form(),
-       dict_data_form: empty_dict_data_form(),
-       selected_dict_type: "",
-       job_rows: [],
-       job_feedback: nil,
-       job_form: empty_job_form(),
-       job_targets: Job.invoke_targets(),
-       job_log_rows: [],
-       job_log_feedback: nil,
-       role_rows: [],
-       selected_role_id: "",
-       selected_role_name: "",
-       allocated_role_user_rows: [],
-       unallocated_role_user_rows: [],
-       role_user_feedback: nil,
-       role_feedback: nil,
-       role_form: empty_role_form(),
-       menu_rows: [],
-       menu_feedback: nil,
-       menu_form: empty_menu_form(),
-       notice_rows: [],
-       notice_feedback: nil,
-       notice_form: empty_notice_form(),
-       login_log_rows: [],
-       operation_log_rows: [],
-       log_feedback: nil,
-       user_form: empty_user_form(),
-       user_feedback: nil,
-       profile_form: empty_profile_form(),
-       password_form: empty_password_form(),
-       profile_feedback: nil,
-       monitor_server_info: %{},
-       monitor_cache_info: %{},
-       online_user_rows: [],
-       network_status: %{},
-       monitor_feedback: nil
-     )}
+     socket
+     |> LoginState.reset()
+     |> Authentication.refresh_captcha()
+     |> attach_hook(:authenticate_event, :handle_event, &Authentication.guard_event/3)
+     |> attach_hook(:authenticate_info, :handle_info, &Authentication.guard_info/2)}
   end
 
   @impl true
-  def handle_event("login", %{"username" => username, "password" => password}, socket) do
+  def handle_event("login", %{"username" => username, "password" => password} = params, socket) do
     username = String.trim(username)
 
-    case Auth.login_plaintext(username, password) do
+    result =
+      with :ok <- Captcha.validate(params["captchaCode"], socket.assigns.captcha_key) do
+        Auth.login_plaintext(username, password)
+      end
+
+    case result do
       {:ok, tokens} ->
         Log.record_login_event(username, 1, "登录成功")
         current_user = Map.get(tokens.current_user, "userInfo", tokens.current_user)
@@ -115,6 +67,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
            login_error: nil,
            current_user: current_user,
            permissions: permissions,
+           auth_context: Authentication.context(current_user, permissions),
            panel_access: panel_access,
            read_only: not is_admin,
            access_token: tokens.token,
@@ -168,20 +121,29 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
       {:error, :already_logged_in} ->
         Log.record_login_event(username, 0, "该账号已经登录")
-        {:noreply, assign(socket, login_error: "该账号已经登录，请先退出或使用 API 的 forceLogin 接管")}
+        login_error(socket, username, "该账号已经登录，请先退出或使用 API 的 forceLogin 接管")
 
       {:error, :unavailable} ->
         Log.record_login_event(username, 0, "认证会话暂不可用")
-        {:noreply, assign(socket, login_error: "认证会话暂不可用，请稍后重试")}
+        login_error(socket, username, "认证会话暂不可用，请稍后重试")
+
+      {:error, reason} when reason in [:captcha_required, :captcha_invalid, :captcha_expired] ->
+        message = captcha_error(reason)
+        Log.record_login_event(username, 0, message)
+        login_error(socket, username, message)
 
       _ ->
         Log.record_login_event(username, 0, "用户名或密码错误")
-        {:noreply, assign(socket, login_error: "用户名或密码错误")}
+        login_error(socket, username, "用户名或密码错误")
     end
   end
 
   def handle_event("login", _params, socket) do
     {:noreply, assign(socket, login_error: "请输入用户名和密码")}
+  end
+
+  def handle_event("refresh-captcha", _params, socket) do
+    {:noreply, Authentication.refresh_captcha(socket)}
   end
 
   @impl true
@@ -202,28 +164,39 @@ defmodule KeystonePhoenixWeb.LoginLive do
              "profile",
              "monitor"
            ] do
-    if admin_socket?(socket) do
+    if AdminSupport.panel_allowed?(socket, panel) do
       cond do
+        panel == "profile" ->
+          {:noreply, assign_profile(socket)}
+
         panel == "monitor" ->
           {:noreply, assign_monitor(socket)}
 
         panel == "job-logs" ->
           {:noreply, assign(socket, active_panel: panel, job_log_rows: load_job_logs())}
 
-        panel == "profile" ->
-          {:noreply, assign_profile(socket)}
+        panel == "logs" ->
+          logs = AdminSupport.load_logs_for_socket(socket)
+
+          {:noreply,
+           assign(socket,
+             active_panel: panel,
+             login_log_rows: logs.login_log_rows,
+             operation_log_rows: logs.operation_log_rows
+           )}
+
+        panel == "users" and not admin_socket?(socket) ->
+          {:noreply,
+           assign(socket,
+             active_panel: panel,
+             user_rows: AdminSupport.load_users_for_socket(socket)
+           )}
 
         true ->
           {:noreply, assign(socket, active_panel: panel)}
       end
     else
-      if authenticated_socket?(socket) and AdminSupport.panel_allowed?(socket, panel) do
-        if panel == "profile",
-          do: {:noreply, assign_profile(socket)},
-          else: {:noreply, assign(socket, active_panel: panel)}
-      else
-        {:noreply, socket}
-      end
+      {:noreply, socket}
     end
   end
 
@@ -250,68 +223,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   @impl true
   def handle_event("logout", _params, socket) do
     Auth.logout(socket.assigns.refresh_token)
-
-    {:noreply,
-     assign(socket,
-       password: "",
-       login_error: nil,
-       current_user: nil,
-       permissions: [],
-       panel_access: %{},
-       read_only: true,
-       access_token: nil,
-       refresh_token: nil,
-       active_panel: "overview",
-       user_rows: [],
-       dept_rows: [],
-       dept_feedback: nil,
-       dept_form: empty_dept_form(),
-       post_rows: [],
-       post_feedback: nil,
-       post_form: empty_post_form(),
-       config_rows: [],
-       config_feedback: nil,
-       config_form: empty_config_form(),
-       dict_type_rows: [],
-       dict_data_rows: [],
-       dict_feedback: nil,
-       dict_type_form: empty_dict_type_form(),
-       dict_data_form: empty_dict_data_form(),
-       selected_dict_type: "",
-       job_rows: [],
-       job_feedback: nil,
-       job_form: empty_job_form(),
-       job_targets: Job.invoke_targets(),
-       job_log_rows: [],
-       job_log_feedback: nil,
-       role_rows: [],
-       selected_role_id: "",
-       selected_role_name: "",
-       allocated_role_user_rows: [],
-       unallocated_role_user_rows: [],
-       role_user_feedback: nil,
-       role_feedback: nil,
-       role_form: empty_role_form(),
-       menu_rows: [],
-       menu_feedback: nil,
-       menu_form: empty_menu_form(),
-       notice_rows: [],
-       notice_feedback: nil,
-       notice_form: empty_notice_form(),
-       login_log_rows: [],
-       operation_log_rows: [],
-       log_feedback: nil,
-       user_form: empty_user_form(),
-       user_feedback: nil,
-       profile_form: empty_profile_form(),
-       password_form: empty_password_form(),
-       profile_feedback: nil,
-       monitor_server_info: %{},
-       monitor_cache_info: %{},
-       online_user_rows: [],
-       network_status: %{},
-       monitor_feedback: nil
-     )}
+    {:noreply, socket |> LoginState.reset() |> Authentication.refresh_captcha()}
   end
 
   @impl true
@@ -339,6 +251,17 @@ defmodule KeystonePhoenixWeb.LoginLive do
     end
   end
 
+  defp login_error(socket, username, message) do
+    {:noreply,
+     socket
+     |> Authentication.refresh_captcha()
+     |> assign(username: username, password: "", login_error: message)}
+  end
+
+  defp captcha_error(:captcha_required), do: "请输入验证码"
+  defp captcha_error(:captcha_invalid), do: "验证码错误，请重试"
+  defp captcha_error(:captcha_expired), do: "验证码已过期，请重试"
+
   defp load_dashboard, do: AdminSupport.load_dashboard()
 
   defp load_dashboard_for_permissions(user, permissions),
@@ -355,13 +278,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
   defp empty_config_form, do: AdminSupport.empty_config_form()
   defp empty_dict_type_form, do: AdminSupport.empty_dict_type_form()
   defp empty_job_form, do: AdminSupport.empty_job_form()
-  defp empty_profile_form, do: AdminSupport.empty_profile_form()
   defp empty_password_form, do: AdminSupport.empty_password_form()
-  defp empty_dict_data_form(dict_type \\ ""), do: AdminSupport.empty_dict_data_form(dict_type)
+  defp empty_dict_data_form(dict_type), do: AdminSupport.empty_dict_data_form(dict_type)
   defp assign_monitor(socket, feedback \\ nil), do: AdminSupport.assign_monitor(socket, feedback)
   defp assign_profile(socket), do: AdminSupport.assign_profile(socket)
   defp admin_socket?(socket), do: AdminSupport.admin_socket?(socket)
-  defp authenticated_socket?(socket), do: AdminSupport.authenticated_socket?(socket)
 
   @impl true
   def render(assigns) do
@@ -387,6 +308,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
           button.secondary { background: #31435c; }
           .error { margin: 14px 0 0; color: #ff9b9b; font-size: 14px; }
           .user { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+          .user > div { min-width: 0; overflow-wrap: anywhere; }
+          .user button { width: auto; margin: 0; flex-shrink: 0; }
           .user strong { display: block; font-size: 20px; }
           .user span { color: #9aacbf; }
           .dashboard { grid-column: 1 / -1; }
@@ -427,6 +350,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
             .brand h1 { font-size: 34px; }
             .form-grid { grid-template-columns: 1fr; }
             .form-grid .wide { grid-column: auto; }
+            .topbar { flex-direction: column; align-items: stretch; }
+            .user { justify-content: space-between; }
           }
         </style>
       </head>
@@ -528,6 +453,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <input id="username" name="username" value={@username} autocomplete="username" required />
                   <label for="password">密码</label>
                   <input id="password" name="password" type="password" autocomplete="current-password" required />
+                  <div :if={@captcha_enabled}>
+                    <label for="captcha-code">验证码</label>
+                    <img :if={@captcha_image} src={"data:image/gif;base64," <> @captcha_image} alt="登录验证码" width="160" height="60" />
+                    <button type="button" class="secondary" phx-click="refresh-captcha">刷新验证码</button>
+                    <input id="captcha-code" name="captchaCode" value="" autocomplete="off" required />
+                  </div>
                   <%= if @login_error do %><p class="error" role="alert"><%= @login_error %></p><% end %>
                   <button type="submit">登录</button>
                 </form>

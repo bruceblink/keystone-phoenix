@@ -44,6 +44,16 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+config :phoenix, :filter_parameters, [
+  "password",
+  "Password",
+  "token",
+  "Token",
+  "secret",
+  "captcha",
+  "Captcha"
+]
+
 # Phoenix's Accept plug uses MIME extensions as route formats. Register the
 # server-sent events media type so the monitoring stream can negotiate it.
 config :mime, :types, %{
