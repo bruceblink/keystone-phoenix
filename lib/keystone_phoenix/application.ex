@@ -14,6 +14,7 @@ defmodule KeystonePhoenix.Application do
         KeystonePhoenix.Monitor.CpuSampler,
         KeystonePhoenix.Repo,
         KeystonePhoenix.Auth.SessionCleanup,
+        KeystonePhoenix.Job.Lock,
         {Task.Supervisor,
          name: KeystonePhoenix.JobTaskSupervisor,
          max_children: Application.get_env(:keystone_phoenix, :job_task_max_children, 64)},

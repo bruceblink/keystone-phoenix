@@ -3,7 +3,7 @@ defmodule KeystonePhoenix.Job.RunnerTest do
 
   import Ecto.Query
 
-  alias KeystonePhoenix.Job.{Runner, Scheduler, SysJob, SysJobLog}
+  alias KeystonePhoenix.Job.{Lock, Runner, Scheduler, SysJob, SysJobLog}
   alias KeystonePhoenix.Repo
 
   setup do
@@ -127,19 +127,8 @@ defmodule KeystonePhoenix.Job.RunnerTest do
     |> Map.has_key?(job_id)
   end
 
-  defp lock_held?(job_id), do: not lock_available?(job_id)
-
-  defp lock_available?(job_id) do
-    lock = {{Runner, job_id}, self()}
-    nodes = [node()]
-
-    if :global.set_lock(lock, nodes, 0) do
-      :global.del_lock(lock, nodes)
-      true
-    else
-      false
-    end
-  end
+  defp lock_held?(job_id), do: Lock.held?(job_id)
+  defp lock_available?(job_id), do: not Lock.held?(job_id)
 
   defp assert_eventually(fun, attempts \\ 150)
 

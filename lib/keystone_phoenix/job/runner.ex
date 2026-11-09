@@ -1,7 +1,7 @@
 defmodule KeystonePhoenix.Job.Runner do
   @moduledoc "Executes a job target and persists one run log."
 
-  alias KeystonePhoenix.Job.{Invoke, SysJob, SysJobLog}
+  alias KeystonePhoenix.Job.{Invoke, Lock, SysJob, SysJobLog}
   alias KeystonePhoenix.Repo
 
   @max_message_length 500
@@ -13,14 +13,11 @@ defmodule KeystonePhoenix.Job.Runner do
   end
 
   defp run_with_concurrency(%SysJob{concurrent: 0} = job, trigger_type) do
-    lock = {{__MODULE__, job.job_id}, self()}
-    nodes = [node()]
-
-    if :global.set_lock(lock, nodes, 0) do
+    if Lock.acquire(job.job_id) == :ok do
       try do
         run_unlocked(job, trigger_type)
       after
-        :global.del_lock(lock, nodes)
+        Lock.release(job.job_id)
       end
     else
       case record_skip(job, trigger_type, "任务正在执行，本次触发已跳过") do
