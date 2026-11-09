@@ -117,17 +117,23 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Lists users assigned to a role."
   def allocated_users(conn, %{"role_id" => role_id} = params) do
-    json(conn, ApiResponse.ok(Role.list_allocated_users(role_id, params)))
+    json(
+      conn,
+      ApiResponse.ok(Role.list_allocated_users(role_id, params, conn.assigns.current_user))
+    )
   end
 
   @doc "Lists users that are not assigned to a role."
   def unallocated_users(conn, %{"role_id" => role_id} = params) do
-    json(conn, ApiResponse.ok(Role.list_unallocated_users(role_id, params)))
+    json(
+      conn,
+      ApiResponse.ok(Role.list_unallocated_users(role_id, params, conn.assigns.current_user))
+    )
   end
 
   @doc "Assigns users to a role."
   def assign_users(conn, %{"role_id" => role_id, "user_ids" => user_ids}) do
-    case Role.assign_users(role_id, user_ids) do
+    case Role.assign_users(role_id, user_ids, conn.assigns.current_user) do
       :ok -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end
@@ -137,8 +143,9 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Removes role assignments from users."
   def unassign_users(conn, %{"user_ids" => user_ids}) do
-    case Role.unassign_users(user_ids) do
+    case Role.unassign_users(user_ids, conn.assigns.current_user) do
       :ok -> json(conn, ApiResponse.ok())
+      {:error, :forbidden} -> render_error(conn, :forbidden)
       {:error, :invalid_ids} -> render_error(conn, :invalid_ids)
     end
   end
@@ -171,6 +178,10 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   defp render_error(conn, :role_unavailable) do
     conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10003, "角色已停用"))
+  end
+
+  defp render_error(conn, :forbidden) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(40301, "需要管理员权限"))
   end
 
   defp render_error(conn, :menu_not_found) do

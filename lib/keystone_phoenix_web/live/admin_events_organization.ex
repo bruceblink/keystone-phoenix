@@ -316,7 +316,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           {:noreply, assign(socket, role_user_feedback: "找不到指定角色")}
 
         role ->
-          users = Support.load_role_users(role_id)
+          users = Support.load_role_users(role_id, socket.assigns.current_user)
 
           {:noreply,
            assign(socket,
@@ -333,11 +333,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("assign-role-user", %{"user-id" => user_id}, socket) do
-    update_role_user_assignment(socket, fn role_id -> Role.assign_users(role_id, [user_id]) end)
+    update_role_user_assignment(socket, fn role_id ->
+      Role.assign_users(role_id, [user_id], socket.assigns.current_user)
+    end)
   end
 
   def handle_event("unassign-role-user", %{"user-id" => user_id}, socket) do
-    update_role_user_assignment(socket, fn _role_id -> Role.unassign_users([user_id]) end)
+    update_role_user_assignment(socket, fn _role_id ->
+      Role.unassign_users([user_id], socket.assigns.current_user)
+    end)
   end
 
   def handle_event("refresh-menus", _params, socket) do
@@ -446,7 +450,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
       case operation.(role_id) do
         :ok ->
-          users = Support.load_role_users(role_id)
+          users = Support.load_role_users(role_id, socket.assigns.current_user)
 
           {:noreply,
            assign(socket,

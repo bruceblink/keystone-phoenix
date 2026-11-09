@@ -56,7 +56,15 @@ defmodule KeystonePhoenix.Excel do
   @doc "Reads the first worksheet from a local XLSX file."
   @spec import_rows(String.t()) :: {:ok, [[term()]]} | {:error, atom()}
   def import_rows(path) when is_binary(path) do
-    with :ok <- validate_import_file(path),
+    import_rows(path, Path.basename(path))
+  end
+
+  def import_rows(_path), do: {:error, :invalid_workbook}
+
+  @doc "Reads a multipart XLSX path using the client-provided filename for type validation."
+  @spec import_rows(String.t(), String.t()) :: {:ok, [[term()]]} | {:error, atom()}
+  def import_rows(path, filename) when is_binary(path) and is_binary(filename) do
+    with :ok <- validate_import_file(path, filename),
          {:ok, table_id} <- extract(path) do
       try do
         {:ok, Xlsxir.get_list(table_id)}
@@ -68,7 +76,7 @@ defmodule KeystonePhoenix.Excel do
     _error -> {:error, :invalid_workbook}
   end
 
-  def import_rows(_path), do: {:error, :invalid_workbook}
+  def import_rows(_path, _filename), do: {:error, :invalid_workbook}
 
   @doc "Converts a worksheet with a header row into maps using API field names."
   @spec rows_to_maps([[term()]]) :: {:ok, [map()]} | {:error, atom()}
@@ -126,8 +134,8 @@ defmodule KeystonePhoenix.Excel do
     end
   end
 
-  defp validate_import_file(path) do
-    extension = path |> Path.extname() |> String.downcase()
+  defp validate_import_file(path, filename) do
+    extension = filename |> Path.extname() |> String.downcase()
 
     with true <- extension == ".xlsx",
          {:ok, stat} <- File.stat(path),

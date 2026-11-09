@@ -39,6 +39,7 @@ defmodule KeystonePhoenixWeb.UserController do
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Post
+  alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.ApiResponse
@@ -166,9 +167,9 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Imports users from the first worksheet in an XLSX upload."
   def import(conn, %{"file" => %Plug.Upload{} = upload}) do
-    with {:ok, rows} <- Excel.import_rows(upload.path),
+    with {:ok, rows} <- Excel.import_rows(upload.path, upload.filename),
          {:ok, records} <- Excel.rows_to_maps(rows) do
-      json(conn, ApiResponse.ok(import_records(records, conn.assigns.current_user.user_id)))
+      json(conn, ApiResponse.ok(import_records(records, conn.assigns.current_user)))
     else
       {:error, reason} -> ExcelResponse.render_error(conn, import_error_message(reason))
     end
@@ -238,14 +239,22 @@ defmodule KeystonePhoenixWeb.UserController do
     )
   end
 
-  defp import_records(records, actor_id) do
+  defp import_records(records, actor) do
     {success, failed} =
       records
       |> Enum.with_index(2)
       |> Enum.reduce({0, []}, fn {record, row_number}, {success, failed} ->
-        case User.create_user(normalize_import_params(record), actor_id) do
-          {:ok, _user} -> {success + 1, failed}
-          {:error, reason} -> {success, [import_failure(row_number, record, reason) | failed]}
+        record = normalize_import_params(record)
+
+        case import_authorized?(record, actor) do
+          :ok ->
+            case User.create_user(record, current_user_id(actor)) do
+              {:ok, _user} -> {success + 1, failed}
+              {:error, reason} -> {success, [import_failure(row_number, record, reason) | failed]}
+            end
+
+          {:error, reason} ->
+            {success, [import_failure(row_number, record, reason) | failed]}
         end
       end)
 
@@ -257,6 +266,21 @@ defmodule KeystonePhoenixWeb.UserController do
       Map.update(result, key, nil, &integer_value/1)
     end)
   end
+
+  defp import_authorized?(record, actor) do
+    cond do
+      not Permission.data_scope_allowed?(actor, :dept, record["deptId"]) ->
+        {:error, :data_scope_denied}
+
+      not Permission.role_assignment_allowed?(actor, record["roleId"]) ->
+        {:error, :role_assignment_forbidden}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp current_user_id(actor), do: Map.get(actor, :user_id, Map.get(actor, "userId"))
 
   defp integer_value(nil), do: nil
   defp integer_value(value) when is_integer(value), do: value
@@ -282,6 +306,9 @@ defmodule KeystonePhoenixWeb.UserController do
   defp failure_reason(%Ecto.Changeset{} = changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
   end
+
+  defp failure_reason(:data_scope_denied), do: "没有数据权限"
+  defp failure_reason(:role_assignment_forbidden), do: "没有角色分配权限"
 
   defp failure_reason(reason), do: to_string(reason)
 

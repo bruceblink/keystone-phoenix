@@ -37,6 +37,12 @@ defmodule KeystonePhoenix.Permission do
 
   def allowed?(_user, _permission), do: false
 
+  @doc "Returns whether the authenticated user is an administrator."
+  @spec admin?(map()) :: boolean()
+  def admin?(%{is_admin: true}), do: true
+  def admin?(%{"isAdmin" => 1}), do: true
+  def admin?(_user), do: false
+
   @doc "Adds the current role's user data scope before counting or pagination."
   def scope_users(query, %{is_admin: true}), do: query
   def scope_users(query, %{"isAdmin" => 1}), do: query
@@ -102,6 +108,16 @@ defmodule KeystonePhoenix.Permission do
   end
 
   def data_scope_users_allowed?(_user, _ids), do: false
+
+  @doc "Checks whether an actor may assign the requested role during an import."
+  @spec role_assignment_allowed?(map(), term()) :: boolean()
+  def role_assignment_allowed?(actor, role_id) do
+    cond do
+      admin?(actor) -> true
+      is_nil(parse_positive_integer(role_id)) -> true
+      true -> false
+    end
+  end
 
   defp destination_allowed?(user, target, attrs) do
     if Map.has_key?(attrs, "deptId") or Map.has_key?(attrs, :dept_id) do

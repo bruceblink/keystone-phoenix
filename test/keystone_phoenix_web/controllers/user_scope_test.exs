@@ -25,7 +25,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
       |> Repo.insert!()
 
     for permission <-
-          ~w(system:user:list system:user:query system:user:export system:user:edit system:user:add) do
+          ~w(system:user:list system:user:query system:user:export system:user:edit system:user:add system:user:import) do
       menu =
         %SysMenu{}
         |> SysMenu.changeset(%{
@@ -226,6 +226,35 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert User.list_users(%{}, %{ctx.actor | role_id: nil}).total == 0
     assert User.list_users(%{"pageSize" => 500}, %{ctx.actor | is_admin: true}).total == 63
     refute Permission.user_update_allowed?(ctx.actor, ctx.oldest.user_id, %{})
+  end
+
+  @tag :integration
+  test "multipart import uses the client filename and checks each row scope", ctx do
+    {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
+
+    {:ok, workbook} =
+      Excel.export(
+        ["部门ID", "用户名", "密码", "状态", "角色ID"],
+        [
+          [ctx.child.dept_id, unique("import_allowed"), "Strong!123", 1, nil],
+          [ctx.outside.dept_id, unique("import_denied"), "Strong!123", 1, nil]
+        ],
+        "users.xlsx"
+      )
+
+    path = Path.join(System.tmp_dir!(), unique("multipart_upload"))
+    File.write!(path, workbook)
+    on_exit(fn -> File.rm(path) end)
+
+    upload = %Plug.Upload{
+      path: path,
+      filename: "users.xlsx",
+      content_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    }
+
+    response = post(authorized(tokens.token), "/system/users/excel", %{"file" => upload})
+    assert %{"data" => %{"success" => 1, "failed" => [failure]}} = json_response(response, 200)
+    assert failure["reason"] == "没有数据权限"
   end
 
   defp authorized(token), do: put_req_header(build_conn(), "authorization", "Bearer #{token}")

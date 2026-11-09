@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Role do
 
   alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.User
@@ -162,18 +163,18 @@ defmodule KeystonePhoenix.Role do
   def dept_ids_for_role(%SysRole{dept_id_set: dept_id_set}), do: parse_id_set(dept_id_set)
 
   @doc "Lists users currently assigned to a role."
-  def list_allocated_users(role_id, params \\ %{}) do
+  def list_allocated_users(role_id, params \\ %{}, actor \\ nil) do
     case parse_positive_integer(role_id) do
       nil -> %{total: 0, rows: []}
-      role_id -> list_role_users(role_id, params, :allocated)
+      role_id -> list_role_users(role_id, params, :allocated, actor)
     end
   end
 
   @doc "Lists active users that are not assigned to a role."
-  def list_unallocated_users(role_id, params \\ %{}) do
+  def list_unallocated_users(role_id, params \\ %{}, actor \\ nil) do
     case parse_positive_integer(role_id) do
       nil -> %{total: 0, rows: []}
-      role_id -> list_role_users(role_id, params, :unallocated)
+      role_id -> list_role_users(role_id, params, :unallocated, actor)
     end
   end
 
@@ -197,12 +198,14 @@ defmodule KeystonePhoenix.Role do
   def user_counts(_role_ids), do: %{}
 
   @doc "Assigns a batch of users to an enabled role."
-  def assign_users(role_id, user_ids) do
-    with {:ok, role} <- get_role(role_id),
+  def assign_users(role_id, user_ids, actor \\ nil) do
+    with :ok <- assignment_allowed?(actor),
+         {:ok, role} <- get_role(role_id),
          true <- role.status == 1,
          {:ok, user_ids} <- normalize_user_ids(user_ids) do
       update_user_assignments(user_ids, role.role_id)
     else
+      {:error, :forbidden} -> {:error, :forbidden}
       {:error, :not_found} -> {:error, :not_found}
       {:error, :invalid_ids} -> {:error, :invalid_ids}
       false -> {:error, :role_unavailable}
@@ -210,8 +213,9 @@ defmodule KeystonePhoenix.Role do
   end
 
   @doc "Removes role assignments from a batch of users."
-  def unassign_users(user_ids) do
-    with {:ok, user_ids} <- normalize_user_ids(user_ids) do
+  def unassign_users(user_ids, actor \\ nil) do
+    with :ok <- assignment_allowed?(actor),
+         {:ok, user_ids} <- normalize_user_ids(user_ids) do
       update_user_assignments(user_ids, nil)
     end
   end
@@ -264,7 +268,7 @@ defmodule KeystonePhoenix.Role do
   defp update_result({count, _}, ids) when count == length(ids), do: :ok
   defp update_result(_result, _ids), do: Repo.rollback(:not_found)
 
-  defp list_role_users(role_id, params, mode) do
+  defp list_role_users(role_id, params, mode, actor) do
     query =
       from u in SysUser,
         where: u.deleted == false,
@@ -275,6 +279,8 @@ defmodule KeystonePhoenix.Role do
         :allocated -> where(query, [user], user.role_id == ^role_id)
         :unallocated -> where(query, [user], is_nil(user.role_id) or user.role_id != ^role_id)
       end
+
+    query = Permission.scope_users(query, actor || %{is_admin: true})
 
     query =
       query
@@ -287,6 +293,11 @@ defmodule KeystonePhoenix.Role do
     rows = query |> limit(^page_size) |> offset(^((page - 1) * page_size)) |> Repo.all()
     %{total: total, rows: User.user_maps(rows)}
   end
+
+  defp assignment_allowed?(nil), do: :ok
+
+  defp assignment_allowed?(actor),
+    do: if(Permission.admin?(actor), do: :ok, else: {:error, :forbidden})
 
   defp normalize_user_ids(user_ids) when is_list(user_ids) do
     normalized =

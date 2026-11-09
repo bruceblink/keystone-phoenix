@@ -122,12 +122,35 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     assert user_state(user) == before
   end
 
+  test "non-administrators cannot change role assignments" do
+    target_role = create_role()
+    user = create_user()
+    actor = %{is_admin: false, role_id: target_role.role_id, user_id: user.user_id}
+    before = user_state(user)
+
+    assert {:error, :forbidden} = Role.assign_users(target_role.role_id, [user.user_id], actor)
+    assert {:error, :forbidden} = Role.unassign_users([user.user_id], actor)
+    assert user_state(user) == before
+  end
+
+  test "role user lists use the actor data scope" do
+    role = create_role()
+    actor_role = create_role(data_scope: 5)
+    actor = create_user(actor_role.role_id)
+    assigned_to_role = create_user(role.role_id)
+
+    rows = Role.list_allocated_users(role.role_id, %{"pageSize" => 50}, actor)
+
+    refute assigned_to_role.user_id in Enum.map(rows.rows, & &1["userId"])
+    assert rows.total == 0
+  end
+
   defp create_role(opts \\ []) do
     attrs = %{
       "roleName" => "角色分配测试",
       "roleKey" => unique("role_assignment"),
       "roleSort" => 1,
-      "dataScope" => 1,
+      "dataScope" => Keyword.get(opts, :data_scope, 1),
       "status" => Keyword.get(opts, :status, 1),
       "menuIds" => []
     }
