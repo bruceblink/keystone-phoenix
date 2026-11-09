@@ -1,15 +1,19 @@
 ARG ELIXIR_VERSION=1.20.5
 ARG OTP_VERSION=29
 ARG IMAGE_REGISTRY=m.daocloud.io/docker.io/library/
-ARG HEX_MIRROR=https://hexpm.upyun.com
+ARG HEX_MIRROR=https://repo.hex.pm
+ARG HEX_CACERTS_PATH=/etc/ssl/certs/ca-certificates.crt
 
 FROM ${IMAGE_REGISTRY}elixir:${ELIXIR_VERSION}-otp-${OTP_VERSION} AS build
 
 ARG HEX_MIRROR
+ARG HEX_CACERTS_PATH
 
 ENV MIX_ENV=prod \
     LANG=C.UTF-8 \
-    HEX_MIRROR=${HEX_MIRROR}
+    LC_ALL=C.UTF-8 \
+    HEX_MIRROR=${HEX_MIRROR} \
+    HEX_CACERTS_PATH=${HEX_CACERTS_PATH}
 
 RUN sed -i 's|http://deb.debian.org/|http://mirrors.tuna.tsinghua.edu.cn/|g' \
       /etc/apt/sources.list.d/debian.sources \
@@ -36,8 +40,10 @@ RUN mix compile --warnings-as-errors \
 FROM ${IMAGE_REGISTRY}debian:trixie-slim AS runtime
 
 ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
     HOME=/app \
-    PHX_SERVER=true
+    PHX_SERVER=true \
+    ELIXIR_ERL_OPTIONS=+fnu
 
 RUN sed -i 's|http://deb.debian.org/|http://mirrors.tuna.tsinghua.edu.cn/|g' \
       /etc/apt/sources.list.d/debian.sources \
