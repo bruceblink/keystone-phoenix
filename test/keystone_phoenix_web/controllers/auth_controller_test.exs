@@ -49,6 +49,23 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert %{"code" => 10210} = json_response(conn, 409)
   end
 
+  test "limits repeated HTTP login attempts", %{user: user} do
+    params = %{
+      "username" => user.username,
+      "password" => encrypted_password("Wrong!123")
+    }
+
+    for _attempt <- 1..10 do
+      assert %{"code" => 10002} = build_conn() |> post("/login", params) |> json_response(401)
+    end
+
+    conn = build_conn() |> post("/login", params)
+    assert conn.status == 429
+    assert %{"code" => 42903} = json_response(conn, 429)
+    assert [retry_after] = get_resp_header(conn, "retry-after")
+    assert String.to_integer(retry_after) >= 1
+  end
+
   test "enforces enabled one-time captcha for missing, invalid, expired, and reused values", %{
     conn: conn,
     user: user

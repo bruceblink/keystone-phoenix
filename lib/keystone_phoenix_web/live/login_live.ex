@@ -9,6 +9,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Captcha
+  alias KeystonePhoenix.Auth.LoginLimiter
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.Live.AdminSupport
@@ -41,8 +42,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
     username = String.trim(username)
 
     result =
-      with :ok <- Captcha.validate(params["captchaCode"], socket.assigns.captcha_key) do
+      with :allow <- LoginLimiter.check_liveview(username),
+           :ok <- Captcha.validate(params["captchaCode"], socket.assigns.captcha_key) do
         Auth.login_plaintext(username, password)
+      else
+        {:deny, retry_after} -> {:error, {:rate_limited, retry_after}}
+        error -> error
       end
 
     case result do
@@ -122,6 +127,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
       {:error, :already_logged_in} ->
         Log.record_login_event(username, 0, "该账号已经登录")
         login_error(socket, username, "该账号已经登录，请先退出或使用 API 的 forceLogin 接管")
+
+      {:error, {:rate_limited, retry_after}} ->
+        Log.record_login_event(username, 0, "登录尝试过于频繁")
+        login_error(socket, username, "登录尝试过于频繁，请在 #{retry_after} 秒后重试")
 
       {:error, :unavailable} ->
         Log.record_login_event(username, 0, "认证会话暂不可用")

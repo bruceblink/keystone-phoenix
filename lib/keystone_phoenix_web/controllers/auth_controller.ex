@@ -17,6 +17,7 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Captcha
+  alias KeystonePhoenix.Auth.LoginLimiter
   alias KeystonePhoenix.Auth.Token
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Dictionary
@@ -70,44 +71,54 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   @doc "Authenticates a local username and password."
   def login(conn, %{"username" => username, "password" => password} = params) do
-    case Auth.login(
-           username,
-           password,
-           params["forceLogin"] == true,
-           params["captchaCode"],
-           params["captchaCodeKey"]
-         ) do
-      {:ok, tokens} ->
-        Log.record_login(conn, username, 1, "登录成功")
-        json(conn, ApiResponse.ok(token_to_map(tokens)))
+    case LoginLimiter.check_http(username, conn.remote_ip) do
+      :allow ->
+        case Auth.login(
+               username,
+               password,
+               params["forceLogin"] == true,
+               params["captchaCode"],
+               params["captchaCodeKey"]
+             ) do
+          {:ok, tokens} ->
+            Log.record_login(conn, username, 1, "登录成功")
+            json(conn, ApiResponse.ok(token_to_map(tokens)))
 
-      {:error, :invalid_credentials} ->
-        Log.record_login(conn, username, 0, "用户名或密码错误")
-        render_error(conn, :invalid_credentials)
+          {:error, :invalid_credentials} ->
+            Log.record_login(conn, username, 0, "用户名或密码错误")
+            render_error(conn, :invalid_credentials)
 
-      {:error, :captcha_required} ->
-        Log.record_login(conn, username, 0, "验证码为空")
-        render_error(conn, :captcha_required)
+          {:error, :captcha_required} ->
+            Log.record_login(conn, username, 0, "验证码为空")
+            render_error(conn, :captcha_required)
 
-      {:error, :captcha_invalid} ->
-        Log.record_login(conn, username, 0, "验证码错误")
-        render_error(conn, :captcha_invalid)
+          {:error, :captcha_invalid} ->
+            Log.record_login(conn, username, 0, "验证码错误")
+            render_error(conn, :captcha_invalid)
 
-      {:error, :captcha_expired} ->
-        Log.record_login(conn, username, 0, "验证码过期")
-        render_error(conn, :captcha_expired)
+          {:error, :captcha_expired} ->
+            Log.record_login(conn, username, 0, "验证码过期")
+            render_error(conn, :captcha_expired)
 
-      {:error, :already_logged_in} ->
-        Log.record_login(conn, username, 0, "该账号已经登录")
-        render_error(conn, :already_logged_in)
+          {:error, :already_logged_in} ->
+            Log.record_login(conn, username, 0, "该账号已经登录")
+            render_error(conn, :already_logged_in)
 
-      {:error, :unavailable} ->
-        Log.record_login(conn, username, 0, "认证会话暂不可用")
-        render_error(conn, :unavailable)
+          {:error, :unavailable} ->
+            Log.record_login(conn, username, 0, "认证会话暂不可用")
+            render_error(conn, :unavailable)
 
-      {:error, :token_configuration} ->
-        Log.record_login(conn, username, 0, "认证密钥配置无效")
-        render_error(conn, :token_configuration)
+          {:error, :token_configuration} ->
+            Log.record_login(conn, username, 0, "认证密钥配置无效")
+            render_error(conn, :token_configuration)
+        end
+
+      {:deny, retry_after} ->
+        Log.record_login(conn, username, 0, "登录尝试过于频繁")
+
+        conn
+        |> put_resp_header("retry-after", Integer.to_string(retry_after))
+        |> render_error(:rate_limited)
     end
   end
 
@@ -208,5 +219,11 @@ defmodule KeystonePhoenixWeb.AuthController do
     conn
     |> put_status(:internal_server_error)
     |> json(ApiResponse.error(50001, "认证密钥配置无效"))
+  end
+
+  defp render_error(conn, :rate_limited) do
+    conn
+    |> put_status(:too_many_requests)
+    |> json(ApiResponse.error(42903, "登录尝试过于频繁，请稍后再试"))
   end
 end
