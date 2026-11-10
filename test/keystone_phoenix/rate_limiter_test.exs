@@ -96,8 +96,9 @@ defmodule KeystonePhoenix.RateLimiterTest do
   test "cleans expired keys before enforcing the entry capacity" do
     previous_limit = Application.get_env(:keystone_phoenix, :rate_limit_max_entries)
     table = RuntimeStore.rate_limit_table()
+    existing_entries = :ets.tab2list(table)
     Application.put_env(:keystone_phoenix, :rate_limit_max_entries, 1)
-    :ets.delete_all_objects(RuntimeStore.rate_limit_table())
+    :ets.delete_all_objects(table)
 
     expired_key = "test-capacity-expired-#{System.unique_integer([:positive])}"
     active_key = "test-capacity-active-#{System.unique_integer([:positive])}"
@@ -113,7 +114,8 @@ defmodule KeystonePhoenix.RateLimiterTest do
         do: Application.delete_env(:keystone_phoenix, :rate_limit_max_entries),
         else: Application.put_env(:keystone_phoenix, :rate_limit_max_entries, previous_limit)
 
-      :ets.delete_all_objects(RuntimeStore.rate_limit_table())
+      :ets.delete_all_objects(table)
+      Enum.each(existing_entries, &:ets.insert(table, &1))
     end)
 
     assert :allow = RateLimiter.check(active_key, 1, 60)
@@ -123,8 +125,10 @@ defmodule KeystonePhoenix.RateLimiterTest do
 
   test "returns capacity instead of allowing a new key when the table is full" do
     previous_limit = Application.get_env(:keystone_phoenix, :rate_limit_max_entries)
+    table = RuntimeStore.rate_limit_table()
+    existing_entries = :ets.tab2list(table)
     Application.put_env(:keystone_phoenix, :rate_limit_max_entries, 1)
-    :ets.delete_all_objects(RuntimeStore.rate_limit_table())
+    :ets.delete_all_objects(table)
 
     active_key = "test-capacity-full-#{System.unique_integer([:positive])}"
     rejected_key = "test-capacity-full-rejected-#{System.unique_integer([:positive])}"
@@ -138,7 +142,8 @@ defmodule KeystonePhoenix.RateLimiterTest do
         do: Application.delete_env(:keystone_phoenix, :rate_limit_max_entries),
         else: Application.put_env(:keystone_phoenix, :rate_limit_max_entries, previous_limit)
 
-      :ets.delete_all_objects(RuntimeStore.rate_limit_table())
+      :ets.delete_all_objects(table)
+      Enum.each(existing_entries, &:ets.insert(table, &1))
     end)
 
     assert {:error, :capacity} = RateLimiter.check(rejected_key, 1, 60)
