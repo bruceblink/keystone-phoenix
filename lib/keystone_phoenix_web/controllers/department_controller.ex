@@ -12,10 +12,6 @@ defmodule KeystonePhoenixWeb.DepartmentController do
     },
     data_scope: %{update: {:dept, "dept_id"}, delete: {:dept, "dept_id"}}
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate,
-       [admin: true]
-       when action in [:create, :update, :delete]
-
   alias KeystonePhoenix.Department
   alias KeystonePhoenixWeb.ApiResponse
 

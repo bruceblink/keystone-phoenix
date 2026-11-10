@@ -17,18 +17,6 @@ defmodule KeystonePhoenixWeb.RoleController do
       unassign_users: "system:role:edit"
     }
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate,
-       [admin: true]
-       when action in [
-              :create,
-              :update,
-              :delete,
-              :change_status,
-              :data_scope,
-              :assign_users,
-              :unassign_users
-            ]
-
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.ApiResponse

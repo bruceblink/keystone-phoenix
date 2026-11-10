@@ -87,7 +87,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   end
 
   @tag :integration
-  test "metadata write endpoints require an administrator", %{conn: conn} do
+  test "metadata write endpoints honor explicit permissions", %{conn: conn} do
     role = insert_role()
     insert_menu(role.role_id, "system:role:add")
     insert_menu(role.role_id, "system:menu:add")
@@ -96,26 +96,39 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
 
-    assert json_response(
-             post(authorized_conn, "/system/role", %{"roleName" => unique("role")}),
-             403
-           )[
-             "code"
-           ] == 40301
+    assert %{"code" => 0} =
+             json_response(
+               post(authorized_conn, "/system/role", %{
+                 "roleName" => unique("role"),
+                 "roleKey" => unique("role_key"),
+                 "roleSort" => 1,
+                 "dataScope" => 1,
+                 "status" => 1
+               }),
+               201
+             )
 
-    assert json_response(
-             post(authorized_conn, "/system/menus", %{"menuName" => unique("menu")}),
-             403
-           )[
-             "code"
-           ] == 40301
+    assert %{"code" => 0} =
+             json_response(
+               post(authorized_conn, "/system/menus", %{
+                 "menuName" => unique("menu"),
+                 "menuType" => 1,
+                 "parentId" => 0,
+                 "status" => 1
+               }),
+               201
+             )
 
-    assert json_response(
-             post(authorized_conn, "/system/dept", %{"deptName" => unique("dept")}),
-             403
-           )[
-             "code"
-           ] == 40301
+    assert %{"code" => 0} =
+             json_response(
+               post(authorized_conn, "/system/dept", %{
+                 "deptName" => unique("dept"),
+                 "parentId" => 0,
+                 "orderNum" => 1,
+                 "status" => 1
+               }),
+               201
+             )
   end
 
   @tag :integration

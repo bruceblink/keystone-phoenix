@@ -11,10 +11,6 @@ defmodule KeystonePhoenixWeb.MenuController do
       delete: "system:menu:remove"
     }
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate,
-       [admin: true]
-       when action in [:create, :update, :delete]
-
   alias KeystonePhoenix.Menu
   alias KeystonePhoenixWeb.ApiResponse
 

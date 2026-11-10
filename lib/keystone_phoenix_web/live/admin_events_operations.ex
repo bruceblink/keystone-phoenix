@@ -20,7 +20,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   end
 
   def handle_event("new-job", _params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:job:add") do
       {:noreply, assign(socket, job_form: Support.empty_job_form(), job_feedback: nil)}
     else
       {:noreply, socket}
@@ -28,7 +28,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   end
 
   def handle_event("edit-job", %{"job-id" => job_id}, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:job:edit") do
       case Enum.find(socket.assigns.job_rows, &(to_string(&1["jobId"]) == job_id)) do
         nil ->
           {:noreply, assign(socket, job_feedback: "找不到指定任务")}
@@ -43,7 +43,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   end
 
   def handle_event("save-job", params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:job:add") or
+         Support.permission_socket?(socket, "system:job:edit") do
       job_id = String.trim(params["jobId"] || "")
 
       result =
@@ -69,7 +70,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   end
 
   def handle_event("delete-job", %{"job-id" => job_id}, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:job:remove") do
       case Job.delete_jobs([job_id]) do
         :ok ->
           {:noreply,
@@ -88,7 +89,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   end
 
   def handle_event("run-job", %{"job-id" => job_id}, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:job:run") do
       case Job.get_job(job_id) do
         {:ok, _job} ->
           live_view = self()
@@ -113,7 +114,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   end
 
   def handle_event("cancel-job", %{"job-id" => job_id}, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:job:run") do
       feedback =
         case Job.cancel_job(job_id) do
           :ok -> "任务已取消"
@@ -128,7 +129,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   end
 
   def handle_event("toggle-job-status", %{"job-id" => job_id, "status" => status}, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:job:changeStatus") do
       feedback =
         case Job.update_job_status(job_id, status, socket.assigns.current_user["userId"]) do
           {:ok, _job} -> "任务状态已更新"
@@ -158,7 +159,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   end
 
   def handle_event("logout-online-user", %{"token-id" => token_id}, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "monitor:online:forceLogout") do
       feedback =
         case Monitor.logout_online_user(token_id) do
           :ok -> "在线会话已强制下线"

@@ -21,7 +21,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("new-user", _params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:user:add") do
       {:noreply, assign(socket, user_form: Support.empty_user_form(), user_feedback: nil)}
     else
       {:noreply, socket}
@@ -29,7 +29,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("edit-user", %{"user-id" => user_id}, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:user:edit") do
       case Enum.find(socket.assigns.user_rows, &(to_string(&1["userId"]) == user_id)) do
         nil ->
           {:noreply, assign(socket, user_feedback: "找不到指定用户")}
@@ -47,7 +47,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("save-user", params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:user:add") or
+         Support.permission_socket?(socket, "system:user:edit") do
       user_id = String.trim(params["userId"] || "")
       params = if user_id == "", do: params, else: Map.delete(params, "password")
 
@@ -75,7 +76,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("toggle-user-status", %{"user-id" => user_id, "status" => status}, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:user:edit") do
       case User.change_status(user_id, status, socket.assigns.current_user["userId"]) do
         {:ok, _user} ->
           if to_string(socket.assigns.current_user["userId"]) == user_id and status in [0, "0"] do
@@ -93,7 +94,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("delete-user", %{"user-id" => user_id}, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:user:remove") do
       case User.delete_users([user_id], socket.assigns.current_user["userId"]) do
         :ok ->
           {:noreply,
@@ -113,7 +114,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("reset-user-password", params, socket) do
-    if Support.admin_socket?(socket) do
+    if Support.permission_socket?(socket, "system:user:resetPwd") do
       user_id = params["userId"] || params["user-id"]
       password = params["password"] || ""
 
