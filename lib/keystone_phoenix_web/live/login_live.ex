@@ -398,7 +398,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "posts" -> %>
                       <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} read_only={@read_only} />
                     <% "roles" -> %>
-                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} read_only={@read_only} />
+                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} read_only={@read_only} />
                     <% "menus" -> %>
                       <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} read_only={@read_only} />
                     <% "users" -> %>

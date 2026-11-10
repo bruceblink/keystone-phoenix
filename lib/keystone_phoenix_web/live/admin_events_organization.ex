@@ -342,6 +342,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            assign(socket,
              selected_role_id: role_id,
              selected_role_name: role["roleName"],
+             page_nums:
+               socket.assigns.page_nums
+               |> Map.put("role-users-allocated", 1)
+               |> Map.put("role-users-unallocated", 1),
              allocated_role_user_rows: users.allocated,
              unallocated_role_user_rows: users.unallocated,
              role_user_feedback: nil

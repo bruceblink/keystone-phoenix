@@ -52,7 +52,9 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
         "job-logs" => 1,
         "dict-data" => 1,
         "login-logs" => 1,
-        "operation-logs" => 1
+        "operation-logs" => 1,
+        "role-users-allocated" => 1,
+        "role-users-unallocated" => 1
       },
       page_sizes: %{
         "users" => 50,
@@ -60,7 +62,9 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
         "job-logs" => 50,
         "dict-data" => 50,
         "login-logs" => 50,
-        "operation-logs" => 50
+        "operation-logs" => 50,
+        "role-users-allocated" => 50,
+        "role-users-unallocated" => 50
       },
       role_rows: [],
       selected_role_id: "",
