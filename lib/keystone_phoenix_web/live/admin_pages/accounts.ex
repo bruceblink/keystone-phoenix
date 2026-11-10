@@ -45,7 +45,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <%= for user <- @user_rows do %>
             <tr>
               <td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><%= user["deptName"] || "" %></td><td><%= user["roleName"] || "" %></td><td><%= user["email"] || "" %></td><td><%= user["phoneNumber"] || "" %></td><td><%= if user["status"] == 1, do: "正常", else: "停用" %></td>
-              <td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-user" phx-value-user-id={user["userId"]}>编辑</button><button type="button" class="refresh" phx-click="toggle-user-status" phx-value-user-id={user["userId"]} phx-value-status={if user["status"] == 1, do: 0, else: 1}><%= if user["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-click="delete-user" phx-value-user-id={user["userId"]}>删除</button></td>
+              <td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-user" phx-value-user-id={user["userId"]}>编辑</button><button type="button" class="refresh" phx-click="toggle-user-status" phx-value-user-id={user["userId"]} phx-value-status={if user["status"] == 1, do: 0, else: 1}><%= if user["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-user" phx-value-user-id={user["userId"]}>删除</button></td>
             </tr>
           <% end %>
         </tbody>

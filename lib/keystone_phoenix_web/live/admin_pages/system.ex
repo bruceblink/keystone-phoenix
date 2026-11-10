@@ -51,7 +51,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       </form>
       <table><thead><tr><th>名称</th><th>类型</th><th>状态</th><th>备注</th><th>操作</th></tr></thead><tbody>
         <%= for dict <- @dict_type_rows do %>
-          <tr><td><%= dict["dictName"] %></td><td><%= dict["dictType"] %></td><td><%= if dict["status"] == 1, do: "正常", else: "停用" %></td><td><%= dict["remark"] || "" %></td><td class="table-actions"><button type="button" class="refresh" phx-click="select-dict-type" phx-value-dict-type={dict["dictType"]}>查看数据</button><button :if={!@read_only} type="button" class="refresh" phx-click="edit-dict-type" phx-value-dict-id={dict["dictId"]}>编辑</button><button :if={!@read_only} type="button" class="refresh danger-action" phx-click="delete-dict-type" phx-value-dict-id={dict["dictId"]}>删除</button></td></tr>
+          <tr><td><%= dict["dictName"] %></td><td><%= dict["dictType"] %></td><td><%= if dict["status"] == 1, do: "正常", else: "停用" %></td><td><%= dict["remark"] || "" %></td><td class="table-actions"><button type="button" class="refresh" phx-click="select-dict-type" phx-value-dict-type={dict["dictType"]}>查看数据</button><button :if={!@read_only} type="button" class="refresh" phx-click="edit-dict-type" phx-value-dict-id={dict["dictId"]}>编辑</button><button :if={!@read_only} type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-dict-type" phx-value-dict-id={dict["dictId"]}>删除</button></td></tr>
         <% end %>
       </tbody></table>
       <h3>字典数据（<%= @selected_dict_type || "未选择" %>）</h3>
@@ -73,7 +73,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       </form>
       <table><thead><tr><th>标签</th><th>值</th><th>排序</th><th>默认</th><th>状态</th><th>操作</th></tr></thead><tbody>
         <%= for data <- @dict_data_rows do %>
-          <tr><td><%= data["dictLabel"] %></td><td><%= data["dictValue"] %></td><td><%= data["dictSort"] %></td><td><%= if data["isDefault"] == 1, do: "是", else: "否" %></td><td><%= if data["status"] == 1, do: "正常", else: "停用" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-dict-data" phx-value-dict-code={data["dictCode"]}>编辑</button><button type="button" class="refresh danger-action" phx-click="delete-dict-data" phx-value-dict-code={data["dictCode"]}>删除</button></td></tr>
+          <tr><td><%= data["dictLabel"] %></td><td><%= data["dictValue"] %></td><td><%= data["dictSort"] %></td><td><%= if data["isDefault"] == 1, do: "是", else: "否" %></td><td><%= if data["status"] == 1, do: "正常", else: "停用" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-dict-data" phx-value-dict-code={data["dictCode"]}>编辑</button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-dict-data" phx-value-dict-code={data["dictCode"]}>删除</button></td></tr>
         <% end %>
       </tbody></table>
     </div>
@@ -100,7 +100,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       </form>
       <table><thead><tr><th>标题</th><th>类型</th><th>内容</th><th>状态</th><th>备注</th><th>创建时间</th><th>操作</th></tr></thead><tbody>
         <%= for notice <- @notice_rows do %>
-          <tr><td><%= notice["noticeTitle"] %></td><td><%= if notice["noticeType"] == 1, do: "通知", else: "公告" %></td><td><%= notice["noticeContent"] %></td><td><%= if notice["status"] == 1, do: "正常", else: "停用" %></td><td><%= notice["remark"] || "" %></td><td><%= notice["createTime"] || "" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-notice" phx-value-notice-id={notice["noticeId"]}>编辑</button><button type="button" class="refresh" phx-click="toggle-notice-status" phx-value-notice-id={notice["noticeId"]} phx-value-status={if notice["status"] == 1, do: 0, else: 1}><%= if notice["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-click="delete-notice" phx-value-notice-id={notice["noticeId"]}>删除</button></td></tr>
+          <tr><td><%= notice["noticeTitle"] %></td><td><%= if notice["noticeType"] == 1, do: "通知", else: "公告" %></td><td><%= notice["noticeContent"] %></td><td><%= if notice["status"] == 1, do: "正常", else: "停用" %></td><td><%= notice["remark"] || "" %></td><td><%= notice["createTime"] || "" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-notice" phx-value-notice-id={notice["noticeId"]}>编辑</button><button type="button" class="refresh" phx-click="toggle-notice-status" phx-value-notice-id={notice["noticeId"]} phx-value-status={if notice["status"] == 1, do: 0, else: 1}><%= if notice["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-notice" phx-value-notice-id={notice["noticeId"]}>删除</button></td></tr>
         <% end %>
       </tbody></table>
     </div>
@@ -117,13 +117,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       <h3>登录日志（<%= length(@login_log_rows) %>）</h3>
       <table><thead><tr><th>用户</th><th>IP</th><th>浏览器</th><th>状态</th><th>消息</th><th>时间</th><th>操作</th></tr></thead><tbody>
         <%= for log <- @login_log_rows do %>
-          <tr><td><%= log["username"] %></td><td><%= log["ipAddress"] %></td><td><%= log["browser"] %></td><td><%= if log["status"] == 1, do: "成功", else: "失败" %></td><td><%= log["msg"] %></td><td><%= log["loginTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-click="delete-login-log" phx-value-log-id={log["infoId"] || log["id"]}>删除</button></td></tr>
+          <tr><td><%= log["username"] %></td><td><%= log["ipAddress"] %></td><td><%= log["browser"] %></td><td><%= if log["status"] == 1, do: "成功", else: "失败" %></td><td><%= log["msg"] %></td><td><%= log["loginTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-login-log" phx-value-log-id={log["infoId"] || log["id"]}>删除</button></td></tr>
         <% end %>
       </tbody></table>
       <h3>操作日志（<%= length(@operation_log_rows) %>）</h3>
       <table><thead><tr><th>用户</th><th>模块</th><th>方法</th><th>请求地址</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
         <%= for log <- @operation_log_rows do %>
-          <tr><td><%= log["username"] %></td><td><%= log["requestModule"] %></td><td><%= log["requestMethod"] %></td><td><%= log["requestUrl"] %></td><td><%= if log["status"] == 1, do: "成功", else: "失败" %></td><td><%= log["operationTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-click="delete-operation-log" phx-value-log-id={log["operationId"]}>删除</button></td></tr>
+          <tr><td><%= log["username"] %></td><td><%= log["requestModule"] %></td><td><%= log["requestMethod"] %></td><td><%= log["requestUrl"] %></td><td><%= if log["status"] == 1, do: "成功", else: "失败" %></td><td><%= log["operationTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-operation-log" phx-value-log-id={log["operationId"]}>删除</button></td></tr>
         <% end %>
       </tbody></table>
     </div>

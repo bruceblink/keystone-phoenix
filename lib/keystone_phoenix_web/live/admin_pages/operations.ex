@@ -26,7 +26,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       </form>
       <table><thead><tr><th>任务名称</th><th>分组</th><th>调用目标</th><th>Cron</th><th>并发</th><th>状态</th><th>操作</th></tr></thead><tbody>
         <%= for job <- @job_rows do %>
-          <tr><td><%= job["jobName"] %></td><td><%= job["jobGroup"] %></td><td><%= job["invokeTarget"] %></td><td><%= job["cronExpression"] %></td><td><%= if job["concurrent"] in [1, "1"], do: "是", else: "否" %></td><td><%= job["statusStr"] || if(job["status"] == 1, do: "正常", else: "暂停") %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-job" phx-value-job-id={job["jobId"]}>编辑</button><button type="button" class="refresh" phx-click="run-job" phx-value-job-id={job["jobId"]}>立即执行</button><button type="button" class="refresh secondary" phx-click="cancel-job" phx-value-job-id={job["jobId"]}>取消执行</button><button type="button" class="refresh" phx-click="toggle-job-status" phx-value-job-id={job["jobId"]} phx-value-status={if job["status"] == 1, do: 0, else: 1}><%= if job["status"] == 1, do: "暂停", else: "启用" %></button><button type="button" class="refresh danger-action" phx-click="delete-job" phx-value-job-id={job["jobId"]}>删除</button></td></tr>
+          <tr><td><%= job["jobName"] %></td><td><%= job["jobGroup"] %></td><td><%= job["invokeTarget"] %></td><td><%= job["cronExpression"] %></td><td><%= if job["concurrent"] in [1, "1"], do: "是", else: "否" %></td><td><%= job["statusStr"] || if(job["status"] == 1, do: "正常", else: "暂停") %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-job" phx-value-job-id={job["jobId"]}>编辑</button><button type="button" class="refresh" phx-click="run-job" phx-value-job-id={job["jobId"]}>立即执行</button><button type="button" class="refresh secondary" phx-click="cancel-job" phx-value-job-id={job["jobId"]}>取消执行</button><button type="button" class="refresh" phx-click="toggle-job-status" phx-value-job-id={job["jobId"]} phx-value-status={if job["status"] == 1, do: 0, else: 1}><%= if job["status"] == 1, do: "暂停", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-job" phx-value-job-id={job["jobId"]}>删除</button></td></tr>
         <% end %>
       </tbody></table>
     </div>
@@ -69,7 +69,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       <h3>在线会话（<%= length(@online_user_rows) %>）</h3>
       <table><thead><tr><th>用户</th><th>部门</th><th>IP</th><th>登录时间</th><th>操作</th></tr></thead><tbody>
         <%= for user <- @online_user_rows do %>
-          <tr><td><%= user["username"] %></td><td><%= user["deptName"] || "" %></td><td><%= user["ipAddress"] %></td><td><%= user["loginTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-click="logout-online-user" phx-value-token-id={user["tokenId"]}>强制下线</button></td></tr>
+          <tr><td><%= user["username"] %></td><td><%= user["deptName"] || "" %></td><td><%= user["ipAddress"] %></td><td><%= user["loginTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="logout-online-user" phx-value-token-id={user["tokenId"]}>强制下线</button></td></tr>
         <% end %>
       </tbody></table>
     </div>
