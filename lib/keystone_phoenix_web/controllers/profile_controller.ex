@@ -46,13 +46,15 @@ defmodule KeystonePhoenixWeb.ProfileController do
 
   @doc "Uploads an avatar using the original multipart avatarfile contract."
   def update_avatar(conn, %{"avatarfile" => %Plug.Upload{} = upload}) do
-    with {:ok, avatar_url} <- Upload.store_avatar(upload) do
+    with {:ok, current_user} <- User.get_user(conn.assigns.current_user.user_id),
+         {:ok, avatar_url} <- Upload.store_avatar(upload) do
       case User.update_avatar(
              conn.assigns.current_user.user_id,
              avatar_url,
              conn.assigns.current_user.user_id
            ) do
         {:ok, _user} ->
+          delete_previous_avatar(current_user.avatar, avatar_url)
           json(conn, ApiResponse.ok(%{"imgUrl" => avatar_url}))
 
         {:error, :not_found} ->
@@ -64,19 +66,30 @@ defmodule KeystonePhoenixWeb.ProfileController do
           render_error(conn, reason)
       end
     else
+      {:error, :not_found} -> render_error(conn, :not_found)
       {:error, reason} -> render_error(conn, reason)
     end
   end
 
   def update_avatar(conn, %{"avatar" => avatar}) do
-    case User.update_avatar(
-           conn.assigns.current_user.user_id,
-           avatar,
-           conn.assigns.current_user.user_id
-         ) do
-      {:ok, _user} -> json(conn, ApiResponse.ok(%{"imgUrl" => avatar}))
+    with {:ok, current_user} <- User.get_user(conn.assigns.current_user.user_id) do
+      case User.update_avatar(
+             conn.assigns.current_user.user_id,
+             avatar,
+             conn.assigns.current_user.user_id
+           ) do
+        {:ok, _user} ->
+          delete_previous_avatar(current_user.avatar, avatar)
+          json(conn, ApiResponse.ok(%{"imgUrl" => avatar}))
+
+        {:error, :not_found} ->
+          render_error(conn, :not_found)
+
+        {:error, changeset} ->
+          render_error(conn, changeset)
+      end
+    else
       {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, changeset} -> render_error(conn, changeset)
     end
   end
 
@@ -120,4 +133,12 @@ defmodule KeystonePhoenixWeb.ProfileController do
     errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
     conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(99999, "参数校验失败", errors))
   end
+
+  defp delete_previous_avatar(previous, current)
+       when is_binary(previous) and is_binary(current) and previous != current do
+    if String.starts_with?(previous, "/profile/avatar/"), do: Upload.delete_avatar(previous)
+    :ok
+  end
+
+  defp delete_previous_avatar(_previous, _current), do: :ok
 end

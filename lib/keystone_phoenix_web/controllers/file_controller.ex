@@ -50,7 +50,7 @@ defmodule KeystonePhoenixWeb.FileController do
   end
 
   defp render_error(conn, reason)
-       when reason in [:file_too_large, :filename_too_long, :type_not_allowed] do
+       when reason in [:file_too_large, :filename_too_long, :type_not_allowed, :too_many_files] do
     conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(40002, "文件类型或大小无效"))
   end
 

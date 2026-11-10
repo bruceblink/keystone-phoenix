@@ -186,12 +186,17 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   def handle_event("update-profile-avatar", %{"avatar" => avatar}, socket) do
     if Support.authenticated_socket?(socket) do
+      previous_avatar = socket.assigns.current_user["avatar"]
+
       case User.update_avatar(
              socket.assigns.current_user["userId"],
              avatar,
              socket.assigns.current_user["userId"]
            ) do
         {:ok, _user} ->
+          if is_binary(previous_avatar) and previous_avatar != avatar,
+            do: Upload.delete_avatar(previous_avatar)
+
           {:noreply,
            assign(socket,
              profile_form: Map.put(socket.assigns.profile_form, "avatar", avatar),
@@ -209,6 +214,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   def handle_event("save-profile-avatar-upload", _params, socket) do
     if Support.authenticated_socket?(socket) do
       user_id = socket.assigns.current_user["userId"]
+      previous_avatar = socket.assigns.current_user["avatar"]
 
       results =
         consume_uploaded_entries(socket, :avatar, fn %{path: path}, entry ->
@@ -221,6 +227,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           with {:ok, avatar_url} <- Upload.store_avatar(upload) do
             case User.update_avatar(user_id, avatar_url, user_id) do
               {:ok, _user} ->
+                if is_binary(previous_avatar) and previous_avatar != avatar_url,
+                  do: Upload.delete_avatar(previous_avatar)
+
                 {:ok, avatar_url}
 
               {:error, reason} ->

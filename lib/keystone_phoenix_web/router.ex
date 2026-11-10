@@ -19,10 +19,20 @@ defmodule KeystonePhoenixWeb.Router do
     plug :accepts, ["sse"]
   end
 
+  pipeline :protected_profile_resources do
+    plug KeystonePhoenixWeb.Plugs.Authenticate
+  end
+
   scope "/", KeystonePhoenixWeb do
     pipe_through :browser
 
     live "/", LoginLive, :index
+    get "/profile/avatar/*path", ResourceController, :avatar
+  end
+
+  scope "/", KeystonePhoenixWeb do
+    pipe_through [:browser, :protected_profile_resources]
+
     get "/profile/*path", ResourceController, :show
   end
 

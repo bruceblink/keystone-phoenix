@@ -76,6 +76,26 @@ defmodule KeystonePhoenix.UploadTest do
     File.rm!(second)
   end
 
+  test "cleans files already stored when a batch later fails" do
+    first = temporary_file("first.txt", "one")
+    invalid = temporary_file("invalid.sh", "echo unsafe")
+
+    uploads = [
+      %Plug.Upload{path: first, filename: "first.txt", content_type: "text/plain"},
+      %Plug.Upload{path: invalid, filename: "invalid.sh", content_type: "text/plain"}
+    ]
+
+    assert {:error, :type_not_allowed} = Upload.store_files(uploads)
+
+    assert [] ==
+             Path.wildcard(
+               Path.join(Application.fetch_env!(:keystone_phoenix, :file_base_dir), "upload/*")
+             )
+
+    File.rm!(first)
+    File.rm!(invalid)
+  end
+
   defp temporary_file(filename, content) do
     path =
       Path.join(

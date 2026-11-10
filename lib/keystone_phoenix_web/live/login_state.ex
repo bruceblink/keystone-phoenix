@@ -7,7 +7,9 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def reset(socket) do
-    assign(socket,
+    socket
+    |> cancel_avatar_uploads()
+    |> assign(
       username: "",
       password: "",
       login_error: nil,
@@ -72,5 +74,17 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       network_status: %{},
       monitor_feedback: nil
     )
+  end
+
+  defp cancel_avatar_uploads(socket) do
+    entries =
+      case Map.get(socket.assigns, :uploads) do
+        %{avatar: %{entries: entries}} -> entries
+        _ -> []
+      end
+
+    Enum.reduce(entries, socket, fn entry, socket ->
+      Phoenix.LiveView.cancel_upload(socket, :avatar, entry.ref)
+    end)
   end
 end

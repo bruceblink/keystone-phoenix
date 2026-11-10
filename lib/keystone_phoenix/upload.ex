@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.Upload do
 
   @max_file_size 50 * 1024 * 1024
   @max_filename_length 127
+  @max_batch_entries 20
   @allowed_extensions ~w(bmp gif jpg jpeg png webp)
   @file_extensions ~w(bmp gif jpg jpeg png doc docx xls xlsx ppt pptx html htm txt rar zip gz bz2 mp4 avi rmvb pdf)
 
@@ -34,18 +35,26 @@ defmodule KeystonePhoenix.Upload do
 
   @doc "Stores a batch of generic files."
   @spec store_files(list()) :: {:ok, list(map())} | {:error, atom()}
-  def store_files(uploads) when is_list(uploads) and uploads != [] do
+  def store_files(uploads)
+      when is_list(uploads) and uploads != [] and length(uploads) <= @max_batch_entries do
     Enum.reduce_while(uploads, {:ok, []}, fn upload, {:ok, stored} ->
       case store_file(upload) do
         {:ok, file} -> {:cont, {:ok, [file | stored]}}
-        {:error, reason} -> {:halt, {:error, reason}}
+        {:error, reason} -> {:halt, {:error, reason, stored}}
       end
     end)
     |> case do
-      {:ok, stored} -> {:ok, Enum.reverse(stored)}
-      error -> error
+      {:ok, stored} ->
+        {:ok, Enum.reverse(stored)}
+
+      {:error, reason, stored} ->
+        cleanup_stored_files(stored)
+        {:error, reason}
     end
   end
+
+  def store_files(uploads) when is_list(uploads) and length(uploads) > @max_batch_entries,
+    do: {:error, :too_many_files}
 
   def store_files(_uploads), do: {:error, :empty_upload}
 
@@ -226,5 +235,11 @@ defmodule KeystonePhoenix.Upload do
       :ok -> :ok
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  defp cleanup_stored_files(stored) do
+    Enum.each(stored, fn %{"newFileName" => filename} ->
+      _ = File.rm(Path.join([base_dir(), "upload", filename]))
+    end)
   end
 end
