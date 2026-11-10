@@ -6,7 +6,7 @@ defmodule KeystonePhoenix.Auth.LoginLimiter do
   @limit 10
   @window_seconds 60
 
-  @type result :: :allow | {:deny, pos_integer()}
+  @type result :: :allow | {:deny, pos_integer()} | {:error, :unavailable}
 
   @spec check_http(String.t(), tuple()) :: result()
   def check_http(username, remote_ip) when is_binary(username) do

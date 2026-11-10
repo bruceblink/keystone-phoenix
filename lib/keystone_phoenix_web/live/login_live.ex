@@ -42,12 +42,18 @@ defmodule KeystonePhoenixWeb.LoginLive do
     username = String.trim(username)
 
     result =
-      with :allow <- LoginLimiter.check_liveview(username),
-           :ok <- Captcha.validate(params["captchaCode"], socket.assigns.captcha_key) do
-        Auth.login_plaintext(username, password)
-      else
-        {:deny, retry_after} -> {:error, {:rate_limited, retry_after}}
-        error -> error
+      case LoginLimiter.check_liveview(username) do
+        :allow ->
+          case Captcha.validate(params["captchaCode"], socket.assigns.captcha_key) do
+            :ok -> Auth.login_plaintext(username, password)
+            error -> error
+          end
+
+        {:deny, retry_after} ->
+          {:error, {:rate_limited, retry_after}}
+
+        {:error, :unavailable} ->
+          {:error, :login_limiter_unavailable}
       end
 
     case result do
@@ -131,6 +137,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
       {:error, {:rate_limited, retry_after}} ->
         Log.record_login_event(username, 0, "登录尝试过于频繁")
         login_error(socket, username, "登录尝试过于频繁，请在 #{retry_after} 秒后重试")
+
+      {:error, :login_limiter_unavailable} ->
+        Log.record_login_event(username, 0, "限流服务暂不可用")
+        login_error(socket, username, "登录服务暂不可用，请稍后重试")
 
       {:error, :unavailable} ->
         Log.record_login_event(username, 0, "认证会话暂不可用")

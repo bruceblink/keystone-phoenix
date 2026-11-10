@@ -3,7 +3,7 @@ defmodule KeystonePhoenix.RateLimiter do
 
   alias KeystonePhoenix.RuntimeStore
 
-  @type result :: :allow | {:deny, pos_integer()}
+  @type result :: :allow | {:deny, pos_integer()} | {:error, :unavailable}
 
   @doc "Allows at most `limit` attempts during one rolling window."
   @spec check(String.t(), pos_integer(), pos_integer()) :: result()
@@ -34,7 +34,7 @@ defmodule KeystonePhoenix.RateLimiter do
         if count <= limit, do: :allow, else: {:deny, retry_after(stored_expires_at, now)}
     end
   rescue
-    _error -> :allow
+    _error -> {:error, :unavailable}
   end
 
   defp replace_expired(table, key, stored_expires_at, window_expires_at) do

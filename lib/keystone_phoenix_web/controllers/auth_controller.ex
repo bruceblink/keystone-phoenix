@@ -119,6 +119,10 @@ defmodule KeystonePhoenixWeb.AuthController do
         conn
         |> put_resp_header("retry-after", Integer.to_string(retry_after))
         |> render_error(:rate_limited)
+
+      {:error, :unavailable} ->
+        Log.record_login(conn, username, 0, "限流服务暂不可用")
+        render_error(conn, :rate_limited_unavailable)
     end
   end
 
@@ -225,5 +229,11 @@ defmodule KeystonePhoenixWeb.AuthController do
     conn
     |> put_status(:too_many_requests)
     |> json(ApiResponse.error(42903, "登录尝试过于频繁，请稍后再试"))
+  end
+
+  defp render_error(conn, :rate_limited_unavailable) do
+    conn
+    |> put_status(:service_unavailable)
+    |> json(ApiResponse.error(50302, "限流服务暂不可用，请稍后重试"))
   end
 end

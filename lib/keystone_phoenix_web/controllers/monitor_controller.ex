@@ -6,7 +6,8 @@ defmodule KeystonePhoenixWeb.MonitorController do
       cache_info: "monitor:cache:list",
       server_info: "monitor:server:list",
       online_users: "monitor:online:list",
-      logout_online_user: "monitor:online:forceLogout"
+      logout_online_user: "monitor:online:forceLogout",
+      network_status_stream: "monitor:server:list"
     }
 
   alias KeystonePhoenix.Monitor

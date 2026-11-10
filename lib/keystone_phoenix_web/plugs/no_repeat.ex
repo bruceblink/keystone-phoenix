@@ -30,6 +30,12 @@ defmodule KeystonePhoenixWeb.Plugs.NoRepeat do
         |> put_status(:too_many_requests)
         |> Phoenix.Controller.json(ApiResponse.error(42902, "请勿重复提交"))
         |> halt()
+
+      {:error, :unavailable} ->
+        conn
+        |> put_status(:service_unavailable)
+        |> Phoenix.Controller.json(ApiResponse.error(50302, "限流服务暂不可用，请稍后重试"))
+        |> halt()
     end
   end
 end
