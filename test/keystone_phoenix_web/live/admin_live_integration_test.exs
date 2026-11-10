@@ -236,4 +236,15 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     render_click(view, "show-panel", %{"panel" => "monitor"})
     assert has_element?(view, "button[phx-click='refresh-monitor']")
   end
+
+  defp live_socket(view), do: find_socket(:sys.get_state(view.pid))
+
+  defp find_socket(%Phoenix.LiveView.Socket{} = socket), do: socket
+  defp find_socket(%{} = map), do: map |> Map.values() |> Enum.find_value(&find_socket/1)
+
+  defp find_socket(tuple) when is_tuple(tuple),
+    do: tuple |> Tuple.to_list() |> Enum.find_value(&find_socket/1)
+
+  defp find_socket(list) when is_list(list), do: Enum.find_value(list, &find_socket/1)
+  defp find_socket(_value), do: nil
 end
