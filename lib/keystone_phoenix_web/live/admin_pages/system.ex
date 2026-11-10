@@ -9,9 +9,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-config" phx-disable-with="处理中…">新建配置</button><button type="button" class="refresh secondary" phx-click="refresh-config" phx-disable-with="刷新中…">刷新配置</button></div>
-      <%= if @config_feedback do %><p class="feedback" role="status"><%= @config_feedback %></p><% end %>
+      <%= if @config_feedback do %><p id="config-feedback" class="feedback" role="status" aria-live="polite"><%= @config_feedback %></p><% end %>
       <p :if={@config_rows == []} class="table-empty" role="status">暂无配置数据</p>
-      <form :if={!@read_only} phx-submit="save-config">
+      <form :if={!@read_only} aria-describedby="config-feedback" phx-submit="save-config">
         <input type="hidden" name="configId" value={@config_form["configId"]} />
         <div class="form-grid">
           <div><label for="config-name">配置名称</label><input id="config-name" name="configName" value={@config_form["configName"] || ""} required /></div>
@@ -38,10 +38,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-dict-type" phx-disable-with="处理中…">新建字典类型</button><button type="button" class="refresh secondary" phx-click="refresh-dicts" phx-disable-with="刷新中…">刷新字典</button></div>
-      <%= if @dict_feedback do %><p class="feedback" role="status"><%= @dict_feedback %></p><% end %>
+      <%= if @dict_feedback do %><p id="dict-feedback" class="feedback" role="status" aria-live="polite"><%= @dict_feedback %></p><% end %>
       <p :if={@dict_type_rows == [] and @dict_data_rows == []} class="table-empty" role="status">暂无字典数据</p>
       <h3>字典类型</h3>
-      <form :if={!@read_only} phx-submit="save-dict-type">
+      <form :if={!@read_only} aria-describedby="dict-feedback" phx-submit="save-dict-type">
         <input type="hidden" name="dictId" value={@dict_type_form["dictId"]} />
         <div class="form-grid">
           <div><label for="dict-name">字典名称</label><input id="dict-name" name="dictName" value={@dict_type_form["dictName"] || ""} required /></div>
@@ -58,7 +58,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       </tbody></table></div>
       <h3>字典数据（<%= @selected_dict_type || "未选择" %>）</h3>
       <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-dict-data" phx-disable-with="处理中…">新建字典数据</button></div>
-      <form :if={!@read_only} phx-submit="save-dict-data">
+      <form :if={!@read_only} aria-describedby="dict-feedback" phx-submit="save-dict-data">
         <input type="hidden" name="dictCode" value={@dict_data_form["dictCode"]} />
         <div class="form-grid">
           <div><label for="dict-data-type">字典类型</label><input id="dict-data-type" name="dictType" value={@dict_data_form["dictType"] || @selected_dict_type || ""} required /></div>
@@ -88,9 +88,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button type="button" class="refresh" phx-click="refresh-notices" phx-disable-with="刷新中…">刷新公告</button></div>
-      <%= if @notice_feedback do %><p class="feedback" role="status"><%= @notice_feedback %></p><% end %>
+      <%= if @notice_feedback do %><p id="notice-feedback" class="feedback" role="status" aria-live="polite"><%= @notice_feedback %></p><% end %>
       <p :if={@notice_rows == []} class="table-empty" role="status">暂无公告数据</p>
-      <form :if={!@read_only} phx-submit="save-notice">
+      <form :if={!@read_only} aria-describedby="notice-feedback" phx-submit="save-notice">
         <input type="hidden" name="noticeId" value={@notice_form["noticeId"]} />
         <div class="form-grid">
           <div><label for="notice-title">标题</label><input id="notice-title" name="noticeTitle" value={@notice_form["noticeTitle"] || ""} required /></div>
@@ -116,7 +116,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button type="button" class="refresh" phx-click="refresh-logs" phx-disable-with="刷新中…">刷新日志</button></div>
-      <%= if @log_feedback do %><p class="feedback" role="status"><%= @log_feedback %></p><% end %>
+      <%= if @log_feedback do %><p id="log-feedback" class="feedback" role="status" aria-live="polite"><%= @log_feedback %></p><% end %>
       <p :if={@login_log_rows == [] and @operation_log_rows == []} class="table-empty" role="status">暂无日志数据</p>
       <h3>登录日志（<%= length(@login_log_rows) %>）</h3>
       <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption><thead><tr><th>用户</th><th>IP</th><th>浏览器</th><th>状态</th><th>消息</th><th>时间</th><th>操作</th></tr></thead><tbody>

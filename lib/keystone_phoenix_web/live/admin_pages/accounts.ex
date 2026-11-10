@@ -13,10 +13,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         <button type="button" class="refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…">刷新用户</button>
       </div>
       <%= if @user_feedback do %>
-        <p class="feedback" role="status"><%= @user_feedback %></p>
+        <p id="user-feedback" class="feedback" role="status" aria-live="polite"><%= @user_feedback %></p>
       <% end %>
       <p :if={@user_rows == []} class="table-empty" role="status">暂无用户数据</p>
-      <form :if={!@read_only} phx-submit="save-user">
+      <form :if={!@read_only} aria-describedby="user-feedback" phx-submit="save-user">
         <input type="hidden" name="userId" value={@user_form["userId"]} />
         <div class="form-grid">
           <div><label for="user-username">用户名</label><input id="user-username" name="username" value={@user_form["username"] || ""} required /></div>
@@ -33,7 +33,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         </div>
         <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="new-user" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
-      <form :if={!@read_only and @user_form["userId"] != ""} id="user-reset-password-form" phx-submit="reset-user-password">
+      <form :if={!@read_only and @user_form["userId"] != ""} id="user-reset-password-form" aria-describedby="user-feedback" phx-submit="reset-user-password">
         <input type="hidden" name="userId" value={@user_form["userId"]} />
         <div class="form-grid">
           <div><label for="user-reset-password">重置密码</label><input id="user-reset-password" type="password" name="password" minlength="8" required /></div>
@@ -61,8 +61,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
     ~H"""
     <div class="panel">
       <h3>个人资料</h3>
-      <%= if @profile_feedback do %><p class="feedback" role="status"><%= @profile_feedback %></p><% end %>
-      <form phx-submit="save-profile">
+      <%= if @profile_feedback do %><p id="profile-feedback" class="feedback" role="status" aria-live="polite"><%= @profile_feedback %></p><% end %>
+      <form aria-describedby="profile-feedback" phx-submit="save-profile">
         <div class="form-grid">
           <div><label for="profile-nickname">昵称</label><input id="profile-nickname" name="nickname" value={@profile_form["nickname"] || ""} required /></div>
           <div><label for="profile-email">邮箱</label><input id="profile-email" type="email" name="email" value={@profile_form["email"] || ""} /></div>
@@ -71,12 +71,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         </div>
         <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存资料</button></div>
       </form>
-      <form phx-submit="update-profile-avatar">
+      <form aria-describedby="profile-feedback" phx-submit="update-profile-avatar">
         <label for="profile-avatar">头像地址</label><input id="profile-avatar" name="avatar" value={@profile_form["avatar"] || ""} placeholder="https://..." />
         <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="更新中…">更新头像</button></div>
       </form>
       <%= if @avatar_upload do %>
-        <form id="profile-avatar-upload-form" phx-submit="save-profile-avatar-upload">
+        <form id="profile-avatar-upload-form" aria-describedby="profile-feedback" phx-submit="save-profile-avatar-upload">
           <label for="profile-avatar-file">头像文件</label>
           <.live_file_input upload={@avatar_upload} id="profile-avatar-file" />
           <%= for entry <- @avatar_upload.entries do %>
@@ -89,7 +89,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         </form>
       <% end %>
       <h3>修改密码</h3>
-      <form phx-submit="change-profile-password">
+      <form aria-describedby="profile-feedback" phx-submit="change-profile-password">
         <div class="form-grid">
           <div><label for="profile-old-password">当前密码</label><input id="profile-old-password" type="password" name="oldPassword" required /></div>
           <div><label for="profile-new-password">新密码</label><input id="profile-new-password" type="password" name="newPassword" required /></div>

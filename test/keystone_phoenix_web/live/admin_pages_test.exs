@@ -185,7 +185,24 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
 
     assert account_html =~ ~s(phx-click="refresh-users" phx-disable-with="刷新中…")
     assert account_html =~ ~s(class="table-scroll" role="region" tabindex="0")
+    assert account_html =~ ~s(aria-describedby="user-feedback")
     assert account_html =~ "暂无用户数据"
+
+    feedback_html =
+      render_component(
+        &Accounts.users/1,
+        Map.take(%{account_assigns | user_feedback: "保存失败"}, [
+          :user_rows,
+          :user_form,
+          :user_feedback,
+          :dept_rows,
+          :post_rows,
+          :role_rows
+        ])
+      )
+
+    assert feedback_html =~ ~s(id="user-feedback")
+    assert feedback_html =~ ~s(aria-live="polite")
 
     assert render_component(
              &Accounts.profile/1,
