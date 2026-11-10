@@ -99,6 +99,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
        assign(socket,
          dict_type_rows: dictionary.types,
          dict_data_rows: dictionary.data,
+         page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
          selected_dict_type: dictionary.selected,
          dict_type_form: Support.empty_dict_type_form(),
          dict_data_form: Support.empty_dict_data_form(),
@@ -291,6 +292,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
        assign(socket,
          login_log_rows: logs.login_log_rows,
          operation_log_rows: logs.operation_log_rows,
+         page_nums:
+           socket.assigns.page_nums
+           |> Map.put("login-logs", 1)
+           |> Map.put("operation-logs", 1),
          log_feedback: nil
        )}
     else

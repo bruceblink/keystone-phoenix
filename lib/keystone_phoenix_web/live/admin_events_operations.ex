@@ -11,6 +11,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
       {:noreply,
        assign(socket,
          job_rows: Support.load_jobs(),
+         page_nums: Map.put(socket.assigns.page_nums, "jobs", 1),
          job_form: Support.empty_job_form(),
          job_feedback: nil
        )}
@@ -144,7 +145,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("refresh-job-logs", _params, socket) do
     if Support.panel_allowed?(socket, "job-logs") do
-      {:noreply, assign(socket, job_log_rows: Support.load_job_logs(), job_log_feedback: nil)}
+      {:noreply,
+       assign(socket,
+         job_log_rows: Support.load_job_logs(),
+         page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
+         job_log_feedback: nil
+       )}
     else
       {:noreply, socket}
     end

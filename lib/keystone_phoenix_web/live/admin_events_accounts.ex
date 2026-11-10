@@ -12,6 +12,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       {:noreply,
        assign(socket,
          user_rows: Support.load_users_for_socket(socket),
+         page_nums: Map.put(socket.assigns.page_nums, "users", 1),
          user_form: Support.empty_user_form(),
          user_feedback: nil
        )}
