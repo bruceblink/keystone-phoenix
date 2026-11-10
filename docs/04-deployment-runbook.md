@@ -49,6 +49,8 @@ curl --fail http://127.0.0.1:4000/health/ready
 curl --fail http://127.0.0.1:4000/
 ```
 
+发布 smoke 还需要在临时环境停止 PostgreSQL，确认 `/health/ready` 返回失败且容器健康状态变为 `unhealthy`；恢复 PostgreSQL 后，确认数据库就绪和容器健康状态恢复为 `healthy`。仓库中的 `scripts/release_smoke.sh` 会自动执行这组检查。
+
 认证 smoke 流程应覆盖：获取 `/login/rsa-public-key`，使用 RSA 公钥登录，调用 `/getLoginUserInfo` 和 `/getRouters`，刷新 `/refresh-token`，最后调用 `/logout`。启用验证码时还要先验证 `/getConfig` 和 `/captchaImage`。
 
 文件 smoke 流程应上传一个允许的头像和一个普通文本/PDF 文件，确认头像可以通过 `/profile/...` 内联返回，普通文件可以下载，并确认不存在路径穿越。
