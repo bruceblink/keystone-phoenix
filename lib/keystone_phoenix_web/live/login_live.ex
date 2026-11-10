@@ -55,7 +55,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
         {:deny, retry_after} ->
           {:error, {:rate_limited, retry_after}}
 
-        {:error, :unavailable} ->
+        {:error, reason} when reason in [:capacity, :unavailable] ->
           {:error, :login_limiter_unavailable}
       end
 
@@ -145,7 +145,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
         Log.record_login_event(username, 0, "限流服务暂不可用")
         login_error(socket, username, "登录服务暂不可用，请稍后重试")
 
-      {:error, :unavailable} ->
+      {:error, reason} when reason in [:capacity, :unavailable] ->
         Log.record_login_event(username, 0, "认证会话暂不可用")
         login_error(socket, username, "认证会话暂不可用，请稍后重试")
 
@@ -172,7 +172,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
       {:deny, retry_after} ->
         {:noreply, assign(socket, login_error: "验证码刷新过于频繁，请在 #{retry_after} 秒后重试")}
 
-      {:error, :unavailable} ->
+      {:error, reason} when reason in [:capacity, :unavailable] ->
         {:noreply, assign(socket, login_error: "验证码服务暂不可用，请稍后重试")}
     end
   end

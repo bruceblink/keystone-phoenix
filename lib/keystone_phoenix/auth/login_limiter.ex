@@ -8,7 +8,10 @@ defmodule KeystonePhoenix.Auth.LoginLimiter do
   @captcha_limit 10
   @captcha_window_seconds 60
 
-  @type result :: :allow | {:deny, pos_integer()} | {:error, :unavailable}
+  @type result ::
+          :allow
+          | {:deny, pos_integer()}
+          | {:error, :capacity | :unavailable}
 
   @spec check_http(String.t(), tuple()) :: result()
   def check_http(username, remote_ip) when is_binary(username) do

@@ -93,6 +93,57 @@ defmodule KeystonePhoenix.RateLimiterTest do
     assert expires_at > System.monotonic_time(:millisecond)
   end
 
+  test "cleans expired keys before enforcing the entry capacity" do
+    previous_limit = Application.get_env(:keystone_phoenix, :rate_limit_max_entries)
+    table = RuntimeStore.rate_limit_table()
+    Application.put_env(:keystone_phoenix, :rate_limit_max_entries, 1)
+    :ets.delete_all_objects(RuntimeStore.rate_limit_table())
+
+    expired_key = "test-capacity-expired-#{System.unique_integer([:positive])}"
+    active_key = "test-capacity-active-#{System.unique_integer([:positive])}"
+    rejected_key = "test-capacity-rejected-#{System.unique_integer([:positive])}"
+    :ets.insert(table, {expired_key, 1, System.monotonic_time(:millisecond) - 1})
+
+    on_exit(fn ->
+      RateLimiter.delete(expired_key)
+      RateLimiter.delete(active_key)
+      RateLimiter.delete(rejected_key)
+
+      if is_nil(previous_limit),
+        do: Application.delete_env(:keystone_phoenix, :rate_limit_max_entries),
+        else: Application.put_env(:keystone_phoenix, :rate_limit_max_entries, previous_limit)
+
+      :ets.delete_all_objects(RuntimeStore.rate_limit_table())
+    end)
+
+    assert :allow = RateLimiter.check(active_key, 1, 60)
+    assert [] == :ets.lookup(table, expired_key)
+    assert {:error, :capacity} = RateLimiter.check(rejected_key, 1, 60)
+  end
+
+  test "returns capacity instead of allowing a new key when the table is full" do
+    previous_limit = Application.get_env(:keystone_phoenix, :rate_limit_max_entries)
+    Application.put_env(:keystone_phoenix, :rate_limit_max_entries, 1)
+    :ets.delete_all_objects(RuntimeStore.rate_limit_table())
+
+    active_key = "test-capacity-full-#{System.unique_integer([:positive])}"
+    rejected_key = "test-capacity-full-rejected-#{System.unique_integer([:positive])}"
+    assert :allow = RateLimiter.check(active_key, 1, 60)
+
+    on_exit(fn ->
+      RateLimiter.delete(active_key)
+      RateLimiter.delete(rejected_key)
+
+      if is_nil(previous_limit),
+        do: Application.delete_env(:keystone_phoenix, :rate_limit_max_entries),
+        else: Application.put_env(:keystone_phoenix, :rate_limit_max_entries, previous_limit)
+
+      :ets.delete_all_objects(RuntimeStore.rate_limit_table())
+    end)
+
+    assert {:error, :capacity} = RateLimiter.check(rejected_key, 1, 60)
+  end
+
   test "rate limit plug returns a 429 response" do
     key = "plug-test-#{System.unique_integer([:positive])}"
     opts = RateLimit.init(key: key, limit: 1, window: 60, scope: :global)

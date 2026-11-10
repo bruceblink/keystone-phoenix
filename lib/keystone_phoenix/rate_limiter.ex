@@ -3,7 +3,12 @@ defmodule KeystonePhoenix.RateLimiter do
 
   alias KeystonePhoenix.RuntimeStore
 
-  @type result :: :allow | {:deny, pos_integer()} | {:error, :unavailable}
+  @default_max_entries 100_000
+
+  @type result ::
+          :allow
+          | {:deny, pos_integer()}
+          | {:error, :capacity | :unavailable}
 
   @doc "Allows at most `limit` attempts during one rolling window."
   @spec check(String.t(), pos_integer(), pos_integer()) :: result()
@@ -16,10 +21,9 @@ defmodule KeystonePhoenix.RateLimiter do
 
     case :ets.lookup(table, key) do
       [] ->
-        if :ets.insert_new(table, {key, 1, window_expires_at}) do
-          :allow
-        else
-          check(key, limit, window_seconds)
+        case new_key_result(table, key, window_expires_at, now) do
+          :retry -> check(key, limit, window_seconds)
+          result -> result
         end
 
       [{^key, _count, stored_expires_at}] when stored_expires_at <= now ->
@@ -35,6 +39,34 @@ defmodule KeystonePhoenix.RateLimiter do
     end
   rescue
     _error -> {:error, :unavailable}
+  end
+
+  defp new_key_result(table, key, window_expires_at, now) do
+    :global.trans({__MODULE__, :capacity}, fn ->
+      sweep_expired(table, now)
+
+      cond do
+        :ets.info(table, :size) >= max_entries() ->
+          {:error, :capacity}
+
+        :ets.insert_new(table, {key, 1, window_expires_at}) ->
+          :allow
+
+        true ->
+          :retry
+      end
+    end)
+  end
+
+  defp sweep_expired(table, now) do
+    :ets.select_delete(table, [{{:"$1", :"$2", :"$3"}, [{:<, :"$3", now}], [true]}])
+  end
+
+  defp max_entries do
+    case Application.get_env(:keystone_phoenix, :rate_limit_max_entries, @default_max_entries) do
+      value when is_integer(value) and value > 0 -> value
+      _ -> @default_max_entries
+    end
   end
 
   defp replace_expired(table, key, stored_expires_at, window_expires_at) do

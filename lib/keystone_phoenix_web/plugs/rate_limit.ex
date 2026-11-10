@@ -16,7 +16,7 @@ defmodule KeystonePhoenixWeb.Plugs.RateLimit do
     case RateLimiter.check(key, limit, window) do
       :allow -> conn
       {:deny, retry_after} -> reject(conn, retry_after)
-      {:error, :unavailable} -> unavailable(conn)
+      {:error, reason} when reason in [:capacity, :unavailable] -> unavailable(conn)
     end
   end
 

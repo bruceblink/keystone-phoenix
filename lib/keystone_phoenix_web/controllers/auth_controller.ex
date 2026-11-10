@@ -57,7 +57,7 @@ defmodule KeystonePhoenixWeb.AuthController do
           })
         )
 
-      {:error, :unavailable} ->
+      {:error, reason} when reason in [:capacity, :unavailable] ->
         render_error(conn, :unavailable)
     end
   end
@@ -120,7 +120,7 @@ defmodule KeystonePhoenixWeb.AuthController do
         |> put_resp_header("retry-after", Integer.to_string(retry_after))
         |> render_error(:rate_limited)
 
-      {:error, :unavailable} ->
+      {:error, reason} when reason in [:capacity, :unavailable] ->
         Log.record_login(conn, username, 0, "限流服务暂不可用")
         render_error(conn, :rate_limited_unavailable)
     end
