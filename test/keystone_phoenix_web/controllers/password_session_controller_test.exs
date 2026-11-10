@@ -24,7 +24,7 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
     CREATE TRIGGER #{trigger_name}
     BEFORE UPDATE ON sys_user
     FOR EACH ROW
-    WHEN (NEW.password IS DISTINCT FROM OLD.password)
+    WHEN (NEW.password IS DISTINCT FROM OLD.password AND OLD.username LIKE 'password_session_%')
     EXECUTE FUNCTION #{function_name}()
     """)
 
