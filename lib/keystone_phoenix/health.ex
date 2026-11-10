@@ -6,13 +6,33 @@ defmodule KeystonePhoenix.Health do
   @doc "Returns dependency status without exposing connection details."
   def readiness do
     database = database_status()
-    ready? = database == "UP"
+    cache = cache_status()
+    ready? = database == "UP" and cache == "UP"
 
     %{
       "status" => if(ready?, do: "READY", else: "NOT_READY"),
       "database" => database,
-      "cache" => "ETS"
+      "cache" => cache
     }
+  end
+
+  defp cache_status do
+    tables = [
+      KeystonePhoenix.RuntimeStore.cache_table(),
+      KeystonePhoenix.RuntimeStore.captcha_table(),
+      KeystonePhoenix.RuntimeStore.rate_limit_table()
+    ]
+
+    if Enum.all?(tables, &table_available?/1), do: "UP", else: "DOWN"
+  rescue
+    _error -> "DOWN"
+  end
+
+  defp table_available?(table) do
+    case :ets.info(table, :size) do
+      :undefined -> false
+      _size -> true
+    end
   end
 
   defp database_status do

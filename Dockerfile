@@ -48,7 +48,7 @@ ENV LANG=C.UTF-8 \
 RUN sed -i 's|http://deb.debian.org/|http://mirrors.tuna.tsinghua.edu.cn/|g' \
       /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates libstdc++6 openssl ncurses-bin netcat-openbsd \
+    && apt-get install -y --no-install-recommends ca-certificates curl libstdc++6 openssl ncurses-bin netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -62,7 +62,7 @@ RUN addgroup --system keystone \
 USER keystone
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD ["nc", "-z", "127.0.0.1", "4000"]
+  CMD ["curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:4000/health/ready"]
 
 EXPOSE 4000
 

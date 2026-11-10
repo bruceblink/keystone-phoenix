@@ -22,6 +22,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    remote_ip = connect_remote_ip(socket)
+
     socket =
       allow_upload(socket, :avatar,
         accept: ~w(.bmp .gif .jpg .jpeg .png .webp),
@@ -32,6 +34,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
     {:ok,
      socket
      |> LoginState.reset()
+     |> assign(remote_ip: remote_ip)
      |> Authentication.refresh_captcha()
      |> attach_hook(:authenticate_event, :handle_event, &Authentication.guard_event/3)
      |> attach_hook(:authenticate_info, :handle_info, &Authentication.guard_info/2)}
@@ -42,7 +45,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
     username = String.trim(username)
 
     result =
-      case LoginLimiter.check_liveview(username) do
+      case LoginLimiter.check_liveview(username, liveview_ip(socket)) do
         :allow ->
           case Captcha.validate(params["captchaCode"], socket.assigns.captcha_key) do
             :ok -> Auth.login_plaintext(username, password)
@@ -162,7 +165,16 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   def handle_event("refresh-captcha", _params, socket) do
-    {:noreply, Authentication.refresh_captcha(socket)}
+    case LoginLimiter.check_captcha(liveview_ip(socket)) do
+      :allow ->
+        {:noreply, Authentication.refresh_captcha(socket)}
+
+      {:deny, retry_after} ->
+        {:noreply, assign(socket, login_error: "验证码刷新过于频繁，请在 #{retry_after} 秒后重试")}
+
+      {:error, :unavailable} ->
+        {:noreply, assign(socket, login_error: "验证码服务暂不可用，请稍后重试")}
+    end
   end
 
   @impl true
@@ -281,6 +293,17 @@ defmodule KeystonePhoenixWeb.LoginLive do
   defp captcha_error(:captcha_required), do: "请输入验证码"
   defp captcha_error(:captcha_invalid), do: "验证码错误，请重试"
   defp captcha_error(:captcha_expired), do: "验证码已过期，请重试"
+
+  defp liveview_ip(socket) do
+    Map.get(socket.assigns, :remote_ip)
+  end
+
+  defp connect_remote_ip(socket) do
+    case Phoenix.LiveView.get_connect_info(socket, :peer_data) do
+      %{address: address} -> address
+      _ -> nil
+    end
+  end
 
   defp load_dashboard, do: AdminSupport.load_dashboard()
 

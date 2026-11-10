@@ -134,9 +134,18 @@ defmodule KeystonePhoenix.Job do
           {:error, :execute_failed}
 
         nil ->
-          _ = Task.shutdown(task, :brutal_kill)
-          _ = Runner.record_timeout(job, timeout_ms, 2)
-          {:error, :execution_timeout}
+          case Task.shutdown(task, :brutal_kill) do
+            {:ok, result} ->
+              result
+
+            {:exit, _reason} ->
+              _ = Runner.record_timeout(job, timeout_ms, 2)
+              {:error, :execution_timeout}
+
+            nil ->
+              _ = Runner.record_timeout(job, timeout_ms, 2)
+              {:error, :execution_timeout}
+          end
       end
     catch
       :exit, _reason -> {:error, :resource_exhausted}

@@ -12,8 +12,8 @@ defmodule KeystonePhoenixWeb.Endpoint do
   ]
 
   socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [session: @session_options]],
-    longpoll: [connect_info: [session: @session_options]]
+    websocket: [connect_info: [:peer_data, session: @session_options]],
+    longpoll: [connect_info: [:peer_data, session: @session_options]]
 
   plug Plug.Static,
     at: "/assets/phoenix",
@@ -50,7 +50,8 @@ defmodule KeystonePhoenixWeb.Endpoint do
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
-    json_decoder: Phoenix.json_library()
+    json_decoder: Phoenix.json_library(),
+    length: 110 * 1024 * 1024
 
   plug Plug.MethodOverride
   plug Plug.Head
