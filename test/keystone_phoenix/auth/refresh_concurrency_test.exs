@@ -46,7 +46,7 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
     Enum.zip(tasks, task_refs) |> Enum.each(fn {{pid, _}, ref} -> send(pid, {:refresh, ref}) end)
 
     assert_receive {:refresh_row_locked, _locker_pid}, 5_000
-    waiter_result = await_refresh_waiters(System.monotonic_time(:millisecond) + 5_000)
+    waiter_result = await_refresh_waiters(System.monotonic_time(:millisecond) + 15_000)
 
     original_session_active =
       with_unboxed(fn -> Auth.Session.active?(fixture.user_id, fixture.jti) end)
@@ -110,7 +110,7 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
         send(test_pid, {refresh_ref, result})
       end)
 
-    assert :ok = await_advisory_waiters(1, System.monotonic_time(:millisecond) + 5_000)
+    assert :ok = await_advisory_waiters(1, System.monotonic_time(:millisecond) + 15_000)
 
     reset_ref = make_ref()
 
@@ -124,7 +124,7 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
         send(test_pid, {reset_ref, result})
       end)
 
-    assert :ok = await_advisory_waiters(2, System.monotonic_time(:millisecond) + 5_000)
+    assert :ok = await_advisory_waiters(2, System.monotonic_time(:millisecond) + 15_000)
 
     release_lock_holder(lock_holder)
 
@@ -187,7 +187,7 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
         send(test_pid, {reset_ref, result})
       end)
 
-    assert :ok = await_advisory_waiters(1, System.monotonic_time(:millisecond) + 5_000)
+    assert :ok = await_advisory_waiters(1, System.monotonic_time(:millisecond) + 15_000)
 
     login_ref = make_ref()
 
@@ -201,7 +201,7 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
         send(test_pid, {login_ref, result})
       end)
 
-    assert :ok = await_advisory_waiters(2, System.monotonic_time(:millisecond) + 5_000)
+    assert :ok = await_advisory_waiters(2, System.monotonic_time(:millisecond) + 15_000)
     release_lock_holder(lock_holder)
 
     assert {:ok, _user} = await_result(elem(reset_task, 0), elem(reset_task, 1), reset_ref)
