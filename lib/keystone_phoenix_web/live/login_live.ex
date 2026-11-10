@@ -234,7 +234,16 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("show-panel", _params, socket), do: {:noreply, socket}
 
   def handle_event("paginate", %{"panel" => panel, "page" => page}, socket)
-      when panel in ["users", "jobs", "job-logs", "dict-data", "login-logs", "operation-logs"] do
+      when panel in [
+             "users",
+             "jobs",
+             "job-logs",
+             "dict-data",
+             "login-logs",
+             "operation-logs",
+             "role-users-allocated",
+             "role-users-unallocated"
+           ] do
     case Integer.parse(to_string(page)) do
       {page, ""} when page > 0 ->
         {:noreply, assign(socket, page_nums: Map.put(socket.assigns.page_nums, panel, page))}
