@@ -38,10 +38,10 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up Elixir and Erlang
-        uses: erlef/setup-beam@v1
+        uses: erlef/setup-beam@e6d7c94229049569db56a7ad5a540c051a010af9 # v1.20.4
         with:
           elixir-version: 1.20.5
           otp-version: 29.1.2
@@ -50,7 +50,7 @@ jobs:
           install-rebar: true
 
       - name: Cache Mix dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: |
             deps
