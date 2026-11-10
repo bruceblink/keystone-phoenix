@@ -179,10 +179,10 @@ defmodule KeystonePhoenix.Monitor do
       "usage" => percent(total, max_memory),
       "name" => "BEAM/OTP #{:erlang.system_info(:otp_release)}",
       "version" => System.version(),
-      "home" => to_string(:code.root_dir()),
+      "home" => "[redacted]",
       "startTime" => DateTime.from_unix!(started_at) |> Calendar.strftime("%Y-%m-%d %H:%M:%S"),
       "runTime" => format_uptime(uptime),
-      "inputArgs" => Enum.join(System.argv(), " ")
+      "inputArgs" => "[redacted]"
     }
   end
 
@@ -190,7 +190,7 @@ defmodule KeystonePhoenix.Monitor do
     %{
       "computerName" => hostname(),
       "computerIp" => local_ip(),
-      "userDir" => File.cwd!(),
+      "userDir" => "[redacted]",
       "osName" => os_name(),
       "osArch" => to_string(:erlang.system_info(:system_architecture))
     }
@@ -215,10 +215,10 @@ defmodule KeystonePhoenix.Monitor do
     case Regex.run(~r/^\S+\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s+(.+)$/, line,
            capture: :all_but_first
          ) do
-      [total, used, free, usage, mount] ->
+      [total, used, free, usage, _mount] ->
         [
           %{
-            "dirName" => mount,
+            "dirName" => "[redacted]",
             "sysTypeName" => "",
             "typeName" => "",
             "total" => file_size(parse_integer(total) * @bytes_per_kilobyte),

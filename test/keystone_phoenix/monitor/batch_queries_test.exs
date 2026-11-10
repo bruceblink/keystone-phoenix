@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.Monitor.BatchQueriesTest do
 
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Monitor
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
@@ -33,5 +34,13 @@ defmodule KeystonePhoenix.Monitor.BatchQueriesTest do
 
     assert Enum.map(users, & &1.user_id) == [active_user.user_id]
     assert Enum.map(departments, & &1.dept_id) == [department.dept_id]
+  end
+
+  test "server metrics redact host paths and process arguments" do
+    assert {:ok, info} = Monitor.server_info()
+    assert info["jvmInfo"]["home"] == "[redacted]"
+    assert info["jvmInfo"]["inputArgs"] == "[redacted]"
+    assert info["systemInfo"]["userDir"] == "[redacted]"
+    assert Enum.all?(info["diskInfos"], &(&1["dirName"] == "[redacted]"))
   end
 end
