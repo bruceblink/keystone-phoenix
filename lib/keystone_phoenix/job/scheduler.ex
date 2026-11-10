@@ -80,12 +80,13 @@ defmodule KeystonePhoenix.Job.Scheduler do
         {:reply, :not_found, state}
 
       running ->
-        Enum.each(running, fn {pid, %{job: job}} ->
-          Process.exit(pid, :kill)
-          log_result(Runner.record_cancel(job), "cancelled", job.job_id)
-        end)
+        state =
+          Enum.reduce(running, state, fn {pid, _entry}, state ->
+            Process.exit(pid, :kill)
+            mark_termination(state, parse_job_id(job_id), pid, :cancelled)
+          end)
 
-        {:reply, :ok, remove_running_job(state, parse_job_id(job_id))}
+        {:reply, :ok, state}
     end
   end
 
@@ -135,7 +136,14 @@ defmodule KeystonePhoenix.Job.Scheduler do
          end) do
       {:ok, pid} ->
         ref = Process.monitor(pid)
-        entry = %{ref: ref, job: job, started_at: System.monotonic_time(:millisecond)}
+
+        entry = %{
+          ref: ref,
+          job: job,
+          started_at: System.monotonic_time(:millisecond),
+          termination: nil
+        }
+
         running = Map.update(state.running, job.job_id, %{pid => entry}, &Map.put(&1, pid, entry))
         %{state | running: running}
 
@@ -153,11 +161,10 @@ defmodule KeystonePhoenix.Job.Scheduler do
     now = System.monotonic_time(:millisecond)
 
     Enum.reduce(state.running, state, fn {job_id, running}, state ->
-      Enum.reduce(running, state, fn {pid, %{job: job, started_at: started_at}}, state ->
-        if now - started_at >= timeout_ms do
+      Enum.reduce(running, state, fn {pid, entry}, state ->
+        if is_nil(entry.termination) and now - entry.started_at >= timeout_ms do
           Process.exit(pid, :kill)
-          log_result(Runner.record_timeout(job, timeout_ms), "timed out", job_id)
-          remove_running(state, job_id, pid)
+          mark_termination(state, job_id, pid, {:timeout, timeout_ms})
         else
           state
         end
@@ -169,6 +176,24 @@ defmodule KeystonePhoenix.Job.Scheduler do
 
   defp log_result({:error, reason}, event, job_id) do
     Logger.warning("could not persist #{event} log for job #{job_id}: #{inspect(reason)}")
+  end
+
+  defp mark_termination(state, job_id, pid, termination) do
+    case Map.get(state.running, job_id) do
+      %{^pid => %{termination: nil} = entry} = running ->
+        %{
+          state
+          | running:
+              Map.put(
+                state.running,
+                job_id,
+                Map.put(running, pid, %{entry | termination: termination})
+              )
+        }
+
+      _ ->
+        state
+    end
   end
 
   defp remove_running(state, job_id, pid) do
@@ -188,9 +213,6 @@ defmodule KeystonePhoenix.Job.Scheduler do
     end
   end
 
-  defp remove_running_job(state, job_id),
-    do: %{state | running: Map.delete(state.running, job_id)}
-
   defp parse_job_id(value) when is_integer(value) and value > 0, do: value
 
   defp parse_job_id(value) when is_binary(value) do
@@ -205,8 +227,19 @@ defmodule KeystonePhoenix.Job.Scheduler do
   defp remove_running_ref(state, ref, pid) do
     Enum.reduce(state.running, state, fn {job_id, running}, state ->
       case Map.get(running, pid) do
-        %{ref: ^ref} -> remove_running(state, job_id, pid)
-        _ -> state
+        %{ref: ^ref, termination: :cancelled} ->
+          log_result(Runner.record_cancel(running[pid].job), "cancelled", job_id)
+          remove_running(state, job_id, pid)
+
+        %{ref: ^ref, termination: {:timeout, timeout_ms}} ->
+          log_result(Runner.record_timeout(running[pid].job, timeout_ms), "timed out", job_id)
+          remove_running(state, job_id, pid)
+
+        %{ref: ^ref} ->
+          remove_running(state, job_id, pid)
+
+        _ ->
+          state
       end
     end)
   end
