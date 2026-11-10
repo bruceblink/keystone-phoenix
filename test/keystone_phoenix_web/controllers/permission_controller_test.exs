@@ -85,6 +85,38 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     assert json_response(response, 403)["code"] == 40302
   end
 
+  @tag :integration
+  test "metadata write endpoints require an administrator", %{conn: conn} do
+    role = insert_role()
+    insert_menu(role.role_id, "system:role:add")
+    insert_menu(role.role_id, "system:menu:add")
+    insert_menu(role.role_id, "system:dept:add")
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
+
+    assert json_response(
+             post(authorized_conn, "/system/role", %{"roleName" => unique("role")}),
+             403
+           )[
+             "code"
+           ] == 40301
+
+    assert json_response(
+             post(authorized_conn, "/system/menus", %{"menuName" => unique("menu")}),
+             403
+           )[
+             "code"
+           ] == 40301
+
+    assert json_response(
+             post(authorized_conn, "/system/dept", %{"deptName" => unique("dept")}),
+             403
+           )[
+             "code"
+           ] == 40301
+  end
+
   defp insert_role do
     %SysRole{}
     |> SysRole.changeset(%{
