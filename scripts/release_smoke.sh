@@ -87,6 +87,36 @@ done
 [[ "$(docker inspect --format '{{.State.Health.Status}}' "${app}")" == "healthy" ]]
 [[ "$(docker inspect --format '{{.Config.User}}' "${app}")" == "keystone" ]]
 docker exec "${app}" sh -c 'test "$(id -un)" = keystone'
+
+docker stop "${postgres}" >/dev/null
+for _attempt in $(seq 1 60); do
+  health="$(docker inspect --format '{{.State.Health.Status}}' "${app}" 2>/dev/null || true)"
+  if [[ "${health}" == "unhealthy" ]]; then
+    break
+  fi
+  sleep 2
+done
+
+[[ "$(docker inspect --format '{{.State.Health.Status}}' "${app}")" == "unhealthy" ]]
+docker start "${postgres}" >/dev/null
+
+for _attempt in $(seq 1 60); do
+  if docker exec "${postgres}" pg_isready -U postgres -d "${database}" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+
+docker exec "${postgres}" pg_isready -U postgres -d "${database}" >/dev/null
+for _attempt in $(seq 1 60); do
+  health="$(docker inspect --format '{{.State.Health.Status}}' "${app}" 2>/dev/null || true)"
+  if [[ "${health}" == "healthy" ]]; then
+    break
+  fi
+  sleep 2
+done
+
+[[ "$(docker inspect --format '{{.State.Health.Status}}' "${app}")" == "healthy" ]]
 docker exec "${app}" sh -c 'printf smoke > /tmp/smoke.txt && printf smoke > /var/lib/keystone/resources/.smoke-persistence'
 unauth_upload_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
   --form file=@/tmp/smoke.txt http://127.0.0.1:4000/file/upload)"
