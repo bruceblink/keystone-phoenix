@@ -75,8 +75,7 @@ jobs:
         run: mix test
 
       - name: Report test coverage baseline
-        continue-on-error: true
-        run: mix test --cover
+        run: mix test --cover --include integration
 
       - name: Run LiveView integration tests
         run: mix test --include integration

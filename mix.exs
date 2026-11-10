@@ -10,6 +10,7 @@ defmodule KeystonePhoenix.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
+      test_coverage: [summary: [threshold: 60]],
       listeners: [Phoenix.CodeReloader]
     ]
   end
