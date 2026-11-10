@@ -201,6 +201,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
           {:noreply, assign_profile(socket)}
 
         panel == "monitor" ->
+          socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, "online-users", 1))
           {:noreply, assign_monitor(socket)}
 
         panel == "job-logs" ->
@@ -241,12 +242,19 @@ defmodule KeystonePhoenixWeb.LoginLive do
              "dict-data",
              "login-logs",
              "operation-logs",
+             "online-users",
              "role-users-allocated",
              "role-users-unallocated"
            ] do
     case Integer.parse(to_string(page)) do
       {page, ""} when page > 0 ->
-        {:noreply, assign(socket, page_nums: Map.put(socket.assigns.page_nums, panel, page))}
+        socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, panel, page))
+
+        if panel == "online-users" and AdminSupport.panel_allowed?(socket, "monitor") do
+          {:noreply, assign_monitor(socket)}
+        else
+          {:noreply, socket}
+        end
 
       _ ->
         {:noreply, socket}
@@ -425,7 +433,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "job-logs" -> %>
                       <.job_logs job_log_rows={@job_log_rows} job_log_feedback={@job_log_feedback} page_num={@page_nums["job-logs"]} page_size={@page_sizes["job-logs"]} read_only={@read_only} />
                     <% "monitor" -> %>
-                      <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} network_status={@network_status} monitor_feedback={@monitor_feedback} read_only={@read_only} />
+                      <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} online_user_total={@online_user_total} online_user_page_num={@page_nums["online-users"]} online_user_page_size={@page_sizes["online-users"]} network_status={@network_status} monitor_feedback={@monitor_feedback} read_only={@read_only} />
                     <% "profile" -> %>
                       <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} avatar_upload={@uploads.avatar} />
                     <% _ -> %>

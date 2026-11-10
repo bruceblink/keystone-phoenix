@@ -65,7 +65,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
   end
 
   def monitor(assigns) do
-    assigns = assign_new(assigns, :read_only, fn -> false end)
+    assigns =
+      assigns
+      |> assign_new(:read_only, fn -> false end)
+      |> assign_new(:online_user_page_num, fn -> 1 end)
+      |> assign_new(:online_user_page_size, fn -> 50 end)
+      |> assign_new(:online_user_total, fn -> length(assigns[:online_user_rows] || []) end)
 
     ~H"""
     <div class="panel">
@@ -82,12 +87,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
         <div><h3>运行环境</h3><p>节点：<%= get_in(@monitor_server_info, ["systemInfo", "computerName"]) || "未知" %></p><p>系统：<%= get_in(@monitor_server_info, ["systemInfo", "osName"]) || "未知" %></p><p>BEAM：<%= get_in(@monitor_server_info, ["jvmInfo", "name"]) || "未知" %></p><p>运行时间：<%= get_in(@monitor_server_info, ["jvmInfo", "runTime"]) || "未知" %></p></div>
         <div><h3>ETS 缓存</h3><p>后端：<%= @monitor_cache_info["backend"] || "不可用" %></p><p>缓存条目：<%= @monitor_cache_info["cacheEntries"] || 0 %></p><p>验证码条目：<%= @monitor_cache_info["captchaEntries"] || 0 %></p></div>
       </div>
-      <h3>在线会话（<%= length(@online_user_rows) %>）</h3>
+      <h3>在线会话（<%= @online_user_total %>）</h3>
       <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption><thead><tr><th>用户</th><th>部门</th><th>IP</th><th>登录时间</th><th>操作</th></tr></thead><tbody>
         <%= for user <- @online_user_rows do %>
           <tr><td><%= user["username"] %></td><td><%= user["deptName"] || "" %></td><td><%= user["ipAddress"] %></td><td><%= user["loginTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="logout-online-user" phx-value-token-id={user["tokenId"]} phx-disable-with="下线中…">强制下线</button></td></tr>
         <% end %>
       </tbody></table></div>
+      <.pagination panel="online-users" page_num={@online_user_page_num} page_size={@online_user_page_size} total={@online_user_total} />
     </div>
     """
   end

@@ -53,6 +53,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
         "dict-data" => 1,
         "login-logs" => 1,
         "operation-logs" => 1,
+        "online-users" => 1,
         "role-users-allocated" => 1,
         "role-users-unallocated" => 1
       },
@@ -63,6 +64,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
         "dict-data" => 50,
         "login-logs" => 50,
         "operation-logs" => 50,
+        "online-users" => 50,
         "role-users-allocated" => 50,
         "role-users-unallocated" => 50
       },
@@ -91,6 +93,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       monitor_server_info: %{},
       monitor_cache_info: %{},
       online_user_rows: [],
+      online_user_total: 0,
       network_status: %{},
       monitor_feedback: nil
     )

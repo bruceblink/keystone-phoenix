@@ -432,6 +432,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       monitor_server_info: monitor.server_info,
       monitor_cache_info: monitor.cache_info,
       online_user_rows: monitor.online_users,
+      online_user_total: monitor.online_user_total,
       network_status: monitor.network_status,
       monitor_feedback: feedback || monitor.feedback
     )
@@ -469,14 +470,17 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
         {%{}, nil}
       end
 
-    {online_users, online_error} =
+    {online_users, online_user_total, online_error} =
       if admin? or "monitor:online:list" in permissions do
-        case Monitor.online_users() do
-          {:ok, %{rows: rows}} -> {rows, nil}
-          _ -> {[], "在线会话数据暂不可用"}
+        page_num = get_in(socket.assigns, [:page_nums, "online-users"]) || 1
+        page_size = get_in(socket.assigns, [:page_sizes, "online-users"]) || 50
+
+        case Monitor.online_users(%{"pageNum" => page_num, "pageSize" => page_size}) do
+          {:ok, %{rows: rows, total: total}} -> {rows, total, nil}
+          _ -> {[], 0, "在线会话数据暂不可用"}
         end
       else
-        {[], nil}
+        {[], 0, nil}
       end
 
     network_status =
@@ -488,6 +492,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       server_info: server_info,
       cache_info: cache_info,
       online_users: online_users,
+      online_user_total: online_user_total,
       network_status: network_status,
       feedback: Enum.find([server_error, cache_error, online_error], &is_binary/1)
     }

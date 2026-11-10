@@ -158,6 +158,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("refresh-monitor", _params, socket) do
     if Support.monitor_access?(socket) do
+      socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, "online-users", 1))
       {:noreply, Support.assign_monitor(socket)}
     else
       {:noreply, socket}
@@ -173,6 +174,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
           {:error, :unavailable} -> "会话服务暂不可用"
         end
 
+      socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, "online-users", 1))
       {:noreply, Support.assign_monitor(socket, feedback)}
     else
       {:noreply, socket}
