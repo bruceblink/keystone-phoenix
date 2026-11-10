@@ -17,7 +17,8 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLogTest do
       |> Map.put(:params, %{
         "nickName" => "审计用户",
         "password" => "do-not-persist",
-        "refreshToken" => "do-not-persist"
+        "refreshToken" => "do-not-persist",
+        "captchaCodeKey" => "one-time-key"
       })
       |> assign(:current_user, %SysUser{user_id: 42, username: "tester"})
       |> Map.put(:private, %{
@@ -40,5 +41,6 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLogTest do
     assert log.operation_param =~ "审计用户"
     assert log.operation_param =~ "[REDACTED]"
     refute log.operation_param =~ "do-not-persist"
+    refute log.operation_param =~ "one-time-key"
   end
 end

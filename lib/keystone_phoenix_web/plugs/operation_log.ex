@@ -23,6 +23,7 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLog do
     refreshtoken
     authorization
     captchacode
+    captchacodekey
     captcha
   )
   @max_param_size 2048
