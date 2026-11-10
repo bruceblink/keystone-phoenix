@@ -51,26 +51,36 @@ defmodule KeystonePhoenix.Log do
   def record_login_event(username, status, message, metadata \\ %{})
 
   def record_login_event(username, status, message, metadata) when is_binary(username) do
+    metadata = Map.take(metadata, [:ip_address, :login_location, :browser, :operation_system])
+
     attrs =
       Map.merge(
         %{
-          username: username,
+          username: truncate(username, 50),
           ip_address: "",
           login_location: "",
           browser: "",
           operation_system: "",
           status: status,
-          msg: message,
+          msg: truncate(message, 255),
           login_time: DateTime.utc_now(),
           deleted: false
         },
         metadata
       )
 
+    attrs =
+      Map.update!(attrs, :ip_address, &truncate(&1, 128))
+      |> Map.update!(:login_location, &truncate(&1, 255))
+      |> Map.update!(:browser, &truncate(&1, 50))
+      |> Map.update!(:operation_system, &truncate(&1, 50))
+
     case Repo.insert(Ecto.Changeset.cast(%SysLoginInfo{}, attrs, Map.keys(attrs))) do
       {:ok, _log} -> :ok
       {:error, _changeset} -> :ok
     end
+  rescue
+    _error -> :ok
   end
 
   def create_operation_log(attrs, user, request_url, request_method) when is_map(attrs) do
@@ -93,7 +103,20 @@ defmodule KeystonePhoenix.Log do
       deleted: false
     }
 
+    normalized =
+      normalized
+      |> Map.update!(:request_module, &truncate(&1, 64))
+      |> Map.update!(:request_url, &truncate(&1, 256))
+      |> Map.update!(:called_method, &truncate(&1, 128))
+      |> Map.update!(:username, &truncate(&1, 32))
+      |> Map.update!(:operator_ip, &truncate(&1, 128))
+      |> Map.update!(:operation_param, &truncate(&1, 2048))
+      |> Map.update!(:operation_result, &truncate(&1, 2048))
+      |> Map.update!(:error_stack, &truncate(&1, 2048))
+
     Repo.insert(Ecto.Changeset.cast(%SysOperationLog{}, normalized, Map.keys(normalized)))
+  rescue
+    _error -> {:error, :invalid_log}
   end
 
   def create_operation_log(_attrs, _user, _request_url, _request_method),
@@ -252,4 +275,7 @@ defmodule KeystonePhoenix.Log do
 
   defp format_datetime(%NaiveDateTime{} = datetime),
     do: Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
+
+  defp truncate(value, max) when is_binary(value), do: String.slice(value, 0, max)
+  defp truncate(value, max), do: value |> to_string() |> String.slice(0, max)
 end

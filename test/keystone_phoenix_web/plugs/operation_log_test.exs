@@ -6,6 +6,7 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLogTest do
   import Plug.Test
 
   alias KeystonePhoenix.Log.SysOperationLog
+  alias KeystonePhoenix.Log
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.User.SysUser
   alias KeystonePhoenixWeb.Plugs.OperationLog
@@ -42,5 +43,37 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLogTest do
     assert log.operation_param =~ "[REDACTED]"
     refute log.operation_param =~ "do-not-persist"
     refute log.operation_param =~ "one-time-key"
+  end
+
+  test "bounds operation and login log fields before persistence" do
+    user = %SysUser{user_id: 43, username: String.duplicate("u", 100)}
+
+    assert {:ok, log} =
+             Log.create_operation_log(
+               %{
+                 "requestModule" => String.duplicate("m", 100),
+                 "operationParam" => String.duplicate("p", 3_000),
+                 "operationResult" => String.duplicate("r", 3_000),
+                 "errorStack" => String.duplicate("e", 3_000)
+               },
+               user,
+               String.duplicate("/", 300),
+               "POST"
+             )
+
+    assert byte_size(log.request_module) <= 64
+    assert byte_size(log.request_url) <= 256
+    assert byte_size(log.username) <= 32
+    assert byte_size(log.operation_param) <= 2_048
+    assert byte_size(log.operation_result) <= 2_048
+    assert byte_size(log.error_stack) <= 2_048
+
+    assert :ok = Log.record_login_event(String.duplicate("u", 100), 0, String.duplicate("m", 300))
+
+    login =
+      Repo.one!(from entry in KeystonePhoenix.Log.SysLoginInfo, order_by: [desc: entry.info_id])
+
+    assert byte_size(login.username) <= 50
+    assert byte_size(login.msg) <= 255
   end
 end

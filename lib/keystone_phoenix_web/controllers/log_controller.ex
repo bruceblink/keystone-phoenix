@@ -95,9 +95,9 @@ defmodule KeystonePhoenixWeb.LogController do
   end
 
   @doc "Creates an operation audit record for the authenticated user."
-  def create_operation_log(conn, params) do
+  def create_operation_log(conn, _params) do
     case Log.create_operation_log(
-           params,
+           %{},
            conn.assigns.current_user,
            conn.request_path,
            conn.method
