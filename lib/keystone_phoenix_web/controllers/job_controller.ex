@@ -139,6 +139,18 @@ defmodule KeystonePhoenixWeb.JobController do
     conn |> put_status(:service_unavailable) |> json(ApiResponse.error(50301, "任务日志保存失败"))
   end
 
+  defp render_error(conn, :execution_timeout) do
+    conn
+    |> put_status(:service_unavailable)
+    |> json(ApiResponse.error(50302, "任务执行超时，任务已终止"))
+  end
+
+  defp render_error(conn, :resource_exhausted) do
+    conn
+    |> put_status(:service_unavailable)
+    |> json(ApiResponse.error(50303, "任务执行资源暂不可用"))
+  end
+
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
     errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
 

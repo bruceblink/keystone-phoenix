@@ -102,7 +102,7 @@ defmodule KeystonePhoenix.Job.Runner do
   end
 
   @doc "Records an automatic run that was terminated after exceeding the timeout."
-  def record_timeout(%SysJob{} = job, timeout_ms) do
+  def record_timeout(%SysJob{} = job, timeout_ms, trigger_type \\ 1) do
     now = DateTime.utc_now()
 
     attrs = %{
@@ -112,7 +112,7 @@ defmodule KeystonePhoenix.Job.Runner do
       invoke_target: job.invoke_target,
       job_params: job.job_params,
       cron_expression: job.cron_expression,
-      trigger_type: 1,
+      trigger_type: trigger_type,
       status: 0,
       job_message: "任务执行超时（超过#{timeout_ms}毫秒）",
       exception_info: "任务进程已被调度器终止",

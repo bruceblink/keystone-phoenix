@@ -113,7 +113,33 @@ defmodule KeystonePhoenix.Job do
   def run_job(id) do
     with {:ok, job} <- get_job(id),
          :ok <- Invoke.validate_target(job.invoke_target, job.job_params) do
-      Runner.run(job, 2)
+      run_manual_job(job)
+    end
+  end
+
+  defp run_manual_job(job) do
+    timeout_ms = Application.get_env(:keystone_phoenix, :job_execution_timeout_ms, 30_000)
+
+    try do
+      task =
+        Task.Supervisor.async_nolink(KeystonePhoenix.JobTaskSupervisor, fn ->
+          Runner.run(job, 2)
+        end)
+
+      case Task.yield(task, timeout_ms) do
+        {:ok, result} ->
+          result
+
+        {:exit, _reason} ->
+          {:error, :execute_failed}
+
+        nil ->
+          _ = Task.shutdown(task, :brutal_kill)
+          _ = Runner.record_timeout(job, timeout_ms, 2)
+          {:error, :execution_timeout}
+      end
+    catch
+      :exit, _reason -> {:error, :resource_exhausted}
     end
   end
 

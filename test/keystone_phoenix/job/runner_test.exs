@@ -59,6 +59,21 @@ defmodule KeystonePhoenix.Job.RunnerTest do
     refute running?(scheduler, job.job_id)
   end
 
+  test "manual execution uses the task timeout and persists a timeout log" do
+    previous_timeout = Application.get_env(:keystone_phoenix, :job_execution_timeout_ms)
+    Application.put_env(:keystone_phoenix, :job_execution_timeout_ms, 100)
+
+    on_exit(fn ->
+      Application.put_env(:keystone_phoenix, :job_execution_timeout_ms, previous_timeout)
+    end)
+
+    job = create_job(concurrent: 0, invoke_target: "demoJobTask.simulateLongRunningJob()")
+
+    assert {:error, :execution_timeout} = KeystonePhoenix.Job.run_job(job.job_id)
+    assert Enum.any?(logs(job.job_id), &(&1.trigger_type == 2 and &1.status == 0))
+    assert lock_available?(job.job_id)
+  end
+
   test "a killed manual caller releases the job lock" do
     job = create_job(concurrent: 0, invoke_target: "demoJobTask.simulateLongRunningJob()")
     {pid, ref} = spawn_monitor(fn -> Runner.run(job, 2) end)
