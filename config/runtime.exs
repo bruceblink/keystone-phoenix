@@ -44,7 +44,27 @@ if config_env() == :prod do
       """
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
-  database_ssl = System.get_env("DATABASE_SSL", "true") in ["true", "1"]
+
+  allow_insecure_database =
+    System.get_env("DATABASE_SSL_ALLOW_INSECURE", "false") in ["true", "1"]
+
+  database_ssl =
+    case System.get_env("DATABASE_SSL") do
+      nil ->
+        true
+
+      value when value in ["true", "1"] ->
+        true
+
+      value when value in ["false", "0"] and allow_insecure_database ->
+        false
+
+      value when value in ["false", "0"] ->
+        raise "DATABASE_SSL=false requires DATABASE_SSL_ALLOW_INSECURE=true"
+
+      value ->
+        raise "DATABASE_SSL must be true or false, got #{inspect(value)}"
+    end
 
   database_ssl_opts =
     if database_ssl do

@@ -41,6 +41,7 @@ secret_key_base="$(openssl rand -hex 32)"
 common_env=(
   --env "DATABASE_URL=${database_url}"
   --env DATABASE_SSL=false
+  --env DATABASE_SSL_ALLOW_INSECURE=true
   --env "JWT_PRIVATE_KEY=${private_key}"
   --env "SECRET_KEY_BASE=${secret_key_base}"
   --env PHX_HOST=localhost
