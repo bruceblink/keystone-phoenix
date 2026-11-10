@@ -433,20 +433,20 @@ defmodule KeystonePhoenixWeb.LoginLive do
                 </div>
                 <%= if @current_user["isAdmin"] == 1 or Enum.any?(Map.values(@panel_access)) do %>
                   <nav aria-label="管理模块">
-                    <button type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" phx-value-panel="overview">概览</button>
-                    <button :if={@panel_access["depts"]} type="button" class={if @active_panel == "depts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="depts">部门</button>
-                    <button :if={@panel_access["posts"]} type="button" class={if @active_panel == "posts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="posts">岗位</button>
-                    <button :if={@panel_access["roles"]} type="button" class={if @active_panel == "roles", do: "active", else: ""} phx-click="show-panel" phx-value-panel="roles">角色</button>
-                    <button :if={@panel_access["menus"]} type="button" class={if @active_panel == "menus", do: "active", else: ""} phx-click="show-panel" phx-value-panel="menus">菜单</button>
-                    <button :if={@panel_access["users"]} type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" phx-value-panel="users">用户</button>
-                    <button :if={@panel_access["configs"]} type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="configs">配置</button>
-                    <button :if={@panel_access["dicts"]} type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" phx-value-panel="dicts">字典</button>
-                    <button :if={@panel_access["notices"]} type="button" class={if @active_panel == "notices", do: "active", else: ""} phx-click="show-panel" phx-value-panel="notices">公告</button>
-                    <button :if={@panel_access["logs"]} type="button" class={if @active_panel == "logs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="logs">日志</button>
-                    <button :if={@panel_access["jobs"]} type="button" class={if @active_panel == "jobs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="jobs">定时任务</button>
-                    <button :if={@panel_access["job-logs"]} type="button" class={if @active_panel == "job-logs", do: "active", else: ""} phx-click="show-panel" phx-value-panel="job-logs">任务日志</button>
-                    <button :if={@panel_access["monitor"]} type="button" class={if @active_panel == "monitor", do: "active", else: ""} phx-click="show-panel" phx-value-panel="monitor">监控</button>
-                    <button type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" phx-value-panel="profile">个人资料</button>
+                    <button type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "overview", do: "page"} phx-value-panel="overview">概览</button>
+                    <button :if={@panel_access["depts"]} type="button" class={if @active_panel == "depts", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "depts", do: "page"} phx-value-panel="depts">部门</button>
+                    <button :if={@panel_access["posts"]} type="button" class={if @active_panel == "posts", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "posts", do: "page"} phx-value-panel="posts">岗位</button>
+                    <button :if={@panel_access["roles"]} type="button" class={if @active_panel == "roles", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "roles", do: "page"} phx-value-panel="roles">角色</button>
+                    <button :if={@panel_access["menus"]} type="button" class={if @active_panel == "menus", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "menus", do: "page"} phx-value-panel="menus">菜单</button>
+                    <button :if={@panel_access["users"]} type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "users", do: "page"} phx-value-panel="users">用户</button>
+                    <button :if={@panel_access["configs"]} type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "configs", do: "page"} phx-value-panel="configs">配置</button>
+                    <button :if={@panel_access["dicts"]} type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "dicts", do: "page"} phx-value-panel="dicts">字典</button>
+                    <button :if={@panel_access["notices"]} type="button" class={if @active_panel == "notices", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "notices", do: "page"} phx-value-panel="notices">公告</button>
+                    <button :if={@panel_access["logs"]} type="button" class={if @active_panel == "logs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "logs", do: "page"} phx-value-panel="logs">日志</button>
+                    <button :if={@panel_access["jobs"]} type="button" class={if @active_panel == "jobs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "jobs", do: "page"} phx-value-panel="jobs">定时任务</button>
+                    <button :if={@panel_access["job-logs"]} type="button" class={if @active_panel == "job-logs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "job-logs", do: "page"} phx-value-panel="job-logs">任务日志</button>
+                    <button :if={@panel_access["monitor"]} type="button" class={if @active_panel == "monitor", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "monitor", do: "page"} phx-value-panel="monitor">监控</button>
+                    <button type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "profile", do: "page"} phx-value-panel="profile">个人资料</button>
                   </nav>
                   <%= case @active_panel do %>
                     <% "overview" -> %>
@@ -485,7 +485,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <% end %>
                 <% else %>
                   <nav aria-label="个人模块">
-                    <button type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" phx-value-panel="profile">个人资料</button>
+                    <button type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "profile", do: "page"} phx-value-panel="profile">个人资料</button>
                   </nav>
                   <%= if @active_panel == "profile" do %>
                     <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} avatar_upload={@uploads.avatar} />
@@ -493,7 +493,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <div class="card">
                       <h2>登录成功</h2>
                       <p class="muted">当前账号没有管理后台权限。</p>
-                      <button type="button" class="secondary" phx-click="show-panel" phx-value-panel="profile">打开个人资料</button>
+                      <button type="button" class="secondary" phx-click="show-panel" aria-current={if @active_panel == "profile", do: "page"} phx-value-panel="profile">打开个人资料</button>
                     </div>
                   <% end %>
                 <% end %>
