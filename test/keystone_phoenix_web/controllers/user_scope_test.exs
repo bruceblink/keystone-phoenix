@@ -219,6 +219,42 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert Repo.get!(SysUser, ctx.actor.user_id).dept_id == ctx.actor.dept_id
   end
 
+  @tag :integration
+  test "non-admin users cannot assign roles through create or update", ctx do
+    elevated_role =
+      %SysRole{}
+      |> SysRole.changeset(%{
+        role_name: unique("elevated_role"),
+        role_key: unique("elevated_role_key"),
+        role_sort: 1,
+        data_scope: 1,
+        status: 1
+      })
+      |> Repo.insert!()
+
+    {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
+
+    response =
+      post(authorized(tokens.token), "/system/users", %{
+        "username" => unique("role_denied_create"),
+        "password" => "Strong!123",
+        "deptId" => ctx.child.dept_id,
+        "roleId" => elevated_role.role_id
+      })
+
+    assert json_response(response, 403)["code"] == 40301
+
+    response =
+      put(authorized(tokens.token), "/system/users/#{ctx.actor.user_id}", %{
+        "nickname" => "角色不应改变",
+        "deptId" => ctx.actor.dept_id,
+        "roleId" => elevated_role.role_id
+      })
+
+    assert json_response(response, 403)["code"] == 40301
+    assert Repo.get!(SysUser, ctx.actor.user_id).role_id == ctx.role.role_id
+  end
+
   test "inactive or missing roles expose no users, while administrator access remains unchanged",
        ctx do
     Repo.update!(Ecto.Changeset.change(ctx.role, status: 0))

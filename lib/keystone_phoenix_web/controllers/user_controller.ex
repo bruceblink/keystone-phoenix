@@ -12,7 +12,8 @@ defmodule KeystonePhoenixWeb.UserController do
            reset_password: "system:user:resetPwd",
            change_status: "system:user:edit",
            export: "system:user:export",
-           import: "system:user:import"
+           import: "system:user:import",
+           template: "system:user:import"
          },
          data_scope: %{
            show: {:user, "user_id"},
@@ -102,18 +103,26 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Creates a local user."
   def create(conn, params) do
-    case User.create_user(params, conn.assigns.current_user.user_id) do
-      {:ok, _user} -> conn |> put_status(:created) |> json(ApiResponse.ok())
-      {:error, changeset} -> render_error(conn, changeset)
+    if Permission.role_assignment_allowed?(conn.assigns.current_user, role_id_param(params)) do
+      case User.create_user(params, conn.assigns.current_user.user_id) do
+        {:ok, _user} -> conn |> put_status(:created) |> json(ApiResponse.ok())
+        {:error, changeset} -> render_error(conn, changeset)
+      end
+    else
+      render_error(conn, :role_assignment_forbidden)
     end
   end
 
   @doc "Updates editable fields for a local user."
   def update(conn, %{"user_id" => user_id} = params) do
-    case User.update_user(user_id, params, conn.assigns.current_user.user_id) do
-      {:ok, _user} -> json(conn, ApiResponse.ok())
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, changeset} -> render_error(conn, changeset)
+    if Permission.role_assignment_allowed?(conn.assigns.current_user, role_id_param(params)) do
+      case User.update_user(user_id, params, conn.assigns.current_user.user_id) do
+        {:ok, _user} -> json(conn, ApiResponse.ok())
+        {:error, :not_found} -> render_error(conn, :not_found)
+        {:error, changeset} -> render_error(conn, changeset)
+      end
+    else
+      render_error(conn, :role_assignment_forbidden)
     end
   end
 
@@ -282,6 +291,8 @@ defmodule KeystonePhoenixWeb.UserController do
 
   defp current_user_id(actor), do: Map.get(actor, :user_id, Map.get(actor, "userId"))
 
+  defp role_id_param(params), do: Map.get(params, "roleId", Map.get(params, :role_id))
+
   defp integer_value(nil), do: nil
   defp integer_value(value) when is_integer(value), do: value
   defp integer_value(value) when is_float(value), do: trunc(value)
@@ -355,6 +366,12 @@ defmodule KeystonePhoenixWeb.UserController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(10006, "用户状态无效"))
+  end
+
+  defp render_error(conn, :role_assignment_forbidden) do
+    conn
+    |> put_status(:forbidden)
+    |> json(ApiResponse.error(40301, "没有角色分配权限"))
   end
 
   defp render_error(conn, reason)

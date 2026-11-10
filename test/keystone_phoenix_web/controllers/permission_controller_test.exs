@@ -71,6 +71,20 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     assert data["selectedDeptList"] == [11, 12]
   end
 
+  @tag :integration
+  test "user import template requires the import permission", %{conn: conn} do
+    role = insert_role()
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+
+    response =
+      conn
+      |> put_req_header("authorization", "Bearer #{tokens.token}")
+      |> get("/system/users/excelTemplate")
+
+    assert json_response(response, 403)["code"] == 40302
+  end
+
   defp insert_role do
     %SysRole{}
     |> SysRole.changeset(%{
