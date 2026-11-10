@@ -8,6 +8,7 @@ network="keystone-smoke-${suffix}"
 postgres="keystone-smoke-postgres-${suffix}"
 app="keystone-smoke-app-${suffix}"
 resources="keystone-smoke-resources-${suffix}"
+dump_file="$(mktemp)"
 database="keystone_phoenix_smoke"
 database_url="ecto://postgres:postgres@${postgres}/${database}"
 
@@ -15,6 +16,7 @@ cleanup() {
   docker rm -f "${app}" "${postgres}" >/dev/null 2>&1 || true
   docker volume rm "${resources}" >/dev/null 2>&1 || true
   docker network rm "${network}" >/dev/null 2>&1 || true
+  rm -f "${dump_file}"
 }
 
 trap cleanup EXIT
@@ -54,6 +56,14 @@ docker run --rm --network "${network}" "${common_env[@]}" "${image}" eval \
 
 docker run --rm --network "${network}" "${common_env[@]}" "${image}" eval \
   "KeystonePhoenix.Release.migrate()"
+
+docker exec "${postgres}" pg_dump -U postgres --format=custom "${database}" >"${dump_file}"
+restore_database="keystone_phoenix_smoke_restore"
+docker exec "${postgres}" createdb -U postgres "${restore_database}"
+docker exec -i "${postgres}" pg_restore --clean --if-exists --dbname="${restore_database}" <"${dump_file}"
+restored_migrations="$(docker exec "${postgres}" psql -U postgres -d "${restore_database}" -Atc \
+  'SELECT count(*) FROM schema_migrations')"
+[[ "${restored_migrations}" =~ ^[1-9][0-9]*$ ]]
 
 token="$({
   docker run --rm --network "${network}" "${common_env[@]}" "${image}" eval \
