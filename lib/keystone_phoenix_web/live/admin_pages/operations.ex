@@ -3,8 +3,15 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
 
   use Phoenix.Component
 
+  import KeystonePhoenixWeb.Live.AdminPages.Pagination
+  alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
+
   def jobs(assigns) do
-    assigns = assign_new(assigns, :read_only, fn -> false end)
+    assigns =
+      assigns
+      |> assign_new(:read_only, fn -> false end)
+      |> assign_new(:page_num, fn -> 1 end)
+      |> assign_new(:page_size, fn -> 50 end)
 
     ~H"""
     <div class="panel">
@@ -26,16 +33,21 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
         <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存任务</button><button :if={@job_form["jobId"] != ""} type="button" class="secondary" phx-click="new-job" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
       <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption><thead><tr><th>任务名称</th><th>分组</th><th>调用目标</th><th>Cron</th><th>并发</th><th>状态</th><th>操作</th></tr></thead><tbody>
-        <%= for job <- @job_rows do %>
+        <%= for job <- Support.page_rows(@job_rows, @page_num, @page_size) do %>
           <tr><td><%= job["jobName"] %></td><td><%= job["jobGroup"] %></td><td><%= job["invokeTarget"] %></td><td><%= job["cronExpression"] %></td><td><%= if job["concurrent"] in [1, "1"], do: "是", else: "否" %></td><td><%= job["statusStr"] || if(job["status"] == 1, do: "正常", else: "暂停") %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-job" phx-value-job-id={job["jobId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="run-job" phx-value-job-id={job["jobId"]} phx-disable-with="执行中…">立即执行</button><button type="button" class="refresh secondary" phx-click="cancel-job" phx-value-job-id={job["jobId"]} phx-disable-with="处理中…">取消执行</button><button type="button" class="refresh" phx-click="toggle-job-status" phx-value-job-id={job["jobId"]} phx-value-status={if job["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if job["status"] == 1, do: "暂停", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-job" phx-value-job-id={job["jobId"]} phx-disable-with="删除中…">删除</button></td></tr>
         <% end %>
       </tbody></table></div>
+      <.pagination panel="jobs" page_num={min(@page_num, page_count(length(@job_rows), @page_size))} page_size={@page_size} total={length(@job_rows)} />
     </div>
     """
   end
 
   def job_logs(assigns) do
-    assigns = assign_new(assigns, :read_only, fn -> false end)
+    assigns =
+      assigns
+      |> assign_new(:read_only, fn -> false end)
+      |> assign_new(:page_num, fn -> 1 end)
+      |> assign_new(:page_size, fn -> 50 end)
 
     ~H"""
     <div class="panel">
@@ -43,10 +55,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       <%= if @job_log_feedback do %><p id="job-log-feedback" class="feedback" role="status" aria-live="polite"><%= @job_log_feedback %></p><% end %>
       <p :if={@job_log_rows == []} class="table-empty" role="status">暂无任务日志</p>
       <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption><thead><tr><th>任务</th><th>分组</th><th>调用目标</th><th>状态</th><th>消息</th><th>开始时间</th><th>结束时间</th></tr></thead><tbody>
-        <%= for log <- @job_log_rows do %>
+        <%= for log <- Support.page_rows(@job_log_rows, @page_num, @page_size) do %>
           <tr><td><%= log["jobName"] %></td><td><%= log["jobGroup"] %></td><td><%= log["invokeTarget"] %></td><td><%= log["statusStr"] || if(log["status"] == 1, do: "成功", else: "失败") %></td><td><%= log["jobMessage"] || log["exceptionInfo"] || "" %></td><td><%= log["startTime"] || "" %></td><td><%= log["endTime"] || "" %></td></tr>
         <% end %>
       </tbody></table></div>
+      <.pagination panel="job-logs" page_num={min(@page_num, page_count(length(@job_log_rows), @page_size))} page_size={@page_size} total={length(@job_log_rows)} />
     </div>
     """
   end

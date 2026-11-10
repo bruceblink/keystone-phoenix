@@ -233,6 +233,19 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   def handle_event("show-panel", _params, socket), do: {:noreply, socket}
 
+  def handle_event("paginate", %{"panel" => panel, "page" => page}, socket)
+      when panel in ["users", "jobs", "job-logs", "dict-data", "login-logs", "operation-logs"] do
+    case Integer.parse(to_string(page)) do
+      {page, ""} when page > 0 ->
+        {:noreply, assign(socket, page_nums: Map.put(socket.assigns.page_nums, panel, page))}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("paginate", _params, socket), do: {:noreply, socket}
+
   @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles new-role edit-role save-role toggle-role-status delete-role select-role assign-role-user unassign-role-user refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
   @accounts_events ~w(refresh-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
   @system_events ~w(refresh-config new-config edit-config save-config refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs edit-notice cancel-notice save-notice toggle-notice-status delete-notice refresh-notices delete-login-log delete-operation-log)
@@ -389,19 +402,19 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "menus" -> %>
                       <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} read_only={@read_only} />
                     <% "users" -> %>
-                      <.users user_rows={@user_rows} user_form={@user_form} user_feedback={@user_feedback} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} read_only={@read_only} />
+                      <.users user_rows={@user_rows} user_form={@user_form} user_feedback={@user_feedback} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} page_num={@page_nums["users"]} page_size={@page_sizes["users"]} read_only={@read_only} />
                     <% "configs" -> %>
                       <.configs config_rows={@config_rows} config_form={@config_form} config_feedback={@config_feedback} read_only={@read_only} />
                     <% "dicts" -> %>
-                      <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} read_only={@read_only} />
+                      <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} dict_data_page_num={@page_nums["dict-data"]} dict_data_page_size={@page_sizes["dict-data"]} read_only={@read_only} />
                     <% "notices" -> %>
                       <.notices notice_rows={@notice_rows} notice_form={@notice_form} notice_feedback={@notice_feedback} read_only={@read_only} />
                     <% "logs" -> %>
-                      <.logs login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} read_only={@read_only} />
+                      <.logs login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["login-logs"]} read_only={@read_only} />
                     <% "jobs" -> %>
-                      <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} read_only={@read_only} />
+                      <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} page_num={@page_nums["jobs"]} page_size={@page_sizes["jobs"]} read_only={@read_only} />
                     <% "job-logs" -> %>
-                      <.job_logs job_log_rows={@job_log_rows} job_log_feedback={@job_log_feedback} read_only={@read_only} />
+                      <.job_logs job_log_rows={@job_log_rows} job_log_feedback={@job_log_feedback} page_num={@page_nums["job-logs"]} page_size={@page_sizes["job-logs"]} read_only={@read_only} />
                     <% "monitor" -> %>
                       <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} network_status={@network_status} monitor_feedback={@monitor_feedback} read_only={@read_only} />
                     <% "profile" -> %>

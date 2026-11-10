@@ -3,8 +3,15 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
 
   use Phoenix.Component
 
+  import KeystonePhoenixWeb.Live.AdminPages.Pagination
+  alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
+
   def users(assigns) do
-    assigns = assign_new(assigns, :read_only, fn -> false end)
+    assigns =
+      assigns
+      |> assign_new(:read_only, fn -> false end)
+      |> assign_new(:page_num, fn -> 1 end)
+      |> assign_new(:page_size, fn -> 50 end)
 
     ~H"""
     <div class="panel">
@@ -43,7 +50,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption>
         <thead><tr><th>用户名</th><th>昵称</th><th>部门</th><th>角色</th><th>邮箱</th><th>手机号</th><th>状态</th><th>操作</th></tr></thead>
         <tbody>
-          <%= for user <- @user_rows do %>
+          <%= for user <- Support.page_rows(@user_rows, @page_num, @page_size) do %>
             <tr>
               <td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><%= user["deptName"] || "" %></td><td><%= user["roleName"] || "" %></td><td><%= user["email"] || "" %></td><td><%= user["phoneNumber"] || "" %></td><td><%= if user["status"] == 1, do: "正常", else: "停用" %></td>
               <td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-user" phx-value-user-id={user["userId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="toggle-user-status" phx-value-user-id={user["userId"]} phx-value-status={if user["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if user["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-user" phx-value-user-id={user["userId"]} phx-disable-with="删除中…">删除</button></td>
@@ -51,6 +58,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <% end %>
         </tbody>
       </table></div>
+      <.pagination panel="users" page_num={min(@page_num, page_count(length(@user_rows), @page_size))} page_size={@page_size} total={length(@user_rows)} />
     </div>
     """
   end

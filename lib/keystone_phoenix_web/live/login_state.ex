@@ -46,6 +46,22 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       job_targets: Job.invoke_targets(),
       job_log_rows: [],
       job_log_feedback: nil,
+      page_nums: %{
+        "users" => 1,
+        "jobs" => 1,
+        "job-logs" => 1,
+        "dict-data" => 1,
+        "login-logs" => 1,
+        "operation-logs" => 1
+      },
+      page_sizes: %{
+        "users" => 50,
+        "jobs" => 50,
+        "job-logs" => 50,
+        "dict-data" => 50,
+        "login-logs" => 50,
+        "operation-logs" => 50
+      },
       role_rows: [],
       selected_role_id: "",
       selected_role_name: "",
