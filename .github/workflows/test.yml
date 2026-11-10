@@ -74,5 +74,9 @@ jobs:
       - name: Run unit and database tests
         run: mix test
 
+      - name: Report test coverage baseline
+        continue-on-error: true
+        run: mix test --cover
+
       - name: Run LiveView integration tests
         run: mix test --include integration
