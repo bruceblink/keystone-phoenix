@@ -8,6 +8,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Config.SysConfig
+  alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
@@ -465,6 +466,8 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   end
 
   defp create_scoped_user do
+    insert_test_departments()
+
     role =
       %SysRole{}
       |> SysRole.changeset(%{
@@ -481,6 +484,24 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
 
     user = Repo.update!(Ecto.Changeset.change(user, role_id: role.role_id, dept_id: 1))
     {user, role}
+  end
+
+  defp insert_test_departments do
+    Repo.insert!(%SysDept{
+      dept_id: 1,
+      parent_id: 0,
+      ancestors: "0",
+      dept_name: unique("认证部门一"),
+      status: 1
+    })
+
+    Repo.insert!(%SysDept{
+      dept_id: 2,
+      parent_id: 0,
+      ancestors: "0",
+      dept_name: unique("认证部门二"),
+      status: 1
+    })
   end
 
   defp create_menu(permission) do
