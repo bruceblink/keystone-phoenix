@@ -96,6 +96,23 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
              ])
            ) =~ "assign-role-user"
 
+    role_html =
+      render_component(
+        &Organization.roles/1,
+        Map.take(role_user_assigns, [
+          :role_rows,
+          :role_form,
+          :role_feedback,
+          :selected_role_id,
+          :selected_role_name,
+          :allocated_role_user_rows,
+          :unallocated_role_user_rows,
+          :role_user_feedback
+        ])
+      )
+
+    assert role_html =~ ~s(phx-click="refresh-roles" phx-disable-with="刷新中…")
+
     assert render_component(
              &Organization.menus/1,
              Map.take(assigns, [:menu_rows, :menu_form, :menu_feedback])
@@ -152,6 +169,21 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
                :role_rows
              ])
            ) =~ "save-user"
+
+    account_html =
+      render_component(
+        &Accounts.users/1,
+        Map.take(account_assigns, [
+          :user_rows,
+          :user_form,
+          :user_feedback,
+          :dept_rows,
+          :post_rows,
+          :role_rows
+        ])
+      )
+
+    assert account_html =~ ~s(phx-click="refresh-users" phx-disable-with="刷新中…")
 
     assert render_component(
              &Accounts.profile/1,
@@ -278,5 +310,13 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
                :monitor_feedback
              ])
            ) =~ "refresh-monitor"
+  end
+
+  test "avatar upload errors render stable Chinese messages" do
+    assert Accounts.upload_error_message(:too_large) == "文件不能超过 50 MB"
+    assert Accounts.upload_error_message(:not_accepted) == "只支持 BMP、GIF、JPG、JPEG、PNG 或 WEBP 图片"
+    assert Accounts.upload_error_message(:too_many_files) == "一次只能上传一个头像文件"
+    assert Accounts.upload_error_message({:writer_failure, :enospc}) == "头像文件保存失败"
+    assert Accounts.upload_error_message(:unexpected_error) == "头像文件无效，请重试"
   end
 end

@@ -212,7 +212,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
        assign(socket,
          role_rows: Support.load_roles(),
          role_form: Support.empty_role_form(),
-         role_feedback: nil
+         role_feedback: nil,
+         selected_role_id: "",
+         selected_role_name: "",
+         allocated_role_user_rows: [],
+         unallocated_role_user_rows: [],
+         role_user_feedback: nil
        )}
     else
       {:noreply, socket}
@@ -293,7 +298,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            assign(socket,
              role_rows: Support.load_roles(),
              role_form: Support.empty_role_form(),
-             role_feedback: "角色已删除"
+             role_feedback: "角色已删除",
+             selected_role_id: "",
+             selected_role_name: "",
+             allocated_role_user_rows: [],
+             unallocated_role_user_rows: [],
+             role_user_feedback: nil
            )}
 
         :ok ->
@@ -301,7 +311,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            assign(socket,
              role_rows: Support.load_roles(),
              role_form: Support.empty_role_form(),
-             role_feedback: "角色已删除"
+             role_feedback: "角色已删除",
+             selected_role_id: "",
+             selected_role_name: "",
+             allocated_role_user_rows: [],
+             unallocated_role_user_rows: [],
+             role_user_feedback: nil
            )}
 
         error ->

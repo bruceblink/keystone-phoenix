@@ -9,8 +9,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
     ~H"""
     <div class="panel">
       <div class="form-actions">
-        <button :if={!@read_only} type="button" class="refresh" phx-click="new-user">新建用户</button>
-        <button type="button" class="refresh secondary" phx-click="refresh-users">刷新用户</button>
+        <button :if={!@read_only} type="button" class="refresh" phx-click="new-user" phx-disable-with="处理中…">新建用户</button>
+        <button type="button" class="refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…">刷新用户</button>
       </div>
       <%= if @user_feedback do %>
         <p class="feedback" role="status"><%= @user_feedback %></p>
@@ -30,7 +30,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <div><label for="user-status">状态</label><select id="user-status" name="status"><option value="1" selected={@user_form["status"] in [1, "1"]}>正常</option><option value="0" selected={@user_form["status"] in [0, "0"]}>停用</option></select></div>
           <div class="wide"><label for="user-remark">备注</label><textarea id="user-remark" name="remark"><%= @user_form["remark"] || "" %></textarea></div>
         </div>
-        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="new-user">取消编辑</button></div>
+        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="new-user" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
       <form :if={!@read_only and @user_form["userId"] != ""} id="user-reset-password-form" phx-submit="reset-user-password">
         <input type="hidden" name="userId" value={@user_form["userId"]} />
@@ -45,7 +45,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <%= for user <- @user_rows do %>
             <tr>
               <td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><%= user["deptName"] || "" %></td><td><%= user["roleName"] || "" %></td><td><%= user["email"] || "" %></td><td><%= user["phoneNumber"] || "" %></td><td><%= if user["status"] == 1, do: "正常", else: "停用" %></td>
-              <td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-user" phx-value-user-id={user["userId"]}>编辑</button><button type="button" class="refresh" phx-click="toggle-user-status" phx-value-user-id={user["userId"]} phx-value-status={if user["status"] == 1, do: 0, else: 1}><%= if user["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-user" phx-value-user-id={user["userId"]}>删除</button></td>
+              <td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-user" phx-value-user-id={user["userId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="toggle-user-status" phx-value-user-id={user["userId"]} phx-value-status={if user["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if user["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-user" phx-value-user-id={user["userId"]} phx-disable-with="删除中…">删除</button></td>
             </tr>
           <% end %>
         </tbody>
@@ -82,7 +82,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
             <progress value={entry.progress} max="100"><%= entry.progress %>%</progress>
           <% end %>
           <%= for entry <- @avatar_upload.errors do %>
-            <p class="error" role="alert">头像文件无效：<%= inspect(entry) %></p>
+            <p class="error" role="alert">头像文件无效：<%= upload_error_message(entry) %></p>
           <% end %>
           <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="上传中…">上传头像</button></div>
         </form>
@@ -98,4 +98,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
     </div>
     """
   end
+
+  def upload_error_message(:too_large), do: "文件不能超过 50 MB"
+  def upload_error_message(:not_accepted), do: "只支持 BMP、GIF、JPG、JPEG、PNG 或 WEBP 图片"
+  def upload_error_message(:too_many_files), do: "一次只能上传一个头像文件"
+  def upload_error_message(:external_client_failure), do: "上传连接失败，请重试"
+  def upload_error_message({:writer_failure, _reason}), do: "头像文件保存失败"
+  def upload_error_message({:external_metadata_failure, _reason}), do: "上传准备失败，请重试"
+  def upload_error_message(_reason), do: "头像文件无效，请重试"
 end

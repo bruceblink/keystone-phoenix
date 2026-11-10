@@ -81,6 +81,42 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     assert Repo.get!(SysRole, role.role_id).data_scope == 3
   end
 
+  test "refreshing or deleting a role clears its selected users", ctx do
+    {:ok, role} =
+      Role.create_role(%{
+        "roleName" => unique("待清理角色"),
+        "roleKey" => unique("stale_role"),
+        "roleSort" => 7,
+        "dataScope" => 3,
+        "status" => 1,
+        "menuIds" => []
+      })
+
+    {:ok, view} = login(ctx.conn, ctx.admin)
+    render_click(view, "show-panel", %{"panel" => "roles"})
+    render_click(view, "select-role", %{"role-id" => to_string(role.role_id)})
+    assert has_element?(view, "#role-user-management")
+
+    render_click(view, "refresh-roles")
+    refute has_element?(view, "#role-user-management")
+    assert live_socket(view).assigns.selected_role_id == ""
+    assert live_socket(view).assigns.selected_role_name == ""
+    assert live_socket(view).assigns.allocated_role_user_rows == []
+    assert live_socket(view).assigns.unallocated_role_user_rows == []
+    assert live_socket(view).assigns.role_user_feedback == nil
+
+    render_click(view, "select-role", %{"role-id" => to_string(role.role_id)})
+    assert has_element?(view, "#role-user-management")
+    render_click(view, "delete-role", %{"role-id" => to_string(role.role_id)})
+
+    refute has_element?(view, "#role-user-management")
+    assert live_socket(view).assigns.selected_role_id == ""
+    assert live_socket(view).assigns.selected_role_name == ""
+    assert live_socket(view).assigns.allocated_role_user_rows == []
+    assert live_socket(view).assigns.unallocated_role_user_rows == []
+    assert live_socket(view).assigns.role_user_feedback == nil
+  end
+
   test "menu edit preserves the ID and saved route fields", ctx do
     {:ok, menu} =
       Menu.create_menu(%{
@@ -181,6 +217,17 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     assert has_element?(view, "nav[aria-label='管理模块']")
     {:ok, view}
   end
+
+  defp live_socket(view), do: find_socket(:sys.get_state(view.pid))
+
+  defp find_socket(%Phoenix.LiveView.Socket{} = socket), do: socket
+  defp find_socket(%{} = map), do: map |> Map.values() |> Enum.find_value(&find_socket/1)
+
+  defp find_socket(tuple) when is_tuple(tuple),
+    do: tuple |> Tuple.to_list() |> Enum.find_value(&find_socket/1)
+
+  defp find_socket(list) when is_list(list), do: Enum.find_value(list, &find_socket/1)
+  defp find_socket(_value), do: nil
 
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 end
