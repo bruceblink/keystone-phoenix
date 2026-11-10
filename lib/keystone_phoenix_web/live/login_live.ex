@@ -329,7 +329,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
           button { min-height: 42px; width: 100%; margin-top: 20px; padding: 10px 15px; border: 1px solid transparent; border-radius: 10px; background: var(--primary); color: white; font: inherit; font-weight: 750; cursor: pointer; transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
           button:hover { background: var(--primary-dark); box-shadow: 0 8px 18px rgba(24, 94, 232, 0.2); }
           button:active { transform: translateY(1px); }
-          button:disabled, button.phx-submit-loading { cursor: wait; opacity: 0.68; box-shadow: none; }
+          button:disabled, button.phx-submit-loading, button.phx-click-loading { cursor: wait; opacity: 0.68; box-shadow: none; }
           button.secondary { border-color: #c2ccda; background: var(--surface); color: var(--ink); }
           button.secondary:hover { background: var(--surface-soft); }
           .error { display: flex; gap: 8px; align-items: flex-start; margin: 16px 0 0; padding: 11px 13px; border: 1px solid #f1b6b1; border-radius: 10px; background: #fff1f0; color: var(--danger); font-size: 14px; line-height: 1.45; }

@@ -30,14 +30,14 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <div><label for="user-status">状态</label><select id="user-status" name="status"><option value="1" selected={@user_form["status"] in [1, "1"]}>正常</option><option value="0" selected={@user_form["status"] in [0, "0"]}>停用</option></select></div>
           <div class="wide"><label for="user-remark">备注</label><textarea id="user-remark" name="remark"><%= @user_form["remark"] || "" %></textarea></div>
         </div>
-        <div class="form-actions"><button type="submit">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="new-user">取消编辑</button></div>
+        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="new-user">取消编辑</button></div>
       </form>
       <form :if={!@read_only and @user_form["userId"] != ""} id="user-reset-password-form" phx-submit="reset-user-password">
         <input type="hidden" name="userId" value={@user_form["userId"]} />
         <div class="form-grid">
           <div><label for="user-reset-password">重置密码</label><input id="user-reset-password" type="password" name="password" minlength="8" required /></div>
         </div>
-        <div class="form-actions"><button type="submit" class="secondary">重置用户密码</button></div>
+        <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="重置中…">重置用户密码</button></div>
       </form>
       <table>
         <thead><tr><th>用户名</th><th>昵称</th><th>部门</th><th>角色</th><th>邮箱</th><th>手机号</th><th>状态</th><th>操作</th></tr></thead>
@@ -68,11 +68,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <div><label for="profile-phone">手机号</label><input id="profile-phone" name="phoneNumber" value={@profile_form["phoneNumber"] || ""} /></div>
           <div><label for="profile-sex">性别</label><select id="profile-sex" name="sex"><option value="0" selected={@profile_form["sex"] in [0, "0"]}>男</option><option value="1" selected={@profile_form["sex"] in [1, "1"]}>女</option><option value="2" selected={@profile_form["sex"] in [2, "2"]}>未知</option></select></div>
         </div>
-        <div class="form-actions"><button type="submit">保存资料</button></div>
+        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存资料</button></div>
       </form>
       <form phx-submit="update-profile-avatar">
         <label for="profile-avatar">头像地址</label><input id="profile-avatar" name="avatar" value={@profile_form["avatar"] || ""} placeholder="https://..." />
-        <div class="form-actions"><button type="submit" class="secondary">更新头像</button></div>
+        <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="更新中…">更新头像</button></div>
       </form>
       <%= if @avatar_upload do %>
         <form id="profile-avatar-upload-form" phx-submit="save-profile-avatar-upload">
@@ -84,7 +84,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <%= for entry <- @avatar_upload.errors do %>
             <p class="error" role="alert">头像文件无效：<%= inspect(entry) %></p>
           <% end %>
-          <div class="form-actions"><button type="submit" class="secondary">上传头像</button></div>
+          <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="上传中…">上传头像</button></div>
         </form>
       <% end %>
       <h3>修改密码</h3>
@@ -93,7 +93,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <div><label for="profile-old-password">当前密码</label><input id="profile-old-password" type="password" name="oldPassword" required /></div>
           <div><label for="profile-new-password">新密码</label><input id="profile-new-password" type="password" name="newPassword" required /></div>
         </div>
-        <div class="form-actions"><button type="submit" class="secondary">更新密码</button></div>
+        <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="更新中…">更新密码</button></div>
       </form>
     </div>
     """

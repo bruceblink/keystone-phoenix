@@ -22,7 +22,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
           <div><label for="job-status">状态</label><select id="job-status" name="status"><option value="1" selected={@job_form["status"] in [1, "1"]}>正常</option><option value="0" selected={@job_form["status"] in [0, "0"]}>暂停</option></select></div>
           <div class="wide"><label for="job-remark">备注</label><textarea id="job-remark" name="remark"><%= @job_form["remark"] || "" %></textarea></div>
         </div>
-        <div class="form-actions"><button type="submit">保存任务</button><button :if={@job_form["jobId"] != ""} type="button" class="secondary" phx-click="new-job">取消编辑</button></div>
+        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存任务</button><button :if={@job_form["jobId"] != ""} type="button" class="secondary" phx-click="new-job">取消编辑</button></div>
       </form>
       <table><thead><tr><th>任务名称</th><th>分组</th><th>调用目标</th><th>Cron</th><th>并发</th><th>状态</th><th>操作</th></tr></thead><tbody>
         <%= for job <- @job_rows do %>
