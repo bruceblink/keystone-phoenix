@@ -406,8 +406,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("save-menu", params, socket) do
-    if Support.permission_socket?(socket, "system:menu:add") or
-         Support.permission_socket?(socket, "system:menu:edit") do
+    if (Support.permission_socket?(socket, "system:menu:add") or
+          Support.permission_socket?(socket, "system:menu:edit")) and
+         Permission.menu_metadata_allowed?(socket.assigns.current_user, params) do
       menu_id = String.trim(params["menuId"] || "")
 
       result =

@@ -173,6 +173,31 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   end
 
   @tag :integration
+  test "menu permission metadata needs a separate delegated permission", %{conn: conn} do
+    role = insert_role()
+    insert_menu(role.role_id, "system:menu:add")
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
+
+    params = %{
+      "menuName" => unique("delegated_menu"),
+      "menuType" => 0,
+      "parentId" => 0,
+      "permission" => unique("system:delegated"),
+      "status" => 1
+    }
+
+    assert json_response(post(authorized_conn, "/system/menus", params), 403)["code"] == 40302
+
+    insert_menu(role.role_id, "system:menu:permission")
+    {:ok, refreshed} = Auth.login_plaintext(user.username, "Strong!123", true)
+    refreshed_conn = put_req_header(build_conn(), "authorization", "Bearer #{refreshed.token}")
+
+    assert %{"code" => 0} = json_response(post(refreshed_conn, "/system/menus", params), 201)
+  end
+
+  @tag :integration
   test "dropdown and typed dictionary endpoints require explicit list permissions", %{
     conn: conn
   } do

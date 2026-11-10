@@ -101,6 +101,14 @@ defmodule KeystonePhoenix.PermissionTest do
     assert Permission.role_metadata_allowed?(user, %{"menuIds" => "1"})
   end
 
+  test "protects menu permission metadata behind an explicit permission" do
+    role = insert_role(%{role_key: unique("menu_metadata_role")})
+    user = %{user_id: 12, role_id: role.role_id, is_admin: false}
+
+    refute Permission.menu_metadata_allowed?(user, %{"permission" => "system:admin"})
+    assert Permission.menu_metadata_allowed?(user, %{"menuName" => "普通菜单"})
+  end
+
   defp insert_role(attrs) do
     attrs =
       Map.merge(

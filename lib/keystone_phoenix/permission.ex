@@ -52,6 +52,15 @@ defmodule KeystonePhoenix.Permission do
 
   def role_metadata_allowed?(_user, _attrs), do: false
 
+  @doc "Checks whether a delegated menu write may change permission metadata."
+  def menu_metadata_allowed?(user, attrs) when is_map(attrs) do
+    admin?(user) or
+      not has_any_key?(attrs, ["permission", :permission]) or
+      allowed?(user, "system:menu:permission")
+  end
+
+  def menu_metadata_allowed?(_user, _attrs), do: false
+
   defp has_any_key?(attrs, keys), do: Enum.any?(keys, &Map.has_key?(attrs, &1))
 
   @doc "Returns whether the authenticated user is an administrator."

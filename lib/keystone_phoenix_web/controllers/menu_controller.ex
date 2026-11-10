@@ -12,6 +12,7 @@ defmodule KeystonePhoenixWeb.MenuController do
     }
 
   alias KeystonePhoenix.Menu
+  alias KeystonePhoenix.Permission
   alias KeystonePhoenixWeb.ApiResponse
 
   @doc "Returns the menu and permission list."
@@ -34,17 +35,25 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   @doc "Creates a menu or button permission."
   def create(conn, params) do
-    case Menu.create_menu(params, conn.assigns.current_user.user_id) do
-      {:ok, _menu} -> conn |> put_status(:created) |> json(ApiResponse.ok())
-      {:error, reason} -> render_error(conn, reason)
+    if Permission.menu_metadata_allowed?(conn.assigns.current_user, params) do
+      case Menu.create_menu(params, conn.assigns.current_user.user_id) do
+        {:ok, _menu} -> conn |> put_status(:created) |> json(ApiResponse.ok())
+        {:error, reason} -> render_error(conn, reason)
+      end
+    else
+      render_error(conn, :permission_denied)
     end
   end
 
   @doc "Updates a menu or button permission."
   def update(conn, %{"menu_id" => menu_id} = params) do
-    case Menu.update_menu(menu_id, params, conn.assigns.current_user.user_id) do
-      {:ok, _menu} -> json(conn, ApiResponse.ok())
-      {:error, reason} -> render_error(conn, reason)
+    if Permission.menu_metadata_allowed?(conn.assigns.current_user, params) do
+      case Menu.update_menu(menu_id, params, conn.assigns.current_user.user_id) do
+        {:ok, _menu} -> json(conn, ApiResponse.ok())
+        {:error, reason} -> render_error(conn, reason)
+      end
+    else
+      render_error(conn, :permission_denied)
     end
   end
 
@@ -60,6 +69,10 @@ defmodule KeystonePhoenixWeb.MenuController do
     conn
     |> put_status(:not_found)
     |> json(ApiResponse.error(10001, "找不到请求的菜单"))
+  end
+
+  defp render_error(conn, :permission_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(40302, "没有操作权限"))
   end
 
   defp render_error(conn, reason)
