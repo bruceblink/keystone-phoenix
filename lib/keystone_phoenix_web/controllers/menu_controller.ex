@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.MenuController do
     permissions: %{
       list: "system:menu:list",
       show: "system:menu:query",
+      dropdown: "system:menu:list",
       create: "system:menu:add",
       update: "system:menu:edit",
       delete: "system:menu:remove"

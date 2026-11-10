@@ -300,10 +300,11 @@ defmodule KeystonePhoenix.Role do
     do: if(Permission.admin?(actor), do: :ok, else: {:error, :forbidden})
 
   defp normalize_user_ids(user_ids) when is_list(user_ids) do
-    normalized =
-      user_ids |> Enum.map(&parse_positive_integer/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+    normalized = Enum.map(user_ids, &parse_positive_integer/1)
 
-    if normalized == [], do: {:error, :invalid_ids}, else: {:ok, normalized}
+    if normalized == [] or Enum.any?(normalized, &is_nil/1),
+      do: {:error, :invalid_ids},
+      else: {:ok, Enum.uniq(normalized)}
   end
 
   defp normalize_user_ids(user_ids) when is_binary(user_ids) do

@@ -31,5 +31,7 @@ defmodule KeystonePhoenix.ExcelTest do
     assert {:error, :invalid_workbook} = Excel.import_rows("/tmp/missing.xls")
     assert {:error, :empty_sheet} = Excel.rows_to_maps([])
     assert {:error, :invalid_headers} = Excel.rows_to_maps([["用户名", ""], ["alice", 1]])
+    assert {:error, :invalid_headers} = Excel.rows_to_maps([["用户名", "未知列"], ["alice", 1]])
+    assert {:error, :invalid_headers} = Excel.rows_to_maps([["用户名", "用户名"], ["alice", "bob"]])
   end
 end

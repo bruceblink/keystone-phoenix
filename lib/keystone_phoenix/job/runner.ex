@@ -159,7 +159,7 @@ defmodule KeystonePhoenix.Job.Runner do
   defp result_fields(:ok), do: {1, "任务执行成功", "", :ok}
 
   defp result_fields({:error, {kind, reason, stacktrace}}) do
-    detail = Exception.message(reason)
+    detail = if is_exception(reason), do: Exception.message(reason), else: inspect(reason)
     message = truncate("任务执行失败：#{detail}")
     exception = truncate_exception(kind, reason, stacktrace)
     {0, message, exception, {:error, :execute_failed}}
@@ -173,7 +173,11 @@ defmodule KeystonePhoenix.Job.Runner do
   defp truncate(value), do: String.slice(to_string(value), 0, @max_message_length)
 
   defp truncate_exception(kind, reason, stacktrace) do
-    stack = Exception.format(kind, reason, stacktrace)
+    stack =
+      if is_exception(reason),
+        do: Exception.format(kind, reason, stacktrace),
+        else: inspect({kind, reason, stacktrace})
+
     String.slice(stack, 0, @max_exception_length)
   end
 

@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.Excel do
 
   @max_file_size 50 * 1024 * 1024
   @page_size 500
+  @required_headers ~w(username)
 
   @header_aliases %{
     "部门ID" => "deptId",
@@ -85,6 +86,18 @@ defmodule KeystonePhoenix.Excel do
 
     cond do
       headers == [] or Enum.any?(headers, &(&1 == "")) ->
+        {:error, :invalid_headers}
+
+      Enum.any?(
+        headers,
+        &(!Map.has_key?(@header_aliases, &1) and &1 not in Map.values(@header_aliases))
+      ) ->
+        {:error, :invalid_headers}
+
+      length(headers) != length(Enum.uniq(headers)) ->
+        {:error, :invalid_headers}
+
+      Enum.any?(@required_headers, &(&1 not in headers)) ->
         {:error, :invalid_headers}
 
       true ->

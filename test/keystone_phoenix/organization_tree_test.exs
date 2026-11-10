@@ -75,6 +75,15 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
                "status" => 1
              })
 
+    assert {:error, :external_link_invalid} =
+             Menu.create_menu(%{
+               "parentId" => 0,
+               "menuName" => "相对外链",
+               "menuType" => 4,
+               "path" => "https:relative",
+               "status" => 1
+             })
+
     role =
       %SysRole{}
       |> SysRole.changeset(%{

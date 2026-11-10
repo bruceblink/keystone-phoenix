@@ -310,8 +310,12 @@ defmodule KeystonePhoenix.Menu do
 
   defp validate_external_link(4, path) when is_binary(path) do
     case URI.parse(path) do
-      %URI{scheme: scheme} when scheme in ["http", "https"] -> :ok
-      _ -> {:error, :external_link_invalid}
+      %URI{scheme: scheme, host: host}
+      when scheme in ["http", "https"] and is_binary(host) and host != "" ->
+        if String.contains?(path, ["\r", "\n"]), do: {:error, :external_link_invalid}, else: :ok
+
+      _ ->
+        {:error, :external_link_invalid}
     end
   end
 

@@ -84,17 +84,21 @@ defmodule KeystonePhoenix.Config do
 
   def update_config(id, attrs, actor_id) do
     with {:ok, config} <- get_config(id) do
-      changeset = SysConfig.changeset(config, normalize_attrs(attrs))
-      changeset = Audit.put_actor(changeset, :updater_id, actor_id)
+      if config.is_allow_change do
+        changeset = SysConfig.changeset(config, normalize_attrs(attrs))
+        changeset = Audit.put_actor(changeset, :updater_id, actor_id)
 
-      case Repo.update(changeset) do
-        {:ok, updated} = result ->
-          Cache.delete(config_cache_key(config.config_key))
-          Cache.delete(config_cache_key(updated.config_key))
-          result
+        case Repo.update(changeset) do
+          {:ok, updated} = result ->
+            Cache.delete(config_cache_key(config.config_key))
+            Cache.delete(config_cache_key(updated.config_key))
+            result
 
-        error ->
-          error
+          error ->
+            error
+        end
+      else
+        {:error, :not_allow_change}
       end
     end
   end

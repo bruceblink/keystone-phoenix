@@ -64,5 +64,26 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
     assert updated_data.updater_id == actor.user_id
   end
 
+  test "immutable configuration and orphan dictionary data are rejected" do
+    assert {:ok, config} =
+             Config.create_config(%{
+               "configName" => "不可修改配置",
+               "configKey" => unique("immutable.config"),
+               "configValue" => "enabled",
+               "isAllowChange" => false
+             })
+
+    assert {:error, :not_allow_change} =
+             Config.update_config(config.config_id, %{"configValue" => "disabled"})
+
+    assert {:error, :dict_type_not_found} =
+             Dictionary.create_dict_data(%{
+               "dictType" => unique("missing.dict"),
+               "dictLabel" => "孤立",
+               "dictValue" => 1,
+               "status" => 1
+             })
+  end
+
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 end

@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.DictionaryController do
     permissions: %{
       list_types: "system:dict:list",
       list_data: "system:dict:list",
+      list_data_by_type: "system:dict:list",
       show_type: "system:dict:query",
       show_data: "system:dict:query",
       create_type: "system:dict:add",
@@ -109,6 +110,12 @@ defmodule KeystonePhoenixWeb.DictionaryController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(11101, "字典类型下存在字典数据，请先删除字典数据"))
+  end
+
+  defp render_error(conn, :dict_type_not_found) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(11102, "字典类型不存在或已停用"))
   end
 
   defp render_error(conn, changeset) do

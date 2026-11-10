@@ -61,7 +61,7 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
 
   defp permission_allowed?(user, conn, permissions) do
     case Map.get(permissions, conn.private[:phoenix_action]) do
-      nil -> true
+      nil -> false
       permission -> Map.get(user, :is_admin, false) or Permission.allowed?(user, permission)
     end
   end

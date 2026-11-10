@@ -39,6 +39,7 @@ defmodule KeystonePhoenixWeb.ConfigController do
     case Config.update_config(config_id, params, conn.assigns.current_user.user_id) do
       {:ok, _config} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, :not_allow_change} -> render_error(conn, :not_allow_change)
       {:error, changeset} -> render_error(conn, changeset)
     end
   end
@@ -53,6 +54,12 @@ defmodule KeystonePhoenixWeb.ConfigController do
     conn
     |> put_status(:not_found)
     |> json(ApiResponse.error(10001, "找不到请求的系统配置"))
+  end
+
+  defp render_error(conn, :not_allow_change) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(10002, "该配置不允许修改"))
   end
 
   defp render_error(conn, changeset) do

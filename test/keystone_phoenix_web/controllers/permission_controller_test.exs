@@ -7,6 +7,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.User.SysUser
+  alias KeystonePhoenixWeb.Plugs.Authenticate
 
   @tag :integration
   test "allows a role permission and rejects a missing permission", %{conn: conn} do
@@ -115,6 +116,57 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
            )[
              "code"
            ] == 40301
+  end
+
+  @tag :integration
+  test "dropdown and typed dictionary endpoints require explicit list permissions", %{
+    conn: conn
+  } do
+    role = insert_role()
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
+
+    assert json_response(get(authorized_conn, "/system/depts/dropdown"), 403)["code"] == 40302
+    assert json_response(get(authorized_conn, "/system/menus/dropdown"), 403)["code"] == 40302
+
+    assert json_response(get(authorized_conn, "/system/dict/data/type/common.status"), 403)[
+             "code"
+           ] == 40302
+  end
+
+  @tag :integration
+  test "dropdown and typed dictionary endpoints honor their list permissions", %{conn: conn} do
+    role = insert_role()
+    insert_menu(role.role_id, "system:dept:list")
+    insert_menu(role.role_id, "system:menu:list")
+    insert_menu(role.role_id, "system:dict:list")
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
+
+    assert %{"code" => 0} = json_response(get(authorized_conn, "/system/depts/dropdown"), 200)
+    assert %{"code" => 0} = json_response(get(authorized_conn, "/system/menus/dropdown"), 200)
+
+    assert %{"code" => 0} =
+             json_response(get(authorized_conn, "/system/dict/data/type/common.status"), 200)
+  end
+
+  @tag :integration
+  test "declared permission tables reject unmapped actions", %{conn: conn} do
+    role = insert_role()
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer #{tokens.token}")
+      |> Map.update!(:private, &Map.put(&1, :phoenix_action, :unmapped_action))
+
+    response = Authenticate.call(conn, permissions: %{list: "system:post:list"})
+
+    assert response.halted
+    assert json_response(response, 403)["code"] == 40302
   end
 
   defp insert_role do

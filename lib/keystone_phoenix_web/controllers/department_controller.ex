@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.DepartmentController do
     permissions: %{
       list: "system:dept:list",
       show: "system:dept:query",
+      dropdown: "system:dept:list",
       create: "system:dept:add",
       update: "system:dept:edit",
       delete: "system:dept:remove"

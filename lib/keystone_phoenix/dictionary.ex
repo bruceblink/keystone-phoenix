@@ -130,16 +130,20 @@ defmodule KeystonePhoenix.Dictionary do
   def create_dict_data(attrs, actor_id \\ nil)
 
   def create_dict_data(attrs, actor_id) do
-    changeset = DictData.changeset(%DictData{}, normalize_attrs(attrs, @dict_data_attrs))
-    changeset = Audit.put_actor(changeset, :creator_id, actor_id)
+    attrs = normalize_attrs(attrs, @dict_data_attrs)
 
-    case Repo.insert(changeset) do
-      {:ok, dict_data} = result ->
-        Cache.delete(dict_data_cache_key(dict_data.dict_type))
-        result
+    with :ok <- validate_dict_type(attrs[:dict_type]) do
+      changeset = DictData.changeset(%DictData{}, attrs)
+      changeset = Audit.put_actor(changeset, :creator_id, actor_id)
 
-      error ->
-        error
+      case Repo.insert(changeset) do
+        {:ok, dict_data} = result ->
+          Cache.delete(dict_data_cache_key(dict_data.dict_type))
+          result
+
+        error ->
+          error
+      end
     end
   end
 
@@ -150,17 +154,21 @@ defmodule KeystonePhoenix.Dictionary do
   def update_dict_data(id, attrs, actor_id) do
     with {:ok, dict_data} <- get_dict_data(id) do
       old_dict_type = dict_data.dict_type
-      changeset = DictData.changeset(dict_data, normalize_attrs(attrs, @dict_data_attrs))
-      changeset = Audit.put_actor(changeset, :updater_id, actor_id)
+      attrs = normalize_attrs(attrs, @dict_data_attrs)
 
-      case Repo.update(changeset) do
-        {:ok, updated} = result ->
-          Cache.delete(dict_data_cache_key(old_dict_type))
-          Cache.delete(dict_data_cache_key(updated.dict_type))
-          result
+      with :ok <- validate_dict_type(attrs[:dict_type] || dict_data.dict_type) do
+        changeset = DictData.changeset(dict_data, attrs)
+        changeset = Audit.put_actor(changeset, :updater_id, actor_id)
 
-        error ->
-          error
+        case Repo.update(changeset) do
+          {:ok, updated} = result ->
+            Cache.delete(dict_data_cache_key(old_dict_type))
+            Cache.delete(dict_data_cache_key(updated.dict_type))
+            result
+
+          error ->
+            error
+        end
       end
     end
   end
@@ -222,6 +230,15 @@ defmodule KeystonePhoenix.Dictionary do
       |> Enum.map(&dict_data_to_map/1)
     end)
   end
+
+  defp validate_dict_type(dict_type) when is_binary(dict_type) do
+    case Repo.get_by(DictType, dict_type: dict_type, deleted: false, status: 1) do
+      nil -> {:error, :dict_type_not_found}
+      _dict_type -> :ok
+    end
+  end
+
+  defp validate_dict_type(_dict_type), do: {:error, :dict_type_not_found}
 
   @doc "Clears all cached dictionary data values."
   @spec refresh_cache() :: :ok
