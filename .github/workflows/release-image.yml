@@ -66,3 +66,13 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Pull release image for smoke test
+        env:
+          IMAGE_REF: ghcr.io/${{ github.repository }}:${{ steps.metadata.outputs.version }}
+        run: docker pull "${IMAGE_REF}"
+
+      - name: Run release smoke test
+        env:
+          IMAGE_REF: ghcr.io/${{ github.repository }}:${{ steps.metadata.outputs.version }}
+        run: ./scripts/release_smoke.sh "${IMAGE_REF}"

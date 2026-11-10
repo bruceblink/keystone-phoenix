@@ -55,8 +55,10 @@ jobs:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-
+          key: ${{ runner.os }}-beam-elixir-1.20.5-otp-29.1.2-${{ hashFiles('mix.exs', 'mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-beam-elixir-1.20.5-otp-29.1.2-
+            ${{ runner.os }}-beam-
 
       - name: Fetch dependencies
         run: mix deps.get

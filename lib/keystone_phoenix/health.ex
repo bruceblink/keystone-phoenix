@@ -1,5 +1,5 @@
 defmodule KeystonePhoenix.Health do
-  @moduledoc "Runtime readiness checks for PostgreSQL and the local ETS store."
+  @moduledoc "Runtime readiness checks for PostgreSQL, ETS, and file storage."
 
   alias KeystonePhoenix.Repo
 
@@ -7,12 +7,14 @@ defmodule KeystonePhoenix.Health do
   def readiness do
     database = database_status()
     cache = cache_status()
-    ready? = database == "UP" and cache == "UP"
+    storage = storage_status()
+    ready? = database == "UP" and cache == "UP" and storage == "UP"
 
     %{
       "status" => if(ready?, do: "READY", else: "NOT_READY"),
       "database" => database,
-      "cache" => cache
+      "cache" => cache,
+      "storage" => storage
     }
   end
 
@@ -39,6 +41,23 @@ defmodule KeystonePhoenix.Health do
     case Repo.query("SELECT 1") do
       {:ok, _result} -> "UP"
       _ -> "DOWN"
+    end
+  rescue
+    _error -> "DOWN"
+  end
+
+  defp storage_status do
+    directory = Application.get_env(:keystone_phoenix, :file_base_dir, "uploads")
+    probe = Path.join(Path.expand(directory), ".keystone-write-probe-#{System.unique_integer()}")
+
+    with :ok <- File.mkdir_p(Path.dirname(probe)),
+         :ok <- File.write(probe, "ok", [:exclusive]),
+         :ok <- File.rm(probe) do
+      "UP"
+    else
+      _ ->
+        _ = File.rm(probe)
+        "DOWN"
     end
   rescue
     _error -> "DOWN"

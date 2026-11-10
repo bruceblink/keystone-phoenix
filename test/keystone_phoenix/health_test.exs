@@ -9,5 +9,6 @@ defmodule KeystonePhoenix.HealthTest do
     assert readiness["status"] == "READY"
     assert readiness["database"] == "UP"
     assert readiness["cache"] == "UP"
+    assert readiness["storage"] == "UP"
   end
 end

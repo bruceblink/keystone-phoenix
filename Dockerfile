@@ -59,6 +59,8 @@ RUN addgroup --system keystone \
     && mkdir -p /var/lib/keystone/resources \
     && chown -R keystone:keystone /app /var/lib/keystone
 
+VOLUME ["/var/lib/keystone/resources"]
+
 USER keystone
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
