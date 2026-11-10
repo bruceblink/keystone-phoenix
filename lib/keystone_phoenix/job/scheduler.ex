@@ -65,12 +65,12 @@ defmodule KeystonePhoenix.Job.Scheduler do
   end
 
   @impl true
-  def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
+  def handle_info({:DOWN, ref, :process, pid, reason}, state) do
     if reason not in [:normal, :noproc] do
       Logger.warning("scheduled job task #{inspect(pid)} stopped: #{inspect(reason)}")
     end
 
-    {:noreply, remove_running_pid(state, pid)}
+    {:noreply, remove_running_ref(state, ref, pid)}
   end
 
   @impl true
@@ -202,9 +202,12 @@ defmodule KeystonePhoenix.Job.Scheduler do
 
   defp parse_job_id(_value), do: nil
 
-  defp remove_running_pid(state, pid) do
+  defp remove_running_ref(state, ref, pid) do
     Enum.reduce(state.running, state, fn {job_id, running}, state ->
-      if Map.has_key?(running, pid), do: remove_running(state, job_id, pid), else: state
+      case Map.get(running, pid) do
+        %{ref: ^ref} -> remove_running(state, job_id, pid)
+        _ -> state
+      end
     end)
   end
 
