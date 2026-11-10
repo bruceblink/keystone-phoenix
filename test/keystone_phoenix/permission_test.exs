@@ -78,6 +78,29 @@ defmodule KeystonePhoenix.PermissionTest do
     assert Role.menu_ids_for_role(role.role_id) == [menu.menu_id]
   end
 
+  test "protects role permission metadata behind an explicit permission" do
+    role = insert_role(%{role_key: unique("metadata_role")})
+    user = %{user_id: 11, role_id: role.role_id, is_admin: false}
+
+    refute Permission.role_metadata_allowed?(user, %{"menuIds" => "1"})
+    refute Permission.role_metadata_allowed?(user, %{"dataScope" => 1})
+    assert Permission.role_metadata_allowed?(user, %{"roleName" => "普通编辑"})
+
+    permission_menu =
+      %SysMenu{}
+      |> SysMenu.changeset(%{
+        menu_name: "角色权限配置",
+        menu_type: 0,
+        parent_id: 0,
+        permission: "system:role:permission",
+        status: 1
+      })
+      |> Repo.insert!()
+
+    Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: permission_menu.menu_id})
+    assert Permission.role_metadata_allowed?(user, %{"menuIds" => "1"})
+  end
+
   defp insert_role(attrs) do
     attrs =
       Map.merge(

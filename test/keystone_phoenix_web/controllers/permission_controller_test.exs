@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Role
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.User.SysUser
   alias KeystonePhoenixWeb.Plugs.Authenticate
@@ -102,7 +103,6 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
                  "roleName" => unique("role"),
                  "roleKey" => unique("role_key"),
                  "roleSort" => 1,
-                 "dataScope" => 1,
                  "status" => 1
                }),
                201
@@ -129,6 +129,47 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
                }),
                201
              )
+  end
+
+  @tag :integration
+  test "role permission metadata needs a separate delegated permission", %{conn: conn} do
+    role = insert_role()
+    target_role = insert_role()
+    menu = insert_menu(role.role_id, "system:role:edit")
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
+
+    assert json_response(
+             put(authorized_conn, "/system/role", %{
+               "roleId" => target_role.role_id,
+               "roleName" => target_role.role_name,
+               "roleKey" => target_role.role_key,
+               "roleSort" => target_role.role_sort,
+               "status" => 1,
+               "menuIds" => to_string(menu.menu_id)
+             }),
+             403
+           )["code"] == 40302
+
+    insert_menu(role.role_id, "system:role:permission")
+    {:ok, refreshed} = Auth.login_plaintext(user.username, "Strong!123", true)
+    refreshed_conn = put_req_header(build_conn(), "authorization", "Bearer #{refreshed.token}")
+
+    assert %{"code" => 0} =
+             json_response(
+               put(refreshed_conn, "/system/role", %{
+                 "roleId" => target_role.role_id,
+                 "roleName" => target_role.role_name,
+                 "roleKey" => target_role.role_key,
+                 "roleSort" => target_role.role_sort,
+                 "status" => 1,
+                 "menuIds" => to_string(menu.menu_id)
+               }),
+               200
+             )
+
+    assert Role.menu_ids_for_role(target_role.role_id) == [menu.menu_id]
   end
 
   @tag :integration

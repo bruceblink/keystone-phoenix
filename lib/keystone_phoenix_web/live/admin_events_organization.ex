@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   import Phoenix.Component, only: [assign: 2]
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Menu
+  alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
@@ -249,8 +250,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("save-role", params, socket) do
-    if Support.permission_socket?(socket, "system:role:add") or
-         Support.permission_socket?(socket, "system:role:edit") do
+    if (Support.permission_socket?(socket, "system:role:add") or
+          Support.permission_socket?(socket, "system:role:edit")) and
+         Permission.role_metadata_allowed?(socket.assigns.current_user, params) do
       role_id = String.trim(params["roleId"] || "")
       params = Map.update(params, "menuIds", "", &String.trim/1)
 

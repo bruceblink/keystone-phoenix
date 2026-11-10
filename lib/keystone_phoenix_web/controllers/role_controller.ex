@@ -10,7 +10,7 @@ defmodule KeystonePhoenixWeb.RoleController do
       update: "system:role:edit",
       delete: "system:role:remove",
       change_status: "system:role:edit",
-      data_scope: "system:role:edit",
+      data_scope: "system:role:permission",
       allocated_users: "system:role:list",
       unallocated_users: "system:role:list",
       assign_users: "system:role:edit",
@@ -18,6 +18,7 @@ defmodule KeystonePhoenixWeb.RoleController do
     }
 
   alias KeystonePhoenix.Excel
+  alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.ExcelResponse
@@ -65,22 +66,30 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Creates a role and assigns its menus."
   def create(conn, params) do
-    case Role.create_role(params, conn.assigns.current_user.user_id) do
-      {:ok, _role} -> conn |> put_status(:created) |> json(ApiResponse.ok())
-      {:error, changeset} -> render_error(conn, changeset)
+    if Permission.role_metadata_allowed?(conn.assigns.current_user, params) do
+      case Role.create_role(params, conn.assigns.current_user.user_id) do
+        {:ok, _role} -> conn |> put_status(:created) |> json(ApiResponse.ok())
+        {:error, changeset} -> render_error(conn, changeset)
+      end
+    else
+      render_error(conn, :permission_denied)
     end
   end
 
   @doc "Updates a role and optionally replaces its menu assignments."
   def update(conn, params) do
-    case Role.update_role(
-           params["roleId"] || params[:role_id],
-           params,
-           conn.assigns.current_user.user_id
-         ) do
-      {:ok, _role} -> json(conn, ApiResponse.ok())
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, changeset} -> render_error(conn, changeset)
+    if Permission.role_metadata_allowed?(conn.assigns.current_user, params) do
+      case Role.update_role(
+             params["roleId"] || params[:role_id],
+             params,
+             conn.assigns.current_user.user_id
+           ) do
+        {:ok, _role} -> json(conn, ApiResponse.ok())
+        {:error, :not_found} -> render_error(conn, :not_found)
+        {:error, changeset} -> render_error(conn, changeset)
+      end
+    else
+      render_error(conn, :permission_denied)
     end
   end
 
@@ -182,6 +191,10 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   defp render_error(conn, :forbidden) do
     conn |> put_status(:forbidden) |> json(ApiResponse.error(40301, "需要管理员权限"))
+  end
+
+  defp render_error(conn, :permission_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(40302, "没有操作权限"))
   end
 
   defp render_error(conn, :menu_not_found) do
