@@ -48,11 +48,21 @@ ENV LANG=C.UTF-8 \
 RUN sed -i 's|http://deb.debian.org/|http://mirrors.tuna.tsinghua.edu.cn/|g' \
       /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates libstdc++6 openssl ncurses-bin \
+    && apt-get install -y --no-install-recommends ca-certificates libstdc++6 openssl ncurses-bin netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY --from=build /app/_build/prod/rel/keystone_phoenix ./
+
+RUN addgroup --system keystone \
+    && adduser --system --ingroup keystone --home /app keystone \
+    && mkdir -p /var/lib/keystone/resources \
+    && chown -R keystone:keystone /app /var/lib/keystone
+
+USER keystone
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["nc", "-z", "127.0.0.1", "4000"]
 
 EXPOSE 4000
 
