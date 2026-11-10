@@ -128,7 +128,11 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert render(view) =~ "角色用户已更新"
     assert {:ok, assigned} = User.get_user(created.user_id)
     assert assigned.role_id == role["roleId"]
+    assert live_socket(view).assigns.selected_role_id == ""
+    assert live_socket(view).assigns.allocated_role_user_rows == []
+    assert live_socket(view).assigns.unallocated_role_user_rows == []
 
+    render_click(view, "select-role", %{"role-id" => to_string(role["roleId"])})
     render_click(view, "unassign-role-user", %{"user-id" => to_string(created.user_id)})
     assert {:ok, unassigned} = User.get_user(created.user_id)
     assert is_nil(unassigned.role_id)

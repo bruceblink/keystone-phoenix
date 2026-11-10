@@ -263,12 +263,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
       case result do
         {:ok, _role} ->
-          {:noreply,
-           assign(socket,
-             role_rows: Support.load_roles(),
-             role_form: Support.empty_role_form(),
-             role_feedback: if(role_id == "", do: "角色已创建", else: "角色已更新")
-           )}
+          socket =
+            assign(socket,
+              role_rows: Support.load_roles(),
+              role_form: Support.empty_role_form(),
+              role_feedback: if(role_id == "", do: "角色已创建", else: "角色已更新")
+            )
+
+          {:noreply, clear_role_selection(socket)}
 
         error ->
           {:noreply, assign(socket, role_feedback: Support.form_error(error))}
@@ -282,7 +284,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.permission_socket?(socket, "system:role:edit") do
       case Role.change_status(role_id, status, current_user_id(socket)) do
         {:ok, _role} ->
-          {:noreply, assign(socket, role_rows: Support.load_roles(), role_feedback: "角色状态已更新")}
+          socket = assign(socket, role_rows: Support.load_roles(), role_feedback: "角色状态已更新")
+          {:noreply, clear_role_selection(socket)}
 
         error ->
           {:noreply, assign(socket, role_feedback: Support.form_error(error))}
@@ -477,15 +480,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
       case operation.(role_id) do
         :ok ->
-          users = Support.load_role_users(role_id, socket.assigns.current_user)
-
           {:noreply,
            assign(socket,
              role_rows: Support.load_roles(),
-             allocated_role_user_rows: users.allocated,
-             unallocated_role_user_rows: users.unallocated,
+             role_feedback: "角色用户已更新",
              role_user_feedback: "角色用户已更新"
-           )}
+           )
+           |> clear_role_selection()}
 
         error ->
           {:noreply, assign(socket, role_user_feedback: Support.form_error(error))}
@@ -498,5 +499,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   defp current_user_id(socket) do
     user = socket.assigns[:current_user] || %{}
     Map.get(user, "userId") || Map.get(user, :user_id)
+  end
+
+  defp clear_role_selection(socket) do
+    assign(socket,
+      selected_role_id: "",
+      selected_role_name: "",
+      allocated_role_user_rows: [],
+      unallocated_role_user_rows: [],
+      role_user_feedback: nil
+    )
   end
 end

@@ -368,11 +368,15 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   def load_role_users(role_id, actor \\ nil) do
-    params = %{"pageSize" => 500}
-
     %{
-      allocated: Role.list_allocated_users(role_id, params, actor).rows,
-      unallocated: Role.list_unallocated_users(role_id, params, actor).rows
+      allocated:
+        Excel.all_rows(fn params ->
+          Role.list_allocated_users(role_id, params, actor)
+        end),
+      unallocated:
+        Excel.all_rows(fn params ->
+          Role.list_unallocated_users(role_id, params, actor)
+        end)
     }
   end
 
