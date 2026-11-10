@@ -84,3 +84,11 @@
 - 细粒度权限由 action permission 控制，日志和配置遵循“拥有对应权限即可访问”的已确认策略。
 - 不在本阶段引入 MySQL ETL、多节点调度或外部缓存服务。
 - 真实浏览器窗口工具和标准 registry 构建恢复后，再完成最终发布验收和版本标签创建。
+
+## 2026-11-10 实施状态
+
+本计划的代码修复已完成并按独立切片提交推送。权限入口已统一为显式 action permission，字典缓存刷新使用 `system:dict:refresh`；配置不可变、字典引用、Excel 表头、角色批量 ID、外链 host 和完整性外键校验已落地。限流容量、批量上传总量、监控脱敏、生产 seeds 保护、数据库 SSL 默认策略和 `FILE_BASE_DIR` 启动可写性检查已完成。任务超时竞态、PostgreSQL/ETS readiness、Docker healthcheck、release smoke、备份恢复、卷重启、非 root、SBOM、provenance 和 Cosign 检查已纳入代码或发布工作流；基础镜像、PostgreSQL 和 GitHub Actions 已固定到 digest/提交 SHA。LiveView 表格无障碍语义、真实分页、角色状态清理、统一按钮禁用反馈和静态资源拆分已完成。
+
+本轮相关提交包括：`c12935d`、`2e5642a`、`2c48bcd`、`6650a8b`、`94bb456` 和 `7bd3990`。验证结果为：默认测试连续 5 次均为 151 项通过、20 项排除；`mix test --include integration` 为 171 项通过；`mix test --cover --include integration` 为 171 项通过、总覆盖率 65.24%；格式检查、源码行数检查、严格编译和 `git diff --check` 均通过。
+
+剩余验收只涉及环境和发布动作：本机 Docker release 构建因 Hex registry TLS CA 环境问题未完成，未通过关闭 TLS 校验绕过；真实浏览器窗口验收和最终 GHCR 构建、签名、版本标签仍需在具备 registry 与浏览器环境后执行。

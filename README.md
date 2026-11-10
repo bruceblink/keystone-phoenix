@@ -65,7 +65,7 @@ layers in the GitHub Actions cache.
 The release reads `DATABASE_URL`, `SECRET_KEY_BASE`, `JWT_PRIVATE_KEY`, and
 `PHX_HOST` at runtime. Use `/health` for liveness and `/health/ready` for
 PostgreSQL readiness; rebuildable cache data is kept in the local ETS store.
-Set `DATABASE_SSL=true` for verified PostgreSQL TLS and optionally set
+Production enables PostgreSQL TLS by default. Set `DATABASE_SSL_ALLOW_INSECURE=true` only for a trusted local test network; optionally set
 `DATABASE_SSL_CA` to a CA bundle path. `POOL_SIZE` and `POOL_COUNT` control
 the PostgreSQL connection pools. `AUTH_SESSION_CLEANUP_INTERVAL_MS` and
 `MONITOR_SNAPSHOT_INTERVAL_MS` control the OTP cleanup and monitoring workers.

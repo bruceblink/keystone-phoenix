@@ -19,7 +19,7 @@ docker build --build-arg IMAGE_REGISTRY= --build-arg HEX_MIRROR=https://repo.hex
   -t keystone-phoenix:0.3.0 .
 ```
 
-准备生产环境文件，至少包含 `DATABASE_URL`、`SECRET_KEY_BASE`、`JWT_PRIVATE_KEY`、`PHX_HOST` 和 `FILE_BASE_DIR`。PostgreSQL 已经可用后，先执行迁移：
+准备生产环境文件，至少包含 `DATABASE_URL`、`SECRET_KEY_BASE`、`JWT_PRIVATE_KEY`、`PHX_HOST` 和 `FILE_BASE_DIR`。生产默认启用数据库 SSL；只有在可信本地网络测试时才显式设置 `DATABASE_SSL_ALLOW_INSECURE=true`。应用启动前会检查 `FILE_BASE_DIR` 可创建、可写和可删除。PostgreSQL 已经可用后，先执行迁移：
 
 ```bash
 docker run --rm \
