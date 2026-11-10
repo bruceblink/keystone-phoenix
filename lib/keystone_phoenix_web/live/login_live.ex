@@ -337,108 +337,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
         <title>Keystone Phoenix</title>
-        <style>
-          :root {
-            color-scheme: light;
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            --ink: #12213d;
-            --muted: #63708a;
-            --line: #d9e0eb;
-            --surface: #ffffff;
-            --surface-soft: #f6f8fc;
-            --canvas: #eef2f7;
-            --navy: #0e2144;
-            --primary: #185ee8;
-            --primary-dark: #0d46b5;
-            --success: #087443;
-            --danger: #b42318;
-            --shadow: 0 18px 48px rgba(14, 33, 68, 0.12);
-          }
-          * { box-sizing: border-box; }
-          body { margin: 0; min-height: 100vh; background: var(--canvas); color: var(--ink); }
-          main { width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: 48px 0; }
-          .shell { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr); gap: 48px; align-items: center; }
-          .brand { padding: 24px 0; }
-          .brand p:first-child { margin: 0 0 16px; color: var(--primary); font-size: 13px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
-          .brand h1 { max-width: 620px; margin: 0 0 18px; font-size: clamp(36px, 5vw, 62px); line-height: 1.08; letter-spacing: -0.045em; }
-          .brand p { max-width: 560px; margin: 0; color: var(--muted); font-size: 17px; line-height: 1.75; }
-          .card { padding: 32px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
-          .card h2 { margin: 0 0 24px; font-size: 24px; letter-spacing: -0.02em; }
-          label { display: block; margin: 16px 0 7px; color: var(--ink); font-size: 14px; font-weight: 700; }
-          input { box-sizing: border-box; width: 100%; min-height: 46px; padding: 11px 13px; border: 1px solid #b9c5d6; border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; transition: border-color 160ms ease, box-shadow 160ms ease; }
-          input::placeholder, textarea::placeholder { color: #8b98ad; }
-          input:focus, select:focus, textarea:focus, button:focus-visible { outline: 3px solid rgba(24, 94, 232, 0.28); outline-offset: 2px; border-color: var(--primary); }
-          button { min-height: 42px; width: 100%; margin-top: 20px; padding: 10px 15px; border: 1px solid transparent; border-radius: 10px; background: var(--primary); color: white; font: inherit; font-weight: 750; cursor: pointer; transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
-          button:hover { background: var(--primary-dark); box-shadow: 0 8px 18px rgba(24, 94, 232, 0.2); }
-          button:active { transform: translateY(1px); }
-          button:disabled, button.phx-submit-loading, button.phx-click-loading { cursor: wait; opacity: 0.68; box-shadow: none; }
-          button.secondary { border-color: #c2ccda; background: var(--surface); color: var(--ink); }
-          button.secondary:hover { background: var(--surface-soft); }
-          .error { display: flex; gap: 8px; align-items: flex-start; margin: 16px 0 0; padding: 11px 13px; border: 1px solid #f1b6b1; border-radius: 10px; background: #fff1f0; color: var(--danger); font-size: 14px; line-height: 1.45; }
-          .user { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
-          .user > div { min-width: 0; overflow-wrap: anywhere; }
-          .user button { width: auto; margin: 0; flex-shrink: 0; }
-          .user strong { display: block; font-size: 18px; }
-          .user span { display: block; margin-top: 4px; color: var(--muted); font-size: 14px; }
-          .dashboard { grid-column: 1 / -1; }
-          .topbar { display: flex; justify-content: space-between; gap: 24px; align-items: center; margin-bottom: 24px; }
-          .topbar > div:first-child p { margin: 0 0 7px; color: var(--primary); font-size: 13px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
-          .topbar h2 { margin: 0; font-size: clamp(28px, 4vw, 38px); letter-spacing: -0.04em; }
-          nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 6px 18px rgba(14, 33, 68, 0.05); }
-          nav button { width: auto; min-height: 38px; margin: 0; padding: 8px 13px; border-color: transparent; background: transparent; color: var(--muted); font-size: 14px; }
-          nav button:hover { background: #edf3ff; color: var(--primary-dark); box-shadow: none; }
-          nav button.active { background: var(--navy); color: white; }
-          nav button.danger { background: #fff1f0; color: var(--danger); }
-          .panel { overflow-x: auto; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 8px 22px rgba(14, 33, 68, 0.05); }
-          .table-scroll { overflow-x: auto; max-width: 100%; margin: 0 0 16px; border: 1px solid var(--line); border-radius: 10px; }
-          .table-scroll:focus-visible { outline: 3px solid rgba(24, 93, 214, 0.35); outline-offset: 2px; }
-          .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-          .table-empty { margin: 8px 0 16px; padding: 12px; border-radius: 10px; background: var(--surface-soft); color: var(--muted); }
-          .panel h3 { margin: 18px 0 10px; }
-          .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin-bottom: 16px; }
-          .form-grid .wide { grid-column: 1 / -1; }
-          .form-grid input, .form-grid select, .form-grid textarea, select, textarea { box-sizing: border-box; width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid #b9c5d6; border-radius: 9px; background: var(--surface); color: var(--ink); font: inherit; transition: border-color 160ms ease, box-shadow 160ms ease; }
-          .form-grid textarea { min-height: 88px; resize: vertical; }
-          .form-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 16px; }
-          .form-actions button, table button { width: auto; min-height: 38px; margin: 0; padding: 8px 12px; }
-          .form-actions button.secondary, table button.secondary { background: var(--surface-soft); }
-          .danger-action { background: #c83d35 !important; }
-          .danger-action:hover { background: #a92d28 !important; }
-          .feedback { margin: 8px 0 14px; padding: 10px 12px; border: 1px solid #a9dfc2; border-radius: 10px; background: #effbf4; color: var(--success); }
-          .table-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-          .monitor-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 0 24px; }
-          .monitor-grid.details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .metric, .details > div { padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); }
-          .metric span, .metric small { display: block; color: var(--muted); }
-          .metric strong { display: block; margin: 8px 0; color: var(--ink); font-size: 24px; }
-          .details h3 { margin-top: 0; }
-          .details p { margin: 8px 0; color: var(--muted); }
-          table { width: 100%; border-collapse: collapse; font-size: 14px; }
-          th, td { padding: 12px 9px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
-          tbody tr:hover { background: #f7faff; }
-          th { color: var(--muted); font-weight: 700; background: var(--surface-soft); }
-          .muted { color: var(--muted); }
-          .refresh { width: auto; margin: 0 0 14px; padding: 8px 12px; }
-          @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
-          }
-          @media (max-width: 720px) {
-            main { width: min(100% - 24px, 620px); padding: 24px 0 40px; }
-            .shell { grid-template-columns: 1fr; gap: 24px; }
-            .brand { padding: 8px 0; }
-            .brand h1 { font-size: 38px; }
-            .brand p { font-size: 16px; }
-            .card, .panel { padding: 20px; border-radius: 14px; }
-            .monitor-grid, .monitor-grid.details { grid-template-columns: 1fr; }
-            .form-grid { grid-template-columns: 1fr; }
-            .form-grid .wide { grid-column: auto; }
-            .topbar { flex-direction: column; align-items: stretch; gap: 16px; }
-            .user { justify-content: space-between; }
-            nav { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: thin; }
-            nav button { flex: 0 0 auto; }
-            .panel { overflow-x: auto; }
-          }
-        </style>
+        <link rel="stylesheet" href="/css/keystone.css" />
       </head>
       <body>
         <main>
@@ -553,14 +452,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
         </main>
         <script src="/assets/phoenix/phoenix.min.js"></script>
         <script src="/assets/phoenix_live_view/phoenix_live_view.min.js"></script>
-        <script>
-          const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-          const liveSocket = new LiveView.LiveSocket("/live", Phoenix.Socket, {
-            params: { _csrf_token: csrfToken }
-          });
-          liveSocket.connect();
-          window.liveSocket = liveSocket;
-        </script>
+        <script src="/js/live_socket.js"></script>
       </body>
     </html>
     """
