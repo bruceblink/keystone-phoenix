@@ -3,8 +3,10 @@ ARG OTP_VERSION=29
 ARG IMAGE_REGISTRY=m.daocloud.io/docker.io/library/
 ARG HEX_MIRROR=https://repo.hex.pm
 ARG HEX_CACERTS_PATH=/etc/ssl/certs/ca-certificates.crt
+ARG ELIXIR_IMAGE_DIGEST=sha256:1b850191faeaae55678b782cd8b34d391f793672f3175b1956d024f794ca321b
+ARG DEBIAN_IMAGE_DIGEST=sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2
 
-FROM ${IMAGE_REGISTRY}elixir:${ELIXIR_VERSION}-otp-${OTP_VERSION} AS build
+FROM ${IMAGE_REGISTRY}elixir:${ELIXIR_VERSION}-otp-${OTP_VERSION}@${ELIXIR_IMAGE_DIGEST} AS build
 
 ARG HEX_MIRROR
 ARG HEX_CACERTS_PATH
@@ -37,7 +39,7 @@ COPY rel rel
 RUN mix compile --warnings-as-errors \
     && mix release
 
-FROM ${IMAGE_REGISTRY}debian:trixie-slim AS runtime
+FROM ${IMAGE_REGISTRY}debian:trixie-slim@${DEBIAN_IMAGE_DIGEST} AS runtime
 
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
