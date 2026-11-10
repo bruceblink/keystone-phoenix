@@ -44,7 +44,7 @@ if config_env() == :prod do
       """
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
-  database_ssl = System.get_env("DATABASE_SSL", "false") in ["true", "1"]
+  database_ssl = System.get_env("DATABASE_SSL", "true") in ["true", "1"]
 
   database_ssl_opts =
     if database_ssl do

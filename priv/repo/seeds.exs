@@ -1,3 +1,7 @@
+if Mix.env() == :prod and System.get_env("ALLOW_PROD_SEEDS") not in ["true", "1"] do
+  raise "production seeds are disabled; set ALLOW_PROD_SEEDS=true only for an explicit bootstrap"
+end
+
 alias KeystonePhoenix.Repo
 
 now = DateTime.utc_now()
