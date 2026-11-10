@@ -96,6 +96,26 @@ defmodule KeystonePhoenix.UploadTest do
     File.rm!(invalid)
   end
 
+  test "rejects batches larger than the aggregate size limit" do
+    paths =
+      Enum.map(1..3, fn index ->
+        path = temporary_file("large-#{index}.txt", "")
+        {:ok, file} = :file.open(path, [:write, :raw])
+        {:ok, _position} = :file.position(file, {:bof, 40 * 1024 * 1024})
+        :ok = :file.truncate(file)
+        :ok = :file.close(file)
+        path
+      end)
+
+    uploads =
+      Enum.map(paths, fn path ->
+        %Plug.Upload{path: path, filename: Path.basename(path), content_type: "text/plain"}
+      end)
+
+    assert {:error, :batch_too_large} = Upload.store_files(uploads)
+    Enum.each(paths, &File.rm!/1)
+  end
+
   defp temporary_file(filename, content) do
     path =
       Path.join(

@@ -2,6 +2,7 @@ defmodule KeystonePhoenix.Upload do
   @moduledoc "Local file storage boundary for profile uploads."
 
   @max_file_size 50 * 1024 * 1024
+  @max_batch_size 100 * 1024 * 1024
   @max_filename_length 127
   @max_batch_entries 20
   @allowed_extensions ~w(bmp gif jpg jpeg png webp)
@@ -37,19 +38,21 @@ defmodule KeystonePhoenix.Upload do
   @spec store_files(list()) :: {:ok, list(map())} | {:error, atom()}
   def store_files(uploads)
       when is_list(uploads) and uploads != [] and length(uploads) <= @max_batch_entries do
-    Enum.reduce_while(uploads, {:ok, []}, fn upload, {:ok, stored} ->
-      case store_file(upload) do
-        {:ok, file} -> {:cont, {:ok, [file | stored]}}
-        {:error, reason} -> {:halt, {:error, reason, stored}}
-      end
-    end)
-    |> case do
-      {:ok, stored} ->
-        {:ok, Enum.reverse(stored)}
+    with :ok <- validate_batch_size(uploads) do
+      Enum.reduce_while(uploads, {:ok, []}, fn upload, {:ok, stored} ->
+        case store_file(upload) do
+          {:ok, file} -> {:cont, {:ok, [file | stored]}}
+          {:error, reason} -> {:halt, {:error, reason, stored}}
+        end
+      end)
+      |> case do
+        {:ok, stored} ->
+          {:ok, Enum.reverse(stored)}
 
-      {:error, reason, stored} ->
-        cleanup_stored_files(stored)
-        {:error, reason}
+        {:error, reason, stored} ->
+          cleanup_stored_files(stored)
+          {:error, reason}
+      end
     end
   end
 
@@ -57,6 +60,32 @@ defmodule KeystonePhoenix.Upload do
     do: {:error, :too_many_files}
 
   def store_files(_uploads), do: {:error, :empty_upload}
+
+  defp validate_batch_size(uploads) do
+    Enum.reduce_while(uploads, 0, fn
+      %Plug.Upload{path: path}, total ->
+        case File.stat(path) do
+          {:ok, %{size: size}} when total + size <= @max_batch_size ->
+            {:cont, total + size}
+
+          {:ok, %{size: _size}} ->
+            {:halt, {:error, :batch_too_large}}
+
+          {:error, reason} when reason in [:enoent, :eacces, :enospc] ->
+            {:halt, {:error, :storage_error}}
+
+          {:error, _reason} ->
+            {:halt, {:error, :invalid_upload}}
+        end
+
+      _upload, _total ->
+        {:halt, {:error, :invalid_upload}}
+    end)
+    |> case do
+      {:error, reason} -> {:error, reason}
+      _total -> :ok
+    end
+  end
 
   @doc "Resolves a generic download resource while preventing path traversal."
   @spec resolve_download_path(String.t()) :: {:ok, String.t()} | {:error, atom()}
