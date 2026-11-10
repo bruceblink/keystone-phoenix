@@ -355,7 +355,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   def load_roles do
-    roles = Role.list_roles(%{"pageSize" => 500}).rows
+    roles = Excel.all_rows(&Role.list_roles/1)
     user_counts = Role.user_counts(Enum.map(roles, & &1["roleId"]))
 
     roles
