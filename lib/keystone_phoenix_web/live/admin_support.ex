@@ -7,6 +7,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Dictionary
+  alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Log
   alias KeystonePhoenix.Menu
@@ -115,10 +116,10 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     |> Map.put("profile", true)
   end
 
-  def load_users, do: User.list_users(%{"pageSize" => 500}).rows
+  def load_users, do: load_all(&User.list_users/1)
 
   def load_users_for_user(user) do
-    User.list_users(%{"pageSize" => 500}, user).rows
+    load_all(fn params -> User.list_users(params, user) end)
   end
 
   def load_users_for_socket(socket) do
@@ -127,17 +128,17 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       else: load_users_for_user(socket.assigns.current_user)
   end
 
-  def load_posts, do: Post.list_posts(%{"pageSize" => 500}).rows
-  def load_configs, do: Config.list_configs(%{"pageSize" => 500}).rows
-  def load_jobs, do: Job.list_jobs(%{"pageSize" => 500}).rows
-  def load_job_logs, do: Job.list_job_logs(%{"pageSize" => 500}).rows
+  def load_posts, do: load_all(&Post.list_posts/1)
+  def load_configs, do: load_all(&Config.list_configs/1)
+  def load_jobs, do: load_all(&Job.list_jobs/1)
+  def load_job_logs, do: load_all(&Job.list_job_logs/1)
 
-  def load_notices, do: Notice.list_notices(%{"pageSize" => 500}).rows
+  def load_notices, do: load_all(&Notice.list_notices/1)
 
   def load_dict_data(""), do: []
 
   def load_dict_data(dict_type),
-    do: Dictionary.list_dict_data(%{"dictType" => dict_type, "pageSize" => 500}).rows
+    do: load_all(&Dictionary.list_dict_data/1, %{"dictType" => dict_type})
 
   def load_dict_data_for_socket(socket, dict_type) do
     if dict_type_allowed?(socket, dict_type), do: load_dict_data(dict_type), else: []
@@ -152,7 +153,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def dict_type_allowed?(_socket, _dict_type), do: false
 
   def load_dictionary(selected) do
-    types = Dictionary.list_dict_types(%{"pageSize" => 500}).rows
+    types = load_all(&Dictionary.list_dict_types/1)
 
     selected =
       if selected != "" and Enum.any?(types, &(&1["dictType"] == selected)),
@@ -164,8 +165,8 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def load_logs do
     %{
-      login_log_rows: Log.list_login_logs(%{"pageSize" => 500}).rows,
-      operation_log_rows: Log.list_operation_logs(%{"pageSize" => 500}).rows
+      login_log_rows: load_all(&Log.list_login_logs/1),
+      operation_log_rows: load_all(&Log.list_operation_logs/1)
     }
   end
 
@@ -183,18 +184,20 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     %{
       login_log_rows:
         if("monitor:logininfor:list" in permissions,
-          do: Log.list_login_logs(%{"pageSize" => 500}).rows,
+          do: load_all(&Log.list_login_logs/1),
           else: []
         ),
       operation_log_rows:
         if("monitor:operlog:list" in permissions,
-          do: Log.list_operation_logs(%{"pageSize" => 500}).rows,
+          do: load_all(&Log.list_operation_logs/1),
           else: []
         )
     }
   end
 
   defp empty_dictionary, do: %{types: [], selected: "", data: []}
+
+  defp load_all(fetcher, params \\ %{}), do: Excel.all_rows(fetcher, params)
 
   def empty_notice_form do
     %{
