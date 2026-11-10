@@ -54,6 +54,12 @@ docker run --rm --network "${network}" "${common_env[@]}" "${image}" eval \
 docker run --rm --network "${network}" "${common_env[@]}" "${image}" eval \
   "KeystonePhoenix.Release.migrate()"
 
+token="$({
+  docker run --rm --network "${network}" "${common_env[@]}" "${image}" eval \
+    'user = %KeystonePhoenix.User.SysUser{} |> KeystonePhoenix.User.SysUser.create_changeset(%{username: "smoke_admin_#{System.unique_integer([:positive])}", password: "Strong!123"}) |> Ecto.Changeset.put_change(:is_admin, true) |> KeystonePhoenix.Repo.insert!(); {:ok, tokens} = KeystonePhoenix.Auth.login_plaintext(user.username, "Strong!123"); IO.puts(tokens.token)'
+} | tail -n 1)"
+[[ "${token}" =~ ^ey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]]
+
 docker run --detach --name "${app}" --network "${network}" \
   --volume "${resources}:/var/lib/keystone/resources" \
   "${common_env[@]}" "${image}" >/dev/null
@@ -69,7 +75,25 @@ done
 [[ "$(docker inspect --format '{{.State.Health.Status}}' "${app}")" == "healthy" ]]
 [[ "$(docker inspect --format '{{.Config.User}}' "${app}")" == "keystone" ]]
 docker exec "${app}" sh -c 'test "$(id -un)" = keystone'
-docker exec "${app}" sh -c 'printf smoke > /var/lib/keystone/resources/.smoke-persistence'
+docker exec "${app}" sh -c 'printf smoke > /tmp/smoke.txt && printf smoke > /var/lib/keystone/resources/.smoke-persistence'
+unauth_upload_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
+  --form file=@/tmp/smoke.txt http://127.0.0.1:4000/file/upload)"
+[[ "${unauth_upload_status}" == "401" ]]
+
+upload_json="$(docker exec "${app}" curl --fail --silent \
+  --header "Authorization: Bearer ${token}" \
+  --form file=@/tmp/smoke.txt http://127.0.0.1:4000/file/upload)"
+upload_url="$(python -c 'import json, sys; print(json.load(sys.stdin)["data"]["url"])' <<<"${upload_json}")"
+[[ "${upload_url}" == /profile/upload/* ]]
+
+unauth_resource_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
+  http://127.0.0.1:4000"${upload_url}")"
+[[ "${unauth_resource_status}" == "401" ]]
+downloaded="$(docker exec "${app}" curl --fail --silent \
+  --header "Authorization: Bearer ${token}" \
+  http://127.0.0.1:4000"${upload_url}")"
+[[ "${downloaded}" == "smoke" ]]
+
 docker exec "${app}" curl --fail --silent http://127.0.0.1:4000/health >/dev/null
 docker exec "${app}" curl --fail --silent http://127.0.0.1:4000/health/ready >/dev/null
 docker exec "${app}" curl --fail --silent http://127.0.0.1:4000/login/rsa-public-key >/dev/null
@@ -85,6 +109,10 @@ done
 
 [[ "$(docker inspect --format '{{.State.Health.Status}}' "${app}")" == "healthy" ]]
 docker exec "${app}" sh -c 'test "$(cat /var/lib/keystone/resources/.smoke-persistence)" = smoke'
-docker exec "${app}" sh -c 'rm /var/lib/keystone/resources/.smoke-persistence'
+downloaded_after_restart="$(docker exec "${app}" curl --fail --silent \
+  --header "Authorization: Bearer ${token}" \
+  http://127.0.0.1:4000"${upload_url}")"
+[[ "${downloaded_after_restart}" == "smoke" ]]
+docker exec "${app}" sh -c 'rm /tmp/smoke.txt /var/lib/keystone/resources/.smoke-persistence'
 
 echo "release smoke passed for ${image}"
