@@ -14,7 +14,7 @@ defmodule KeystonePhoenixWeb.DictionaryController do
       create_data: "system:dict:add",
       update_data: "system:dict:edit",
       delete_data: "system:dict:remove",
-      refresh_cache: "system:dict:remove"
+      refresh_cache: "system:dict:refresh"
     }
 
   alias KeystonePhoenix.Dictionary

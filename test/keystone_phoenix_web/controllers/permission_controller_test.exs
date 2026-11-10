@@ -232,6 +232,23 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   end
 
   @tag :integration
+  test "dictionary cache refresh requires its explicit permission", %{conn: conn} do
+    role = insert_role()
+    insert_menu(role.role_id, "system:dict:remove")
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
+
+    assert json_response(delete(authorized_conn, "/system/dict/cache"), 403)["code"] == 40302
+
+    insert_menu(role.role_id, "system:dict:refresh")
+    {:ok, refreshed} = Auth.login_plaintext(user.username, "Strong!123", true)
+    refreshed_conn = put_req_header(build_conn(), "authorization", "Bearer #{refreshed.token}")
+
+    assert %{"code" => 0} = json_response(delete(refreshed_conn, "/system/dict/cache"), 200)
+  end
+
+  @tag :integration
   test "declared permission tables reject unmapped actions", %{conn: conn} do
     role = insert_role()
     user = insert_user(role.role_id)
