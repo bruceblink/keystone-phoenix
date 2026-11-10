@@ -184,6 +184,8 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       )
 
     assert account_html =~ ~s(phx-click="refresh-users" phx-disable-with="刷新中…")
+    assert account_html =~ ~s(class="table-scroll" role="region" tabindex="0")
+    assert account_html =~ "暂无用户数据"
 
     assert render_component(
              &Accounts.profile/1,
@@ -255,6 +257,15 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
              &System.logs/1,
              Map.take(system_assigns, [:login_log_rows, :operation_log_rows, :log_feedback])
            ) =~ "refresh-logs"
+
+    system_html =
+      render_component(
+        &System.configs/1,
+        Map.take(system_assigns, [:config_rows, :config_form, :config_feedback])
+      )
+
+    assert system_html =~ "数据列表"
+    assert system_html =~ "暂无配置数据"
 
     operations_assigns = %{
       job_rows: [

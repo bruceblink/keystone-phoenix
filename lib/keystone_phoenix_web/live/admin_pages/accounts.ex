@@ -15,6 +15,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       <%= if @user_feedback do %>
         <p class="feedback" role="status"><%= @user_feedback %></p>
       <% end %>
+      <p :if={@user_rows == []} class="table-empty" role="status">暂无用户数据</p>
       <form :if={!@read_only} phx-submit="save-user">
         <input type="hidden" name="userId" value={@user_form["userId"]} />
         <div class="form-grid">
@@ -39,7 +40,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         </div>
         <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="重置中…">重置用户密码</button></div>
       </form>
-      <table>
+      <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption>
         <thead><tr><th>用户名</th><th>昵称</th><th>部门</th><th>角色</th><th>邮箱</th><th>手机号</th><th>状态</th><th>操作</th></tr></thead>
         <tbody>
           <%= for user <- @user_rows do %>
@@ -49,7 +50,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
             </tr>
           <% end %>
         </tbody>
-      </table>
+      </table></div>
     </div>
     """
   end

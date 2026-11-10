@@ -390,6 +390,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
           nav button.active { background: var(--navy); color: white; }
           nav button.danger { background: #fff1f0; color: var(--danger); }
           .panel { overflow-x: auto; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 8px 22px rgba(14, 33, 68, 0.05); }
+          .table-scroll { overflow-x: auto; max-width: 100%; margin: 0 0 16px; border: 1px solid var(--line); border-radius: 10px; }
+          .table-scroll:focus-visible { outline: 3px solid rgba(24, 93, 214, 0.35); outline-offset: 2px; }
+          .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+          .table-empty { margin: 8px 0 16px; padding: 12px; border-radius: 10px; background: var(--surface-soft); color: var(--muted); }
           .panel h3 { margin: 18px 0 10px; }
           .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin-bottom: 16px; }
           .form-grid .wide { grid-column: 1 / -1; }
