@@ -115,10 +115,10 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     |> Map.put("profile", true)
   end
 
-  def load_users, do: User.list_users(%{"pageSize" => 50}).rows
+  def load_users, do: User.list_users(%{"pageSize" => 500}).rows
 
   def load_users_for_user(user) do
-    User.list_users(%{"pageSize" => 50}, user).rows
+    User.list_users(%{"pageSize" => 500}, user).rows
   end
 
   def load_users_for_socket(socket) do
@@ -127,17 +127,17 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       else: load_users_for_user(socket.assigns.current_user)
   end
 
-  def load_posts, do: Post.list_posts(%{"pageSize" => 50}).rows
-  def load_configs, do: Config.list_configs(%{"pageSize" => 50}).rows
-  def load_jobs, do: Job.list_jobs(%{"pageSize" => 50}).rows
-  def load_job_logs, do: Job.list_job_logs(%{"pageSize" => 50}).rows
+  def load_posts, do: Post.list_posts(%{"pageSize" => 500}).rows
+  def load_configs, do: Config.list_configs(%{"pageSize" => 500}).rows
+  def load_jobs, do: Job.list_jobs(%{"pageSize" => 500}).rows
+  def load_job_logs, do: Job.list_job_logs(%{"pageSize" => 500}).rows
 
-  def load_notices, do: Notice.list_notices(%{"pageSize" => 50}).rows
+  def load_notices, do: Notice.list_notices(%{"pageSize" => 500}).rows
 
   def load_dict_data(""), do: []
 
   def load_dict_data(dict_type),
-    do: Dictionary.list_dict_data(%{"dictType" => dict_type, "pageSize" => 100}).rows
+    do: Dictionary.list_dict_data(%{"dictType" => dict_type, "pageSize" => 500}).rows
 
   def load_dict_data_for_socket(socket, dict_type) do
     if dict_type_allowed?(socket, dict_type), do: load_dict_data(dict_type), else: []
@@ -152,7 +152,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def dict_type_allowed?(_socket, _dict_type), do: false
 
   def load_dictionary(selected) do
-    types = Dictionary.list_dict_types(%{"pageSize" => 50}).rows
+    types = Dictionary.list_dict_types(%{"pageSize" => 500}).rows
 
     selected =
       if selected != "" and Enum.any?(types, &(&1["dictType"] == selected)),
@@ -164,8 +164,8 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def load_logs do
     %{
-      login_log_rows: Log.list_login_logs(%{"pageSize" => 50}).rows,
-      operation_log_rows: Log.list_operation_logs(%{"pageSize" => 50}).rows
+      login_log_rows: Log.list_login_logs(%{"pageSize" => 500}).rows,
+      operation_log_rows: Log.list_operation_logs(%{"pageSize" => 500}).rows
     }
   end
 
@@ -183,12 +183,12 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     %{
       login_log_rows:
         if("monitor:logininfor:list" in permissions,
-          do: Log.list_login_logs(%{"pageSize" => 50}).rows,
+          do: Log.list_login_logs(%{"pageSize" => 500}).rows,
           else: []
         ),
       operation_log_rows:
         if("monitor:operlog:list" in permissions,
-          do: Log.list_operation_logs(%{"pageSize" => 50}).rows,
+          do: Log.list_operation_logs(%{"pageSize" => 500}).rows,
           else: []
         )
     }
@@ -344,7 +344,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   def load_roles do
-    roles = Role.list_roles(%{"pageSize" => 50}).rows
+    roles = Role.list_roles(%{"pageSize" => 500}).rows
     user_counts = Role.user_counts(Enum.map(roles, & &1["roleId"]))
 
     roles
@@ -357,7 +357,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   def load_role_users(role_id, actor \\ nil) do
-    params = %{"pageSize" => 50}
+    params = %{"pageSize" => 500}
 
     %{
       allocated: Role.list_allocated_users(role_id, params, actor).rows,
