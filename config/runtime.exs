@@ -20,8 +20,20 @@ if System.get_env("PHX_SERVER") do
   config :keystone_phoenix, KeystonePhoenixWeb.Endpoint, server: true
 end
 
+parse_integer_env = fn name, default, min, max ->
+  raw = System.get_env(name, Integer.to_string(default))
+
+  case Integer.parse(raw) do
+    {value, ""} when value >= min and value <= max ->
+      value
+
+    _ ->
+      raise "environment variable #{name} must be an integer in #{min}..#{max}"
+  end
+end
+
 config :keystone_phoenix, KeystonePhoenixWeb.Endpoint,
-  http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+  http: [port: parse_integer_env.("PORT", 4000, 1, 65_535)]
 
 if config_env() == :prod do
   database_url =
@@ -51,23 +63,23 @@ if config_env() == :prod do
     ssl: database_ssl,
     ssl_opts: database_ssl_opts,
     url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    pool_count: String.to_integer(System.get_env("POOL_COUNT") || "1"),
+    pool_size: parse_integer_env.("POOL_SIZE", 10, 1, 1_000),
+    pool_count: parse_integer_env.("POOL_COUNT", 1, 1, 100),
     socket_options: maybe_ipv6
 
   config :keystone_phoenix,
     captcha_type: System.get_env("CAPTCHA_TYPE", "math"),
     job_scheduler_enabled: System.get_env("JOB_SCHEDULER_ENABLED", "true") in ["true", "1"],
     job_scheduler_interval_ms:
-      String.to_integer(System.get_env("JOB_SCHEDULER_INTERVAL_MS", "1000")),
-    job_task_max_children: String.to_integer(System.get_env("JOB_TASK_MAX_CHILDREN", "64")),
+      parse_integer_env.("JOB_SCHEDULER_INTERVAL_MS", 1_000, 250, 86_400_000),
+    job_task_max_children: parse_integer_env.("JOB_TASK_MAX_CHILDREN", 64, 1, 10_000),
     job_execution_timeout_ms:
-      String.to_integer(System.get_env("JOB_EXECUTION_TIMEOUT_MS", "30000")),
+      parse_integer_env.("JOB_EXECUTION_TIMEOUT_MS", 30_000, 250, 86_400_000),
     auth_session_cleanup_interval_ms:
-      String.to_integer(System.get_env("AUTH_SESSION_CLEANUP_INTERVAL_MS", "60000")),
+      parse_integer_env.("AUTH_SESSION_CLEANUP_INTERVAL_MS", 60_000, 250, 86_400_000),
     monitor_snapshot_interval_ms:
-      String.to_integer(System.get_env("MONITOR_SNAPSHOT_INTERVAL_MS", "1000")),
-    telemetry_period_ms: String.to_integer(System.get_env("TELEMETRY_PERIOD_MS", "10000"))
+      parse_integer_env.("MONITOR_SNAPSHOT_INTERVAL_MS", 1_000, 250, 86_400_000),
+    telemetry_period_ms: parse_integer_env.("TELEMETRY_PERIOD_MS", 10_000, 250, 86_400_000)
 
   config :keystone_phoenix,
     file_base_dir: System.get_env("FILE_BASE_DIR", "/var/lib/keystone/resources")
