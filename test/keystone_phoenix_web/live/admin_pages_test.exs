@@ -132,6 +132,40 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     refute html =~ "save-dept"
   end
 
+  test "high-volume account lists render accessible pagination controls" do
+    rows =
+      Enum.map(1..51, fn id ->
+        %{
+          "userId" => id,
+          "username" => "user_#{id}",
+          "nickname" => "用户 #{id}",
+          "status" => 1
+        }
+      end)
+
+    assigns = %{
+      user_rows: rows,
+      user_form: %{"userId" => ""},
+      user_feedback: nil,
+      dept_rows: [],
+      post_rows: [],
+      role_rows: [],
+      read_only: true,
+      page_num: 1,
+      page_size: 50
+    }
+
+    html = render_component(&Accounts.users/1, assigns)
+
+    assert html =~ ~s(phx-click="paginate" phx-value-panel="users")
+    assert html =~ "第 1 / 2 页，共 51 条"
+    assert html =~ "user_1"
+    refute html =~ "user_51"
+
+    second_page = render_component(&Accounts.users/1, %{assigns | page_num: 2})
+    assert second_page =~ "user_51"
+  end
+
   test "account, system, and operations panels render without a dashboard process" do
     account_assigns = %{
       user_rows: [],
