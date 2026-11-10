@@ -8,6 +8,7 @@ defmodule KeystonePhoenix.User do
   import Ecto.Query
 
   alias KeystonePhoenix.Audit
+  alias KeystonePhoenix.Params
   alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Post
@@ -64,9 +65,15 @@ defmodule KeystonePhoenix.User do
 
   @spec get_user(integer() | String.t()) :: {:ok, SysUser.t()} | {:error, :not_found}
   def get_user(id) do
-    case Repo.get_by(SysUser, user_id: id, deleted: false) do
-      nil -> {:error, :not_found}
-      user -> {:ok, user}
+    case Params.parse_positive_integer(id) do
+      {:ok, id} ->
+        case Repo.get_by(SysUser, user_id: id, deleted: false) do
+          nil -> {:error, :not_found}
+          user -> {:ok, user}
+        end
+
+      :error ->
+        {:error, :not_found}
     end
   end
 

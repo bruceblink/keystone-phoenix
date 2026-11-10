@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Job do
 
   alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Job.{Invoke, Runner, SysJob, SysJobLog}
+  alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
 
   @job_attrs [
@@ -29,9 +30,15 @@ defmodule KeystonePhoenix.Job do
 
   @doc "Returns one task definition."
   def get_job(id) do
-    case Repo.get(SysJob, id) do
-      nil -> {:error, :not_found}
-      job -> {:ok, job}
+    case Params.parse_positive_integer(id) do
+      {:ok, id} ->
+        case Repo.get(SysJob, id) do
+          nil -> {:error, :not_found}
+          job -> {:ok, job}
+        end
+
+      :error ->
+        {:error, :not_found}
     end
   end
 

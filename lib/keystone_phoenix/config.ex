@@ -8,6 +8,7 @@ defmodule KeystonePhoenix.Config do
   alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Config.SysConfig
+  alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
 
   @default_page 1
@@ -43,9 +44,15 @@ defmodule KeystonePhoenix.Config do
 
   @spec get_config(integer() | String.t()) :: {:ok, SysConfig.t()} | {:error, :not_found}
   def get_config(id) do
-    case Repo.get_by(SysConfig, config_id: id, deleted: false) do
-      nil -> {:error, :not_found}
-      config -> {:ok, config}
+    case Params.parse_positive_integer(id) do
+      {:ok, id} ->
+        case Repo.get_by(SysConfig, config_id: id, deleted: false) do
+          nil -> {:error, :not_found}
+          config -> {:ok, config}
+        end
+
+      :error ->
+        {:error, :not_found}
     end
   end
 

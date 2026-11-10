@@ -41,9 +41,15 @@ defmodule KeystonePhoenix.Menu do
   end
 
   def get_menu(id) do
-    case Repo.get_by(SysMenu, menu_id: id, deleted: false) do
-      nil -> {:error, :not_found}
-      menu -> {:ok, menu}
+    case Params.parse_positive_integer(id) do
+      {:ok, id} ->
+        case Repo.get_by(SysMenu, menu_id: id, deleted: false) do
+          nil -> {:error, :not_found}
+          menu -> {:ok, menu}
+        end
+
+      :error ->
+        {:error, :not_found}
     end
   end
 

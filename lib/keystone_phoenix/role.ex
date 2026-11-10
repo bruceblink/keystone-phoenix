@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Role do
   import Ecto.Query
 
   alias KeystonePhoenix.Audit
+  alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Menu.SysMenu
@@ -39,9 +40,15 @@ defmodule KeystonePhoenix.Role do
   end
 
   def get_role(id) do
-    case Repo.get_by(SysRole, role_id: id, deleted: false) do
-      nil -> {:error, :not_found}
-      role -> {:ok, role}
+    case Params.parse_positive_integer(id) do
+      {:ok, id} ->
+        case Repo.get_by(SysRole, role_id: id, deleted: false) do
+          nil -> {:error, :not_found}
+          role -> {:ok, role}
+        end
+
+      :error ->
+        {:error, :not_found}
     end
   end
 

@@ -37,9 +37,15 @@ defmodule KeystonePhoenix.Department do
   end
 
   def get_dept(id) do
-    case Repo.get_by(SysDept, dept_id: id, deleted: false) do
-      nil -> {:error, :not_found}
-      dept -> {:ok, dept}
+    case Params.parse_positive_integer(id) do
+      {:ok, id} ->
+        case Repo.get_by(SysDept, dept_id: id, deleted: false) do
+          nil -> {:error, :not_found}
+          dept -> {:ok, dept}
+        end
+
+      :error ->
+        {:error, :not_found}
     end
   end
 

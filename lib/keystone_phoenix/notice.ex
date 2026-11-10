@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Notice do
 
   alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Notice.SysNotice
+  alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.User
 
@@ -35,9 +36,15 @@ defmodule KeystonePhoenix.Notice do
   end
 
   def get_notice(id) do
-    case Repo.get_by(SysNotice, notice_id: id, deleted: false) do
-      nil -> {:error, :not_found}
-      notice -> {:ok, notice}
+    case Params.parse_positive_integer(id) do
+      {:ok, id} ->
+        case Repo.get_by(SysNotice, notice_id: id, deleted: false) do
+          nil -> {:error, :not_found}
+          notice -> {:ok, notice}
+        end
+
+      :error ->
+        {:error, :not_found}
     end
   end
 
