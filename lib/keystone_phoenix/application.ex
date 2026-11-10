@@ -7,6 +7,8 @@ defmodule KeystonePhoenix.Application do
 
   @impl true
   def start(_type, _args) do
+    ensure_file_base_dir!()
+
     children =
       [
         KeystonePhoenixWeb.Telemetry,
@@ -40,6 +42,30 @@ defmodule KeystonePhoenix.Application do
       KeystonePhoenix.Job.Scheduler
     else
       []
+    end
+  end
+
+  defp ensure_file_base_dir! do
+    directory =
+      Application.get_env(:keystone_phoenix, :file_base_dir, "uploads")
+      |> Path.expand()
+
+    probe = Path.join(directory, ".keystone-startup-write-probe-#{System.unique_integer()}")
+
+    result =
+      with :ok <- File.mkdir_p(directory),
+           :ok <- File.write(probe, "ok", [:exclusive]),
+           :ok <- File.rm(probe) do
+        :ok
+      end
+
+    case result do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        _ = File.rm(probe)
+        raise "FILE_BASE_DIR=#{directory} is not writable (#{inspect(reason)})"
     end
   end
 

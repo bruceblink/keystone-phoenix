@@ -11,6 +11,7 @@ resources="keystone-smoke-resources-${suffix}"
 dump_file="$(mktemp)"
 database="keystone_phoenix_smoke"
 database_url="ecto://postgres:postgres@${postgres}/${database}"
+postgres_image="postgres:18@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42"
 
 cleanup() {
   docker rm -f "${app}" "${postgres}" >/dev/null 2>&1 || true
@@ -27,7 +28,7 @@ docker run --detach --name "${postgres}" --network "${network}" \
   --env POSTGRES_USER=postgres \
   --env POSTGRES_PASSWORD=postgres \
   --env POSTGRES_DB="${database}" \
-  postgres:18 >/dev/null
+  "${postgres_image}" >/dev/null
 
 for _attempt in $(seq 1 60); do
   if docker exec "${postgres}" pg_isready -U postgres -d "${database}" >/dev/null 2>&1; then
