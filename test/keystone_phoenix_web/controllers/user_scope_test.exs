@@ -48,7 +48,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     outside_rows =
       for _ <- 1..60 do
         %{
-          username: unique("outside"),
+          username: unique("scope_user"),
           nickname: "范围外测试用户",
           password: password_hash,
           dept_id: outside.dept_id,
@@ -93,11 +93,13 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         )
       )
 
-      result = User.list_users(%{"pageSize" => 500}, ctx.actor)
+      result = User.list_users(%{"pageSize" => 500, "username" => "scope_user"}, ctx.actor)
       assert result.total == length(expected_ids)
       assert MapSet.new(Enum.map(result.rows, & &1["userId"])) == MapSet.new(expected_ids)
 
-      page = User.list_users(%{"pageSize" => 1, "pageNum" => 2}, ctx.actor)
+      page =
+        User.list_users(%{"pageSize" => 1, "pageNum" => 2, "username" => "scope_user"}, ctx.actor)
+
       assert page.total == length(expected_ids)
       assert length(page.rows) == min(max(length(expected_ids) - 1, 0), 1)
     end
@@ -260,7 +262,12 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     Repo.update!(Ecto.Changeset.change(ctx.role, status: 0))
     assert User.list_users(%{}, ctx.actor).total == 0
     assert User.list_users(%{}, %{ctx.actor | role_id: nil}).total == 0
-    assert User.list_users(%{"pageSize" => 500}, %{ctx.actor | is_admin: true}).total == 63
+
+    assert User.list_users(%{"pageSize" => 500, "username" => "scope_user"}, %{
+             ctx.actor
+             | is_admin: true
+           }).total == 63
+
     refute Permission.user_update_allowed?(ctx.actor, ctx.oldest.user_id, %{})
   end
 
