@@ -59,5 +59,29 @@ defmodule KeystonePhoenix.UserContractTest do
     assert profile["postName"] == "合同岗位"
   end
 
+  test "normalizes empty relation identifiers and ignores invalid integer filters" do
+    assert {:ok, user} =
+             User.create_user(%{
+               "username" => unique("normalized_user"),
+               "password" => "Strong!123",
+               "nickname" => "参数用户",
+               "deptId" => "0",
+               "postId" => "",
+               "roleId" => "0",
+               "status" => "1"
+             })
+
+    assert is_nil(user.dept_id)
+    assert is_nil(user.post_id)
+    assert is_nil(user.role_id)
+
+    assert %{rows: [row], total: 1} = User.list_users(%{"userId" => to_string(user.user_id)})
+    assert row["userId"] == user.user_id
+
+    assert %{rows: [_row], total: 1} = User.list_users(%{"userId" => "invalid"})
+    assert {:error, :not_found} = User.get_user("0")
+    assert {:error, :not_found} = User.reset_password("invalid", %{"password" => "Strong!123"})
+  end
+
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 end

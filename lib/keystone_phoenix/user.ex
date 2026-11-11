@@ -171,7 +171,7 @@ defmodule KeystonePhoenix.User do
   def reset_password(id, attrs, actor_id \\ nil)
 
   def reset_password(id, attrs, actor_id) when is_map(attrs) do
-    with {:ok, user_id} <- parse_user_id(id) do
+    with {:ok, user_id} <- Params.parse_positive_integer(id) do
       Session.update_account_and_revoke(user_id, fn ->
         with {:ok, user} <- get_user(user_id) do
           user
@@ -248,7 +248,7 @@ defmodule KeystonePhoenix.User do
   def update_password(id, attrs, actor_id \\ nil)
 
   def update_password(id, attrs, actor_id) when is_map(attrs) do
-    with {:ok, user_id} <- parse_user_id(id),
+    with {:ok, user_id} <- Params.parse_positive_integer(id),
          {:ok, old_password, new_password} <- password_inputs(attrs) do
       Session.update_account_and_revoke(user_id, fn ->
         with {:ok, user} <- get_user(user_id),
@@ -409,11 +409,11 @@ defmodule KeystonePhoenix.User do
   defp normalize_relation_value(field, value) when field in [:dept_id, :post_id, :role_id] do
     case value do
       value when is_binary(value) ->
-        case Integer.parse(String.trim(value)) do
-          {id, ""} when id > 0 -> id
-          {0, ""} -> nil
-          {_, ""} -> value
-          _ -> if String.trim(value) == "", do: nil, else: value
+        case Params.parse_integer(value) do
+          {:ok, id} when id > 0 -> id
+          {:ok, 0} -> nil
+          {:ok, _id} -> value
+          :error -> if String.trim(value) == "", do: nil, else: value
         end
 
       value ->
@@ -423,27 +423,12 @@ defmodule KeystonePhoenix.User do
 
   defp normalize_relation_value(_field, value), do: value
 
-  defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
-
-  defp parse_positive_integer(value) when is_binary(value) do
-    case Integer.parse(String.trim(value)) do
-      {integer, ""} when integer > 0 -> integer
-      _ -> nil
+  defp parse_positive_integer(value) do
+    case Params.parse_positive_integer(value) do
+      {:ok, integer} -> integer
+      :error -> nil
     end
   end
-
-  defp parse_positive_integer(_value), do: nil
-
-  defp parse_user_id(value) when is_integer(value) and value > 0, do: {:ok, value}
-
-  defp parse_user_id(value) when is_binary(value) do
-    case Integer.parse(String.trim(value)) do
-      {user_id, ""} when user_id > 0 -> {:ok, user_id}
-      _ -> :error
-    end
-  end
-
-  defp parse_user_id(_value), do: :error
 
   defp invalid_changeset(schema, field) do
     Ecto.Changeset.add_error(Ecto.Changeset.change(schema), field, "参数无效")
@@ -493,9 +478,15 @@ defmodule KeystonePhoenix.User do
   defp filter_integer(query, _field, ""), do: query
 
   defp filter_integer(query, field, value) do
-    case Integer.parse(to_string(value)) do
-      {integer, ""} -> where(query, [record], field(record, ^field) == ^integer)
-      _ -> query
+    value = to_string(value)
+
+    if value == String.trim(value) do
+      case Params.parse_integer(value) do
+        {:ok, integer} -> where(query, [record], field(record, ^field) == ^integer)
+        _ -> query
+      end
+    else
+      query
     end
   end
 

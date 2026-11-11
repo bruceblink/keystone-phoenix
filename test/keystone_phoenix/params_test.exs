@@ -10,6 +10,14 @@ defmodule KeystonePhoenix.ParamsTest do
     assert :error = Params.parse_integer(nil)
   end
 
+  test "parses positive integer identifiers" do
+    assert {:ok, 12} = Params.parse_positive_integer(" 12 ")
+    assert {:ok, 12} = Params.parse_positive_integer(12)
+    assert :error = Params.parse_positive_integer("0")
+    assert :error = Params.parse_positive_integer("-1")
+    assert :error = Params.parse_positive_integer("invalid")
+  end
+
   test "parses optional non-negative parent IDs" do
     assert {:ok, 0} = Params.non_negative_integer(nil)
     assert {:ok, 3} = Params.non_negative_integer("3")
