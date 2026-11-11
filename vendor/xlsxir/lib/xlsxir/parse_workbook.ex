@@ -1,0 +1,47 @@
+defmodule Xlsxir.ParseWorkbook do
+  @moduledoc """
+  Holds the SAX event instructions for parsing style data via `Xlsxir.SaxParser.parse/2`
+  """
+
+  @doc """
+  sheets has multiple sheet map which consists of name and sheet_id.
+
+  Relationship IDs are ignored. The former `rid` key has been removed from
+  sheet maps; callers inspecting parser state must stop accessing that key.
+  `sheet_id` is workbook metadata, not a replacement relationship identifier.
+  """
+  defstruct sheets: [], tid: nil
+
+  def sax_event_handler(:startDocument, _state) do
+    %__MODULE__{tid: GenServer.call(Xlsxir.StateManager, :new_table)}
+  end
+
+  def sax_event_handler({:startElement, _, ~c"sheet", _, xml_attrs}, %__MODULE__{} = state) do
+    sheet =
+      Enum.reduce(xml_attrs, %{name: nil, sheet_id: nil}, fn attr, sheet ->
+        case attr do
+          {:attribute, ~c"name", _, _, name} ->
+            %{sheet | name: name |> to_string}
+
+          {:attribute, ~c"sheetId", _, _, sheet_id} ->
+            {sheet_id, _} = sheet_id |> to_string |> Integer.parse()
+            %{sheet | sheet_id: sheet_id}
+
+          _ ->
+            sheet
+        end
+      end)
+
+    %__MODULE__{state | sheets: [sheet | state.sheets]}
+  end
+
+  def sax_event_handler(:endDocument, %__MODULE__{tid: tid} = state) do
+    Enum.map(state.sheets, fn %{sheet_id: sheet_id, name: name} ->
+      :ets.insert(tid, {sheet_id, name})
+    end)
+
+    state
+  end
+
+  def sax_event_handler(_, state), do: state
+end
