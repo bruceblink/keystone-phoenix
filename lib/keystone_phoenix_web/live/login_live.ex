@@ -12,6 +12,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Auth.LoginLimiter
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Log
+  alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.LoginState
@@ -357,23 +358,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
   defp assign_profile(socket), do: AdminSupport.assign_profile(socket)
   defp admin_socket?(socket), do: AdminSupport.admin_socket?(socket)
 
-  # 将内部面板标识映射为面向管理员的正式页面标题。
-  defp panel_title("overview"), do: "平台概览"
-  defp panel_title("depts"), do: "部门管理"
-  defp panel_title("posts"), do: "岗位管理"
-  defp panel_title("roles"), do: "角色管理"
-  defp panel_title("menus"), do: "菜单管理"
-  defp panel_title("users"), do: "用户管理"
-  defp panel_title("configs"), do: "配置管理"
-  defp panel_title("dicts"), do: "字典管理"
-  defp panel_title("notices"), do: "公告管理"
-  defp panel_title("logs"), do: "日志审计"
-  defp panel_title("jobs"), do: "定时任务"
-  defp panel_title("job-logs"), do: "任务日志"
-  defp panel_title("monitor"), do: "运行监控"
-  defp panel_title("profile"), do: "个人资料"
-  defp panel_title(_panel), do: "管理模块"
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -438,7 +422,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <div class="page-context">
                       <div>
                         <p class="eyebrow">管理模块</p>
-                        <h3><%= panel_title(@active_panel) %></h3>
+                        <h3><%= Navigation.panel_title(@active_panel) %></h3>
                       </div>
                       <span class="access-chip"><%= if @read_only, do: "只读模式", else: "管理员模式" %></span>
                     </div>
