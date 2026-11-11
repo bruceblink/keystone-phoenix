@@ -1,6 +1,6 @@
 # Keystone Phoenix 开发计划
 
-更新日期：2026-11-12。当前代码基线为 `10b1558`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
+更新日期：2026-11-12。当前代码基线为 `d3d7c84`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
 
 ## 目标与范围
 
@@ -246,6 +246,8 @@
 
 2026-11-12 前端状态映射维护切片：`10b1558` 新增共享状态徽标映射模块，统一普通记录、日志、任务日志和网络状态的 CSS 类选择。状态字段、显示文字、事件、权限和页面布局保持不变。映射回归测试与管理页面定向测试共 6 项通过，相关源文件均不超过 600 行。真实生产窗口验收仍待环境恢复。
 
+2026-11-12 前端表头语义切片：`d3d7c84` 为用户、组织、任务、系统和日志表格的所有列标题补充 `scope="col"`。表格字段、区域标签、分页、事件、权限和布局保持不变。管理页面定向测试 5 项通过，相关源文件均不超过 600 行。真实生产窗口验收仍待环境恢复。
+
 ### 09：可维护性和可选优化（P3）
 
 在前述问题关闭后，再抽取已经重复使用的参数解析、分页和字段映射，拆分接近 600 行的模块。为现有 Telemetry 指标接入报告组件、数据库连接池指标和告警。按真实迁移需求决定 MySQL 数据导入工具；多节点方案需要单独评估调度重复执行、验证码、缓存失效和限流共享，不在单节点修复中提前实现。
@@ -302,9 +304,9 @@ mix test --include integration
 
 ### 2026-11-12 当前基线
 
-当前主线代码为 `10b1558`，`main` 与 `origin/main` 已同步；远端 `work` 为当前 `main` 的祖先，执行 `git merge --ff-only origin/work` 无需更新。`8bab43e` 修正了新外键约束下开发种子用户的无角色值；`4b8310a` 将登录入口、管理壳和概览统计改为正式产品文案与现代化视觉层，保留既有 LiveView 事件、字段和权限约定。`a284c99` 修复了受代理 CA 影响的 Docker/Hex 构建、加入构建与运行时 `libsctp1`，并修正 release smoke 的数据库恢复和 release eval 初始化；`c17c436` 让应用、开发环境和测试告警使用完整日期时间戳；`1436447` 升级 `erlef/setup-beam` 到支持 GitHub `ubuntu26` runner 的 `v1.24.1`；`6435fac` 完成手动任务资源耗尽错误边界；`dc8f872` 将 Telemetry 活跃会话指标改为数据库 `COUNT(*)`，避免周期性加载全部会话行；`5e50608` 抽取任务和日志列表的共享分页实现；`deaed69` 让配置和字典列表复用同一分页实现；`a054f1f` 让角色和岗位列表复用共享分页实现；`fc5dad8` 让公告和用户列表复用共享分页实现；`7417e35` 让监控在线会话复用内存列表分页实现；`d25a9d4` 将数据库连接池容量和等待队列纳入周期性 Telemetry 指标，并从 Repo 注册表读取实际连接池模块；`da81c15` 在等待队列达到 `REPO_POOL_QUEUE_ALERT_THRESHOLD` 时发出结构化告警事件；`33c25b8` 增加可选的 ConsoleReporter 报告组件；`620d596` 增加发布烟测的 HTTP 认证生命周期检查；`958dfb7` 增加定时任务和任务日志状态徽标；`117eaa9` 修复预期调度任务终止的 warning；`3621ab8` 复用用户参数解析；`c0b1803` 细化表格行操作按钮层级；`8e5a452` 统一管理列表状态徽标；`5588eab` 统一监控网络状态徽标；`e444ad2` 细化管理表格可访问语义；`10b1558` 集中管理状态徽标映射。
+当前主线代码为 `d3d7c84`，`main` 与 `origin/main` 已同步；远端 `work` 为当前 `main` 的祖先，执行 `git merge --ff-only origin/work` 无需更新。`8bab43e` 修正了新外键约束下开发种子用户的无角色值；`4b8310a` 将登录入口、管理壳和概览统计改为正式产品文案与现代化视觉层，保留既有 LiveView 事件、字段和权限约定。`a284c99` 修复了受代理 CA 影响的 Docker/Hex 构建、加入构建与运行时 `libsctp1`，并修正 release smoke 的数据库恢复和 release eval 初始化；`c17c436` 让应用、开发环境和测试告警使用完整日期时间戳；`1436447` 升级 `erlef/setup-beam` 到支持 GitHub `ubuntu26` runner 的 `v1.24.1`；`6435fac` 完成手动任务资源耗尽错误边界；`dc8f872` 将 Telemetry 活跃会话指标改为数据库 `COUNT(*)`，避免周期性加载全部会话行；`5e50608` 抽取任务和日志列表的共享分页实现；`deaed69` 让配置和字典列表复用同一分页实现；`a054f1f` 让角色和岗位列表复用共享分页实现；`fc5dad8` 让公告和用户列表复用共享分页实现；`7417e35` 让监控在线会话复用内存列表分页实现；`d25a9d4` 将数据库连接池容量和等待队列纳入周期性 Telemetry 指标，并从 Repo 注册表读取实际连接池模块；`da81c15` 在等待队列达到 `REPO_POOL_QUEUE_ALERT_THRESHOLD` 时发出结构化告警事件；`33c25b8` 增加可选的 ConsoleReporter 报告组件；`620d596` 增加发布烟测的 HTTP 认证生命周期检查；`958dfb7` 增加定时任务和任务日志状态徽标；`117eaa9` 修复预期调度任务终止的 warning；`3621ab8` 复用用户参数解析；`c0b1803` 细化表格行操作按钮层级；`8e5a452` 统一管理列表状态徽标；`5588eab` 统一监控网络状态徽标；`e444ad2` 细化管理表格可访问语义；`10b1558` 集中管理状态徽标映射；`d3d7c84` 补充表头列语义。
 
-当前本机验证已完成：用户级 Elixir `1.20.5`、Erlang/OTP `29`、Mix、Hex 和 Rebar 可用；默认测试为 160 项通过、20 项排除，集成测试为 180 项通过；格式、源码行数、严格编译、`bash -n` 和 `git diff --check` 均通过。此前使用 BuildKit secret `proxy_ca` 的本地生产镜像摘要 `sha256:4a62aec5ecaed0028b16b1303ee51d8683a810c2cb4c8d824fcfc89aa9bcc589` 保留作历史构建记录；当前源代码镜像摘要为 `sha256:eb95d1120632645d4bf77cb74f5e205854f01ccea3a9d10799d86ede86ea14a4`，运行用户为 `keystone`，构建没有产生 warning，且已通过 `scripts/release_smoke.sh keystone-phoenix:0.3.0`。Docker 构建保持 TLS 证书校验，代理 CA secret 不进入运行时镜像。
+当前本机验证已完成：用户级 Elixir `1.20.5`、Erlang/OTP `29`、Mix、Hex 和 Rebar 可用；默认测试为 160 项通过、20 项排除，集成测试为 180 项通过；格式、源码行数、严格编译、`bash -n` 和 `git diff --check` 均通过。此前使用 BuildKit secret `proxy_ca` 的本地生产镜像摘要 `sha256:4a62aec5ecaed0028b16b1303ee51d8683a810c2cb4c8d824fcfc89aa9bcc589` 保留作历史构建记录；当前源代码镜像摘要为 `sha256:a45c48b05bc04853f12dabdcbe832615bdae907899bfb14a4ad152648f235056`，运行用户为 `keystone`，构建没有产生 warning，且已通过 `scripts/release_smoke.sh keystone-phoenix:0.3.0`。Docker 构建保持 TLS 证书校验，代理 CA secret 不进入运行时镜像。
 
 GitHub Test 工作流运行 `42962608929` 已在 `1436447` 上通过。发布工作流运行 `42962608932` 已完成并通过；该记录属于较早发布验证，不能作为当前 `958dfb7` 镜像的发布证据。当前镜像上的本地 release smoke 已补充 HTTP 认证生命周期检查并通过。真实生产浏览器窗口验收仍需具备对应窗口环境后执行；在此之前不创建版本标签。
 
@@ -363,7 +365,7 @@ GitHub Test 工作流运行 `42962608929` 已在 `1436447` 上通过。发布工
 
 提交 `d25a9d4` 增加 `keystone_phoenix.repo.pool.ready_connections`、`checkout_queue_length`、`pool_size` 和 `pool_count` 指标。提交 `da81c15` 增加 `keystone_phoenix.repo.pool.alert.count` 和 `REPO_POOL_QUEUE_ALERT_THRESHOLD`。提交 `33c25b8` 增加可选的 `Telemetry.Metrics.ConsoleReporter`，通过 `TELEMETRY_CONSOLE_REPORTER=true` 启用。采集器从 `Ecto.Repo.Registry` 读取实际连接池模块，兼容普通连接池、`DBConnection.Ownership` 和分区连接池；连接池进程退出或仓库未就绪时输出零值，不影响请求处理。等待队列达到阈值时发送结构化告警事件，供报告组件订阅。
 
-验证结果：Telemetry 定向测试 4 项通过；调度器定向测试 3 项通过；参数与用户定向测试 10 项通过；LiveView 定向测试 19 项通过；网络状态组件测试 5 项通过；管理页面表格语义测试 5 项通过；状态映射测试 1 项通过；默认全量测试 160 项通过、20 项排除；集成全量测试 180 项通过；dev/prod 严格编译、格式、源码行数和 `git diff --check` 均通过。当前源代码镜像摘要为 `sha256:eb95d1120632645d4bf77cb74f5e205854f01ccea3a9d10799d86ede86ea14a4`，运行用户为 `keystone`，构建没有产生 warning；`scripts/release_smoke.sh keystone-phoenix:0.3.0` 已通过迁移、重复迁移、备份恢复、非 root、数据库故障恢复、认证文件上传下载、HTTP 认证生命周期和卷重启检查。
+验证结果：Telemetry 定向测试 4 项通过；调度器定向测试 3 项通过；参数与用户定向测试 10 项通过；LiveView 定向测试 19 项通过；网络状态组件测试 5 项通过；管理页面表格语义测试 5 项通过；状态映射测试 1 项通过；表头语义测试包含在管理页面定向测试中；默认全量测试 160 项通过、20 项排除；集成全量测试 180 项通过；dev/prod 严格编译、格式、源码行数和 `git diff --check` 均通过。当前源代码镜像摘要为 `sha256:a45c48b05bc04853f12dabdcbe832615bdae907899bfb14a4ad152648f235056`，运行用户为 `keystone`，构建没有产生 warning；`scripts/release_smoke.sh keystone-phoenix:0.3.0` 已通过迁移、重复迁移、备份恢复、非 root、数据库故障恢复、认证文件上传下载、HTTP 认证生命周期和卷重启检查。
 
 ### 2026-11-11 当前轮次收尾
 
