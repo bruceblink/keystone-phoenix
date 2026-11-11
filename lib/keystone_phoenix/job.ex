@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Job do
 
   alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Job.{Invoke, Runner, SysJob, SysJobLog}
+  alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
 
@@ -263,11 +264,7 @@ defmodule KeystonePhoenix.Job do
   end
 
   defp paginate(query, params, count_field, mapper) do
-    page = positive_integer(params["pageNum"] || params[:page_num], 1)
-    page_size = min(positive_integer(params["pageSize"] || params[:page_size], 10), 500)
-    total = Repo.aggregate(query, :count, count_field)
-    rows = query |> limit(^page_size) |> offset(^((page - 1) * page_size)) |> Repo.all()
-    %{total: total, rows: Enum.map(rows, mapper)}
+    Pagination.page(query, params, count_field, mapper)
   end
 
   defp filter_contains(query, _field, value) when value in [nil, ""], do: query
@@ -283,15 +280,6 @@ defmodule KeystonePhoenix.Job do
     case Integer.parse(to_string(value)) do
       {number, ""} -> where(query, [record], field(record, ^field) == ^number)
       _ -> query
-    end
-  end
-
-  defp positive_integer(nil, default), do: default
-
-  defp positive_integer(value, default) do
-    case Integer.parse(to_string(value)) do
-      {number, ""} when number > 0 -> number
-      _ -> default
     end
   end
 
