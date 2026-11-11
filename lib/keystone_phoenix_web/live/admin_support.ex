@@ -11,11 +11,11 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Log
   alias KeystonePhoenix.Menu
-  alias KeystonePhoenix.Monitor
   alias KeystonePhoenix.Notice
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.Live.AdminPages.Forms
+  alias KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.Authentication
@@ -305,7 +305,11 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   def assign_monitor(socket, feedback \\ nil) do
-    monitor = load_monitor(socket)
+    admin? = admin_socket?(socket)
+    permissions = List.wrap(socket.assigns[:permissions])
+    page_num = get_in(socket.assigns, [:page_nums, "online-users"]) || 1
+    page_size = get_in(socket.assigns, [:page_sizes, "online-users"]) || 50
+    monitor = MonitorSnapshot.load(admin?, permissions, page_num, page_size)
 
     assign(socket,
       active_panel: "monitor",
@@ -325,64 +329,6 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
         &permission_socket?(socket, &1)
       )
   end
-
-  defp load_monitor(socket) do
-    admin? = admin_socket?(socket)
-    permissions = List.wrap(socket.assigns[:permissions])
-
-    {server_info, server_error} =
-      if admin? or "monitor:server:list" in permissions do
-        case Monitor.server_info() do
-          {:ok, info} -> {info, nil}
-          {:error, :unavailable} -> {%{}, "主机监控数据暂不可用"}
-        end
-      else
-        {%{}, nil}
-      end
-
-    {cache_info, cache_error} =
-      if admin? or "monitor:cache:list" in permissions do
-        case Monitor.cache_info() do
-          {:ok, info} -> {info, nil}
-          _ -> {%{}, "ETS 缓存数据暂不可用"}
-        end
-      else
-        {%{}, nil}
-      end
-
-    {online_users, online_user_total, online_error} =
-      if admin? or "monitor:online:list" in permissions do
-        page_num = get_in(socket.assigns, [:page_nums, "online-users"]) || 1
-        page_size = get_in(socket.assigns, [:page_sizes, "online-users"]) || 50
-
-        case Monitor.online_users(%{"pageNum" => page_num, "pageSize" => page_size}) do
-          {:ok, %{rows: rows, total: total}} -> {rows, total, nil}
-          _ -> {[], 0, "在线会话数据暂不可用"}
-        end
-      else
-        {[], 0, nil}
-      end
-
-    network_status =
-      if admin? or "monitor:server:list" in permissions,
-        do: Monitor.network_status(),
-        else: %{}
-
-    %{
-      server_info: server_info,
-      cache_info: cache_info,
-      online_users: online_users,
-      online_user_total: online_user_total,
-      network_status: network_status,
-      feedback:
-        [server_error, cache_error, online_error]
-        |> Enum.find(&is_binary/1)
-        |> error_feedback_or_nil()
-    }
-  end
-
-  defp error_feedback_or_nil(nil), do: nil
-  defp error_feedback_or_nil(message), do: Feedback.error(message)
 
   def assign_profile(socket) do
     case User.profile(socket.assigns.current_user["userId"]) do
