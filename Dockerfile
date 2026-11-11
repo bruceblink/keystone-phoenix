@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.10
+
 ARG ELIXIR_VERSION=1.20.5
 ARG OTP_VERSION=29
 ARG IMAGE_REGISTRY=m.daocloud.io/docker.io/library/
@@ -17,10 +19,20 @@ ENV MIX_ENV=prod \
     HEX_MIRROR=${HEX_MIRROR} \
     HEX_CACERTS_PATH=${HEX_CACERTS_PATH}
 
-RUN sed -i 's|http://deb.debian.org/|http://mirrors.tuna.tsinghua.edu.cn/|g' \
+# The managed development environment routes HTTPS through a local proxy whose
+# CA is not part of the public Debian trust store. BuildKit callers can provide
+# that CA with `--secret id=proxy_ca,src=/path/to/ca.crt`; the secret is used
+# only in this build stage and is never copied into the runtime image. CI builds
+# that do not need a proxy continue to use the standard CA bundle.
+RUN --mount=type=secret,id=proxy_ca,target=/run/secrets/proxy_ca,required=false \
+    sed -i 's|http://deb.debian.org/|http://mirrors.tuna.tsinghua.edu.cn/|g' \
       /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
-    && apt-get install -y --no-install-recommends build-essential ca-certificates git openssl \
+    && apt-get install -y --no-install-recommends build-essential ca-certificates git libsctp1 openssl \
+    && if [ -f /run/secrets/proxy_ca ]; then \
+      cp /run/secrets/proxy_ca /usr/local/share/ca-certificates/build-proxy-ca.crt \
+      && update-ca-certificates; \
+    fi \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -50,7 +62,7 @@ ENV LANG=C.UTF-8 \
 RUN sed -i 's|http://deb.debian.org/|http://mirrors.tuna.tsinghua.edu.cn/|g' \
       /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl libstdc++6 openssl ncurses-bin netcat-openbsd \
+    && apt-get install -y --no-install-recommends adduser ca-certificates curl libsctp1 libstdc++6 openssl ncurses-bin netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

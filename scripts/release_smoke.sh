@@ -61,14 +61,14 @@ docker run --rm --network "${network}" "${common_env[@]}" "${image}" eval \
 docker exec "${postgres}" pg_dump -U postgres --format=custom "${database}" >"${dump_file}"
 restore_database="keystone_phoenix_smoke_restore"
 docker exec "${postgres}" createdb -U postgres "${restore_database}"
-docker exec -i "${postgres}" pg_restore --clean --if-exists --dbname="${restore_database}" <"${dump_file}"
+docker exec -i "${postgres}" pg_restore -U postgres --clean --if-exists --dbname="${restore_database}" <"${dump_file}"
 restored_migrations="$(docker exec "${postgres}" psql -U postgres -d "${restore_database}" -Atc \
   'SELECT count(*) FROM schema_migrations')"
 [[ "${restored_migrations}" =~ ^[1-9][0-9]*$ ]]
 
 token="$({
   docker run --rm --network "${network}" "${common_env[@]}" "${image}" eval \
-    'user = %KeystonePhoenix.User.SysUser{} |> KeystonePhoenix.User.SysUser.create_changeset(%{username: "smoke_admin_#{System.unique_integer([:positive])}", password: "Strong!123"}) |> Ecto.Changeset.put_change(:is_admin, true) |> KeystonePhoenix.Repo.insert!(); {:ok, tokens} = KeystonePhoenix.Auth.login_plaintext(user.username, "Strong!123"); IO.puts(tokens.token)'
+    'Application.ensure_all_started(:keystone_phoenix); user = %KeystonePhoenix.User.SysUser{} |> KeystonePhoenix.User.SysUser.create_changeset(%{username: "smoke_admin_#{System.unique_integer([:positive])}", password: "Strong!123"}) |> Ecto.Changeset.put_change(:is_admin, true) |> KeystonePhoenix.Repo.insert!(); {:ok, tokens} = KeystonePhoenix.Auth.login_plaintext(user.username, "Strong!123"); IO.puts(tokens.token)'
 } | tail -n 1)"
 [[ "${token}" =~ ^ey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]]
 
