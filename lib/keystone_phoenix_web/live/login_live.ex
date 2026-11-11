@@ -409,7 +409,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                       <div class="panel overview-panel">
                         <div class="overview-heading">
                           <div>
-                            <p class="eyebrow">Workspace overview</p>
+                            <p class="eyebrow">平台概览</p>
                             <h3>当前登录用户：<strong><%= @current_user["username"] %></strong></h3>
                           </div>
                           <span class="status-chip">系统运行正常</span>
