@@ -7,6 +7,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Role
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-depts", _params, socket) do
@@ -34,7 +35,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.permission_socket?(socket, "system:dept:edit") do
       case Enum.find(socket.assigns.dept_rows, &(to_string(&1["deptId"]) == dept_id)) do
         nil ->
-          {:noreply, assign(socket, dept_feedback: "找不到指定部门")}
+          {:noreply, assign(socket, dept_feedback: Feedback.error("找不到指定部门"))}
 
         dept ->
           {:noreply,
@@ -133,7 +134,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.permission_socket?(socket, "system:post:edit") do
       case Enum.find(socket.assigns.post_rows, &(to_string(&1["postId"]) == post_id)) do
         nil ->
-          {:noreply, assign(socket, post_feedback: "找不到指定岗位")}
+          {:noreply, assign(socket, post_feedback: Feedback.error("找不到指定岗位"))}
 
         post ->
           {:noreply,
@@ -237,7 +238,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.permission_socket?(socket, "system:role:edit") do
       case Enum.find(socket.assigns.role_rows, &(to_string(&1["roleId"]) == role_id)) do
         nil ->
-          {:noreply, assign(socket, role_feedback: "找不到指定角色")}
+          {:noreply, assign(socket, role_feedback: Feedback.error("找不到指定角色"))}
 
         role ->
           menu_ids = Role.menu_ids_for_role(role_id) |> Enum.join(",")
@@ -336,7 +337,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.permission_socket?(socket, "system:role:list") do
       case Enum.find(socket.assigns.role_rows, &(to_string(&1["roleId"]) == role_id)) do
         nil ->
-          {:noreply, assign(socket, role_user_feedback: "找不到指定角色")}
+          {:noreply, assign(socket, role_user_feedback: Feedback.error("找不到指定角色"))}
 
         role ->
           users = Support.load_role_users(role_id, socket.assigns.current_user)
@@ -396,7 +397,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.permission_socket?(socket, "system:menu:edit") do
       case Enum.find(socket.assigns.menu_rows, &(to_string(&1["menuId"]) == menu_id)) do
         nil ->
-          {:noreply, assign(socket, menu_feedback: "找不到指定菜单")}
+          {:noreply, assign(socket, menu_feedback: Feedback.error("找不到指定菜单"))}
 
         menu ->
           form =

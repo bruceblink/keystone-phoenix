@@ -46,6 +46,10 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert Log.list_login_logs(%{"username" => admin.username, "pageSize" => 10}).total >= 1
 
     render_click(view, "show-panel", %{"panel" => "profile"})
+    render_submit(view, "save-profile-avatar-upload", %{})
+    assert has_element?(view, "#profile-feedback[role='alert']")
+    assert render(view) =~ "请选择头像文件"
+
     avatar_content = <<137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0>>
 
     avatar =
@@ -67,6 +71,9 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
     render_click(view, "show-panel", %{"panel" => "users"})
     assert has_element?(view, "form[phx-submit='save-user']")
+    render_click(view, "edit-user", %{"user-id" => "999999999"})
+    assert has_element?(view, "#user-feedback[role='alert']")
+    assert render(view) =~ "找不到指定用户"
 
     created_username = "live_user_#{System.unique_integer([:positive])}"
 

@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   import Phoenix.Component, only: [assign: 2]
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Monitor
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-jobs", _params, socket) do
@@ -32,7 +33,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
     if Support.permission_socket?(socket, "system:job:edit") do
       case Enum.find(socket.assigns.job_rows, &(to_string(&1["jobId"]) == job_id)) do
         nil ->
-          {:noreply, assign(socket, job_feedback: "找不到指定任务")}
+          {:noreply, assign(socket, job_feedback: Feedback.error("找不到指定任务"))}
 
         job ->
           {:noreply,
@@ -103,11 +104,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
               {:noreply, assign(socket, job_feedback: "任务已提交，执行结果将自动刷新")}
 
             {:error, reason} ->
-              {:noreply, assign(socket, job_feedback: "任务无法启动：#{inspect(reason)}")}
+              {:noreply,
+               assign(socket, job_feedback: Feedback.error("任务无法启动：#{inspect(reason)}"))}
           end
 
         {:error, :not_found} ->
-          {:noreply, assign(socket, job_feedback: "找不到指定任务")}
+          {:noreply, assign(socket, job_feedback: Feedback.error("找不到指定任务"))}
       end
     else
       {:noreply, socket}
@@ -119,8 +121,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
       feedback =
         case Job.cancel_job(job_id) do
           :ok -> "任务已取消"
-          {:error, :invalid_id} -> "任务编号无效"
-          :not_found -> "没有正在运行的任务"
+          {:error, :invalid_id} -> Feedback.error("任务编号无效")
+          :not_found -> Feedback.error("没有正在运行的任务")
         end
 
       {:noreply, assign(socket, job_rows: Support.load_jobs(), job_feedback: feedback)}
@@ -134,7 +136,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
       feedback =
         case Job.update_job_status(job_id, status, socket.assigns.current_user["userId"]) do
           {:ok, _job} -> "任务状态已更新"
-          {:error, reason} -> "任务状态更新失败：#{inspect(reason)}"
+          {:error, reason} -> Feedback.error("任务状态更新失败：#{inspect(reason)}")
         end
 
       {:noreply, assign(socket, job_rows: Support.load_jobs(), job_feedback: feedback)}
@@ -170,8 +172,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
       feedback =
         case Monitor.logout_online_user(token_id) do
           :ok -> "在线会话已强制下线"
-          {:error, :not_found} -> "在线会话不存在或已经失效"
-          {:error, :unavailable} -> "会话服务暂不可用"
+          {:error, :not_found} -> Feedback.error("在线会话不存在或已经失效")
+          {:error, :unavailable} -> Feedback.error("会话服务暂不可用")
         end
 
       socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, "online-users", 1))

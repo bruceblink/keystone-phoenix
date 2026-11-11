@@ -6,6 +6,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Log
   alias KeystonePhoenix.Notice
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-config", _params, socket) do
@@ -36,7 +37,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     if Support.permission_socket?(socket, "system:config:edit") do
       case Enum.find(socket.assigns.config_rows, &(to_string(&1["configId"]) == config_id)) do
         nil ->
-          {:noreply, assign(socket, config_feedback: "找不到指定配置")}
+          {:noreply, assign(socket, config_feedback: Feedback.error("找不到指定配置"))}
 
         config ->
           form =
@@ -137,7 +138,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     if Support.permission_socket?(socket, "system:dict:edit") do
       case Enum.find(socket.assigns.dict_type_rows, &(to_string(&1["dictId"]) == dict_id)) do
         nil ->
-          {:noreply, assign(socket, dict_feedback: "找不到指定字典类型")}
+          {:noreply, assign(socket, dict_feedback: Feedback.error("找不到指定字典类型"))}
 
         dict_type ->
           {:noreply,
@@ -221,7 +222,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     if Support.permission_socket?(socket, "system:dict:edit") do
       case Enum.find(socket.assigns.dict_data_rows, &(to_string(&1["dictCode"]) == dict_code)) do
         nil ->
-          {:noreply, assign(socket, dict_feedback: "找不到指定字典数据")}
+          {:noreply, assign(socket, dict_feedback: Feedback.error("找不到指定字典数据"))}
 
         dict_data ->
           form =
@@ -306,7 +307,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   def handle_event("edit-notice", %{"notice-id" => notice_id}, socket) do
     if Support.permission_socket?(socket, "system:notice:edit") do
       case Enum.find(socket.assigns.notice_rows, &(to_string(&1["noticeId"]) == notice_id)) do
-        nil -> {:noreply, assign(socket, notice_feedback: "找不到指定公告")}
+        nil -> {:noreply, assign(socket, notice_feedback: Feedback.error("找不到指定公告"))}
         notice -> {:noreply, assign(socket, notice_form: notice, notice_feedback: nil)}
       end
     else
@@ -363,7 +364,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
            assign(socket, notice_rows: Support.load_notices(), notice_feedback: "公告状态已更新")}
 
         {:error, :not_found} ->
-          {:noreply, assign(socket, notice_feedback: "找不到指定公告")}
+          {:noreply, assign(socket, notice_feedback: Feedback.error("找不到指定公告"))}
 
         {:error, changeset} ->
           {:noreply, assign(socket, notice_feedback: Support.form_error(changeset))}
@@ -381,10 +382,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
            assign(socket, notice_rows: Support.load_notices(), notice_feedback: "公告已删除")}
 
         {:error, :not_found} ->
-          {:noreply, assign(socket, notice_feedback: "找不到指定公告")}
+          {:noreply, assign(socket, notice_feedback: Feedback.error("找不到指定公告"))}
 
         {:error, :invalid_ids} ->
-          {:noreply, assign(socket, notice_feedback: "公告编号无效")}
+          {:noreply, assign(socket, notice_feedback: Feedback.error("公告编号无效"))}
       end
     else
       {:noreply, socket}

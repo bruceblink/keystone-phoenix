@@ -6,6 +6,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   alias KeystonePhoenix.Upload
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
 
   def handle_event("refresh-users", _params, socket) do
     if Support.panel_allowed?(socket, "users") do
@@ -33,7 +34,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     if Support.permission_socket?(socket, "system:user:edit") do
       case Enum.find(socket.assigns.user_rows, &(to_string(&1["userId"]) == user_id)) do
         nil ->
-          {:noreply, assign(socket, user_feedback: "找不到指定用户")}
+          {:noreply, assign(socket, user_feedback: Feedback.error("找不到指定用户"))}
 
         user ->
           {:noreply,
@@ -257,7 +258,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
            )}
 
         [] ->
-          {:noreply, assign(socket, profile_feedback: "请选择头像文件")}
+          {:noreply, assign(socket, profile_feedback: Feedback.error("请选择头像文件"))}
       end
     else
       {:noreply, socket}
