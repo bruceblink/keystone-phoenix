@@ -231,3 +231,131 @@ tbody tr:hover { background: #f8faff; }
   .form-actions button { flex: 1 1 150px; }
 }
 
+/* 管理后台布局：桌面使用固定侧栏，内容区保持稳定的阅读宽度。 */
+.dashboard {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 24px 28px;
+  align-items: start;
+}
+.sidebar-brand {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 70px;
+  padding: 10px 6px;
+}
+.brand-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 13px;
+  background: linear-gradient(145deg, var(--primary), var(--accent));
+  box-shadow: 0 10px 20px rgba(79, 70, 229, 0.24);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.sidebar-brand strong { display: block; color: var(--ink); font-size: 14px; letter-spacing: -0.02em; }
+.sidebar-brand span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.dashboard-topbar {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 70px;
+  margin: 0;
+  padding: 10px 2px;
+}
+.dashboard-topbar > div:first-child { min-width: 0; }
+.dashboard-topbar .eyebrow { margin-bottom: 7px; }
+.dashboard-topbar h2 { font-size: clamp(28px, 3vw, 40px); }
+.dashboard > .module-nav {
+  grid-column: 1;
+  grid-row: 2;
+  position: sticky;
+  top: 22px;
+  display: flex;
+  align-self: start;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-soft);
+}
+.dashboard > .module-nav::before {
+  margin: 5px 10px 8px;
+  color: #94a3b8;
+  content: "工作台";
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.dashboard > .module-nav button {
+  position: relative;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  text-align: left;
+}
+.dashboard > .module-nav button::before {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #cbd5e1;
+  content: "";
+}
+.dashboard > .module-nav button.active::before { background: #a5b4fc; box-shadow: 0 0 0 4px rgba(165, 180, 252, 0.14); }
+.dashboard > .module-nav button.active { background: linear-gradient(135deg, var(--navy), #1e2a52); }
+.page-content { grid-column: 2; grid-row: 2; min-width: 0; }
+.page-context { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 2px 16px; }
+.page-context .eyebrow { margin-bottom: 5px; }
+.page-context h3 { margin: 0; color: var(--ink); font-size: 22px; letter-spacing: -0.035em; }
+.access-chip { display: inline-flex; min-height: 30px; align-items: center; padding: 6px 10px; border: 1px solid #c7d2fe; border-radius: 999px; background: #eef2ff; color: var(--primary-dark); font-size: 12px; font-weight: 750; white-space: nowrap; }
+.page-content > .panel, .page-content > .card { border-radius: 17px; }
+.page-content > .panel + .panel { margin-top: 16px; }
+.page-content > .panel > .form-actions:first-child {
+  margin: -26px -26px 22px;
+  padding: 14px 26px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(248, 250, 252, 0.76);
+}
+.page-content > .panel > .form-actions:first-child button { margin: 0; }
+.page-content .table-scroll { background: var(--surface-solid, #fff); }
+
+@media (max-width: 900px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    gap: 14px;
+  }
+  .sidebar-brand { grid-column: 1; grid-row: 1; min-height: 58px; }
+  .dashboard-topbar { grid-column: 1; grid-row: 2; min-height: auto; }
+  .dashboard > .module-nav { grid-column: 1; grid-row: 3; position: sticky; top: 10px; flex-direction: row; overflow-x: auto; }
+  .dashboard > .module-nav::before { display: none; }
+  .dashboard > .module-nav button { width: auto; flex: 0 0 auto; }
+  .page-content { grid-column: 1; grid-row: 4; }
+  .page-context { margin-top: 4px; }
+}
+
+@media (max-width: 640px) {
+  .sidebar-brand { padding: 4px 2px; }
+  .brand-mark { width: 38px; height: 38px; border-radius: 11px; }
+  .page-context { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .page-content > .panel > .form-actions:first-child { margin: -20px -20px 18px; padding: 12px 20px; }
+}
+

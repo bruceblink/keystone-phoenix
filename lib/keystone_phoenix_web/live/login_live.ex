@@ -357,6 +357,23 @@ defmodule KeystonePhoenixWeb.LoginLive do
   defp assign_profile(socket), do: AdminSupport.assign_profile(socket)
   defp admin_socket?(socket), do: AdminSupport.admin_socket?(socket)
 
+  # 将内部面板标识映射为面向管理员的正式页面标题。
+  defp panel_title("overview"), do: "平台概览"
+  defp panel_title("depts"), do: "部门管理"
+  defp panel_title("posts"), do: "岗位管理"
+  defp panel_title("roles"), do: "角色管理"
+  defp panel_title("menus"), do: "菜单管理"
+  defp panel_title("users"), do: "用户管理"
+  defp panel_title("configs"), do: "配置管理"
+  defp panel_title("dicts"), do: "字典管理"
+  defp panel_title("notices"), do: "公告管理"
+  defp panel_title("logs"), do: "日志审计"
+  defp panel_title("jobs"), do: "定时任务"
+  defp panel_title("job-logs"), do: "任务日志"
+  defp panel_title("monitor"), do: "运行监控"
+  defp panel_title("profile"), do: "个人资料"
+  defp panel_title(_panel), do: "管理模块"
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -374,6 +391,13 @@ defmodule KeystonePhoenixWeb.LoginLive do
           <section class={if @current_user, do: "shell app-shell dashboard-shell", else: "shell app-shell login-shell"}>
             <%= if @current_user do %>
               <div class="dashboard">
+                <div class="sidebar-brand">
+                  <div class="brand-mark" aria-hidden="true">KP</div>
+                  <div>
+                    <strong>Keystone Phoenix</strong>
+                    <span>企业运营管理平台</span>
+                  </div>
+                </div>
                 <div class="topbar dashboard-topbar">
                   <div>
                     <p class="eyebrow">Keystone Phoenix · 管理平台</p>
@@ -404,6 +428,14 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <button :if={@panel_access["monitor"]} type="button" class={if @active_panel == "monitor", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "monitor", do: "page"} phx-value-panel="monitor">监控</button>
                     <button type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "profile", do: "page"} phx-value-panel="profile">个人资料</button>
                   </nav>
+                  <div class="page-content">
+                    <div class="page-context">
+                      <div>
+                        <p class="eyebrow">管理模块</p>
+                        <h3><%= panel_title(@active_panel) %></h3>
+                      </div>
+                      <span class="access-chip"><%= if @read_only, do: "只读模式", else: "管理员模式" %></span>
+                    </div>
                   <%= case @active_panel do %>
                     <% "overview" -> %>
                       <div class="panel overview-panel">
@@ -456,10 +488,19 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% _ -> %>
                       <div class="panel"><p>请选择一个管理模块。</p></div>
                   <% end %>
+                  </div>
                 <% else %>
                   <nav class="module-nav" aria-label="个人模块">
                     <button type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "profile", do: "page"} phx-value-panel="profile">个人资料</button>
                   </nav>
+                  <div class="page-content">
+                    <div class="page-context">
+                      <div>
+                        <p class="eyebrow">个人中心</p>
+                        <h3>个人资料</h3>
+                      </div>
+                      <span class="access-chip">个人账号</span>
+                    </div>
                   <%= if @active_panel == "profile" do %>
                     <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} avatar_upload={@uploads.avatar} />
                   <% else %>
@@ -469,6 +510,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                       <button type="button" class="secondary" phx-click="show-panel" aria-current={if @active_panel == "profile", do: "page"} phx-value-panel="profile">打开个人资料</button>
                     </div>
                   <% end %>
+                  </div>
                 <% end %>
               </div>
             <% else %>
