@@ -88,6 +88,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
            access_token: tokens.token,
            refresh_token: tokens.refresh_token,
            active_panel: "overview",
+           active_modal: nil,
            user_rows: dashboard.user_rows,
            dept_rows: dashboard.dept_rows,
            dept_feedback: nil,
@@ -176,6 +177,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
       {:error, reason} when reason in [:capacity, :unavailable] ->
         {:noreply, assign(socket, login_error: "验证码服务暂不可用，请稍后重试")}
     end
+  end
+
+  def handle_event("close-modal", _params, socket) do
+    {:noreply, assign(socket, active_modal: nil)}
   end
 
   @impl true
@@ -429,25 +434,25 @@ defmodule KeystonePhoenixWeb.LoginLive do
                         </div>
                       </div>
                     <% "depts" -> %>
-                      <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} read_only={@read_only} />
+                      <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} active_modal={@active_modal} read_only={@read_only} />
                     <% "posts" -> %>
-                      <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} read_only={@read_only} />
+                      <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} active_modal={@active_modal} read_only={@read_only} />
                     <% "roles" -> %>
-                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} read_only={@read_only} />
+                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} active_modal={@active_modal} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} read_only={@read_only} />
                     <% "menus" -> %>
-                      <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} read_only={@read_only} />
+                      <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} active_modal={@active_modal} read_only={@read_only} />
                     <% "users" -> %>
-                      <.users user_rows={@user_rows} user_form={@user_form} user_feedback={@user_feedback} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} page_num={@page_nums["users"]} page_size={@page_sizes["users"]} read_only={@read_only} />
+                      <.users user_rows={@user_rows} user_form={@user_form} user_feedback={@user_feedback} active_modal={@active_modal} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} page_num={@page_nums["users"]} page_size={@page_sizes["users"]} read_only={@read_only} />
                     <% "configs" -> %>
-                      <.configs config_rows={@config_rows} config_form={@config_form} config_feedback={@config_feedback} read_only={@read_only} />
+                      <.configs config_rows={@config_rows} config_form={@config_form} config_feedback={@config_feedback} active_modal={@active_modal} read_only={@read_only} />
                     <% "dicts" -> %>
-                      <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} dict_data_page_num={@page_nums["dict-data"]} dict_data_page_size={@page_sizes["dict-data"]} read_only={@read_only} />
+                      <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} active_modal={@active_modal} dict_data_page_num={@page_nums["dict-data"]} dict_data_page_size={@page_sizes["dict-data"]} read_only={@read_only} />
                     <% "notices" -> %>
-                      <.notices notice_rows={@notice_rows} notice_form={@notice_form} notice_feedback={@notice_feedback} read_only={@read_only} />
+                      <.notices notice_rows={@notice_rows} notice_form={@notice_form} notice_feedback={@notice_feedback} active_modal={@active_modal} read_only={@read_only} />
                     <% "logs" -> %>
                       <.logs login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["login-logs"]} read_only={@read_only} />
                     <% "jobs" -> %>
-                      <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} page_num={@page_nums["jobs"]} page_size={@page_sizes["jobs"]} read_only={@read_only} />
+                      <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} active_modal={@active_modal} page_num={@page_nums["jobs"]} page_size={@page_sizes["jobs"]} read_only={@read_only} />
                     <% "job-logs" -> %>
                       <.job_logs job_log_rows={@job_log_rows} job_log_feedback={@job_log_feedback} page_num={@page_nums["job-logs"]} page_size={@page_sizes["job-logs"]} read_only={@read_only} />
                     <% "monitor" -> %>

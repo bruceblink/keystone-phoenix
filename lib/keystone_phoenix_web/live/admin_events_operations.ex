@@ -14,7 +14,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
          job_rows: Support.load_jobs(),
          page_nums: Map.put(socket.assigns.page_nums, "jobs", 1),
          job_form: Support.empty_job_form(),
-         job_feedback: nil
+         job_feedback: nil,
+         active_modal: nil
        )}
     else
       {:noreply, socket}
@@ -23,7 +24,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("new-job", _params, socket) do
     if Support.permission_socket?(socket, "system:job:add") do
-      {:noreply, assign(socket, job_form: Support.empty_job_form(), job_feedback: nil)}
+      {:noreply,
+       assign(socket, job_form: Support.empty_job_form(), job_feedback: nil, active_modal: "job")}
     else
       {:noreply, socket}
     end
@@ -37,7 +39,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
         job ->
           {:noreply,
-           assign(socket, job_form: Map.merge(Support.empty_job_form(), job), job_feedback: nil)}
+           assign(socket,
+             job_form: Map.merge(Support.empty_job_form(), job),
+             job_feedback: nil,
+             active_modal: "job"
+           )}
       end
     else
       {:noreply, socket}
@@ -60,6 +66,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
            assign(socket,
              job_rows: Support.load_jobs(),
              job_form: Support.empty_job_form(),
+             active_modal: nil,
              job_feedback: if(job_id == "", do: "任务已创建", else: "任务已更新")
            )}
 
@@ -79,6 +86,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
            assign(socket,
              job_rows: Support.load_jobs(),
              job_form: Support.empty_job_form(),
+             active_modal: nil,
              job_feedback: "任务已删除"
            )}
 

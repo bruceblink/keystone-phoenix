@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
   use Phoenix.Component
 
   import KeystonePhoenixWeb.Live.AdminPages.Pagination
+  import KeystonePhoenixWeb.Live.AdminPages.Modal
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Status
 
@@ -11,6 +12,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
     assigns =
       assigns
       |> assign_new(:read_only, fn -> false end)
+      |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:page_num, fn -> 1 end)
       |> assign_new(:page_size, fn -> 50 end)
 
@@ -24,6 +26,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         <p id="user-feedback" class={Feedback.class(@user_feedback)} role={Feedback.role(@user_feedback)} aria-live={Feedback.live(@user_feedback)}><%= Feedback.message(@user_feedback) %></p>
       <% end %>
       <p :if={@user_rows == []} class="table-empty" role="status">暂无用户数据</p>
+      <%= if @active_modal == "user" do %>
+        <.modal id="user-modal" title={if @user_form["userId"] == "", do: "新建用户", else: "编辑用户"} description="维护账号资料、组织归属和登录权限。">
       <form :if={!@read_only} aria-describedby="user-feedback" phx-submit="save-user">
         <input type="hidden" name="userId" value={@user_form["userId"]} />
         <div class="form-grid">
@@ -39,7 +43,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <div><label for="user-status">状态</label><select id="user-status" name="status"><option value="1" selected={@user_form["status"] in [1, "1"]}>正常</option><option value="0" selected={@user_form["status"] in [0, "0"]}>停用</option></select></div>
           <div class="wide"><label for="user-remark">备注</label><textarea id="user-remark" name="remark"><%= @user_form["remark"] || "" %></textarea></div>
         </div>
-        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="new-user" phx-disable-with="处理中…">取消编辑</button></div>
+        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="user" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
       <form :if={!@read_only and @user_form["userId"] != ""} id="user-reset-password-form" aria-describedby="user-feedback" phx-submit="reset-user-password">
         <input type="hidden" name="userId" value={@user_form["userId"]} />
@@ -48,6 +52,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         </div>
         <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="重置中…">重置用户密码</button></div>
       </form>
+        </.modal>
+      <% end %>
       <div class="table-scroll" role="region" tabindex="0" aria-label="用户列表"><table><caption class="sr-only">用户列表</caption>
         <thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">部门</th><th scope="col">角色</th><th scope="col">邮箱</th><th scope="col">手机号</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
         <tbody>

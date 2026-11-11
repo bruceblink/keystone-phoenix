@@ -16,7 +16,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
        assign(socket,
          dept_rows: Support.load_depts(),
          dept_form: Support.empty_dept_form(),
-         dept_feedback: nil
+         dept_feedback: nil,
+         active_modal: nil
        )}
     else
       {:noreply, socket}
@@ -25,7 +26,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("new-dept", _params, socket) do
     if Support.permission_socket?(socket, "system:dept:add") do
-      {:noreply, assign(socket, dept_form: Support.empty_dept_form(), dept_feedback: nil)}
+      {:noreply,
+       assign(socket,
+         dept_form: Support.empty_dept_form(),
+         dept_feedback: nil,
+         active_modal: "dept"
+       )}
     else
       {:noreply, socket}
     end
@@ -41,7 +47,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           {:noreply,
            assign(socket,
              dept_form: Map.merge(Support.empty_dept_form(), dept),
-             dept_feedback: nil
+             dept_feedback: nil,
+             active_modal: "dept"
            )}
       end
     else
@@ -65,6 +72,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            assign(socket,
              dept_rows: Support.load_depts(),
              dept_form: Support.empty_dept_form(),
+             active_modal: nil,
              dept_feedback: if(dept_id == "", do: "部门已创建", else: "部门已更新")
            )}
 
@@ -98,6 +106,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            assign(socket,
              dept_rows: Support.load_depts(),
              dept_form: Support.empty_dept_form(),
+             active_modal: nil,
              dept_feedback: "部门已删除"
            )}
 
@@ -115,7 +124,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
        assign(socket,
          post_rows: Support.load_posts(),
          post_form: Support.empty_post_form(),
-         post_feedback: nil
+         post_feedback: nil,
+         active_modal: nil
        )}
     else
       {:noreply, socket}
@@ -124,7 +134,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("new-post", _params, socket) do
     if Support.permission_socket?(socket, "system:post:add") do
-      {:noreply, assign(socket, post_form: Support.empty_post_form(), post_feedback: nil)}
+      {:noreply,
+       assign(socket,
+         post_form: Support.empty_post_form(),
+         post_feedback: nil,
+         active_modal: "post"
+       )}
     else
       {:noreply, socket}
     end
@@ -140,7 +155,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           {:noreply,
            assign(socket,
              post_form: Map.merge(Support.empty_post_form(), post),
-             post_feedback: nil
+             post_feedback: nil,
+             active_modal: "post"
            )}
       end
     else
@@ -164,6 +180,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            assign(socket,
              post_rows: Support.load_posts(),
              post_form: Support.empty_post_form(),
+             active_modal: nil,
              post_feedback: if(post_id == "", do: "岗位已创建", else: "岗位已更新")
            )}
 
@@ -197,6 +214,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            assign(socket,
              post_rows: Support.load_posts(),
              post_form: Support.empty_post_form(),
+             active_modal: nil,
              post_feedback: "岗位已删除"
            )}
 
@@ -215,6 +233,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
          role_rows: Support.load_roles(),
          role_form: Support.empty_role_form(),
          role_feedback: nil,
+         active_modal: nil,
          selected_role_id: "",
          selected_role_name: "",
          allocated_role_user_rows: [],
@@ -228,7 +247,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("new-role", _params, socket) do
     if Support.permission_socket?(socket, "system:role:add") do
-      {:noreply, assign(socket, role_form: Support.empty_role_form(), role_feedback: nil)}
+      {:noreply,
+       assign(socket,
+         role_form: Support.empty_role_form(),
+         role_feedback: nil,
+         active_modal: "role"
+       )}
     else
       {:noreply, socket}
     end
@@ -243,7 +267,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         role ->
           menu_ids = Role.menu_ids_for_role(role_id) |> Enum.join(",")
           form = Support.empty_role_form() |> Map.merge(role) |> Map.put("menuIds", menu_ids)
-          {:noreply, assign(socket, role_form: form, role_feedback: nil)}
+          {:noreply, assign(socket, role_form: form, role_feedback: nil, active_modal: "role")}
       end
     else
       {:noreply, socket}
@@ -268,6 +292,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
             assign(socket,
               role_rows: Support.load_roles(),
               role_form: Support.empty_role_form(),
+              active_modal: nil,
               role_feedback: if(role_id == "", do: "角色已创建", else: "角色已更新")
             )
 
@@ -304,6 +329,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            assign(socket,
              role_rows: Support.load_roles(),
              role_form: Support.empty_role_form(),
+             active_modal: nil,
              role_feedback: "角色已删除",
              selected_role_id: "",
              selected_role_name: "",
@@ -317,6 +343,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            assign(socket,
              role_rows: Support.load_roles(),
              role_form: Support.empty_role_form(),
+             active_modal: nil,
              role_feedback: "角色已删除",
              selected_role_id: "",
              selected_role_name: "",
@@ -378,7 +405,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
        assign(socket,
          menu_rows: Support.load_menus(),
          menu_form: Support.empty_menu_form(),
-         menu_feedback: nil
+         menu_feedback: nil,
+         active_modal: nil
        )}
     else
       {:noreply, socket}
@@ -387,7 +415,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("new-menu", _params, socket) do
     if Support.permission_socket?(socket, "system:menu:add") do
-      {:noreply, assign(socket, menu_form: Support.empty_menu_form(), menu_feedback: nil)}
+      {:noreply,
+       assign(socket,
+         menu_form: Support.empty_menu_form(),
+         menu_feedback: nil,
+         active_modal: "menu"
+       )}
     else
       {:noreply, socket}
     end
@@ -406,7 +439,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
             |> Map.put("metaInfo", Jason.encode!(menu["meta"] || %{}))
             |> Map.put("isButton", if(menu["isButton"], do: "true", else: "false"))
 
-          {:noreply, assign(socket, menu_form: form, menu_feedback: nil)}
+          {:noreply, assign(socket, menu_form: form, menu_feedback: nil, active_modal: "menu")}
       end
     else
       {:noreply, socket}
@@ -430,6 +463,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            assign(socket,
              menu_rows: Support.load_menus(),
              menu_form: Support.empty_menu_form(),
+             active_modal: nil,
              menu_feedback: if(menu_id == "", do: "菜单已创建", else: "菜单已更新")
            )}
 
@@ -463,6 +497,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            assign(socket,
              menu_rows: Support.load_menus(),
              menu_form: Support.empty_menu_form(),
+             active_modal: nil,
              menu_feedback: "菜单已删除"
            )}
 

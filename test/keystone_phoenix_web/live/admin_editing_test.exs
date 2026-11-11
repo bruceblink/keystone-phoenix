@@ -38,6 +38,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     {:ok, view} = login(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "configs"})
     render_click(view, "edit-config", %{"config-id" => to_string(config.config_id)})
+    assert live_socket(view).assigns.active_modal == "config"
     assert has_element?(view, "input[name='configId'][value='#{config.config_id}']")
     assert has_element?(view, "#config-name[value='原配置名称']")
     assert has_element?(view, "#config-key[value='#{config.config_key}']")
@@ -49,6 +50,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     |> render_submit()
 
     assert render(view) =~ "配置已更新"
+    assert live_socket(view).assigns.active_modal == nil
     assert Repo.aggregate(SysConfig, :count) == count
     assert Repo.get!(SysConfig, config.config_id).config_value == "beta"
   end
@@ -67,6 +69,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     {:ok, view} = login(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "roles"})
     render_click(view, "edit-role", %{"role-id" => to_string(role.role_id)})
+    assert live_socket(view).assigns.active_modal == "role"
     assert has_element?(view, "input[name='roleId'][value='#{role.role_id}']")
     assert has_element?(view, "input[name='roleKey'][value='#{role.role_key}']")
     count = Repo.aggregate(SysRole, :count)
@@ -76,6 +79,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     |> render_submit()
 
     assert render(view) =~ "角色已更新"
+    assert live_socket(view).assigns.active_modal == nil
     assert Repo.aggregate(SysRole, :count) == count
     assert Repo.get!(SysRole, role.role_id).role_name == "角色已修改"
     assert Repo.get!(SysRole, role.role_id).data_scope == 3
@@ -134,6 +138,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     {:ok, view} = login(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "menus"})
     render_click(view, "edit-menu", %{"menu-id" => to_string(menu.menu_id)})
+    assert live_socket(view).assigns.active_modal == "menu"
     assert has_element?(view, "input[name='menuId'][value='#{menu.menu_id}']")
     assert has_element?(view, "input[name='path'][value='/editing-route']")
     count = Repo.aggregate(SysMenu, :count)
@@ -143,6 +148,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     |> render_submit()
 
     assert render(view) =~ "菜单已更新"
+    assert live_socket(view).assigns.active_modal == nil
     assert Repo.aggregate(SysMenu, :count) == count
     updated = Repo.get!(SysMenu, menu.menu_id)
     assert updated.menu_name == "菜单已修改"
@@ -170,6 +176,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     render_click(view, "show-panel", %{"panel" => "dicts"})
     render_click(view, "select-dict-type", %{"dict-type" => type})
     render_click(view, "edit-dict-data", %{"dict-code" => to_string(data.dict_code)})
+    assert live_socket(view).assigns.active_modal == "dict-data"
     assert has_element?(view, "#dict-default option[value='false'][selected]")
 
     view
@@ -177,6 +184,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     |> render_submit()
 
     assert render(view) =~ "字典数据已更新"
+    assert live_socket(view).assigns.active_modal == nil
     assert Repo.get!(KeystonePhoenix.Dictionary.DictData, data.dict_code).is_default == false
     assert Dictionary.list_dict_data(%{"dictType" => type}).total == 1
   end

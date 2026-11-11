@@ -53,12 +53,20 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
 
     assert render_component(
              &Organization.posts/1,
-             Map.take(assigns, [:post_rows, :post_form, :post_feedback])
+             Map.put(
+               Map.take(assigns, [:post_rows, :post_form, :post_feedback]),
+               :active_modal,
+               "post"
+             )
            ) =~ "save-post"
 
     assert render_component(
              &Organization.roles/1,
-             Map.take(assigns, [:role_rows, :role_form, :role_feedback])
+             Map.put(
+               Map.take(assigns, [:role_rows, :role_form, :role_feedback]),
+               :active_modal,
+               "role"
+             )
            ) =~ "save-role"
 
     role_user_assigns =
@@ -115,7 +123,11 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
 
     assert render_component(
              &Organization.menus/1,
-             Map.take(assigns, [:menu_rows, :menu_form, :menu_feedback])
+             Map.put(
+               Map.take(assigns, [:menu_rows, :menu_form, :menu_feedback]),
+               :active_modal,
+               "menu"
+             )
            ) =~ "save-menu"
   end
 
@@ -192,17 +204,21 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       profile_feedback: nil
     }
 
-    assert render_component(
-             &Accounts.users/1,
-             Map.take(account_assigns, [
-               :user_rows,
-               :user_form,
-               :user_feedback,
-               :dept_rows,
-               :post_rows,
-               :role_rows
-             ])
-           ) =~ "save-user"
+    account_modal_assigns =
+      Map.put(
+        Map.take(account_assigns, [
+          :user_rows,
+          :user_form,
+          :user_feedback,
+          :dept_rows,
+          :post_rows,
+          :role_rows
+        ]),
+        :active_modal,
+        "user"
+      )
+
+    assert render_component(&Accounts.users/1, account_modal_assigns) =~ "save-user"
 
     account_html =
       render_component(
@@ -220,8 +236,11 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     assert account_html =~ ~s(phx-click="refresh-users" phx-disable-with="刷新中…")
     assert account_html =~ ~s(class="table-scroll" role="region" tabindex="0")
     assert account_html =~ ~s(<th scope="col">用户名</th>)
-    assert account_html =~ ~s(aria-describedby="user-feedback")
+    refute account_html =~ "save-user"
     assert account_html =~ "暂无用户数据"
+
+    modal_html = render_component(&Accounts.users/1, account_modal_assigns)
+    assert modal_html =~ ~s(aria-describedby="user-feedback")
 
     feedback_html =
       render_component(
@@ -234,6 +253,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
           :post_rows,
           :role_rows
         ])
+        |> Map.put(:active_modal, "user")
       )
 
     assert feedback_html =~ ~s(id="user-feedback")
@@ -288,7 +308,11 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
 
     assert render_component(
              &System.configs/1,
-             Map.take(system_assigns, [:config_rows, :config_form, :config_feedback])
+             Map.put(
+               Map.take(system_assigns, [:config_rows, :config_form, :config_feedback]),
+               :active_modal,
+               "config"
+             )
            ) =~ "save-config"
 
     assert render_component(
@@ -301,11 +325,16 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
                :selected_dict_type,
                :dict_feedback
              ])
+             |> Map.put(:active_modal, "dict-data")
            ) =~ "save-dict-data"
 
     assert render_component(
              &System.notices/1,
-             Map.take(system_assigns, [:notice_rows, :notice_form, :notice_feedback])
+             Map.put(
+               Map.take(system_assigns, [:notice_rows, :notice_form, :notice_feedback]),
+               :active_modal,
+               "notice"
+             )
            ) =~ "save-notice"
 
     assert render_component(
@@ -360,7 +389,11 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
 
     assert render_component(
              &Operations.jobs/1,
-             Map.take(operations_assigns, [:job_rows, :job_form, :job_targets, :job_feedback])
+             Map.put(
+               Map.take(operations_assigns, [:job_rows, :job_form, :job_targets, :job_feedback]),
+               :active_modal,
+               "job"
+             )
            ) =~ "cancel-job"
 
     assert render_component(

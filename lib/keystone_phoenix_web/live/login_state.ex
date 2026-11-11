@@ -24,6 +24,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       captcha_key: nil,
       captcha_image: nil,
       active_panel: "overview",
+      active_modal: nil,
       user_rows: [],
       dept_rows: [],
       dept_feedback: nil,

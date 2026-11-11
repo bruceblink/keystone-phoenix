@@ -15,7 +15,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
          user_rows: Support.load_users_for_socket(socket),
          page_nums: Map.put(socket.assigns.page_nums, "users", 1),
          user_form: Support.empty_user_form(),
-         user_feedback: nil
+         user_feedback: nil,
+         active_modal: nil
        )}
     else
       {:noreply, socket}
@@ -24,7 +25,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   def handle_event("new-user", _params, socket) do
     if Support.permission_socket?(socket, "system:user:add") do
-      {:noreply, assign(socket, user_form: Support.empty_user_form(), user_feedback: nil)}
+      {:noreply,
+       assign(socket,
+         user_form: Support.empty_user_form(),
+         user_feedback: nil,
+         active_modal: "user"
+       )}
     else
       {:noreply, socket}
     end
@@ -40,7 +46,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           {:noreply,
            assign(socket,
              user_form: Map.merge(Support.empty_user_form(), user),
-             user_feedback: nil
+             user_feedback: nil,
+             active_modal: "user"
            )}
       end
     else
@@ -66,6 +73,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
              user_rows: Support.load_users(),
              role_rows: Support.load_roles(),
              user_form: Support.empty_user_form(),
+             active_modal: nil,
              user_feedback: if(user_id == "", do: "用户已创建", else: "用户已更新")
            )}
 
@@ -104,6 +112,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
              user_rows: Support.load_users(),
              role_rows: Support.load_roles(),
              user_form: Support.empty_user_form(),
+             active_modal: nil,
              user_feedback: "用户已删除"
            )}
 
@@ -129,7 +138,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           if to_string(socket.assigns.current_user["userId"]) == to_string(user_id) do
             {:noreply, Support.expire_authentication(socket, "密码已重置，请重新登录")}
           else
-            {:noreply, assign(socket, user_feedback: "用户密码已重置")}
+            {:noreply, assign(socket, user_feedback: "用户密码已重置", active_modal: nil)}
           end
 
         error ->

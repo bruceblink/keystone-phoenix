@@ -70,6 +70,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert String.starts_with?(uploaded_admin.avatar, "/profile/avatar/")
 
     render_click(view, "show-panel", %{"panel" => "users"})
+    render_click(view, "new-user")
     assert has_element?(view, "form[phx-submit='save-user']")
     render_click(view, "edit-user", %{"user-id" => "999999999"})
     assert has_element?(view, "#user-feedback[role='alert']")

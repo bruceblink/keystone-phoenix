@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
   use Phoenix.Component
 
   import KeystonePhoenixWeb.Live.AdminPages.Pagination
+  import KeystonePhoenixWeb.Live.AdminPages.Modal
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Status
 
@@ -11,6 +12,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
     assigns =
       assigns
       |> assign_new(:read_only, fn -> false end)
+      |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:page_num, fn -> 1 end)
       |> assign_new(:page_size, fn -> 50 end)
 
@@ -19,7 +21,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-job" phx-disable-with="处理中…">新建任务</button><button type="button" class="refresh secondary" phx-click="refresh-jobs" phx-disable-with="刷新中…">刷新任务</button></div>
       <%= if @job_feedback do %><p id="job-feedback" class={Feedback.class(@job_feedback)} role={Feedback.role(@job_feedback)} aria-live={Feedback.live(@job_feedback)}><%= Feedback.message(@job_feedback) %></p><% end %>
       <p :if={@job_rows == []} class="table-empty" role="status">暂无定时任务</p>
-      <form :if={!@read_only} aria-describedby="job-feedback" phx-submit="save-job">
+      <%= if @active_modal == "job" do %>
+        <.modal id="job-modal" title={if @job_form["jobId"] == "", do: "新建任务", else: "编辑任务"} description="维护调度目标、执行计划和运行状态。">
+    <form :if={!@read_only} aria-describedby="job-feedback" phx-submit="save-job">
         <input type="hidden" name="jobId" value={@job_form["jobId"]} />
         <div class="form-grid">
           <div><label for="job-name">任务名称</label><input id="job-name" name="jobName" value={@job_form["jobName"] || ""} required /></div>
@@ -31,8 +35,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
           <div><label for="job-status">状态</label><select id="job-status" name="status"><option value="1" selected={@job_form["status"] in [1, "1"]}>正常</option><option value="0" selected={@job_form["status"] in [0, "0"]}>暂停</option></select></div>
           <div class="wide"><label for="job-remark">备注</label><textarea id="job-remark" name="remark"><%= @job_form["remark"] || "" %></textarea></div>
         </div>
-        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存任务</button><button :if={@job_form["jobId"] != ""} type="button" class="secondary" phx-click="new-job" phx-disable-with="处理中…">取消编辑</button></div>
+        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存任务</button><button :if={@job_form["jobId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="job" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
+        </.modal>
+      <% end %>
       <div class="table-scroll" role="region" tabindex="0" aria-label="定时任务列表"><table><caption class="sr-only">定时任务列表</caption><thead><tr><th scope="col">任务名称</th><th scope="col">分组</th><th scope="col">调用目标</th><th scope="col">Cron</th><th scope="col">并发</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody>
         <%= for job <- page_rows(@job_rows, @page_num, @page_size) do %>
           <tr><td><%= job["jobName"] %></td><td><%= job["jobGroup"] %></td><td><%= job["invokeTarget"] %></td><td><%= job["cronExpression"] %></td><td><%= if job["concurrent"] in [1, "1"], do: "是", else: "否" %></td><td><span class={"status-badge #{Status.normal_paused(job["status"])}"}><%= job["statusStr"] || if(job["status"] == 1, do: "正常", else: "暂停") %></span></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-job" phx-value-job-id={job["jobId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="run-job" phx-value-job-id={job["jobId"]} phx-disable-with="执行中…">立即执行</button><button type="button" class="refresh secondary" phx-click="cancel-job" phx-value-job-id={job["jobId"]} phx-disable-with="处理中…">取消执行</button><button type="button" class="refresh" phx-click="toggle-job-status" phx-value-job-id={job["jobId"]} phx-value-status={if job["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if job["status"] == 1, do: "暂停", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-job" phx-value-job-id={job["jobId"]} phx-disable-with="删除中…">删除</button></td></tr>

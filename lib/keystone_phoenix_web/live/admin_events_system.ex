@@ -18,7 +18,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
        assign(socket,
          config_rows: Support.load_configs(),
          config_form: Support.empty_config_form(),
-         config_feedback: if(can_refresh?, do: "配置缓存已刷新", else: nil)
+         config_feedback: if(can_refresh?, do: "配置缓存已刷新", else: nil),
+         active_modal: nil
        )}
     else
       {:noreply, socket}
@@ -27,7 +28,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("new-config", _params, socket) do
     if Support.permission_socket?(socket, "system:config:add") do
-      {:noreply, assign(socket, config_form: Support.empty_config_form(), config_feedback: nil)}
+      {:noreply,
+       assign(socket,
+         config_form: Support.empty_config_form(),
+         config_feedback: nil,
+         active_modal: "config"
+       )}
     else
       {:noreply, socket}
     end
@@ -49,7 +55,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
               if(config["isAllowChange"] == 1, do: "true", else: "false")
             )
 
-          {:noreply, assign(socket, config_form: form, config_feedback: nil)}
+          {:noreply,
+           assign(socket, config_form: form, config_feedback: nil, active_modal: "config")}
       end
     else
       {:noreply, socket}
@@ -73,6 +80,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
            assign(socket,
              config_rows: Support.load_configs(),
              config_form: Support.empty_config_form(),
+             active_modal: nil,
              config_feedback: if(config_id == "", do: "配置已创建", else: "配置已更新")
            )}
 
@@ -86,7 +94,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("refresh-notices", _params, socket) do
     if Support.panel_allowed?(socket, "notices") do
-      {:noreply, assign(socket, notice_rows: Support.load_notices(), notice_feedback: nil)}
+      {:noreply,
+       assign(socket,
+         notice_rows: Support.load_notices(),
+         notice_feedback: nil,
+         active_modal: nil
+       )}
     else
       {:noreply, socket}
     end
@@ -104,7 +117,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
          selected_dict_type: dictionary.selected,
          dict_type_form: Support.empty_dict_type_form(),
          dict_data_form: Support.empty_dict_data_form(),
-         dict_feedback: nil
+         dict_feedback: nil,
+         active_modal: nil
        )}
     else
       {:noreply, socket}
@@ -118,7 +132,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
        assign(socket,
          selected_dict_type: dict_type,
          dict_data_rows: Support.load_dict_data_for_socket(socket, dict_type),
-         dict_data_form: Support.empty_dict_data_form(dict_type)
+         dict_data_form: Support.empty_dict_data_form(dict_type),
+         active_modal: nil
        )}
     else
       {:noreply, socket}
@@ -128,7 +143,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   def handle_event("new-dict-type", _params, socket) do
     if Support.permission_socket?(socket, "system:dict:add") do
       {:noreply,
-       assign(socket, dict_type_form: Support.empty_dict_type_form(), dict_feedback: nil)}
+       assign(socket,
+         dict_type_form: Support.empty_dict_type_form(),
+         dict_feedback: nil,
+         active_modal: "dict-type"
+       )}
     else
       {:noreply, socket}
     end
@@ -144,7 +163,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
           {:noreply,
            assign(socket,
              dict_type_form: Map.merge(Support.empty_dict_type_form(), dict_type),
-             dict_feedback: nil
+             dict_feedback: nil,
+             active_modal: "dict-type"
            )}
       end
     else
@@ -172,6 +192,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
              dict_data_rows: dictionary.data,
              selected_dict_type: dictionary.selected,
              dict_type_form: Support.empty_dict_type_form(),
+             active_modal: nil,
              dict_feedback: if(dict_id == "", do: "字典类型已创建", else: "字典类型已更新")
            )}
 
@@ -195,6 +216,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
              dict_data_rows: dictionary.data,
              selected_dict_type: dictionary.selected,
              dict_type_form: Support.empty_dict_type_form(),
+             active_modal: nil,
              dict_feedback: "字典类型已删除"
            )}
 
@@ -211,7 +233,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
       {:noreply,
        assign(socket,
          dict_data_form: Support.empty_dict_data_form(socket.assigns.selected_dict_type),
-         dict_feedback: nil
+         dict_feedback: nil,
+         active_modal: "dict-data"
        )}
     else
       {:noreply, socket}
@@ -229,7 +252,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
             Map.merge(Support.empty_dict_data_form(), dict_data)
             |> Map.put("isDefault", if(dict_data["isDefault"] == 1, do: "true", else: "false"))
 
-          {:noreply, assign(socket, dict_data_form: form, dict_feedback: nil)}
+          {:noreply,
+           assign(socket, dict_data_form: form, dict_feedback: nil, active_modal: "dict-data")}
       end
     else
       {:noreply, socket}
@@ -255,6 +279,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
              selected_dict_type: dict_type,
              dict_data_rows: Support.load_dict_data(dict_type),
              dict_data_form: Support.empty_dict_data_form(dict_type),
+             active_modal: nil,
              dict_feedback: if(dict_code == "", do: "字典数据已创建", else: "字典数据已更新")
            )}
 
@@ -274,6 +299,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
            assign(socket,
              dict_data_rows: Support.load_dict_data(socket.assigns.selected_dict_type),
              dict_data_form: Support.empty_dict_data_form(socket.assigns.selected_dict_type),
+             active_modal: nil,
              dict_feedback: "字典数据已删除"
            )}
 
@@ -307,9 +333,26 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   def handle_event("edit-notice", %{"notice-id" => notice_id}, socket) do
     if Support.permission_socket?(socket, "system:notice:edit") do
       case Enum.find(socket.assigns.notice_rows, &(to_string(&1["noticeId"]) == notice_id)) do
-        nil -> {:noreply, assign(socket, notice_feedback: Feedback.error("找不到指定公告"))}
-        notice -> {:noreply, assign(socket, notice_form: notice, notice_feedback: nil)}
+        nil ->
+          {:noreply, assign(socket, notice_feedback: Feedback.error("找不到指定公告"))}
+
+        notice ->
+          {:noreply,
+           assign(socket, notice_form: notice, notice_feedback: nil, active_modal: "notice")}
       end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("new-notice", _params, socket) do
+    if Support.permission_socket?(socket, "system:notice:add") do
+      {:noreply,
+       assign(socket,
+         notice_form: Support.empty_notice_form(),
+         notice_feedback: nil,
+         active_modal: "notice"
+       )}
     else
       {:noreply, socket}
     end
@@ -317,7 +360,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("cancel-notice", _params, socket) do
     if Support.permission_socket?(socket, "system:notice:edit") do
-      {:noreply, assign(socket, notice_form: Support.empty_notice_form(), notice_feedback: nil)}
+      {:noreply,
+       assign(socket,
+         notice_form: Support.empty_notice_form(),
+         notice_feedback: nil,
+         active_modal: nil
+       )}
     else
       {:noreply, socket}
     end
@@ -341,6 +389,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
            assign(socket,
              notice_rows: Support.load_notices(),
              notice_form: Support.empty_notice_form(),
+             active_modal: nil,
              notice_feedback: if(notice_id == "", do: "公告已创建", else: "公告已更新")
            )}
 
@@ -379,7 +428,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
       case Notice.delete_notices([notice_id]) do
         :ok ->
           {:noreply,
-           assign(socket, notice_rows: Support.load_notices(), notice_feedback: "公告已删除")}
+           assign(socket,
+             notice_rows: Support.load_notices(),
+             notice_feedback: "公告已删除",
+             active_modal: nil
+           )}
 
         {:error, :not_found} ->
           {:noreply, assign(socket, notice_feedback: Feedback.error("找不到指定公告"))}
