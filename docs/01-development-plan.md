@@ -1,6 +1,6 @@
 # Keystone Phoenix 开发计划
 
-更新日期：2026-11-12。当前代码基线为 `407d85c`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
+更新日期：2026-11-12。当前代码基线为 `ccc4e03`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
 
 ## 目标与范围
 
@@ -327,11 +327,11 @@ mix test --include integration
 
 ### 2026-11-12 当前基线
 
-当前主线代码为 `6fee973`，`main` 与 `origin/main` 已同步；远端 `work` 为当前 `main` 的祖先，执行 `git merge --ff-only origin/work` 无需更新。`8bab43e` 修正了新外键约束下开发种子用户的无角色值；`4b8310a` 将登录入口、管理壳和概览统计改为正式产品文案与现代化视觉层，保留既有 LiveView 事件、字段和权限约定。`a284c99` 修复了受代理 CA 影响的 Docker/Hex 构建、加入构建与运行时 `libsctp1`，并修正 release smoke 的数据库恢复和 release eval 初始化；`c17c436` 让应用、开发环境和测试告警使用完整日期时间戳；`1436447` 升级 `erlef/setup-beam` 到支持 GitHub `ubuntu26` runner 的 `v1.24.1`；`6435fac` 完成手动任务资源耗尽错误边界；`dc8f872` 将 Telemetry 活跃会话指标改为数据库 `COUNT(*)`，避免周期性加载全部会话行；`5e50608` 抽取任务和日志列表的共享分页实现；`deaed69` 让配置和字典列表复用同一分页实现；`a054f1f` 让角色和岗位列表复用共享分页实现；`fc5dad8` 让公告和用户列表复用共享分页实现；`7417e35` 让监控在线会话复用内存列表分页实现；`d25a9d4` 将数据库连接池容量和等待队列纳入周期性 Telemetry 指标，并从 Repo 注册表读取实际连接池模块；`da81c15` 在等待队列达到 `REPO_POOL_QUEUE_ALERT_THRESHOLD` 时发出结构化告警事件；`33c25b8` 增加可选的 ConsoleReporter 报告组件；`620d596` 增加发布烟测的 HTTP 认证生命周期检查；`958dfb7` 增加定时任务和任务日志状态徽标；`117eaa9` 修复预期调度任务终止的 warning；`3621ab8` 复用用户参数解析；`c0b1803` 细化表格行操作按钮层级；`8e5a452` 统一管理列表状态徽标；`5588eab` 统一监控网络状态徽标；`e444ad2` 细化管理表格可访问语义；`10b1558` 集中管理状态徽标映射；`d3d7c84` 补充表头列语义；`dd37538` 统一中心化失败反馈的错误样式和无障碍语义；`d95851e` 统一事件层失败反馈的错误样式和无障碍语义；`1647870` 抽取管理表单默认值模块，降低 `AdminSupport` 职责密度；`d95c420` 抽取监控快照模块，降低 `AdminSupport` 的监控职责密度；`c6b7acf` 抽取管理导航标题映射模块；`2be5487` 抽取组织字段映射模块；`1ab8f98` 集中 LiveView 内存列表分页；`6fee973` 清理 LoginLive 转发函数。
+当前主线代码为 `ccc4e03`，`main` 与 `origin/main` 已同步；远端 `work` 为当前 `main` 的祖先，执行 `git merge --ff-only origin/work` 无需更新。该提交包含 `407d85c` 的管理表单模态框交互重构：部门、岗位、角色、菜单、用户、配置、字典、公告和定时任务页面默认进入查询列表，新增和编辑使用模态框。此前列出的认证、权限、数据范围、监控、任务、可访问性、状态徽标、Docker 构建和发布烟测修复继续生效。
 
-当前本机验证已完成：用户级 Elixir `1.20.5`、Erlang/OTP `29`、Mix、Hex 和 Rebar 可用；默认测试为 163 项通过、20 项排除，集成测试为 183 项通过；格式、源码行数、严格编译、`bash -n` 和 `git diff --check` 均通过。此前使用 BuildKit secret `proxy_ca` 的本地生产镜像摘要 `sha256:4a62aec5ecaed0028b16b1303ee51d8683a810c2cb4c8d824fcfc89aa9bcc589` 保留作历史构建记录；当前源代码镜像摘要为 `sha256:dccd9002cc7f042bd2af8f6e336275ff09616af335fa899eace1e7572924d321`，运行用户为 `keystone`，构建没有产生 warning，且已通过 `scripts/release_smoke.sh keystone-phoenix:0.3.0`。Docker 构建保持 TLS 证书校验，代理 CA secret 不进入运行时镜像。
+当前本机验证已完成：用户级 Elixir `1.20.5`、Erlang/OTP `29`、Mix、Hex 和 Rebar 可用；默认测试为 163 项通过、20 项排除，集成测试为 183 项通过；格式、源码行数、严格编译、`bash -n` 和 `git diff --check` 均通过。当前源代码生产镜像摘要为 `sha256:0a75c3d16a1987e720b3a00a7eafdaa3df8e1d9b6dbd5923ca86dcae7b7be692`，大小为 379930776 字节，架构为 `linux/arm64`，运行用户为 `keystone`，构建没有产生 warning，且已通过 `scripts/release_smoke.sh keystone-phoenix:0.3.0`。Docker 构建保持 TLS 证书校验，代理 CA secret 不进入运行时镜像。
 
-GitHub Test 工作流运行 `42962608929` 已在 `1436447` 上通过。发布工作流运行 `42962608932` 已完成并通过；该记录属于较早发布验证，不能作为当前 `958dfb7` 镜像的发布证据。当前镜像上的本地 release smoke 已补充 HTTP 认证生命周期检查并通过。真实生产浏览器窗口验收仍需具备对应窗口环境后执行；在此之前不创建版本标签。
+GitHub Test 工作流运行 `43105194101` 的 test job `130806726283` 已通过。该运行的 release-image job `130808311238` 已成功完成 GHCR 构建与推送、Cosign 签名、远端镜像拉取和 release smoke；镜像发布地址为 `ghcr.io/bruceblink/keystone-phoenix`。本机 macOS Chrome 已完成开发服务窗口验收；生产镜像真实浏览器窗口验收仍按第 07 项执行，若无法在发布前完成，将在 release 说明中保留该限制。
 
 
 ### 2026-11-10 计划实施收尾
