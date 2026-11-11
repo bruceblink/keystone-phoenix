@@ -282,6 +282,14 @@ mix test --include integration
 
 文档更新可以单独撤销。第 01 项的认证、LiveView 入口与测试作为同一功能切片回退，不删除 PostgreSQL 会话表或用户数据。后续修复优先通过向前兼容代码回退；保留上传文件。Redis 移除后的旧 Redis 会话不迁移，回退不能恢复这些登录状态。生产迁移回退和数据恢复必须先在独立环境验证。
 
+### 2026-11-11 当前基线
+
+当前主线为 `1436447`，`main` 与 `origin/main` 已同步。`a284c99` 修复了受代理 CA 影响的 Docker/Hex 构建、加入构建与运行时 `libsctp1`，并修正 release smoke 的数据库恢复和 release eval 初始化；`c17c436` 让应用、开发环境和测试告警使用完整日期时间戳；`1436447` 升级 `erlef/setup-beam` 到支持 GitHub `ubuntu26` runner 的 `v1.24.1`。
+
+当前本机验证已完成：用户级 Elixir `1.20.5`、Erlang/OTP `29`、Mix、Hex 和 Rebar 可用；默认测试为 151 项通过、20 项排除，集成测试为 171 项通过；格式、源码行数、严格编译、`bash -n` 和 `git diff --check` 均通过。使用 BuildKit secret `proxy_ca` 构建的本地生产镜像摘要为 `sha256:4a62aec5ecaed0028b16b1303ee51d8683a810c2cb4c8d824fcfc89aa9bcc589`，大小为 252099843 字节；`scripts/release_smoke.sh` 已通过迁移、重复迁移、备份恢复、非 root、数据库故障恢复、认证上传下载和卷重启检查。Docker 构建保持 TLS 证书校验，代理 CA secret 不进入运行时镜像。
+
+GitHub Test 工作流运行 `42962608929` 已在 `1436447` 上通过。发布工作流运行 `42962608932` 正在执行，需在完成后补录镜像推送、签名和 smoke 结果。真实生产浏览器窗口验收仍需具备对应窗口环境后执行；在此之前不创建版本标签。
+
 
 ### 2026-11-10 计划实施收尾
 
@@ -304,3 +312,6 @@ mix test --include integration
 - `f900b99`、`1c566f3`：发布镜像生成 SBOM、provenance，并按镜像 digest 执行 Cosign keyless 签名。
 
 最终验证：`mix check.source_lines`、格式检查、严格编译通过；默认测试 146 项通过、16 项排除；集成测试 162 项通过；覆盖率基线为 57.78%，当前只记录，不阻断 CI。`main`、`work`、`origin/main` 和 `origin/work` 已同步到 `1c566f3`。发布镜像 smoke、SBOM、provenance 和 Cosign 签名已加入 CI；真实生产窗口验收仍属于发布前工作，不因本轮代码测试通过而自动标记完成。
+### 2026-11-11 发布工作流结果
+
+此前记录的发布工作流 `42962608932` 已完成并通过。GHCR 镜像 `ghcr.io/bruceblink/keystone-phoenix:main` 摘要为 `sha256:3656759d40477f944fb773ef91394bfb3a73492fc3bcc81bd4ec7070f3a2082b`；Cosign 签名、SBOM/provenance 和远端 release smoke 均通过。当前只剩真实生产浏览器窗口验收，版本标签暂不创建。

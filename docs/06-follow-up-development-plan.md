@@ -92,3 +92,13 @@
 本轮相关提交包括：`c12935d`、`2e5642a`、`2c48bcd`、`6650a8b`、`94bb456`、`7bd3990`、`740bf6e`、`a4aac22` 和 `e985f1a`。监控在线会话现在使用服务端分页，角色主列表也使用全量分页聚合；刷新、强制下线和页码切换会同步总数与当前页；release smoke 会停止并恢复 PostgreSQL，核验应用从 `unhealthy` 恢复到 `healthy`。验证结果为：默认测试连续 5 次均为 151 项通过、20 项排除；`mix test --include integration` 为 171 项通过；`mix test --cover --include integration` 为 171 项通过、总覆盖率 65.35%；格式检查、源码行数检查、严格编译、`bash -n` 和 `git diff --check` 均通过。
 
 剩余验收只涉及环境和发布动作：本机 Docker release 构建因 Hex registry TLS CA 环境问题未完成，未通过关闭 TLS 校验绕过；真实浏览器窗口验收和最终 GHCR 构建、签名、版本标签仍需在具备 registry 与浏览器环境后执行。
+## 2026-11-11 基线对齐
+
+当前开发分支已经切换为 `main`，主线提交为 `1436447`。本计划中的代码修复已完成，且新增的构建环境与日志切片已推送：`a284c99` 处理代理 CA、SCTP 运行库和 release smoke；`c17c436` 增加完整日期时间戳；`1436447` 修复 GitHub `ubuntu26` runner 的 setup-beam 兼容性。
+
+本机 Docker 构建已使用 BuildKit `proxy_ca` secret 成功完成，Hex 依赖通过证书校验下载；生产镜像和 release smoke 已通过。默认测试 151 项通过、20 项排除，集成测试 171 项通过，用户级 Mix/Hex/Rebar 环境已可用。原计划中“本机 Docker Hex CA 失败”和 `libsctp.so.1` 缺失均已关闭。
+
+当前剩余项收敛为发布环境动作：等待 GitHub 发布工作流 `42962608932` 完成并记录 GHCR 镜像、Cosign 签名和远端 smoke 结果；真实生产浏览器窗口验收仍需对应窗口环境。完成这些动作前不创建 `v0.3.0` 标签。
+## 2026-11-11 发布工作流结果
+
+发布工作流 `42962608932` 已完成并通过。GHCR 镜像 `ghcr.io/bruceblink/keystone-phoenix:main` 摘要为 `sha256:3656759d40477f944fb773ef91394bfb3a73492fc3bcc81bd4ec7070f3a2082b`；Cosign 签名、SBOM/provenance 和远端 release smoke 均通过。当前只剩真实生产浏览器窗口验收，具备对应窗口环境前不创建 `v0.3.0` 标签。

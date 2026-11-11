@@ -306,9 +306,20 @@ HTTP contract matrix 已覆盖健康检查、认证失败、无效 ID、上传�
 
 `login_live.ex` 的样式和 LiveSocket 初始化已移到静态资源。生产数据库 SSL 关闭现在必须使用 `DATABASE_SSL_ALLOW_INSECURE=true`。
 
+## 2026-11-11 当前验证补充
+
+当前主线提交为 `1436447`。`a284c99` 已让 Docker 构建通过 BuildKit `proxy_ca` secret 导入受管代理 CA，并在 build/runtime 阶段安装 `libsctp1`；`c17c436` 已让应用和测试告警输出 `YYYY-MM-DD HH:MM:SS.mmm`；`1436447` 已升级 `erlef/setup-beam` 到 `v1.24.1`，修复 GitHub `ubuntu26` runner 无法识别的问题。
+
+本机使用用户级 Elixir `1.20.5`、Erlang/OTP `29` 和 Mix 完成默认测试 151/20 排除、集成测试 171、严格编译、格式和源码行数检查。生产镜像 `sha256:4a62aec5ecaed0028b16b1303ee51d8683a810c2cb4c8d824fcfc89aa9bcc589` 已通过 release smoke；迁移、重复迁移、备份恢复、非 root、PostgreSQL 停止与恢复、认证上传下载和文件卷重启均有执行证据。此前“Hex CA 构建失败”和“libsctp 告警”属于已关闭的本地环境问题，不再作为当前发布阻塞项。
+
+GitHub Test 工作流 `42962608929` 已通过。发布工作流 `42962608932` 在本补充写入时仍在运行；GHCR 镜像摘要、Cosign 签名和远端 smoke 结果待工作流完成后记录。真实生产浏览器窗口验收仍未完成。
+
 
 ## 2026-11-10 计划闭环
 
 本轮后续计划的代码修复已完成并按独立切片提交推送：细粒度权限补齐字典缓存刷新 action；领域校验、外键迁移和批量角色事务已落地；限流容量、批量上传上限、监控脱敏、生产 seeds 保护、数据库 SSL 和 `FILE_BASE_DIR` 启动检查已落地；readiness、release smoke、PostgreSQL 故障恢复、备份恢复、卷重启和非 root 检查已写入发布工作流；管理表格无障碍语义、真正分页、角色状态清理、角色主列表和监控在线会话服务端分页、按钮加载锁和静态资源拆分已完成。
 
 验证结果：格式检查、源码行数检查、严格编译和 `git diff --check` 通过；默认测试连续 5 次均为 151 项通过、20 项排除；`mix test --include integration` 为 171 项通过；`mix test --cover --include integration` 为 171 项通过、总覆盖率 65.35%。本机 Docker release 构建仍受 Hex registry TLS CA 环境限制，未通过关闭 TLS 校验绕过；真实浏览器窗口和最终 GHCR 发布验收留待具备对应环境后执行。
+## 2026-11-11 发布工作流结果
+
+发布工作流 `42962608932` 已完成并通过。GHCR 镜像 `ghcr.io/bruceblink/keystone-phoenix:main` 摘要为 `sha256:3656759d40477f944fb773ef91394bfb3a73492fc3bcc81bd4ec7070f3a2082b`；Cosign 签名、SBOM/provenance 和远端 release smoke 均通过。真实生产浏览器窗口验收仍未完成，版本标签暂不创建。
