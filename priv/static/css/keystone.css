@@ -482,6 +482,7 @@ tbody tr:hover { background: #f8faff; }
 th { position: sticky; top: 0; z-index: 1; color: #64748b; }
 td { color: #334155; }
 .feedback, .error { box-shadow: 0 5px 14px rgba(15, 23, 42, 0.04); }
+.feedback--error { border-color: #fecaca; background: #fff1f2; color: #b42318; }
 .form-actions { align-items: center; }
 .form-actions button { font-weight: 700; }
 

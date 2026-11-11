@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
   use Phoenix.Component
 
   import KeystonePhoenixWeb.Live.AdminPages.Pagination
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Status
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
@@ -16,7 +17,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
         <button :if={!@read_only} type="button" class="refresh" phx-click="new-dept" phx-disable-with="处理中…">新建部门</button>
         <button type="button" class="refresh secondary" phx-click="refresh-depts" phx-disable-with="刷新中…">刷新部门</button>
       </div>
-      <%= if @dept_feedback do %><p id="dept-feedback" class="feedback" role="status" aria-live="polite"><%= @dept_feedback %></p><% end %>
+      <%= if @dept_feedback do %><p id="dept-feedback" class={Feedback.class(@dept_feedback)} role={Feedback.role(@dept_feedback)} aria-live={Feedback.live(@dept_feedback)}><%= Feedback.message(@dept_feedback) %></p><% end %>
       <p :if={@dept_rows == []} class="table-empty" role="status">暂无部门数据</p>
       <form :if={!@read_only} aria-describedby="dept-feedback" phx-submit="save-dept">
         <input type="hidden" name="deptId" value={@dept_form["deptId"]} />
@@ -49,7 +50,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-post" phx-disable-with="处理中…">新建岗位</button><button type="button" class="refresh secondary" phx-click="refresh-posts" phx-disable-with="刷新中…">刷新岗位</button></div>
-      <%= if @post_feedback do %><p id="post-feedback" class="feedback" role="status" aria-live="polite"><%= @post_feedback %></p><% end %>
+      <%= if @post_feedback do %><p id="post-feedback" class={Feedback.class(@post_feedback)} role={Feedback.role(@post_feedback)} aria-live={Feedback.live(@post_feedback)}><%= Feedback.message(@post_feedback) %></p><% end %>
       <p :if={@post_rows == []} class="table-empty" role="status">暂无岗位数据</p>
       <form :if={!@read_only} aria-describedby="post-feedback" phx-submit="save-post">
         <input type="hidden" name="postId" value={@post_form["postId"]} />
@@ -79,7 +80,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-role" phx-disable-with="处理中…">新建角色</button><button type="button" class="refresh secondary" phx-click="refresh-roles" phx-disable-with="刷新中…">刷新角色</button></div>
-      <%= if @role_feedback do %><p id="role-feedback" class="feedback" role="status" aria-live="polite"><%= @role_feedback %></p><% end %>
+      <%= if @role_feedback do %><p id="role-feedback" class={Feedback.class(@role_feedback)} role={Feedback.role(@role_feedback)} aria-live={Feedback.live(@role_feedback)}><%= Feedback.message(@role_feedback) %></p><% end %>
       <p :if={@role_rows == []} class="table-empty" role="status">暂无角色数据</p>
       <form :if={!@read_only} aria-describedby="role-feedback" phx-submit="save-role">
         <input type="hidden" name="roleId" value={@role_form["roleId"]} />
@@ -92,7 +93,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       <%= if @selected_role_id != "" do %>
         <section id="role-user-management">
           <h3>角色用户：<%= @selected_role_name %></h3>
-          <%= if @role_user_feedback do %><p id="role-user-feedback" class="feedback" role="status" aria-live="polite"><%= @role_user_feedback %></p><% end %>
+          <%= if @role_user_feedback do %><p id="role-user-feedback" class={Feedback.class(@role_user_feedback)} role={Feedback.role(@role_user_feedback)} aria-live={Feedback.live(@role_user_feedback)}><%= Feedback.message(@role_user_feedback) %></p><% end %>
           <div class="monitor-grid details">
             <div><h3>已分配用户（<%= length(@allocated_role_user_rows) %>）</h3><div class="table-scroll" role="region" tabindex="0" aria-label="已分配用户列表"><table><caption class="sr-only">已分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- Support.page_rows(@allocated_role_user_rows, @allocated_page_num, @role_user_page_size) do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={!@read_only} type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="unassign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">取消分配</button></td></tr><% end %></tbody></table></div><.pagination panel="role-users-allocated" page_num={min(@allocated_page_num, page_count(length(@allocated_role_user_rows), @role_user_page_size))} page_size={@role_user_page_size} total={length(@allocated_role_user_rows)} /></div>
             <div><h3>可分配用户（<%= length(@unallocated_role_user_rows) %>）</h3><div class="table-scroll" role="region" tabindex="0" aria-label="可分配用户列表"><table><caption class="sr-only">可分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- Support.page_rows(@unallocated_role_user_rows, @unallocated_page_num, @role_user_page_size) do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={!@read_only} type="button" class="refresh" phx-click="assign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">分配</button></td></tr><% end %></tbody></table></div><.pagination panel="role-users-unallocated" page_num={min(@unallocated_page_num, page_count(length(@unallocated_role_user_rows), @role_user_page_size))} page_size={@role_user_page_size} total={length(@unallocated_role_user_rows)} /></div>
@@ -109,7 +110,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-menu" phx-disable-with="处理中…">新建菜单</button><button type="button" class="refresh secondary" phx-click="refresh-menus" phx-disable-with="刷新中…">刷新菜单</button></div>
-      <%= if @menu_feedback do %><p id="menu-feedback" class="feedback" role="status" aria-live="polite"><%= @menu_feedback %></p><% end %>
+      <%= if @menu_feedback do %><p id="menu-feedback" class={Feedback.class(@menu_feedback)} role={Feedback.role(@menu_feedback)} aria-live={Feedback.live(@menu_feedback)}><%= Feedback.message(@menu_feedback) %></p><% end %>
       <p :if={@menu_rows == []} class="table-empty" role="status">暂无菜单数据</p>
       <form :if={!@read_only} aria-describedby="menu-feedback" phx-submit="save-menu">
         <input type="hidden" name="menuId" value={@menu_form["menuId"]} />

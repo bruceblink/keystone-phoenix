@@ -226,7 +226,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     feedback_html =
       render_component(
         &Accounts.users/1,
-        Map.take(%{account_assigns | user_feedback: "保存失败"}, [
+        Map.take(%{account_assigns | user_feedback: {:error, "保存失败"}}, [
           :user_rows,
           :user_form,
           :user_feedback,
@@ -237,7 +237,10 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       )
 
     assert feedback_html =~ ~s(id="user-feedback")
-    assert feedback_html =~ ~s(aria-live="polite")
+    assert feedback_html =~ ~s(class="feedback feedback--error")
+    assert feedback_html =~ ~s(role="alert")
+    assert feedback_html =~ ~s(aria-live="assertive")
+    assert feedback_html =~ "保存失败"
 
     assert render_component(
              &Accounts.profile/1,

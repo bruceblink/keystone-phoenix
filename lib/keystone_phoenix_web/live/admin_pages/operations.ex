@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
   use Phoenix.Component
 
   import KeystonePhoenixWeb.Live.AdminPages.Pagination
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Status
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
@@ -17,7 +18,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-job" phx-disable-with="处理中…">新建任务</button><button type="button" class="refresh secondary" phx-click="refresh-jobs" phx-disable-with="刷新中…">刷新任务</button></div>
-      <%= if @job_feedback do %><p id="job-feedback" class="feedback" role="status" aria-live="polite"><%= @job_feedback %></p><% end %>
+      <%= if @job_feedback do %><p id="job-feedback" class={Feedback.class(@job_feedback)} role={Feedback.role(@job_feedback)} aria-live={Feedback.live(@job_feedback)}><%= Feedback.message(@job_feedback) %></p><% end %>
       <p :if={@job_rows == []} class="table-empty" role="status">暂无定时任务</p>
       <form :if={!@read_only} aria-describedby="job-feedback" phx-submit="save-job">
         <input type="hidden" name="jobId" value={@job_form["jobId"]} />
@@ -53,7 +54,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button type="button" class="refresh" phx-click="refresh-job-logs" phx-disable-with="刷新中…">刷新任务日志</button></div>
-      <%= if @job_log_feedback do %><p id="job-log-feedback" class="feedback" role="status" aria-live="polite"><%= @job_log_feedback %></p><% end %>
+      <%= if @job_log_feedback do %><p id="job-log-feedback" class={Feedback.class(@job_log_feedback)} role={Feedback.role(@job_log_feedback)} aria-live={Feedback.live(@job_log_feedback)}><%= Feedback.message(@job_log_feedback) %></p><% end %>
       <p :if={@job_log_rows == []} class="table-empty" role="status">暂无任务日志</p>
       <div class="table-scroll" role="region" tabindex="0" aria-label="任务日志列表"><table><caption class="sr-only">任务日志列表</caption><thead><tr><th scope="col">任务</th><th scope="col">分组</th><th scope="col">调用目标</th><th scope="col">状态</th><th scope="col">消息</th><th scope="col">开始时间</th><th scope="col">结束时间</th></tr></thead><tbody>
         <%= for log <- Support.page_rows(@job_log_rows, @page_num, @page_size) do %>
@@ -76,7 +77,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button type="button" class="refresh" phx-click="refresh-monitor" phx-disable-with="刷新中…">刷新监控</button></div>
-      <%= if @monitor_feedback do %><p id="monitor-feedback" class="feedback" role="status" aria-live="polite"><%= @monitor_feedback %></p><% end %>
+      <%= if @monitor_feedback do %><p id="monitor-feedback" class={Feedback.class(@monitor_feedback)} role={Feedback.role(@monitor_feedback)} aria-live={Feedback.live(@monitor_feedback)}><%= Feedback.message(@monitor_feedback) %></p><% end %>
       <p :if={@online_user_rows == []} class="table-empty" role="status">暂无在线会话</p>
       <div class="monitor-grid">
         <div class="metric"><span>CPU 使用率</span><strong><%= get_in(@monitor_server_info, ["cpuInfo", "used"]) || 0 %>%</strong><small>逻辑处理器：<%= get_in(@monitor_server_info, ["cpuInfo", "cpuNum"]) || 0 %></small></div>

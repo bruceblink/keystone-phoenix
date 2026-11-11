@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
   use Phoenix.Component
 
   import KeystonePhoenixWeb.Live.AdminPages.Pagination
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Status
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
@@ -21,7 +22,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         <button type="button" class="refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…">刷新用户</button>
       </div>
       <%= if @user_feedback do %>
-        <p id="user-feedback" class="feedback" role="status" aria-live="polite"><%= @user_feedback %></p>
+        <p id="user-feedback" class={Feedback.class(@user_feedback)} role={Feedback.role(@user_feedback)} aria-live={Feedback.live(@user_feedback)}><%= Feedback.message(@user_feedback) %></p>
       <% end %>
       <p :if={@user_rows == []} class="table-empty" role="status">暂无用户数据</p>
       <form :if={!@read_only} aria-describedby="user-feedback" phx-submit="save-user">
@@ -70,7 +71,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
     ~H"""
     <div class="panel">
       <h3>个人资料</h3>
-      <%= if @profile_feedback do %><p id="profile-feedback" class="feedback" role="status" aria-live="polite"><%= @profile_feedback %></p><% end %>
+      <%= if @profile_feedback do %><p id="profile-feedback" class={Feedback.class(@profile_feedback)} role={Feedback.role(@profile_feedback)} aria-live={Feedback.live(@profile_feedback)}><%= Feedback.message(@profile_feedback) %></p><% end %>
       <form aria-describedby="profile-feedback" phx-submit="save-profile">
         <div class="form-grid">
           <div><label for="profile-nickname">昵称</label><input id="profile-nickname" name="nickname" value={@profile_form["nickname"] || ""} required /></div>

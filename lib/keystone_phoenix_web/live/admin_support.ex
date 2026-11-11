@@ -16,6 +16,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.Authentication
 
   @panel_permissions %{
@@ -494,9 +495,15 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       online_users: online_users,
       online_user_total: online_user_total,
       network_status: network_status,
-      feedback: Enum.find([server_error, cache_error, online_error], &is_binary/1)
+      feedback:
+        [server_error, cache_error, online_error]
+        |> Enum.find(&is_binary/1)
+        |> error_feedback_or_nil()
     }
   end
+
+  defp error_feedback_or_nil(nil), do: nil
+  defp error_feedback_or_nil(message), do: Feedback.error(message)
 
   def assign_profile(socket) do
     case User.profile(socket.assigns.current_user["userId"]) do
@@ -511,7 +518,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
         )
 
       _ ->
-        assign(socket, active_panel: "profile", profile_feedback: "个人资料暂不可用")
+        assign(socket, active_panel: "profile", profile_feedback: Feedback.error("个人资料暂不可用"))
     end
   end
 
@@ -525,10 +532,13 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     Map.put(params, "configOptions", Jason.encode!(options))
   end
 
-  def form_error({:error, %Ecto.Changeset{} = changeset}), do: notice_form_error(changeset)
-  def form_error({:error, reason}), do: human_error(reason)
-  def form_error(:error), do: "操作失败"
-  def form_error(other), do: inspect(other)
+  # 将服务端失败转换为带级别的反馈，页面据此选择警示语义和视觉样式。
+  def form_error({:error, %Ecto.Changeset{} = changeset}),
+    do: Feedback.error(notice_form_error(changeset))
+
+  def form_error({:error, reason}), do: Feedback.error(human_error(reason))
+  def form_error(:error), do: Feedback.error("操作失败")
+  def form_error(other), do: Feedback.error(inspect(other))
 
   def human_error(:not_found), do: "记录不存在"
   def human_error(:invalid_ids), do: "编号无效"

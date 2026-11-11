@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
   use Phoenix.Component
 
   import KeystonePhoenixWeb.Live.AdminPages.Pagination
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Status
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
@@ -13,7 +14,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-config" phx-disable-with="处理中…">新建配置</button><button type="button" class="refresh secondary" phx-click="refresh-config" phx-disable-with="刷新中…">刷新配置</button></div>
-      <%= if @config_feedback do %><p id="config-feedback" class="feedback" role="status" aria-live="polite"><%= @config_feedback %></p><% end %>
+      <%= if @config_feedback do %><p id="config-feedback" class={Feedback.class(@config_feedback)} role={Feedback.role(@config_feedback)} aria-live={Feedback.live(@config_feedback)}><%= Feedback.message(@config_feedback) %></p><% end %>
       <p :if={@config_rows == []} class="table-empty" role="status">暂无配置数据</p>
       <form :if={!@read_only} aria-describedby="config-feedback" phx-submit="save-config">
         <input type="hidden" name="configId" value={@config_form["configId"]} />
@@ -46,7 +47,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-dict-type" phx-disable-with="处理中…">新建字典类型</button><button type="button" class="refresh secondary" phx-click="refresh-dicts" phx-disable-with="刷新中…">刷新字典</button></div>
-      <%= if @dict_feedback do %><p id="dict-feedback" class="feedback" role="status" aria-live="polite"><%= @dict_feedback %></p><% end %>
+      <%= if @dict_feedback do %><p id="dict-feedback" class={Feedback.class(@dict_feedback)} role={Feedback.role(@dict_feedback)} aria-live={Feedback.live(@dict_feedback)}><%= Feedback.message(@dict_feedback) %></p><% end %>
       <p :if={@dict_type_rows == [] and @dict_data_rows == []} class="table-empty" role="status">暂无字典数据</p>
       <h3>字典类型</h3>
       <form :if={!@read_only} aria-describedby="dict-feedback" phx-submit="save-dict-type">
@@ -97,7 +98,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button type="button" class="refresh" phx-click="refresh-notices" phx-disable-with="刷新中…">刷新公告</button></div>
-      <%= if @notice_feedback do %><p id="notice-feedback" class="feedback" role="status" aria-live="polite"><%= @notice_feedback %></p><% end %>
+      <%= if @notice_feedback do %><p id="notice-feedback" class={Feedback.class(@notice_feedback)} role={Feedback.role(@notice_feedback)} aria-live={Feedback.live(@notice_feedback)}><%= Feedback.message(@notice_feedback) %></p><% end %>
       <p :if={@notice_rows == []} class="table-empty" role="status">暂无公告数据</p>
       <form :if={!@read_only} aria-describedby="notice-feedback" phx-submit="save-notice">
         <input type="hidden" name="noticeId" value={@notice_form["noticeId"]} />
@@ -130,7 +131,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
     ~H"""
     <div class="panel">
       <div class="form-actions"><button type="button" class="refresh" phx-click="refresh-logs" phx-disable-with="刷新中…">刷新日志</button></div>
-      <%= if @log_feedback do %><p id="log-feedback" class="feedback" role="status" aria-live="polite"><%= @log_feedback %></p><% end %>
+      <%= if @log_feedback do %><p id="log-feedback" class={Feedback.class(@log_feedback)} role={Feedback.role(@log_feedback)} aria-live={Feedback.live(@log_feedback)}><%= Feedback.message(@log_feedback) %></p><% end %>
       <p :if={@login_log_rows == [] and @operation_log_rows == []} class="table-empty" role="status">暂无日志数据</p>
       <h3>登录日志（<%= length(@login_log_rows) %>）</h3>
       <div class="table-scroll" role="region" tabindex="0" aria-label="登录日志列表"><table><caption class="sr-only">登录日志列表</caption><thead><tr><th scope="col">用户</th><th scope="col">IP</th><th scope="col">浏览器</th><th scope="col">状态</th><th scope="col">消息</th><th scope="col">时间</th><th scope="col">操作</th></tr></thead><tbody>
