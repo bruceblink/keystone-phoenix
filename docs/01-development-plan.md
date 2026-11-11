@@ -1,6 +1,6 @@
 # Keystone Phoenix 开发计划
 
-更新日期：2026-11-11。当前代码基线为 `d25a9d4`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
+更新日期：2026-11-11。当前代码基线为 `da81c15`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
 
 ## 目标与范围
 
@@ -14,7 +14,7 @@
 
 2026-11-10 后续计划切片已完成：`c12935d` 扩大刷新并发测试观察窗口；`2e5642a` 为字典缓存刷新使用独立动作权限；`2c48bcd` 增加 `FILE_BASE_DIR` 启动可写性检查并锁定 release smoke 的 PostgreSQL digest；`6650a8b` 清空角色保存、状态切换和用户分配后的旧状态并移除角色用户 500 条静默截断；`94bb456` 固定 GitHub Actions 到提交 SHA；`7bd3990` 补齐 LiveView 集成测试辅助函数；`740bf6e` 为监控在线会话增加服务端分页，并在刷新和强制下线后重置页码；`a4aac22` 移除 LiveView 角色主列表的 500 条静默上限；`e985f1a` 在 release smoke 中加入 PostgreSQL 故障、应用 `unhealthy` 和数据库恢复检查。
 
-2026-11-11 当前轮次：`fc3d93a` 和 `18de114` 完成管理后台的侧栏、顶栏、页面上下文、分组导航、状态卡片、表格和窄屏布局打磨，标题与描述使用正式产品用语；`aa2e6be` 固定兼容 Elixir 1.20 的 Excel 依赖并修复依赖编译 warning；`49da75b` 让 Dockerfile 默认使用 Docker Hub、Hex 和 Debian 官方源，只有显式传入构建参数时才切换本地国内镜像；`d25a9d4` 增加普通连接池、`DBConnection.Ownership` 和分区连接池的 Telemetry 容量与等待队列指标。默认全量测试 154 项通过、20 项排除，集成全量测试 174 项通过，发布 smoke 通过。当前最终镜像摘要为 `sha256:8a418830832644fcc3cec9f063701af4266ee3dd34b97afd30cff7a9850c9f4e`，运行用户为 `keystone`。本轮没有创建 tag 或 release。Computer Use 工具当前不可用，因此最新侧栏视觉只完成代码、静态和 LiveView 证据，真实窗口截图仍待工具恢复后补验。
+2026-11-11 当前轮次：`fc3d93a` 和 `18de114` 完成管理后台的侧栏、顶栏、页面上下文、分组导航、状态卡片、表格和窄屏布局打磨，标题与描述使用正式产品用语；`aa2e6be` 固定兼容 Elixir 1.20 的 Excel 依赖并修复依赖编译 warning；`49da75b` 让 Dockerfile 默认使用 Docker Hub、Hex 和 Debian 官方源，只有显式传入构建参数时才切换本地国内镜像；`d25a9d4` 增加普通连接池、`DBConnection.Ownership` 和分区连接池的 Telemetry 容量与等待队列指标；`da81c15` 增加连接池等待队列告警事件和生产阈值配置。默认全量测试 155 项通过、20 项排除，集成全量测试 175 项通过，发布 smoke 通过。当前最终镜像摘要为 `sha256:8a418830832644fcc3cec9f063701af4266ee3dd34b97afd30cff7a9850c9f4e`，运行用户为 `keystone`。本轮没有创建 tag 或 release。Computer Use 工具当前不可用，因此最新侧栏视觉只完成代码、静态和 LiveView 证据，真实窗口截图仍待工具恢复后补验。
 
 ## 当前状态
 
@@ -286,7 +286,7 @@ mix test --include integration
 
 ### 2026-11-11 当前基线
 
-当前主线代码为 `d25a9d4`，`main` 与 `origin/main` 已同步；远端 `work` 为当前 `main` 的祖先，执行 `git merge --ff-only origin/work` 无需更新。`8bab43e` 修正了新外键约束下开发种子用户的无角色值；`4b8310a` 将登录入口、管理壳和概览统计改为正式产品文案与现代化视觉层，保留既有 LiveView 事件、字段和权限约定。`a284c99` 修复了受代理 CA 影响的 Docker/Hex 构建、加入构建与运行时 `libsctp1`，并修正 release smoke 的数据库恢复和 release eval 初始化；`c17c436` 让应用、开发环境和测试告警使用完整日期时间戳；`1436447` 升级 `erlef/setup-beam` 到支持 GitHub `ubuntu26` runner 的 `v1.24.1`；`6435fac` 完成手动任务资源耗尽错误边界；`dc8f872` 将 Telemetry 活跃会话指标改为数据库 `COUNT(*)`，避免周期性加载全部会话行；`5e50608` 抽取任务和日志列表的共享分页实现；`deaed69` 让配置和字典列表复用同一分页实现；`a054f1f` 让角色和岗位列表复用共享分页实现；`fc5dad8` 让公告和用户列表复用共享分页实现；`7417e35` 让监控在线会话复用内存列表分页实现；`d25a9d4` 将数据库连接池容量和等待队列纳入周期性 Telemetry 指标，并从 Repo 注册表读取实际连接池模块。
+当前主线代码为 `da81c15`，`main` 与 `origin/main` 已同步；远端 `work` 为当前 `main` 的祖先，执行 `git merge --ff-only origin/work` 无需更新。`8bab43e` 修正了新外键约束下开发种子用户的无角色值；`4b8310a` 将登录入口、管理壳和概览统计改为正式产品文案与现代化视觉层，保留既有 LiveView 事件、字段和权限约定。`a284c99` 修复了受代理 CA 影响的 Docker/Hex 构建、加入构建与运行时 `libsctp1`，并修正 release smoke 的数据库恢复和 release eval 初始化；`c17c436` 让应用、开发环境和测试告警使用完整日期时间戳；`1436447` 升级 `erlef/setup-beam` 到支持 GitHub `ubuntu26` runner 的 `v1.24.1`；`6435fac` 完成手动任务资源耗尽错误边界；`dc8f872` 将 Telemetry 活跃会话指标改为数据库 `COUNT(*)`，避免周期性加载全部会话行；`5e50608` 抽取任务和日志列表的共享分页实现；`deaed69` 让配置和字典列表复用同一分页实现；`a054f1f` 让角色和岗位列表复用共享分页实现；`fc5dad8` 让公告和用户列表复用共享分页实现；`7417e35` 让监控在线会话复用内存列表分页实现；`d25a9d4` 将数据库连接池容量和等待队列纳入周期性 Telemetry 指标，并从 Repo 注册表读取实际连接池模块；`da81c15` 在等待队列达到 `REPO_POOL_QUEUE_ALERT_THRESHOLD` 时发出结构化告警事件。
 
 当前本机验证已完成：用户级 Elixir `1.20.5`、Erlang/OTP `29`、Mix、Hex 和 Rebar 可用；默认测试为 152 项通过、20 项排除，集成测试为 172 项通过；格式、源码行数、严格编译、`bash -n` 和 `git diff --check` 均通过。使用 BuildKit secret `proxy_ca` 构建的本地生产镜像摘要为 `sha256:4a62aec5ecaed0028b16b1303ee51d8683a810c2cb4c8d824fcfc89aa9bcc589`，大小为 252099843 字节；`scripts/release_smoke.sh` 已通过迁移、重复迁移、备份恢复、非 root、数据库故障恢复、认证上传下载和卷重启检查。Docker 构建保持 TLS 证书校验，代理 CA secret 不进入运行时镜像。
 
@@ -343,11 +343,11 @@ GitHub Test 工作流运行 `42962608929` 已在 `1436447` 上通过。发布工
 
 提交 `7417e35` 增加共享内存列表分页接口，并让监控在线会话使用相同的页码解析和 500 条上限。监控批量查询回归、默认测试 152 项通过、20 项排除和集成测试 172 项通过。
 
-### 2026-11-11 Telemetry 连接池指标切片
+### 2026-11-11 Telemetry 连接池指标和告警切片
 
-提交 `d25a9d4` 增加 `keystone_phoenix.repo.pool.ready_connections`、`checkout_queue_length`、`pool_size` 和 `pool_count` 指标。采集器从 `Ecto.Repo.Registry` 读取实际连接池模块，兼容普通连接池、`DBConnection.Ownership` 和分区连接池；连接池进程退出或仓库未就绪时输出零值，不影响请求处理。测试覆盖指标注册、采集调用和非负测量值。
+提交 `d25a9d4` 增加 `keystone_phoenix.repo.pool.ready_connections`、`checkout_queue_length`、`pool_size` 和 `pool_count` 指标。提交 `da81c15` 增加 `keystone_phoenix.repo.pool.alert.count` 和 `REPO_POOL_QUEUE_ALERT_THRESHOLD`。采集器从 `Ecto.Repo.Registry` 读取实际连接池模块，兼容普通连接池、`DBConnection.Ownership` 和分区连接池；连接池进程退出或仓库未就绪时输出零值，不影响请求处理。等待队列达到阈值时发送结构化告警事件，供报告组件订阅。
 
-验证结果：Telemetry 定向测试 3 项通过；默认全量测试 154 项通过、20 项排除；集成全量测试 174 项通过；dev/prod 严格编译、格式、源码行数和 `git diff --check` 均通过。
+验证结果：Telemetry 定向测试 4 项通过；默认全量测试 155 项通过、20 项排除；集成全量测试 175 项通过；dev/prod 严格编译、格式、源码行数和 `git diff --check` 均通过。
 
 ### 2026-11-11 当前轮次收尾
 
