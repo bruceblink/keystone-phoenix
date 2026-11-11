@@ -55,12 +55,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=ref,event=branch
             type=ref,event=tag
-            type=sha
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push release image
         id: build
@@ -86,10 +81,10 @@ jobs:
 
       - name: Pull release image for smoke test
         env:
-          IMAGE_REF: ghcr.io/${{ github.repository }}:${{ steps.metadata.outputs.version }}
+          IMAGE_REF: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
         run: docker pull "${IMAGE_REF}"
 
       - name: Run release smoke test
         env:
-          IMAGE_REF: ghcr.io/${{ github.repository }}:${{ steps.metadata.outputs.version }}
+          IMAGE_REF: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
         run: ./scripts/release_smoke.sh "${IMAGE_REF}"

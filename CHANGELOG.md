@@ -26,7 +26,7 @@
 
 ## 构建
 
-- GitHub Actions 仅在 `vX.Y.Z` 正式版本标签发布时，将镜像推送到 `ghcr.io/bruceblink/keystone-phoenix`，并生成不带 `v` 前缀的版本镜像标签。
+- 后续 GitHub Actions 仅在 `vX.Y.Z` 正式版本标签发布时，将镜像推送到 `ghcr.io/bruceblink/keystone-phoenix`，并只生成相同的 `vX.Y.Z` 镜像标签。
 - 发布镜像生成 SBOM 和 provenance，并使用 Cosign keyless 签名；发布烟测覆盖迁移、认证、文件、持久化、备份恢复和数据库故障恢复。
 - 本地 `linux/arm64` 生产镜像 smoke 和 macOS Chrome 真实窗口验收均已通过。生产容器使用独立 PostgreSQL 18 和 `localhost:4001`，覆盖登录、管理员概览、部门查询与新增模态框、运行监控、退出登录及 `390×844` 窄屏无横向溢出。
 
