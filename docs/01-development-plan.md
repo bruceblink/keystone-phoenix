@@ -333,7 +333,7 @@ mix test --include integration
 
 当前本机验证已完成：用户级 Elixir `1.20.5`、Erlang/OTP `29`、Mix、Hex 和 Rebar 可用；默认测试为 163 项通过、20 项排除，集成测试为 183 项通过；格式、源码行数、严格编译、`bash -n` 和 `git diff --check` 均通过。当前源代码生产镜像摘要为 `sha256:0a75c3d16a1987e720b3a00a7eafdaa3df8e1d9b6dbd5923ca86dcae7b7be692`，大小为 379930776 字节，架构为 `linux/arm64`，运行用户为 `keystone`，构建没有产生 warning，且已通过 `scripts/release_smoke.sh keystone-phoenix:0.3.0`。Docker 构建保持 TLS 证书校验，代理 CA secret 不进入运行时镜像。
 
-GitHub Test 工作流运行 `43105194101` 的 test job `130806726283` 已通过。该运行的 release-image job `130808311238` 已成功完成 GHCR 构建与推送、Cosign 签名、远端镜像拉取和 release smoke；镜像发布地址为 `ghcr.io/bruceblink/keystone-phoenix`。本机 macOS Chrome 已完成开发服务窗口验收；生产镜像真实浏览器窗口验收仍按第 07 项执行，若无法在发布前完成，将在 release 说明中保留该限制。
+GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过。该运行的 release-image job `130814561487` 已成功完成 GHCR 构建与推送、Cosign 签名、远端镜像拉取和 release smoke；镜像发布地址为 `ghcr.io/bruceblink/keystone-phoenix`，manifest 摘要为 `sha256:3e62f5178ca87234de6246e58ff4461b1913bae1bfc24ed551a9e2c3500b1104`。后续发布工作流仅由 `vX.Y.Z` 正式版本标签触发，并在构建前校验标签格式。本机 macOS Chrome 已完成生产镜像真实窗口验收。
 
 
 ### 2026-11-10 计划实施收尾

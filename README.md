@@ -57,10 +57,10 @@ docker run --rm --env-file .env --entrypoint /app/bin/migrate keystone-phoenix:l
 docker run --rm --env-file .env -p 4000:4000 keystone-phoenix:latest start
 ```
 
-GitHub Actions publishes the same release image to
-`ghcr.io/bruceblink/keystone-phoenix` for every `main` push and `v*` tag. The
-workflow also supports manual runs from the Actions tab and keeps BuildKit
-layers in the GitHub Actions cache.
+GitHub Actions publishes release images to
+`ghcr.io/bruceblink/keystone-phoenix` only for stable semantic version tags
+such as `v0.3.0`. The workflow validates the tag before pushing and keeps
+BuildKit layers in the GitHub Actions cache.
 
 The release reads `DATABASE_URL`, `SECRET_KEY_BASE`, `JWT_PRIVATE_KEY`, and
 `PHX_HOST` at runtime. Use `/health` for liveness and `/health/ready` for
