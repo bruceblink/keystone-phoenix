@@ -17,6 +17,7 @@ defmodule KeystonePhoenixWeb.TelemetryTest do
     assert "keystone_phoenix.job.run.duration" in metric_names
     assert function_exported?(Telemetry, :measure_runtime, 0)
     assert function_exported?(Telemetry, :measure_repo_pool, 0)
+    assert Application.get_env(:keystone_phoenix, :telemetry_console_reporter) == false
   end
 
   test "measures the repository pool without affecting the caller" do

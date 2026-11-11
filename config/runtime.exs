@@ -100,6 +100,8 @@ if config_env() == :prod do
     monitor_snapshot_interval_ms:
       parse_integer_env.("MONITOR_SNAPSHOT_INTERVAL_MS", 1_000, 250, 86_400_000),
     telemetry_period_ms: parse_integer_env.("TELEMETRY_PERIOD_MS", 10_000, 250, 86_400_000),
+    telemetry_console_reporter:
+      System.get_env("TELEMETRY_CONSOLE_REPORTER", "false") in ["true", "1"],
     repo_pool_queue_alert_threshold:
       parse_integer_env.("REPO_POOL_QUEUE_ALERT_THRESHOLD", 1, 1, 1_000_000)
 

@@ -13,13 +13,14 @@ defmodule KeystonePhoenixWeb.Telemetry do
 
   @impl true
   def init(_arg) do
-    children = [
-      # Telemetry poller will execute the given period measurements
-      # every 10_000ms. Learn more here: https://telemetry-metrics.hexdocs.pm
-      {:telemetry_poller, measurements: periodic_measurements(), period: telemetry_period()}
-      # Add reporters as children of your supervision tree.
-      # {Telemetry.Metrics.ConsoleReporter, metrics: metrics()}
-    ]
+    children =
+      [
+        # Telemetry poller will execute the given period measurements
+        # every 10_000ms. Learn more here: https://telemetry-metrics.hexdocs.pm
+        {:telemetry_poller, measurements: periodic_measurements(), period: telemetry_period()},
+        console_reporter_child()
+      ]
+      |> List.flatten()
 
     Supervisor.init(children, strategy: :one_for_one)
   end
@@ -158,6 +159,15 @@ defmodule KeystonePhoenixWeb.Telemetry do
       {__MODULE__, :measure_runtime, []},
       {__MODULE__, :measure_repo_pool, []}
     ]
+  end
+
+  # 报告组件默认关闭，只在明确配置后输出指标，避免生产环境产生高频日志。
+  defp console_reporter_child do
+    if Application.get_env(:keystone_phoenix, :telemetry_console_reporter, false) do
+      {Telemetry.Metrics.ConsoleReporter, metrics: metrics()}
+    else
+      []
+    end
   end
 
   # 通过 Repo 注册表读取实际连接池，避免直接依赖连接池进程名称。
