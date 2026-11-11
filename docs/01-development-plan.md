@@ -14,7 +14,7 @@
 
 2026-11-10 后续计划切片已完成：`c12935d` 扩大刷新并发测试观察窗口；`2e5642a` 为字典缓存刷新使用独立动作权限；`2c48bcd` 增加 `FILE_BASE_DIR` 启动可写性检查并锁定 release smoke 的 PostgreSQL digest；`6650a8b` 清空角色保存、状态切换和用户分配后的旧状态并移除角色用户 500 条静默截断；`94bb456` 固定 GitHub Actions 到提交 SHA；`7bd3990` 补齐 LiveView 集成测试辅助函数；`740bf6e` 为监控在线会话增加服务端分页，并在刷新和强制下线后重置页码；`a4aac22` 移除 LiveView 角色主列表的 500 条静默上限；`e985f1a` 在 release smoke 中加入 PostgreSQL 故障、应用 `unhealthy` 和数据库恢复检查。
 
-2026-11-11 当前轮次：`fc3d93a` 和 `18de114` 完成管理后台的侧栏、顶栏、页面上下文、分组导航、状态卡片、表格和窄屏布局打磨，标题与描述使用正式产品用语；`aa2e6be` 固定兼容 Elixir 1.20 的 Excel 依赖并修复依赖编译 warning；`49da75b` 让 Dockerfile 默认使用 Docker Hub、Hex 和 Debian 官方源，只有显式传入构建参数时才切换本地国内镜像；`d25a9d4` 增加普通连接池、`DBConnection.Ownership` 和分区连接池的 Telemetry 容量与等待队列指标；`da81c15` 增加连接池等待队列告警事件和生产阈值配置。默认全量测试 155 项通过、20 项排除，集成全量测试 175 项通过，发布 smoke 通过。当前最终镜像摘要为 `sha256:8a418830832644fcc3cec9f063701af4266ee3dd34b97afd30cff7a9850c9f4e`，运行用户为 `keystone`。本轮没有创建 tag 或 release。Computer Use 工具当前不可用，因此最新侧栏视觉只完成代码、静态和 LiveView 证据，真实窗口截图仍待工具恢复后补验。
+2026-11-11 当前轮次：`fc3d93a` 和 `18de114` 完成管理后台的侧栏、顶栏、页面上下文、分组导航、状态卡片、表格和窄屏布局打磨，标题与描述使用正式产品用语；`aa2e6be` 固定兼容 Elixir 1.20 的 Excel 依赖并修复依赖编译 warning；`49da75b` 让 Dockerfile 默认使用 Docker Hub、Hex 和 Debian 官方源，只有显式传入构建参数时才切换本地国内镜像；`d25a9d4` 增加普通连接池、`DBConnection.Ownership` 和分区连接池的 Telemetry 容量与等待队列指标；`da81c15` 增加连接池等待队列告警事件和生产阈值配置。默认全量测试 155 项通过、20 项排除，集成全量测试 175 项通过，当前提交镜像构建和发布 smoke 通过。当前最终镜像摘要为 `sha256:6e098b1a5c9f648dacd2fff5ec3f18e5cf7f81669102a64ab0b301f5cceeb361`，运行用户为 `keystone`。本轮没有创建 tag 或 release。Computer Use 工具当前不可用，因此最新侧栏视觉只完成代码、静态和 LiveView 证据，真实窗口截图仍待工具恢复后补验。
 
 ## 当前状态
 
@@ -347,7 +347,7 @@ GitHub Test 工作流运行 `42962608929` 已在 `1436447` 上通过。发布工
 
 提交 `d25a9d4` 增加 `keystone_phoenix.repo.pool.ready_connections`、`checkout_queue_length`、`pool_size` 和 `pool_count` 指标。提交 `da81c15` 增加 `keystone_phoenix.repo.pool.alert.count` 和 `REPO_POOL_QUEUE_ALERT_THRESHOLD`。采集器从 `Ecto.Repo.Registry` 读取实际连接池模块，兼容普通连接池、`DBConnection.Ownership` 和分区连接池；连接池进程退出或仓库未就绪时输出零值，不影响请求处理。等待队列达到阈值时发送结构化告警事件，供报告组件订阅。
 
-验证结果：Telemetry 定向测试 4 项通过；默认全量测试 155 项通过、20 项排除；集成全量测试 175 项通过；dev/prod 严格编译、格式、源码行数和 `git diff --check` 均通过。
+验证结果：Telemetry 定向测试 4 项通过；默认全量测试 155 项通过、20 项排除；集成全量测试 175 项通过；dev/prod 严格编译、格式、源码行数和 `git diff --check` 均通过。当前提交镜像摘要为 `sha256:6e098b1a5c9f648dacd2fff5ec3f18e5cf7f81669102a64ab0b301f5cceeb361`，`scripts/release_smoke.sh` 通过迁移、重复迁移、备份恢复、非 root、数据库故障恢复、认证文件上传下载和卷重启检查。
 
 ### 2026-11-11 当前轮次收尾
 
