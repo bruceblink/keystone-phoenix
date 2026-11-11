@@ -348,7 +348,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       monitor_server_info: %{},
       monitor_cache_info: %{},
       online_user_rows: [],
-      network_status: %{},
+      network_status: %{"status" => "ONLINE", "checkedAt" => "2026-11-12T00:00:00Z"},
       monitor_feedback: nil
     }
 
@@ -362,16 +362,29 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
              Map.take(operations_assigns, [:job_log_rows, :job_log_feedback])
            ) =~ "refresh-job-logs"
 
-    assert render_component(
-             &Operations.monitor/1,
-             Map.take(operations_assigns, [
-               :monitor_server_info,
-               :monitor_cache_info,
-               :online_user_rows,
-               :network_status,
-               :monitor_feedback
-             ])
-           ) =~ "refresh-monitor"
+    monitor_html =
+      render_component(
+        &Operations.monitor/1,
+        Map.take(operations_assigns, [
+          :monitor_server_info,
+          :monitor_cache_info,
+          :online_user_rows,
+          :network_status,
+          :monitor_feedback
+        ])
+      )
+
+    assert monitor_html =~ "refresh-monitor"
+    assert monitor_html =~ "status-badge status-badge--success"
+    assert monitor_html =~ "ONLINE"
+
+    unknown_monitor_html =
+      render_component(
+        &Operations.monitor/1,
+        Map.put(operations_assigns, :network_status, %{"status" => "DEGRADED"})
+      )
+
+    assert unknown_monitor_html =~ "status-badge status-badge--unknown"
   end
 
   test "avatar upload errors render stable Chinese messages" do

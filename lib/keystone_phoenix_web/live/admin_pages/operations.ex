@@ -81,7 +81,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
         <div class="metric"><span>CPU 使用率</span><strong><%= get_in(@monitor_server_info, ["cpuInfo", "used"]) || 0 %>%</strong><small>逻辑处理器：<%= get_in(@monitor_server_info, ["cpuInfo", "cpuNum"]) || 0 %></small></div>
         <div class="metric"><span>主机内存</span><strong><%= get_in(@monitor_server_info, ["memoryInfo", "usage"]) || 0 %>%</strong><small><%= get_in(@monitor_server_info, ["memoryInfo", "used"]) || 0 %> / <%= get_in(@monitor_server_info, ["memoryInfo", "total"]) || 0 %> GB</small></div>
         <div class="metric"><span>BEAM 内存</span><strong><%= get_in(@monitor_server_info, ["jvmInfo", "usage"]) || 0 %>%</strong><small><%= get_in(@monitor_server_info, ["jvmInfo", "used"]) || 0 %> / <%= get_in(@monitor_server_info, ["jvmInfo", "max"]) || 0 %> MB</small></div>
-        <div class="metric"><span>网络状态</span><strong><%= @network_status["status"] || "UNKNOWN" %></strong><small><%= @network_status["checkedAt"] || "未检查" %></small></div>
+        <div class="metric"><span>网络状态</span><strong><span class={"status-badge #{network_status_badge_class(@network_status["status"])}"}><%= @network_status["status"] || "UNKNOWN" %></span></strong><small><%= @network_status["checkedAt"] || "未检查" %></small></div>
       </div>
       <div class="monitor-grid details">
         <div><h3>运行环境</h3><p>节点：<%= get_in(@monitor_server_info, ["systemInfo", "computerName"]) || "未知" %></p><p>系统：<%= get_in(@monitor_server_info, ["systemInfo", "osName"]) || "未知" %></p><p>BEAM：<%= get_in(@monitor_server_info, ["jvmInfo", "name"]) || "未知" %></p><p>运行时间：<%= get_in(@monitor_server_info, ["jvmInfo", "runTime"]) || "未知" %></p></div>
@@ -107,4 +107,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
   defp job_log_status_badge_class(1), do: "status-badge--success"
   defp job_log_status_badge_class(2), do: "status-badge--skipped"
   defp job_log_status_badge_class(_status), do: "status-badge--unknown"
+
+  # 将监控接口的网络状态映射为稳定的视觉语义，未知值保留中性样式。
+  defp network_status_badge_class("ONLINE"), do: "status-badge--success"
+  defp network_status_badge_class("OFFLINE"), do: "status-badge--failure"
+  defp network_status_badge_class(_status), do: "status-badge--unknown"
 end
