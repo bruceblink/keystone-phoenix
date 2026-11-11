@@ -35,7 +35,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
   test "admin login and user management persist through LiveView", %{conn: conn, admin: admin} do
     {:ok, view, html} = live(conn, "/")
 
-    assert html =~ "管理后台正在迁移到 LiveView"
+    assert html =~ "企业运营管理平台"
 
     render_submit(view, "login", %{
       "username" => admin.username,

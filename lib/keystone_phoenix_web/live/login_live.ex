@@ -370,13 +370,13 @@ defmodule KeystonePhoenixWeb.LoginLive do
         <link rel="stylesheet" href="/css/keystone.css" />
       </head>
       <body>
-        <main>
-          <section class="shell">
+        <main class="app-main">
+          <section class={if @current_user, do: "shell app-shell dashboard-shell", else: "shell app-shell login-shell"}>
             <%= if @current_user do %>
               <div class="dashboard">
-                <div class="topbar">
+                <div class="topbar dashboard-topbar">
                   <div>
-                    <p class="muted">Keystone Phoenix</p>
+                    <p class="eyebrow">Keystone Phoenix · 管理平台</p>
                     <h2><%= if @current_user["isAdmin"] == 1, do: "管理概览", else: "个人中心" %></h2>
                   </div>
                   <div class="user">
@@ -388,7 +388,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   </div>
                 </div>
                 <%= if @current_user["isAdmin"] == 1 or Enum.any?(Map.values(@panel_access)) do %>
-                  <nav aria-label="管理模块">
+                  <nav class="module-nav" aria-label="管理模块">
                     <button type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "overview", do: "page"} phx-value-panel="overview">概览</button>
                     <button :if={@panel_access["depts"]} type="button" class={if @active_panel == "depts", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "depts", do: "page"} phx-value-panel="depts">部门</button>
                     <button :if={@panel_access["posts"]} type="button" class={if @active_panel == "posts", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "posts", do: "page"} phx-value-panel="posts">岗位</button>
@@ -406,9 +406,26 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   </nav>
                   <%= case @active_panel do %>
                     <% "overview" -> %>
-                      <div class="panel">
-                        <p>当前登录用户：<strong><%= @current_user["username"] %></strong></p>
-                        <p class="muted">部门：<%= length(@dept_rows) %>　岗位：<%= length(@post_rows) %>　角色：<%= length(@role_rows) %>　菜单：<%= length(@menu_rows) %>　公告：<%= length(@notice_rows) %>　用户：<%= length(@user_rows) %>　配置：<%= length(@config_rows) %>　字典：<%= length(@dict_type_rows) %>　任务：<%= length(@job_rows) %></p>
+                      <div class="panel overview-panel">
+                        <div class="overview-heading">
+                          <div>
+                            <p class="eyebrow">Workspace overview</p>
+                            <h3>当前登录用户：<strong><%= @current_user["username"] %></strong></h3>
+                          </div>
+                          <span class="status-chip">系统运行正常</span>
+                        </div>
+                        <!-- 概览卡只展示当前会话已加载的数据数量。 -->
+                        <div class="overview-grid">
+                          <div class="stat-card"><span>部门</span><strong><%= length(@dept_rows) %></strong></div>
+                          <div class="stat-card"><span>岗位</span><strong><%= length(@post_rows) %></strong></div>
+                          <div class="stat-card"><span>角色</span><strong><%= length(@role_rows) %></strong></div>
+                          <div class="stat-card"><span>菜单</span><strong><%= length(@menu_rows) %></strong></div>
+                          <div class="stat-card"><span>公告</span><strong><%= length(@notice_rows) %></strong></div>
+                          <div class="stat-card"><span>用户</span><strong><%= length(@user_rows) %></strong></div>
+                          <div class="stat-card"><span>配置</span><strong><%= length(@config_rows) %></strong></div>
+                          <div class="stat-card"><span>字典</span><strong><%= length(@dict_type_rows) %></strong></div>
+                          <div class="stat-card"><span>任务</span><strong><%= length(@job_rows) %></strong></div>
+                        </div>
                       </div>
                     <% "depts" -> %>
                       <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} read_only={@read_only} />
@@ -440,7 +457,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                       <div class="panel"><p>请选择一个管理模块。</p></div>
                   <% end %>
                 <% else %>
-                  <nav aria-label="个人模块">
+                  <nav class="module-nav" aria-label="个人模块">
                     <button type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "profile", do: "page"} phx-value-panel="profile">个人资料</button>
                   </nav>
                   <%= if @active_panel == "profile" do %>
@@ -455,14 +472,21 @@ defmodule KeystonePhoenixWeb.LoginLive do
                 <% end %>
               </div>
             <% else %>
-              <div class="brand">
+              <div class="brand hero-copy">
                 <p>Keystone Phoenix</p>
-                <h1>管理后台正在迁移到 LiveView</h1>
-                <p>这个页面运行在 Phoenix LiveView 上，认证和业务数据由 Elixir、PostgreSQL 与 ETS 提供。</p>
+                <h1>企业运营管理平台</h1>
+                <p>统一管理组织架构、账号权限与系统运营，为日常业务提供清晰、可靠的工作入口。</p>
+                <div class="hero-points" aria-label="平台能力">
+                  <span>实时状态</span><span>细粒度权限</span><span>安全审计</span>
+                </div>
               </div>
-              <div class="card">
-                <form id="login-form" phx-submit="login">
-                  <h2>登录</h2>
+              <div class="card login-card">
+                <div class="login-card-heading">
+                  <span class="login-badge">安全登录</span>
+                  <span class="muted">欢迎回来</span>
+                </div>
+                <form id="login-form" class="login-form" phx-submit="login">
+                  <h2>账号登录</h2>
                   <label for="username">用户名</label>
                   <input id="username" name="username" value={@username} autocomplete="username" required />
                   <label for="password">密码</label>

@@ -6,7 +6,7 @@ defmodule KeystonePhoenixWeb.LoginLiveTest do
   test "renders the login shell before authentication", %{conn: conn} do
     {:ok, view, html} = live(conn, "/")
 
-    assert html =~ "管理后台正在迁移到 LiveView"
+    assert html =~ "企业运营管理平台"
     assert html =~ ~s(href="/css/keystone.css")
     assert html =~ ~s(src="/js/live_socket.js")
     assert has_element?(view, "#login-form")
