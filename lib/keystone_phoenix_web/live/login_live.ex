@@ -70,8 +70,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
         dashboard =
           if is_admin,
-            do: load_dashboard(),
-            else: load_dashboard_for_permissions(current_user, permissions)
+            do: AdminSupport.load_dashboard(),
+            else: AdminSupport.load_dashboard_for_permissions(current_user, permissions)
 
         panel_access = AdminSupport.panel_access(permissions, is_admin)
 
@@ -91,22 +91,22 @@ defmodule KeystonePhoenixWeb.LoginLive do
            user_rows: dashboard.user_rows,
            dept_rows: dashboard.dept_rows,
            dept_feedback: nil,
-           dept_form: empty_dept_form(),
+           dept_form: AdminSupport.empty_dept_form(),
            post_rows: dashboard.post_rows,
            post_feedback: nil,
-           post_form: empty_post_form(),
+           post_form: AdminSupport.empty_post_form(),
            config_rows: dashboard.config_rows,
            config_feedback: nil,
-           config_form: empty_config_form(),
+           config_form: AdminSupport.empty_config_form(),
            dict_type_rows: dashboard.dict_type_rows,
            dict_data_rows: dashboard.dict_data_rows,
            dict_feedback: nil,
-           dict_type_form: empty_dict_type_form(),
-           dict_data_form: empty_dict_data_form(dashboard.selected_dict_type),
+           dict_type_form: AdminSupport.empty_dict_type_form(),
+           dict_data_form: AdminSupport.empty_dict_data_form(dashboard.selected_dict_type),
            selected_dict_type: dashboard.selected_dict_type,
            job_rows: dashboard.job_rows,
            job_feedback: nil,
-           job_form: empty_job_form(),
+           job_form: AdminSupport.empty_job_form(),
            job_targets: Job.invoke_targets(),
            job_log_rows: dashboard.job_log_rows,
            job_log_feedback: nil,
@@ -117,20 +117,20 @@ defmodule KeystonePhoenixWeb.LoginLive do
            unallocated_role_user_rows: [],
            role_user_feedback: nil,
            role_feedback: nil,
-           role_form: empty_role_form(),
+           role_form: AdminSupport.empty_role_form(),
            menu_rows: dashboard.menu_rows,
            menu_feedback: nil,
-           menu_form: empty_menu_form(),
+           menu_form: AdminSupport.empty_menu_form(),
            notice_rows: dashboard.notice_rows,
            notice_feedback: nil,
-           notice_form: empty_notice_form(),
+           notice_form: AdminSupport.empty_notice_form(),
            login_log_rows: dashboard.login_log_rows,
            operation_log_rows: dashboard.operation_log_rows,
            log_feedback: nil,
-           user_form: empty_user_form(),
+           user_form: AdminSupport.empty_user_form(),
            user_feedback: nil,
            profile_form: current_user,
-           password_form: empty_password_form(),
+           password_form: AdminSupport.empty_password_form(),
            profile_feedback: nil
          )}
 
@@ -199,14 +199,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
     if AdminSupport.panel_allowed?(socket, panel) do
       cond do
         panel == "profile" ->
-          {:noreply, assign_profile(socket)}
+          {:noreply, AdminSupport.assign_profile(socket)}
 
         panel == "monitor" ->
           socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, "online-users", 1))
-          {:noreply, assign_monitor(socket)}
+          {:noreply, AdminSupport.assign_monitor(socket)}
 
         panel == "job-logs" ->
-          {:noreply, assign(socket, active_panel: panel, job_log_rows: load_job_logs())}
+          {:noreply,
+           assign(socket, active_panel: panel, job_log_rows: AdminSupport.load_job_logs())}
 
         panel == "logs" ->
           logs = AdminSupport.load_logs_for_socket(socket)
@@ -218,7 +219,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
              operation_log_rows: logs.operation_log_rows
            )}
 
-        panel == "users" and not admin_socket?(socket) ->
+        panel == "users" and not AdminSupport.admin_socket?(socket) ->
           {:noreply,
            assign(socket,
              active_panel: panel,
@@ -252,7 +253,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
         socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, panel, page))
 
         if panel == "online-users" and AdminSupport.panel_allowed?(socket, "monitor") do
-          {:noreply, assign_monitor(socket)}
+          {:noreply, AdminSupport.assign_monitor(socket)}
         else
           {:noreply, socket}
         end
@@ -293,7 +294,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   @impl true
   def handle_info({:admin_job_finished, _job_id, result}, socket) do
-    if admin_socket?(socket) do
+    if AdminSupport.admin_socket?(socket) do
       feedback =
         case result do
           :ok -> "任务已执行并写入运行日志"
@@ -305,8 +306,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
       {:noreply,
        assign(socket,
-         job_rows: load_jobs(),
-         job_log_rows: load_job_logs(),
+         job_rows: AdminSupport.load_jobs(),
+         job_log_rows: AdminSupport.load_job_logs(),
          job_feedback: feedback
        )}
     else
@@ -335,28 +336,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
       _ -> nil
     end
   end
-
-  defp load_dashboard, do: AdminSupport.load_dashboard()
-
-  defp load_dashboard_for_permissions(user, permissions),
-    do: AdminSupport.load_dashboard_for_permissions(user, permissions)
-
-  defp load_jobs, do: AdminSupport.load_jobs()
-  defp load_job_logs, do: AdminSupport.load_job_logs()
-  defp empty_notice_form, do: AdminSupport.empty_notice_form()
-  defp empty_dept_form, do: AdminSupport.empty_dept_form()
-  defp empty_post_form, do: AdminSupport.empty_post_form()
-  defp empty_role_form, do: AdminSupport.empty_role_form()
-  defp empty_menu_form, do: AdminSupport.empty_menu_form()
-  defp empty_user_form, do: AdminSupport.empty_user_form()
-  defp empty_config_form, do: AdminSupport.empty_config_form()
-  defp empty_dict_type_form, do: AdminSupport.empty_dict_type_form()
-  defp empty_job_form, do: AdminSupport.empty_job_form()
-  defp empty_password_form, do: AdminSupport.empty_password_form()
-  defp empty_dict_data_form(dict_type), do: AdminSupport.empty_dict_data_form(dict_type)
-  defp assign_monitor(socket, feedback \\ nil), do: AdminSupport.assign_monitor(socket, feedback)
-  defp assign_profile(socket), do: AdminSupport.assign_profile(socket)
-  defp admin_socket?(socket), do: AdminSupport.admin_socket?(socket)
 
   @impl true
   def render(assigns) do
