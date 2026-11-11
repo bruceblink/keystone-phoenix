@@ -381,7 +381,8 @@ user_entries = [
   %{
     user_id: 3,
     post_id: 2,
-    role_id: 0,
+    # 未分配角色使用 NULL，符合可选角色外键约束。
+    role_id: nil,
     dept_id: 5,
     username: "ag2",
     nickname: "valarchie3",
