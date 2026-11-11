@@ -25,6 +25,9 @@ erl_crash.dump
 # Local environment overrides.
 .env
 
+# macOS Finder metadata.
+.DS_Store
+
 # Uploaded profile resources.
 uploads/
 
