@@ -1,6 +1,6 @@
 # Keystone Phoenix 开发计划
 
-更新日期：2026-11-12。当前代码基线为 `c6b7acf`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
+更新日期：2026-11-12。当前代码基线为 `2be5487`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
 
 ## 目标与范围
 
@@ -265,6 +265,8 @@
 
 2026-11-12 导航标题映射切片：`c6b7acf` 将管理模块标题映射集中到 `AdminPages.Navigation`，`LoginLive` 继续使用相同的面板标识和正式中文标题。登录与管理页面定向测试 7 项通过，`login_live.ex` 从 563 行降至 547 行；默认测试 160 项通过、20 项排除，集成测试 180 项通过。
 
+2026-11-12 组织字段映射职责拆分：`2be5487` 将部门层级、角色数据范围与用户数量、菜单层级与类型映射集中到 `AdminPages.OrganizationData`，`AdminSupport` 保留兼容转发入口。字段名称、状态文案、菜单递归深度、权限加载和角色用户计数保持不变；新增纯函数回归覆盖数据范围、菜单类型、部门深度和循环菜单保护。组织数据、管理支持、登录页面定向测试 13 项通过，默认测试 162 项通过、20 项排除，集成测试 182 项通过，相关源文件均不超过 600 行。
+
 ## 通用验收条件
 
 - 所有新增或修改的源代码文件不超过 600 行。
@@ -315,7 +317,7 @@ mix test --include integration
 
 ### 2026-11-12 当前基线
 
-当前主线代码为 `c6b7acf`，`main` 与 `origin/main` 已同步；远端 `work` 为当前 `main` 的祖先，执行 `git merge --ff-only origin/work` 无需更新。`8bab43e` 修正了新外键约束下开发种子用户的无角色值；`4b8310a` 将登录入口、管理壳和概览统计改为正式产品文案与现代化视觉层，保留既有 LiveView 事件、字段和权限约定。`a284c99` 修复了受代理 CA 影响的 Docker/Hex 构建、加入构建与运行时 `libsctp1`，并修正 release smoke 的数据库恢复和 release eval 初始化；`c17c436` 让应用、开发环境和测试告警使用完整日期时间戳；`1436447` 升级 `erlef/setup-beam` 到支持 GitHub `ubuntu26` runner 的 `v1.24.1`；`6435fac` 完成手动任务资源耗尽错误边界；`dc8f872` 将 Telemetry 活跃会话指标改为数据库 `COUNT(*)`，避免周期性加载全部会话行；`5e50608` 抽取任务和日志列表的共享分页实现；`deaed69` 让配置和字典列表复用同一分页实现；`a054f1f` 让角色和岗位列表复用共享分页实现；`fc5dad8` 让公告和用户列表复用共享分页实现；`7417e35` 让监控在线会话复用内存列表分页实现；`d25a9d4` 将数据库连接池容量和等待队列纳入周期性 Telemetry 指标，并从 Repo 注册表读取实际连接池模块；`da81c15` 在等待队列达到 `REPO_POOL_QUEUE_ALERT_THRESHOLD` 时发出结构化告警事件；`33c25b8` 增加可选的 ConsoleReporter 报告组件；`620d596` 增加发布烟测的 HTTP 认证生命周期检查；`958dfb7` 增加定时任务和任务日志状态徽标；`117eaa9` 修复预期调度任务终止的 warning；`3621ab8` 复用用户参数解析；`c0b1803` 细化表格行操作按钮层级；`8e5a452` 统一管理列表状态徽标；`5588eab` 统一监控网络状态徽标；`e444ad2` 细化管理表格可访问语义；`10b1558` 集中管理状态徽标映射；`d3d7c84` 补充表头列语义；`dd37538` 统一中心化失败反馈的错误样式和无障碍语义；`d95851e` 统一事件层失败反馈的错误样式和无障碍语义；`1647870` 抽取管理表单默认值模块，降低 `AdminSupport` 职责密度；`d95c420` 抽取监控快照模块，降低 `AdminSupport` 的监控职责密度；`c6b7acf` 抽取管理导航标题映射模块。
+当前主线代码为 `2be5487`，`main` 与 `origin/main` 已同步；远端 `work` 为当前 `main` 的祖先，执行 `git merge --ff-only origin/work` 无需更新。`8bab43e` 修正了新外键约束下开发种子用户的无角色值；`4b8310a` 将登录入口、管理壳和概览统计改为正式产品文案与现代化视觉层，保留既有 LiveView 事件、字段和权限约定。`a284c99` 修复了受代理 CA 影响的 Docker/Hex 构建、加入构建与运行时 `libsctp1`，并修正 release smoke 的数据库恢复和 release eval 初始化；`c17c436` 让应用、开发环境和测试告警使用完整日期时间戳；`1436447` 升级 `erlef/setup-beam` 到支持 GitHub `ubuntu26` runner 的 `v1.24.1`；`6435fac` 完成手动任务资源耗尽错误边界；`dc8f872` 将 Telemetry 活跃会话指标改为数据库 `COUNT(*)`，避免周期性加载全部会话行；`5e50608` 抽取任务和日志列表的共享分页实现；`deaed69` 让配置和字典列表复用同一分页实现；`a054f1f` 让角色和岗位列表复用共享分页实现；`fc5dad8` 让公告和用户列表复用共享分页实现；`7417e35` 让监控在线会话复用内存列表分页实现；`d25a9d4` 将数据库连接池容量和等待队列纳入周期性 Telemetry 指标，并从 Repo 注册表读取实际连接池模块；`da81c15` 在等待队列达到 `REPO_POOL_QUEUE_ALERT_THRESHOLD` 时发出结构化告警事件；`33c25b8` 增加可选的 ConsoleReporter 报告组件；`620d596` 增加发布烟测的 HTTP 认证生命周期检查；`958dfb7` 增加定时任务和任务日志状态徽标；`117eaa9` 修复预期调度任务终止的 warning；`3621ab8` 复用用户参数解析；`c0b1803` 细化表格行操作按钮层级；`8e5a452` 统一管理列表状态徽标；`5588eab` 统一监控网络状态徽标；`e444ad2` 细化管理表格可访问语义；`10b1558` 集中管理状态徽标映射；`d3d7c84` 补充表头列语义；`dd37538` 统一中心化失败反馈的错误样式和无障碍语义；`d95851e` 统一事件层失败反馈的错误样式和无障碍语义；`1647870` 抽取管理表单默认值模块，降低 `AdminSupport` 职责密度；`d95c420` 抽取监控快照模块，降低 `AdminSupport` 的监控职责密度；`c6b7acf` 抽取管理导航标题映射模块；`2be5487` 抽取组织字段映射模块。
 
 当前本机验证已完成：用户级 Elixir `1.20.5`、Erlang/OTP `29`、Mix、Hex 和 Rebar 可用；默认测试为 160 项通过、20 项排除，集成测试为 180 项通过；格式、源码行数、严格编译、`bash -n` 和 `git diff --check` 均通过。此前使用 BuildKit secret `proxy_ca` 的本地生产镜像摘要 `sha256:4a62aec5ecaed0028b16b1303ee51d8683a810c2cb4c8d824fcfc89aa9bcc589` 保留作历史构建记录；当前源代码镜像摘要为 `sha256:c5afb9bd3e0e307f2062eb154aaa78ec8d4193b6d8229ce652654067f44ca98b`，运行用户为 `keystone`，构建没有产生 warning，且已通过 `scripts/release_smoke.sh keystone-phoenix:0.3.0`。Docker 构建保持 TLS 证书校验，代理 CA secret 不进入运行时镜像。
 
