@@ -19,4 +19,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Pagination do
     do: div(total + page_size - 1, page_size)
 
   def page_count(_total, _page_size), do: 1
+
+  @doc "按页码从已加载的列表中取出当前页面数据。"
+  def page_rows(rows, page_num, page_size) when is_list(rows) do
+    page_num = if is_integer(page_num) and page_num > 0, do: page_num, else: 1
+    page_size = if is_integer(page_size) and page_size > 0, do: page_size, else: 50
+    Enum.slice(rows, (page_num - 1) * page_size, page_size)
+  end
+
+  def page_rows(_rows, _page_num, _page_size), do: []
 end

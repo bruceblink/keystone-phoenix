@@ -31,4 +31,10 @@ defmodule KeystonePhoenixWeb.PaginationTest do
 
     refute html =~ "分页"
   end
+
+  test "slices loaded rows with safe page defaults" do
+    assert Pagination.page_rows(Enum.to_list(1..120), 2, 50) == Enum.to_list(51..100)
+    assert Pagination.page_rows([:only], 0, 0) == [:only]
+    assert Pagination.page_rows(:invalid, 1, 50) == []
+  end
 end

@@ -15,6 +15,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenixWeb.Live.AdminPages.Forms
   alias KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationData
+  alias KeystonePhoenixWeb.Live.AdminPages.Pagination
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.Authentication
@@ -136,13 +137,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def load_notices, do: load_all(&Notice.list_notices/1)
 
-  def page_rows(rows, page_num, page_size) when is_list(rows) do
-    page_num = if is_integer(page_num) and page_num > 0, do: page_num, else: 1
-    page_size = if is_integer(page_size) and page_size > 0, do: page_size, else: 50
-    Enum.slice(rows, (page_num - 1) * page_size, page_size)
-  end
-
-  def page_rows(_rows, _page_num, _page_size), do: []
+  def page_rows(rows, page_num, page_size), do: Pagination.page_rows(rows, page_num, page_size)
 
   def load_dict_data(""), do: []
 
