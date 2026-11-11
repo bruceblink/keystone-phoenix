@@ -28,5 +28,5 @@
 
 - GitHub Actions 在 `main` 推送和 `v*` 标签发布时，将镜像推送到 `ghcr.io/bruceblink/keystone-phoenix`。
 - 发布镜像生成 SBOM 和 provenance，并使用 Cosign keyless 签名；发布烟测覆盖迁移、认证、文件、持久化、备份恢复和数据库故障恢复。
-- 本地 `linux/arm64` 生产镜像 smoke 已通过。生产镜像的 macOS Chrome 真实窗口验收仍需单独完成；本版本不把本机开发服务窗口证据当作生产镜像窗口证据。
+- 本地 `linux/arm64` 生产镜像 smoke 和 macOS Chrome 真实窗口验收均已通过。生产容器使用独立 PostgreSQL 18 和 `localhost:4001`，覆盖登录、管理员概览、部门查询与新增模态框、运行监控、退出登录及 `390×844` 窄屏无横向溢出。
 
