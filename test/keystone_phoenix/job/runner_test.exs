@@ -74,6 +74,28 @@ defmodule KeystonePhoenix.Job.RunnerTest do
     assert lock_available?(job.job_id)
   end
 
+  test "manual execution returns a resource error when the task supervisor is full" do
+    {:ok, supervisor} = Task.Supervisor.start_link(max_children: 1)
+    first_task = Task.Supervisor.async_nolink(supervisor, fn -> Process.sleep(5_000) end)
+    previous_supervisor = Application.get_env(:keystone_phoenix, :job_task_supervisor)
+    Application.put_env(:keystone_phoenix, :job_task_supervisor, supervisor)
+
+    on_exit(fn ->
+      if Process.alive?(first_task.pid), do: Process.exit(first_task.pid, :kill)
+      Process.exit(supervisor, :shutdown)
+
+      if is_nil(previous_supervisor) do
+        Application.delete_env(:keystone_phoenix, :job_task_supervisor)
+      else
+        Application.put_env(:keystone_phoenix, :job_task_supervisor, previous_supervisor)
+      end
+    end)
+
+    job = create_job(concurrent: 1)
+
+    assert {:error, :resource_exhausted} = KeystonePhoenix.Job.run_job(job.job_id)
+  end
+
   test "a killed manual caller releases the job lock" do
     job = create_job(concurrent: 0, invoke_target: "demoJobTask.simulateLongRunningJob()")
     {pid, ref} = spawn_monitor(fn -> Runner.run(job, 2) end)

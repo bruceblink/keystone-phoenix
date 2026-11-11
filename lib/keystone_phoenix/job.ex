@@ -127,9 +127,16 @@ defmodule KeystonePhoenix.Job do
   defp run_manual_job(job) do
     timeout_ms = Application.get_env(:keystone_phoenix, :job_execution_timeout_ms, 30_000)
 
+    supervisor =
+      Application.get_env(
+        :keystone_phoenix,
+        :job_task_supervisor,
+        KeystonePhoenix.JobTaskSupervisor
+      )
+
     try do
       task =
-        Task.Supervisor.async_nolink(KeystonePhoenix.JobTaskSupervisor, fn ->
+        Task.Supervisor.async_nolink(supervisor, fn ->
           Runner.run(job, 2)
         end)
 
@@ -154,6 +161,8 @@ defmodule KeystonePhoenix.Job do
               {:error, :execution_timeout}
           end
       end
+    rescue
+      RuntimeError -> {:error, :resource_exhausted}
     catch
       :exit, _reason -> {:error, :resource_exhausted}
     end
