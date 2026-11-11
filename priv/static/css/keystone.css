@@ -191,6 +191,25 @@ button.secondary:hover { border-color: #a5b4fc; background: #eef2ff; color: var(
 .overview-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
 .overview-heading h3 { margin: 0; font-size: 20px; letter-spacing: -0.025em; }
 .status-chip { border-color: #bbf7d0; background: #f0fdf4; color: var(--success); }
+/* 定时任务和执行日志使用低饱和徽标，帮助用户快速区分状态。 */
+.status-badge {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  padding: 4px 9px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.status-badge::before { width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: currentColor; content: ""; }
+.status-badge--normal, .status-badge--success { border-color: #bfdfcf; background: #eff8f3; color: #276749; }
+.status-badge--paused { border-color: #ead9a8; background: #fbf6e8; color: #7a5b16; }
+.status-badge--failure { border-color: #ecc5bf; background: #fdf0ee; color: #9b3a32; }
+.status-badge--skipped { border-color: #d7dce5; background: #f1f3f6; color: #5a6478; }
+.status-badge--unknown { border-color: #d7dce5; background: #f5f6f8; color: #596579; }
 .overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .stat-card { position: relative; overflow: hidden; min-height: 96px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(145deg, #fff, #f8fafc); }
 .stat-card::after { position: absolute; right: -20px; bottom: -22px; width: 74px; height: 74px; border-radius: 50%; background: rgba(79, 70, 229, 0.08); content: ""; }
