@@ -1,4 +1,6 @@
-# Keystone Phoenix 完整审查后的后续开发计划
+# 归档：Keystone Phoenix 完整审查后的后续开发计划
+
+> 本文是历史开发计划和当时的审查证据，仅供追溯。当前唯一主线开发计划见 [`../01-development-plan.md`](../01-development-plan.md)。
 
 计划基线：`8c09eee`。本文保存完整审查后的后续开发计划。
 

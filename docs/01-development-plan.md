@@ -1,6 +1,6 @@
 # Keystone Phoenix 开发计划
 
-更新日期：2026-11-10。当前远端代码基线为 `e985f1a`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。
+更新日期：2026-11-11。当前代码基线为 `1436447`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
 
 ## 目标与范围
 
@@ -315,3 +315,7 @@ GitHub Test 工作流运行 `42962608929` 已在 `1436447` 上通过。发布工
 ### 2026-11-11 发布工作流结果
 
 此前记录的发布工作流 `42962608932` 已完成并通过。GHCR 镜像 `ghcr.io/bruceblink/keystone-phoenix:main` 摘要为 `sha256:3656759d40477f944fb773ef91394bfb3a73492fc3bcc81bd4ec7070f3a2082b`；Cosign 签名、SBOM/provenance 和远端 release smoke 均通过。当前只剩真实生产浏览器窗口验收，版本标签暂不创建。
+
+## 历史计划合并说明
+
+原 `docs/06-follow-up-development-plan.md` 的审查结论、实施顺序、验收约束和收尾证据已并入本文的当前状态、执行顺序和 2026-11-11 基线记录。原文件保留在 `docs/archive/`，不再作为新的任务入口；后续开发只从本文件的“当前状态”和“后续执行顺序”继续。
