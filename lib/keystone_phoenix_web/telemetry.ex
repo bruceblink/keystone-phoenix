@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Telemetry do
 
   alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Cache
+  alias KeystonePhoenix.Repo
   alias KeystonePhoenix.RuntimeStore
 
   def start_link(arg) do
@@ -89,6 +90,10 @@ defmodule KeystonePhoenixWeb.Telemetry do
       last_value("keystone_phoenix.runtime.cache_entries"),
       last_value("keystone_phoenix.runtime.captcha_entries"),
       last_value("keystone_phoenix.runtime.auth_sessions"),
+      last_value("keystone_phoenix.repo.pool.ready_connections"),
+      last_value("keystone_phoenix.repo.pool.checkout_queue_length"),
+      last_value("keystone_phoenix.repo.pool.pool_size"),
+      last_value("keystone_phoenix.repo.pool.pool_count"),
       summary("keystone_phoenix.job.run.duration",
         tags: [:job_id, :trigger_type, :status],
         unit: {:native, :millisecond}
@@ -115,15 +120,84 @@ defmodule KeystonePhoenixWeb.Telemetry do
     )
   rescue
     _error -> :ok
+  catch
+    :exit, _reason -> :ok
+  end
+
+  @doc "Emits PostgreSQL connection pool capacity and queue gauges."
+  def measure_repo_pool do
+    config = Repo.config()
+    pool_metrics = pool_metrics()
+
+    :telemetry.execute(
+      [:keystone_phoenix, :repo, :pool],
+      %{
+        ready_connections: Enum.sum_by(pool_metrics, & &1.ready_conn_count),
+        checkout_queue_length: Enum.sum_by(pool_metrics, & &1.checkout_queue_length),
+        pool_size: Keyword.get(config, :pool_size, 0),
+        pool_count: Keyword.get(config, :pool_count, 1)
+      },
+      %{}
+    )
+  rescue
+    _error -> :ok
+  catch
+    :exit, _reason -> :ok
   end
 
   defp periodic_measurements do
     [
       # A module, function and arguments to be invoked periodically.
       # This function must call :telemetry.execute/3 and a metric must be added above.
-      {__MODULE__, :measure_runtime, []}
+      {__MODULE__, :measure_runtime, []},
+      {__MODULE__, :measure_repo_pool, []}
     ]
   end
+
+  # 通过 Repo 注册表读取实际连接池，避免直接依赖连接池进程名称。
+  defp pool_metrics do
+    metrics =
+      case Ecto.Repo.Registry.lookup(Repo) do
+        %{pid: _pid, opts: opts, partition_supervisor: {name, _count}} ->
+          pool = Keyword.get(opts, :pool, DBConnection.ConnectionPool)
+
+          name
+          |> PartitionSupervisor.which_children()
+          |> Enum.flat_map(fn {_id, child_pid, _type, _modules} ->
+            safe_pool_metrics(pool, child_pid)
+          end)
+
+        %{pid: pid, opts: opts} ->
+          pool = Keyword.get(opts, :pool, DBConnection.ConnectionPool)
+          safe_pool_metrics(pool, pid)
+
+        _ ->
+          []
+      end
+
+    case metrics do
+      [] -> fallback_pool_metric()
+      metrics -> metrics
+    end
+  end
+
+  defp safe_pool_metrics(pool, pid) do
+    pool.get_connection_metrics(pid)
+    |> Enum.filter(&is_map/1)
+    |> Enum.filter(&valid_pool_metric?/1)
+  rescue
+    _error -> []
+  catch
+    :exit, _reason -> []
+  end
+
+  defp fallback_pool_metric, do: [%{ready_conn_count: 0, checkout_queue_length: 0}]
+
+  defp valid_pool_metric?(%{ready_conn_count: ready, checkout_queue_length: queue})
+       when is_integer(ready) and ready >= 0 and is_integer(queue) and queue >= 0,
+       do: true
+
+  defp valid_pool_metric?(_metric), do: false
 
   defp telemetry_period do
     Application.get_env(:keystone_phoenix, :telemetry_period_ms, 10_000)
