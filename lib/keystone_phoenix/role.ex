@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Role do
 
   alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Params
+  alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Menu.SysMenu
@@ -32,11 +33,7 @@ defmodule KeystonePhoenix.Role do
     query = filter_contains(query, :role_name, params["roleName"] || params[:role_name])
     query = filter_contains(query, :role_key, params["roleKey"] || params[:role_key])
     query = filter_status(query, params["status"] || params[:status])
-    page = positive_integer(params["pageNum"] || params[:page_num], 1)
-    page_size = min(positive_integer(params["pageSize"] || params[:page_size], 10), 500)
-    total = Repo.aggregate(query, :count, :role_id)
-    rows = query |> limit(^page_size) |> offset(^((page - 1) * page_size)) |> Repo.all()
-    %{total: total, rows: Enum.map(rows, &role_to_map/1)}
+    Pagination.page(query, params, :role_id, &role_to_map/1)
   end
 
   def get_role(id) do
@@ -294,11 +291,7 @@ defmodule KeystonePhoenix.Role do
       |> filter_user_contains(:username, params["username"] || params[:username])
       |> filter_user_contains(:phone_number, params["phoneNumber"] || params[:phone_number])
 
-    page = positive_integer(params["pageNum"] || params[:page_num], 1)
-    page_size = min(positive_integer(params["pageSize"] || params[:page_size], 10), 500)
-    total = Repo.aggregate(query, :count, :user_id)
-    rows = query |> limit(^page_size) |> offset(^((page - 1) * page_size)) |> Repo.all()
-    %{total: total, rows: User.user_maps(rows)}
+    Pagination.page(query, params, :user_id, &User.user_maps/1)
   end
 
   defp assignment_allowed?(nil), do: :ok
@@ -420,15 +413,6 @@ defmodule KeystonePhoenix.Role do
     case Integer.parse(to_string(value)) do
       {status, ""} -> where(query, [role], role.status == ^status)
       _ -> query
-    end
-  end
-
-  defp positive_integer(nil, default), do: default
-
-  defp positive_integer(value, default) do
-    case Integer.parse(to_string(value)) do
-      {number, ""} when number > 0 -> number
-      _ -> default
     end
   end
 
