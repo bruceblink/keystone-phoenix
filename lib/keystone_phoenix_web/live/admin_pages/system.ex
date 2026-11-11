@@ -26,7 +26,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         </div>
         <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存配置</button><button :if={@config_form["configId"] != ""} type="button" class="secondary" phx-click="new-config" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption><thead><tr><th>名称</th><th>键</th><th>值</th><th>允许修改</th><th>备注</th><th>操作</th></tr></thead><tbody>
+      <div class="table-scroll" role="region" tabindex="0" aria-label="系统配置列表"><table><caption class="sr-only">系统配置列表</caption><thead><tr><th>名称</th><th>键</th><th>值</th><th>允许修改</th><th>备注</th><th>操作</th></tr></thead><tbody>
         <%= for config <- @config_rows do %>
           <tr><td><%= config["configName"] %></td><td><%= config["configKey"] %></td><td><%= config["configValue"] %></td><td><%= config["isAllowChangeStr"] || if(config["isAllowChange"] == 1, do: "是", else: "否") %></td><td><%= config["remark"] || "" %></td><td :if={!@read_only}><button type="button" class="refresh" phx-click="edit-config" phx-value-config-id={config["configId"]} phx-disable-with="加载中…">编辑</button></td></tr>
         <% end %>
@@ -58,7 +58,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         </div>
         <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存字典类型</button><button :if={@dict_type_form["dictId"] != ""} type="button" class="secondary" phx-click="new-dict-type" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption><thead><tr><th>名称</th><th>类型</th><th>状态</th><th>备注</th><th>操作</th></tr></thead><tbody>
+      <div class="table-scroll" role="region" tabindex="0" aria-label="字典类型列表"><table><caption class="sr-only">字典类型列表</caption><thead><tr><th>名称</th><th>类型</th><th>状态</th><th>备注</th><th>操作</th></tr></thead><tbody>
         <%= for dict <- @dict_type_rows do %>
           <tr><td><%= dict["dictName"] %></td><td><%= dict["dictType"] %></td><td><span class={"status-badge #{if dict["status"] == 1, do: "status-badge--normal", else: "status-badge--paused"}"}><%= if dict["status"] == 1, do: "正常", else: "停用" %></span></td><td><%= dict["remark"] || "" %></td><td class="table-actions"><button type="button" class="refresh" phx-click="select-dict-type" phx-value-dict-type={dict["dictType"]} phx-disable-with="加载中…">查看数据</button><button :if={!@read_only} type="button" class="refresh" phx-click="edit-dict-type" phx-value-dict-id={dict["dictId"]} phx-disable-with="加载中…">编辑</button><button :if={!@read_only} type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-dict-type" phx-value-dict-id={dict["dictId"]} phx-disable-with="删除中…">删除</button></td></tr>
         <% end %>
@@ -80,7 +80,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         </div>
         <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存字典数据</button><button :if={@dict_data_form["dictCode"] != ""} type="button" class="secondary" phx-click="new-dict-data" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption><thead><tr><th>标签</th><th>值</th><th>排序</th><th>默认</th><th>状态</th><th>操作</th></tr></thead><tbody>
+      <div class="table-scroll" role="region" tabindex="0" aria-label="字典数据列表"><table><caption class="sr-only">字典数据列表</caption><thead><tr><th>标签</th><th>值</th><th>排序</th><th>默认</th><th>状态</th><th>操作</th></tr></thead><tbody>
         <%= for data <- Support.page_rows(@dict_data_rows, @dict_data_page_num, @dict_data_page_size) do %>
           <tr><td><%= data["dictLabel"] %></td><td><%= data["dictValue"] %></td><td><%= data["dictSort"] %></td><td><%= if data["isDefault"] == 1, do: "是", else: "否" %></td><td><span class={"status-badge #{if data["status"] == 1, do: "status-badge--normal", else: "status-badge--paused"}"}><%= if data["status"] == 1, do: "正常", else: "停用" %></span></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-dict-data" phx-value-dict-code={data["dictCode"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-dict-data" phx-value-dict-code={data["dictCode"]} phx-disable-with="删除中…">删除</button></td></tr>
         <% end %>
@@ -109,7 +109,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         </div>
         <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存公告</button><button :if={@notice_form["noticeId"] != ""} type="button" class="secondary" phx-click="cancel-notice" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption><thead><tr><th>标题</th><th>类型</th><th>内容</th><th>状态</th><th>备注</th><th>创建时间</th><th>操作</th></tr></thead><tbody>
+      <div class="table-scroll" role="region" tabindex="0" aria-label="公告列表"><table><caption class="sr-only">公告列表</caption><thead><tr><th>标题</th><th>类型</th><th>内容</th><th>状态</th><th>备注</th><th>创建时间</th><th>操作</th></tr></thead><tbody>
         <%= for notice <- @notice_rows do %>
           <tr><td><%= notice["noticeTitle"] %></td><td><%= if notice["noticeType"] == 1, do: "通知", else: "公告" %></td><td><%= notice["noticeContent"] %></td><td><span class={"status-badge #{if notice["status"] == 1, do: "status-badge--normal", else: "status-badge--paused"}"}><%= if notice["status"] == 1, do: "正常", else: "停用" %></span></td><td><%= notice["remark"] || "" %></td><td><%= notice["createTime"] || "" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-notice" phx-value-notice-id={notice["noticeId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="toggle-notice-status" phx-value-notice-id={notice["noticeId"]} phx-value-status={if notice["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if notice["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-notice" phx-value-notice-id={notice["noticeId"]} phx-disable-with="删除中…">删除</button></td></tr>
         <% end %>
@@ -132,14 +132,14 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       <%= if @log_feedback do %><p id="log-feedback" class="feedback" role="status" aria-live="polite"><%= @log_feedback %></p><% end %>
       <p :if={@login_log_rows == [] and @operation_log_rows == []} class="table-empty" role="status">暂无日志数据</p>
       <h3>登录日志（<%= length(@login_log_rows) %>）</h3>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption><thead><tr><th>用户</th><th>IP</th><th>浏览器</th><th>状态</th><th>消息</th><th>时间</th><th>操作</th></tr></thead><tbody>
+      <div class="table-scroll" role="region" tabindex="0" aria-label="登录日志列表"><table><caption class="sr-only">登录日志列表</caption><thead><tr><th>用户</th><th>IP</th><th>浏览器</th><th>状态</th><th>消息</th><th>时间</th><th>操作</th></tr></thead><tbody>
         <%= for log <- Support.page_rows(@login_log_rows, @login_page_num, @page_size) do %>
           <tr><td><%= log["username"] %></td><td><%= log["ipAddress"] %></td><td><%= log["browser"] %></td><td><span class={"status-badge #{if log["status"] == 1, do: "status-badge--success", else: "status-badge--failure"}"}><%= if log["status"] == 1, do: "成功", else: "失败" %></span></td><td><%= log["msg"] %></td><td><%= log["loginTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-login-log" phx-value-log-id={log["infoId"] || log["id"]} phx-disable-with="删除中…">删除</button></td></tr>
         <% end %>
       </tbody></table></div>
       <.pagination panel="login-logs" page_num={min(@login_page_num, page_count(length(@login_log_rows), @page_size))} page_size={@page_size} total={length(@login_log_rows)} />
       <h3>操作日志（<%= length(@operation_log_rows) %>）</h3>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption><thead><tr><th>用户</th><th>模块</th><th>方法</th><th>请求地址</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
+      <div class="table-scroll" role="region" tabindex="0" aria-label="操作日志列表"><table><caption class="sr-only">操作日志列表</caption><thead><tr><th>用户</th><th>模块</th><th>方法</th><th>请求地址</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
         <%= for log <- Support.page_rows(@operation_log_rows, @operation_page_num, @page_size) do %>
           <tr><td><%= log["username"] %></td><td><%= log["requestModule"] %></td><td><%= log["requestMethod"] %></td><td><%= log["requestUrl"] %></td><td><span class={"status-badge #{if log["status"] == 1, do: "status-badge--success", else: "status-badge--failure"}"}><%= if log["status"] == 1, do: "成功", else: "失败" %></span></td><td><%= log["operationTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-operation-log" phx-value-log-id={log["operationId"]} phx-disable-with="删除中…">删除</button></td></tr>
         <% end %>

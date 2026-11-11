@@ -315,7 +315,8 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
         Map.take(system_assigns, [:config_rows, :config_form, :config_feedback])
       )
 
-    assert system_html =~ "数据列表"
+    assert system_html =~ ~s(aria-label="系统配置列表")
+    assert system_html =~ "系统配置列表"
     assert system_html =~ "暂无配置数据"
 
     operations_assigns = %{

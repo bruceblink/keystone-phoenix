@@ -47,7 +47,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         </div>
         <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="重置中…">重置用户密码</button></div>
       </form>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="数据表格"><table><caption class="sr-only">数据列表</caption>
+      <div class="table-scroll" role="region" tabindex="0" aria-label="用户列表"><table><caption class="sr-only">用户列表</caption>
         <thead><tr><th>用户名</th><th>昵称</th><th>部门</th><th>角色</th><th>邮箱</th><th>手机号</th><th>状态</th><th>操作</th></tr></thead>
         <tbody>
           <%= for user <- Support.page_rows(@user_rows, @page_num, @page_size) do %>
