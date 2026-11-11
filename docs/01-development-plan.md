@@ -1,6 +1,6 @@
 # Keystone Phoenix 开发计划
 
-更新日期：2026-11-11。当前代码基线为 `be18907`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
+更新日期：2026-11-11。当前代码基线为 `49da75b`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
 
 ## 目标与范围
 
@@ -13,6 +13,8 @@
 2026-11-10 审查修复进度：`7787589` 增加 HTTP 与 LiveView 登录限流；`e19b4a6` 阻止非管理员通过用户字段分配高权限角色并保护导入模板；`f6dac6b` 隔离公开头像和受保护资源、清理待上传状态与批量文件；`a6ca3e7` 限制角色、菜单和部门写入口；`7ad1786` 使镜像发布等待测试工作流；`9a66be3` 使用非 root runtime 用户和容器健康检查；`d1a4b91` 保护监控 SSE 并在限流表故障时拒绝请求；`a620aef` 限制手动任务执行；`a9de97f` 修正调度进程监控匹配；`f6fec70` 将管理面板列表加载上限提升到 API 允许的 500 条；`1fbd2ac` 校验生产运行时数值配置；`d9c6bdd` 使任务取消和超时只写一条最终日志；`963b10c` 为管理删除和强制下线操作增加确认；`5969050` 为导航按钮提供当前面板状态；`a512597` 和 `a3e3360` 保护角色与菜单权限元数据；`1c7b886` 和 `a1adb59` 完善管理表格可访问性和完整数据集加载；`af6a627` 和 `e5d9fc5` 增加发布镜像 smoke；`6d162e8` 报告覆盖率基线；`f900b99` 和 `1c566f3` 增加 SBOM、provenance 和 Cosign 签名；`c38916c` 增加外键和孤儿数据检查；`bffb56d` 增加 controller contract matrix；`7dd078b` 拆分 LiveView 静态资源；`963b182` 和 `71cec22` 增加 LiveView 分页控件和刷新重置；`5e85b28` 将集成覆盖率 60% 作为 CI 门槛。当前默认测试为 151 项通过、20 项排除，集成测试为 171 项通过；集成覆盖率为 65.35%，CI 门槛为 60%。
 
 2026-11-10 后续计划切片已完成：`c12935d` 扩大刷新并发测试观察窗口；`2e5642a` 为字典缓存刷新使用独立动作权限；`2c48bcd` 增加 `FILE_BASE_DIR` 启动可写性检查并锁定 release smoke 的 PostgreSQL digest；`6650a8b` 清空角色保存、状态切换和用户分配后的旧状态并移除角色用户 500 条静默截断；`94bb456` 固定 GitHub Actions 到提交 SHA；`7bd3990` 补齐 LiveView 集成测试辅助函数；`740bf6e` 为监控在线会话增加服务端分页，并在刷新和强制下线后重置页码；`a4aac22` 移除 LiveView 角色主列表的 500 条静默上限；`e985f1a` 在 release smoke 中加入 PostgreSQL 故障、应用 `unhealthy` 和数据库恢复检查。
+
+2026-11-11 当前轮次：`fc3d93a` 和 `18de114` 完成管理后台的侧栏、顶栏、页面上下文、分组导航、状态卡片、表格和窄屏布局打磨，标题与描述使用正式产品用语；`aa2e6be` 固定兼容 Elixir 1.20 的 Excel 依赖并修复依赖编译 warning；`49da75b` 让 Dockerfile 默认使用 Docker Hub、Hex 和 Debian 官方源，只有显式传入构建参数时才切换本地国内镜像。默认全量测试 152 项通过、20 项排除，集成全量测试 172 项通过，发布 smoke 通过。当前镜像摘要为 `sha256:33e7d85a19b3aa300dfd0f9edde7e06227fee1f085cc453f772ae2968cdbe50d`，运行用户为 `keystone`。本轮没有创建 tag 或 release。Computer Use 工具当前不可用，因此最新侧栏视觉只完成代码、静态和 LiveView 证据，真实窗口截图仍待工具恢复后补验。
 
 ## 当前状态
 
