@@ -9,11 +9,9 @@ defmodule KeystonePhoenix.Config do
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Config.SysConfig
   alias KeystonePhoenix.Params
+  alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Repo
 
-  @default_page 1
-  @default_page_size 10
-  @max_page_size 500
   @config_cache_ttl 300
   @config_cache_prefix "keystone:system:config:"
 
@@ -129,15 +127,7 @@ defmodule KeystonePhoenix.Config do
   end
 
   defp page_query(query, params) do
-    page = positive_integer(params["pageNum"] || params[:page_num], @default_page)
-    page_size = positive_integer(params["pageSize"] || params[:page_size], @default_page_size)
-    page_size = min(page_size, @max_page_size)
-
-    total = Repo.aggregate(query, :count, :config_id)
-    query = query |> limit(^page_size) |> offset(^((page - 1) * page_size))
-    rows = Repo.all(query)
-
-    %{total: total, rows: Enum.map(rows, &config_to_map/1)}
+    Pagination.page(query, params, :config_id, &config_to_map/1)
   end
 
   defp filter_contains(query, _field, nil), do: query
@@ -165,15 +155,6 @@ defmodule KeystonePhoenix.Config do
 
       _ ->
         query
-    end
-  end
-
-  defp positive_integer(nil, default), do: default
-
-  defp positive_integer(value, default) do
-    case Integer.parse(to_string(value)) do
-      {number, ""} when number > 0 -> number
-      _ -> default
     end
   end
 

@@ -9,11 +9,9 @@ defmodule KeystonePhoenix.Dictionary do
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Dictionary.{DictData, DictType}
   alias KeystonePhoenix.Params
+  alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Repo
 
-  @default_page 1
-  @default_page_size 10
-  @max_page_size 500
   @dict_data_cache_ttl 300
 
   @dict_type_attrs [
@@ -258,16 +256,7 @@ defmodule KeystonePhoenix.Dictionary do
   def refresh_cache, do: Cache.delete_prefix("keystone:dictionary:data:")
 
   defp page_query(query, params, count_field, mapper) do
-    page = positive_integer(params["pageNum"] || params[:page_num], @default_page)
-    page_size = positive_integer(params["pageSize"] || params[:page_size], @default_page_size)
-    page_size = min(page_size, @max_page_size)
-
-    total = Repo.aggregate(query, :count, count_field)
-    query = query |> limit(^page_size) |> offset(^((page - 1) * page_size))
-
-    rows = Repo.all(query)
-
-    %{total: total, rows: Enum.map(rows, mapper)}
+    Pagination.page(query, params, count_field, mapper)
   end
 
   defp filter_contains(query, _field, nil), do: query
@@ -292,15 +281,6 @@ defmodule KeystonePhoenix.Dictionary do
     case Integer.parse(to_string(value)) do
       {status, ""} -> where(query, [record], record.status == ^status)
       _ -> query
-    end
-  end
-
-  defp positive_integer(nil, default), do: default
-
-  defp positive_integer(value, default) do
-    case Integer.parse(to_string(value)) do
-      {number, ""} when number > 0 -> number
-      _ -> default
     end
   end
 
