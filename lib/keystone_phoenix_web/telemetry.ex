@@ -99,8 +99,8 @@ defmodule KeystonePhoenixWeb.Telemetry do
   @doc "Emits low-cost runtime gauges for ETS and PostgreSQL-backed sessions."
   def measure_runtime do
     sessions =
-      case Session.list_active() do
-        {:ok, sessions} -> length(sessions)
+      case Session.count_active() do
+        {:ok, count} -> count
         _ -> 0
       end
 

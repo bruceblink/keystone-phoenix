@@ -28,9 +28,11 @@ defmodule KeystonePhoenix.Auth.SessionTest do
              Enum.filter(active_sessions, &(&1.user_id == user.user_id))
 
     assert user_id == user.user_id
+    assert {:ok, 1} = Session.count_active()
 
     assert :ok = Session.revoke_token(jti)
     refute Session.valid?(jti, user.user_id)
+    assert {:ok, 0} = Session.count_active()
     assert {:error, :not_found} = Session.revoke_token(jti)
   end
 

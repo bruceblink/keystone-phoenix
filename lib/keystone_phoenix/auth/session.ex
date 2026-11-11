@@ -194,6 +194,26 @@ defmodule KeystonePhoenix.Auth.Session do
     _error -> {:error, :unavailable}
   end
 
+  @doc "Counts active refresh sessions without loading session rows into memory."
+  @spec count_active() :: {:ok, non_neg_integer()} | {:error, :unavailable}
+  def count_active do
+    now = DateTime.utc_now()
+
+    count =
+      Repo.aggregate(
+        from(session in AuthSession,
+          where:
+            session.active == true and is_nil(session.revoked_at) and session.expires_at > ^now
+        ),
+        :count,
+        :id
+      )
+
+    {:ok, count}
+  rescue
+    _error -> {:error, :unavailable}
+  end
+
   @doc "Revokes an online session by its public token identifier."
   @spec revoke_token(String.t()) :: :ok | {:error, :not_found | :unavailable}
   def revoke_token(jti) when is_binary(jti) and jti != "" do
