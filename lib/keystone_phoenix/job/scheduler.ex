@@ -66,11 +66,19 @@ defmodule KeystonePhoenix.Job.Scheduler do
 
   @impl true
   def handle_info({:DOWN, ref, :process, pid, reason}, state) do
-    if reason not in [:normal, :noproc] do
+    termination = task_termination(state, ref, pid)
+
+    if reason not in [:normal, :noproc] and not expected_kill?(termination, reason) do
       Logger.warning("scheduled job task #{inspect(pid)} stopped: #{inspect(reason)}")
     end
 
     {:noreply, remove_running_ref(state, ref, pid)}
+  end
+
+  # 仅忽略调度器主动取消或超时后预期出现的 :killed 退出。
+  def expected_kill?(termination, reason) do
+    reason == :killed and
+      (termination == :cancelled or match?({:timeout, _timeout_ms}, termination))
   end
 
   @impl true
@@ -240,6 +248,15 @@ defmodule KeystonePhoenix.Job.Scheduler do
 
         _ ->
           state
+      end
+    end)
+  end
+
+  defp task_termination(state, ref, pid) do
+    Enum.find_value(state.running, fn {_job_id, running} ->
+      case Map.get(running, pid) do
+        %{ref: ^ref, termination: termination} -> termination
+        _ -> nil
       end
     end)
   end
