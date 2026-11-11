@@ -5,17 +5,16 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Config
-  alias KeystonePhoenix.Department
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Log
-  alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Notice
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.Live.AdminPages.Forms
   alias KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot
+  alias KeystonePhoenixWeb.Live.AdminPages.OrganizationData
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.Authentication
@@ -230,21 +229,11 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   def load_depts do
-    Department.list_depts()
-    |> Enum.map(fn dept -> Map.put(dept, "depth", dept_depth(dept["ancestors"])) end)
+    OrganizationData.load_depts()
   end
 
   def load_roles do
-    roles = Excel.all_rows(&Role.list_roles/1)
-    user_counts = Role.user_counts(Enum.map(roles, & &1["roleId"]))
-
-    roles
-    |> Enum.map(fn role ->
-      role
-      |> Map.put("dataScopeStr", data_scope_label(role["dataScope"]))
-      |> Map.put("statusStr", if(role["status"] == 1, do: "正常", else: "停用"))
-      |> Map.put("userCount", Map.get(user_counts, role["roleId"], 0))
-    end)
+    OrganizationData.load_roles()
   end
 
   def load_role_users(role_id, actor \\ nil) do
@@ -260,49 +249,18 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     }
   end
 
-  def data_scope_label(1), do: "全部数据"
-  def data_scope_label(2), do: "自定义数据"
-  def data_scope_label(3), do: "本部门数据"
-  def data_scope_label(4), do: "本部门及以下"
-  def data_scope_label(5), do: "仅本人数据"
-  def data_scope_label(_scope), do: "未知"
+  def data_scope_label(scope), do: OrganizationData.data_scope_label(scope)
 
   def load_menus do
-    menus = Menu.list_menus()
-    by_id = Map.new(menus, &{&1["menuId"], &1})
-
-    Enum.map(menus, fn menu ->
-      menu
-      |> Map.put("depth", menu_depth(menu["parentId"], by_id, MapSet.new([menu["menuId"]])))
-      |> Map.put("menuTypeStr", menu_type_label(menu["menuType"], menu["isButton"]))
-      |> Map.put("statusStr", if(menu["status"] == 1, do: "正常", else: "停用"))
-    end)
+    OrganizationData.load_menus()
   end
 
-  def menu_depth(0, _menus, _seen), do: 0
+  def menu_depth(parent_id, menus, seen), do: OrganizationData.menu_depth(parent_id, menus, seen)
 
-  def menu_depth(parent_id, menus, seen) do
-    if MapSet.member?(seen, parent_id) do
-      0
-    else
-      case Map.get(menus, parent_id) do
-        nil -> 0
-        parent -> 1 + menu_depth(parent["parentId"], menus, MapSet.put(seen, parent_id))
-      end
-    end
-  end
+  def menu_type_label(type, is_button),
+    do: OrganizationData.menu_type_label(type, is_button)
 
-  def menu_type_label(_type, true), do: "按钮"
-  def menu_type_label(2, _is_button), do: "目录"
-  def menu_type_label(1, _is_button), do: "菜单"
-  def menu_type_label(0, _is_button), do: "权限"
-  def menu_type_label(_type, _is_button), do: "其他"
-
-  def dept_depth(nil), do: 0
-
-  def dept_depth(ancestors) do
-    max(length(String.split(ancestors, ",", trim: true)) - 1, 0)
-  end
+  def dept_depth(ancestors), do: OrganizationData.dept_depth(ancestors)
 
   def assign_monitor(socket, feedback \\ nil) do
     admin? = admin_socket?(socket)
