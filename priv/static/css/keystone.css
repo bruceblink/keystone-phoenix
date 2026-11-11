@@ -501,3 +501,32 @@ td { color: #334155; }
   .page-context { padding-bottom: 12px; }
 }
 
+/* 行内操作使用轻量按钮，保留主操作和危险操作的视觉层级。 */
+table button.refresh {
+  border-color: transparent;
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--primary-dark);
+  box-shadow: none;
+  transform: none;
+}
+table button.refresh:hover {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  color: var(--primary-dark);
+  box-shadow: none;
+  transform: none;
+}
+table button.refresh:active { transform: translateY(1px); }
+table button.danger-action {
+  border-color: #fecaca !important;
+  background: #fff1f2 !important;
+  color: #b42318 !important;
+  box-shadow: none;
+}
+table button.danger-action:hover {
+  border-color: #fca5a5 !important;
+  background: #ffe4e6 !important;
+  color: #991b1b !important;
+  box-shadow: none;
+}
+
