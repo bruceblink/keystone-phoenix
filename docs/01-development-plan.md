@@ -1,6 +1,6 @@
 # Keystone Phoenix 开发计划
 
-更新日期：2026-11-11。当前代码基线为 `a054f1f`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
+更新日期：2026-11-11。当前代码基线为 `fc5dad8`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
 
 ## 目标与范围
 
@@ -284,7 +284,7 @@ mix test --include integration
 
 ### 2026-11-11 当前基线
 
-当前主线代码为 `a054f1f`，`main` 与 `origin/main` 已同步。`a284c99` 修复了受代理 CA 影响的 Docker/Hex 构建、加入构建与运行时 `libsctp1`，并修正 release smoke 的数据库恢复和 release eval 初始化；`c17c436` 让应用、开发环境和测试告警使用完整日期时间戳；`1436447` 升级 `erlef/setup-beam` 到支持 GitHub `ubuntu26` runner 的 `v1.24.1`；`6435fac` 完成手动任务资源耗尽错误边界；`dc8f872` 将 Telemetry 活跃会话指标改为数据库 `COUNT(*)`，避免周期性加载全部会话行；`5e50608` 抽取任务和日志列表的共享分页实现；`deaed69` 让配置和字典列表复用同一分页实现；`a054f1f` 让角色和岗位列表复用共享分页实现。
+当前主线代码为 `fc5dad8`，`main` 与 `origin/main` 已同步。`a284c99` 修复了受代理 CA 影响的 Docker/Hex 构建、加入构建与运行时 `libsctp1`，并修正 release smoke 的数据库恢复和 release eval 初始化；`c17c436` 让应用、开发环境和测试告警使用完整日期时间戳；`1436447` 升级 `erlef/setup-beam` 到支持 GitHub `ubuntu26` runner 的 `v1.24.1`；`6435fac` 完成手动任务资源耗尽错误边界；`dc8f872` 将 Telemetry 活跃会话指标改为数据库 `COUNT(*)`，避免周期性加载全部会话行；`5e50608` 抽取任务和日志列表的共享分页实现；`deaed69` 让配置和字典列表复用同一分页实现；`a054f1f` 让角色和岗位列表复用共享分页实现；`fc5dad8` 让公告和用户列表复用共享分页实现。
 
 当前本机验证已完成：用户级 Elixir `1.20.5`、Erlang/OTP `29`、Mix、Hex 和 Rebar 可用；默认测试为 151 项通过、20 项排除，集成测试为 171 项通过；格式、源码行数、严格编译、`bash -n` 和 `git diff --check` 均通过。使用 BuildKit secret `proxy_ca` 构建的本地生产镜像摘要为 `sha256:4a62aec5ecaed0028b16b1303ee51d8683a810c2cb4c8d824fcfc89aa9bcc589`，大小为 252099843 字节；`scripts/release_smoke.sh` 已通过迁移、重复迁移、备份恢复、非 root、数据库故障恢复、认证上传下载和卷重启检查。Docker 构建保持 TLS 证书校验，代理 CA secret 不进入运行时镜像。
 
@@ -336,3 +336,5 @@ GitHub Test 工作流运行 `42962608929` 已在 `1436447` 上通过。发布工
 提交 `deaed69` 将配置和字典列表也接入共享分页模块，移除重复的页码解析、总数查询和 500 条上限逻辑。管理页配置和字典定向测试、默认测试 152/20 排除和集成测试 172 均通过。
 
 提交 `a054f1f` 将角色列表、角色用户分配列表和岗位列表接入共享分页模块，保留数据范围、用户映射和既有响应结构。默认测试 152 项通过、20 项排除，集成测试 172 项通过。
+
+提交 `fc5dad8` 将公告列表和用户列表接入共享分页模块，并通过 `page_rows` 保留公告创建人批量映射和用户关系名称批量加载。默认测试 152 项通过、20 项排除，集成测试 172 项通过。
