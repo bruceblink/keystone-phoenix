@@ -94,6 +94,7 @@ defmodule KeystonePhoenixWeb.Telemetry do
       last_value("keystone_phoenix.repo.pool.checkout_queue_length"),
       last_value("keystone_phoenix.repo.pool.pool_size"),
       last_value("keystone_phoenix.repo.pool.pool_count"),
+      counter("keystone_phoenix.repo.pool.alert.count", tags: [:reason]),
       summary("keystone_phoenix.job.run.duration",
         tags: [:job_id, :trigger_type, :status],
         unit: {:native, :millisecond}
@@ -129,16 +130,21 @@ defmodule KeystonePhoenixWeb.Telemetry do
     config = Repo.config()
     pool_metrics = pool_metrics()
 
+    measurements = %{
+      ready_connections: Enum.sum_by(pool_metrics, & &1.ready_conn_count),
+      checkout_queue_length: Enum.sum_by(pool_metrics, & &1.checkout_queue_length),
+      pool_size: Keyword.get(config, :pool_size, 0),
+      pool_count: Keyword.get(config, :pool_count, 1)
+    }
+
     :telemetry.execute(
       [:keystone_phoenix, :repo, :pool],
-      %{
-        ready_connections: Enum.sum_by(pool_metrics, & &1.ready_conn_count),
-        checkout_queue_length: Enum.sum_by(pool_metrics, & &1.checkout_queue_length),
-        pool_size: Keyword.get(config, :pool_size, 0),
-        pool_count: Keyword.get(config, :pool_count, 1)
-      },
+      measurements,
       %{}
     )
+
+    maybe_emit_pool_alert(measurements)
+    :ok
   rescue
     _error -> :ok
   catch
@@ -189,6 +195,24 @@ defmodule KeystonePhoenixWeb.Telemetry do
     _error -> []
   catch
     :exit, _reason -> []
+  end
+
+  # 只发送结构化告警事件，由外部报告组件决定记录、聚合或通知方式。
+  defp maybe_emit_pool_alert(%{checkout_queue_length: queue} = measurements) do
+    threshold = Application.get_env(:keystone_phoenix, :repo_pool_queue_alert_threshold, 1)
+
+    if is_integer(threshold) and threshold >= 0 and queue >= threshold do
+      :telemetry.execute(
+        [:keystone_phoenix, :repo, :pool, :alert],
+        %{count: 1, checkout_queue_length: queue},
+        %{
+          reason: :checkout_queue,
+          threshold: threshold,
+          pool_size: measurements.pool_size,
+          pool_count: measurements.pool_count
+        }
+      )
+    end
   end
 
   defp fallback_pool_metric, do: [%{ready_conn_count: 0, checkout_queue_length: 0}]
