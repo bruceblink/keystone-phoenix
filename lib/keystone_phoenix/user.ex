@@ -13,13 +13,10 @@ defmodule KeystonePhoenix.User do
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Permission
+  alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User.SysUser
-
-  @default_page 1
-  @default_page_size 10
-  @max_page_size 500
 
   @empty_relation_names %{departments: %{}, posts: %{}, roles: %{}, users: %{}}
 
@@ -453,15 +450,8 @@ defmodule KeystonePhoenix.User do
   end
 
   defp page_query(query, params) do
-    page = positive_integer(params["pageNum"] || params[:page_num], @default_page)
-    page_size = positive_integer(params["pageSize"] || params[:page_size], @default_page_size)
-    page_size = min(page_size, @max_page_size)
-
-    total = Repo.aggregate(query, :count, :user_id)
-    query = query |> limit(^page_size) |> offset(^((page - 1) * page_size))
-    rows = Repo.all(query)
-
-    %{total: total, rows: user_maps(rows)}
+    paged = Pagination.page_rows(query, params, :user_id)
+    %{paged | rows: user_maps(paged.rows)}
   end
 
   defp relation_names(users) do
@@ -515,15 +505,6 @@ defmodule KeystonePhoenix.User do
   defp filter_contains(query, field, value) do
     value = "%#{String.trim(to_string(value))}%"
     where(query, [record], ilike(field(record, ^field), ^value))
-  end
-
-  defp positive_integer(nil, default), do: default
-
-  defp positive_integer(value, default) do
-    case Integer.parse(to_string(value)) do
-      {number, ""} when number > 0 -> number
-      _ -> default
-    end
   end
 
   defp format_datetime(nil), do: nil

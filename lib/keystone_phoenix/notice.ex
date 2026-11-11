@@ -6,6 +6,7 @@ defmodule KeystonePhoenix.Notice do
   alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Notice.SysNotice
   alias KeystonePhoenix.Params
+  alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.User
 
@@ -27,12 +28,9 @@ defmodule KeystonePhoenix.Notice do
     query = filter_contains(query, :notice_title, params["noticeTitle"] || params[:notice_title])
     query = filter_integer(query, :notice_type, params["noticeType"] || params[:notice_type])
     query = filter_integer(query, :status, params["status"] || params[:status])
-    page = positive_integer(params["pageNum"] || params[:page_num], 1)
-    page_size = min(positive_integer(params["pageSize"] || params[:page_size], 10), 500)
-    total = Repo.aggregate(query, :count, :notice_id)
-    rows = query |> limit(^page_size) |> offset(^((page - 1) * page_size)) |> Repo.all()
-    creator_names = creator_names(rows)
-    %{total: total, rows: Enum.map(rows, &notice_to_map(&1, creator_names))}
+    paged = Pagination.page_rows(query, params, :notice_id)
+    creator_names = creator_names(paged.rows)
+    %{paged | rows: Enum.map(paged.rows, &notice_to_map(&1, creator_names))}
   end
 
   def get_notice(id) do
@@ -137,15 +135,6 @@ defmodule KeystonePhoenix.Notice do
     case Integer.parse(to_string(value)) do
       {number, ""} -> where(query, [notice], field(notice, ^field) == ^number)
       _ -> query
-    end
-  end
-
-  defp positive_integer(nil, default), do: default
-
-  defp positive_integer(value, default) do
-    case Integer.parse(to_string(value)) do
-      {number, ""} when number > 0 -> number
-      _ -> default
     end
   end
 
