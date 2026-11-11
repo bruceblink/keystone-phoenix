@@ -26,6 +26,14 @@ defmodule KeystonePhoenix.Pagination do
     %{total: total, rows: rows}
   end
 
+  @doc "Paginates an in-memory list with the same page bounds as query lists."
+  def page_list(rows, params, default_page_size \\ @default_page_size) when is_list(rows) do
+    page = positive_integer(params["pageNum"] || params[:page_num], @default_page)
+    page_size = positive_integer(params["pageSize"] || params[:page_size], default_page_size)
+    page_size = min(page_size, @max_page_size)
+    %{total: length(rows), rows: Enum.slice(rows, (page - 1) * page_size, page_size)}
+  end
+
   defp positive_integer(nil, default), do: default
 
   defp positive_integer(value, default) do

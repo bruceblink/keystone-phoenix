@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Monitor do
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Monitor.CpuSampler
+  alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.RuntimeStore
   alias KeystonePhoenix.User
 
@@ -49,12 +50,7 @@ defmodule KeystonePhoenix.Monitor do
         |> Enum.filter(&matches_ip?(&1, params["ipAddress"] || params[:ip_address]))
         |> Enum.sort_by(& &1["loginTime"], :desc)
 
-      page = positive_integer(params["pageNum"] || params[:page_num], 1)
-      page_size = min(positive_integer(params["pageSize"] || params[:page_size], 50), 500)
-      total = length(rows)
-      rows = rows |> Enum.drop((page - 1) * page_size) |> Enum.take(page_size)
-
-      {:ok, %{total: total, rows: rows}}
+      {:ok, Pagination.page_list(rows, params, 50)}
     end
   end
 
@@ -279,15 +275,6 @@ defmodule KeystonePhoenix.Monitor do
     case Integer.parse(to_string(value)) do
       {number, _} -> number
       _ -> 0
-    end
-  end
-
-  defp positive_integer(nil, default), do: default
-
-  defp positive_integer(value, default) do
-    case Integer.parse(to_string(value)) do
-      {number, ""} when number > 0 -> number
-      _ -> default
     end
   end
 
