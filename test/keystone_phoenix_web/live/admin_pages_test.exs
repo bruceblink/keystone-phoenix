@@ -219,6 +219,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
 
     assert account_html =~ ~s(phx-click="refresh-users" phx-disable-with="刷新中…")
     assert account_html =~ ~s(class="table-scroll" role="region" tabindex="0")
+    assert account_html =~ ~s(<th scope="col">用户名</th>)
     assert account_html =~ ~s(aria-describedby="user-feedback")
     assert account_html =~ "暂无用户数据"
 
@@ -316,6 +317,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       )
 
     assert system_html =~ ~s(aria-label="系统配置列表")
+    assert system_html =~ ~s(<th scope="col">名称</th>)
     assert system_html =~ "系统配置列表"
     assert system_html =~ "暂无配置数据"
 
