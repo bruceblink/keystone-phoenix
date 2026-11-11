@@ -2,9 +2,11 @@
 
 ARG ELIXIR_VERSION=1.20.5
 ARG OTP_VERSION=29
-ARG IMAGE_REGISTRY=m.daocloud.io/docker.io/library/
+ARG IMAGE_REGISTRY=
 ARG HEX_MIRROR=https://repo.hex.pm
 ARG HEX_CACERTS_PATH=/etc/ssl/certs/ca-certificates.crt
+# 发布环境可以显式切换 Debian 软件源，默认使用 Debian 官方源。
+ARG DEBIAN_MIRROR=http://deb.debian.org
 ARG ELIXIR_IMAGE_DIGEST=sha256:1b850191faeaae55678b782cd8b34d391f793672f3175b1956d024f794ca321b
 ARG DEBIAN_IMAGE_DIGEST=sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2
 
@@ -12,6 +14,7 @@ FROM ${IMAGE_REGISTRY}elixir:${ELIXIR_VERSION}-otp-${OTP_VERSION}@${ELIXIR_IMAGE
 
 ARG HEX_MIRROR
 ARG HEX_CACERTS_PATH
+ARG DEBIAN_MIRROR
 
 ENV MIX_ENV=prod \
     LANG=C.UTF-8 \
@@ -25,7 +28,7 @@ ENV MIX_ENV=prod \
 # only in this build stage and is never copied into the runtime image. CI builds
 # that do not need a proxy continue to use the standard CA bundle.
 RUN --mount=type=secret,id=proxy_ca,target=/run/secrets/proxy_ca,required=false \
-    sed -i 's|http://deb.debian.org/|http://mirrors.tuna.tsinghua.edu.cn/|g' \
+    sed -i "s|http://deb.debian.org/|${DEBIAN_MIRROR}/|g" \
       /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
     && apt-get install -y --no-install-recommends build-essential ca-certificates git libsctp1 openssl \
@@ -38,6 +41,7 @@ RUN --mount=type=secret,id=proxy_ca,target=/run/secrets/proxy_ca,required=false 
 WORKDIR /app
 
 COPY mix.exs mix.lock ./
+COPY vendor/xlsxir vendor/xlsxir
 RUN mix local.hex --force \
     && mix local.rebar --force \
     && mix deps.get --only prod \
@@ -53,16 +57,18 @@ RUN mix compile --warnings-as-errors \
 
 FROM ${IMAGE_REGISTRY}debian:trixie-slim@${DEBIAN_IMAGE_DIGEST} AS runtime
 
+ARG DEBIAN_MIRROR
+
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     HOME=/app \
     PHX_SERVER=true \
     ELIXIR_ERL_OPTIONS=+fnu
 
-RUN sed -i 's|http://deb.debian.org/|http://mirrors.tuna.tsinghua.edu.cn/|g' \
+RUN sed -i "s|http://deb.debian.org/|${DEBIAN_MIRROR}/|g" \
       /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
-    && apt-get install -y --no-install-recommends adduser ca-certificates curl libsctp1 libstdc++6 openssl ncurses-bin netcat-openbsd \
+    && apt-get install -y --no-install-recommends adduser ca-certificates curl libsctp1 libstdc++6 openssl ncurses-bin \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

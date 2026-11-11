@@ -10,7 +10,18 @@
 docker build -t keystone-phoenix:0.3.0 .
 ```
 
-默认从 DaoCloud 镜像地址读取 Elixir 和 Debian 基础镜像，从 UPYUN 的非官方 Hex 镜像读取依赖，并在两个阶段从清华大学开源软件镜像站读取 Debian 软件包。镜像同步可能延迟。Hex 包继续按 `mix.lock` 校验，Debian 软件包继续验证软件源签名。
+默认从 Docker Hub 官方地址读取 Elixir 和 Debian 基础镜像，从 Hex 官方地址读取依赖，并在两个阶段从 Debian 官方软件源读取软件包。Hex 包继续按 `mix.lock` 校验，Debian 软件包继续验证软件源签名。
+
+Excel 依赖使用已固定提交的兼容版本；`vendor/xlsxir` 只保留必要的编译 warning 修正。构建阶段使用 `mix compile --warnings-as-errors`，不会通过关闭全局 warning 检查来隐藏依赖问题。
+
+本地网络需要国内镜像时，可以显式切换基础镜像和 Debian 软件源；这些参数不写入默认配置：
+
+```bash
+docker build \
+  --build-arg IMAGE_REGISTRY=m.daocloud.io/docker.io/library/ \
+  --build-arg DEBIAN_MIRROR=http://mirrors.tuna.tsinghua.edu.cn \
+  -t keystone-phoenix:0.3.0 .
+```
 
 如果国内基础镜像或 Hex 镜像不可用，可显式使用 Docker Hub 和官方 Hex 地址：
 
