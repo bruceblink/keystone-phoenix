@@ -67,7 +67,12 @@ defmodule KeystonePhoenixWeb.RoleController do
   @doc "Creates a role and assigns its menus."
   def create(conn, params) do
     if Authz.role_metadata_allowed?(conn.assigns.current_user, params) do
-      case Role.create_role(params, conn.assigns.current_user.user_id) do
+      case Role.create_role(params,
+             authorization: %{
+               principal: conn.assigns.current_user,
+               permission: "system:role:add"
+             }
+           ) do
         {:ok, _role} -> conn |> put_status(:created) |> json(ApiResponse.ok())
         {:error, changeset} -> render_error(conn, changeset)
       end
@@ -82,7 +87,10 @@ defmodule KeystonePhoenixWeb.RoleController do
       case Role.update_role(
              params["roleId"] || params[:role_id],
              params,
-             conn.assigns.current_user.user_id
+             authorization: %{
+               principal: conn.assigns.current_user,
+               permission: "system:role:edit"
+             }
            ) do
         {:ok, _role} -> json(conn, ApiResponse.ok())
         {:error, :not_found} -> render_error(conn, :not_found)
@@ -95,7 +103,12 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Soft deletes a role."
   def delete(conn, %{"role_id" => role_id}) do
-    case Role.delete_role(role_id, conn.assigns.current_user.user_id) do
+    case Role.delete_role(role_id,
+           authorization: %{
+             principal: conn.assigns.current_user,
+             permission: "system:role:remove"
+           }
+         ) do
       {:ok, _} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, reason} -> render_error(conn, reason)
@@ -107,7 +120,10 @@ defmodule KeystonePhoenixWeb.RoleController do
     case Role.change_status(
            role_id,
            params["status"] || params[:status],
-           conn.assigns.current_user.user_id
+           authorization: %{
+             principal: conn.assigns.current_user,
+             permission: "system:role:edit"
+           }
          ) do
       {:ok, _role} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
@@ -117,7 +133,12 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Changes a role's data scope and department set."
   def data_scope(conn, %{"role_id" => role_id} = params) do
-    case Role.update_data_scope(role_id, params, conn.assigns.current_user.user_id) do
+    case Role.update_data_scope(role_id, params,
+           authorization: %{
+             principal: conn.assigns.current_user,
+             permission: "system:role:permission"
+           }
+         ) do
       {:ok, _role} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
@@ -142,7 +163,12 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Assigns users to a role."
   def assign_users(conn, %{"role_id" => role_id, "user_ids" => user_ids}) do
-    case Role.assign_users(role_id, user_ids, conn.assigns.current_user) do
+    case Role.assign_users(role_id, user_ids,
+           authorization: %{
+             principal: conn.assigns.current_user,
+             permission: "system:role:edit"
+           }
+         ) do
       :ok -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end
@@ -152,7 +178,12 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Removes role assignments from users."
   def unassign_users(conn, %{"user_ids" => user_ids}) do
-    case Role.unassign_users(user_ids, conn.assigns.current_user) do
+    case Role.unassign_users(user_ids,
+           authorization: %{
+             principal: conn.assigns.current_user,
+             permission: "system:role:edit"
+           }
+         ) do
       :ok -> json(conn, ApiResponse.ok())
       {:error, :forbidden} -> render_error(conn, :forbidden)
       {:error, :invalid_ids} -> render_error(conn, :invalid_ids)

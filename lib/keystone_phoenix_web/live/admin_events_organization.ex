@@ -283,8 +283,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
       result =
         if role_id == "",
-          do: Role.create_role(params, current_user_id(socket)),
-          else: Role.update_role(role_id, params, current_user_id(socket))
+          do: Role.create_role(params, authorization(socket, "system:role:add")),
+          else: Role.update_role(role_id, params, authorization(socket, "system:role:edit"))
 
       case result do
         {:ok, _role} ->
@@ -308,7 +308,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("toggle-role-status", %{"role-id" => role_id, "status" => status}, socket) do
     if Support.permission_socket?(socket, "system:role:edit") do
-      case Role.change_status(role_id, status, current_user_id(socket)) do
+      case Role.change_status(role_id, status, authorization(socket, "system:role:edit")) do
         {:ok, _role} ->
           socket = assign(socket, role_rows: Support.load_roles(), role_feedback: "角色状态已更新")
           {:noreply, clear_role_selection(socket)}
@@ -323,7 +323,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("delete-role", %{"role-id" => role_id}, socket) do
     if Support.permission_socket?(socket, "system:role:remove") do
-      case Role.delete_role(role_id, current_user_id(socket)) do
+      case Role.delete_role(role_id, authorization(socket, "system:role:remove")) do
         {:ok, _} ->
           {:noreply,
            assign(socket,
@@ -389,13 +389,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("assign-role-user", %{"user-id" => user_id}, socket) do
     update_role_user_assignment(socket, fn role_id ->
-      Role.assign_users(role_id, [user_id], socket.assigns.current_user)
+      Role.assign_users(role_id, [user_id], authorization(socket, "system:role:edit"))
     end)
   end
 
   def handle_event("unassign-role-user", %{"user-id" => user_id}, socket) do
     update_role_user_assignment(socket, fn _role_id ->
-      Role.unassign_users([user_id], socket.assigns.current_user)
+      Role.unassign_users([user_id], authorization(socket, "system:role:edit"))
     end)
   end
 
@@ -535,6 +535,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   defp current_user_id(socket) do
     user = socket.assigns[:current_user] || %{}
     Map.get(user, "userId") || Map.get(user, :user_id)
+  end
+
+  defp authorization(socket, permission) do
+    principal =
+      socket.assigns.current_user
+      |> Map.put(:permissions, List.wrap(socket.assigns[:permissions]))
+
+    [authorization: %{principal: principal, permission: permission}]
   end
 
   defp clear_role_selection(socket) do

@@ -10,6 +10,7 @@ defmodule KeystonePhoenix.Role do
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
+  alias KeystonePhoenix.Role.Authorization
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
 
@@ -63,7 +64,13 @@ defmodule KeystonePhoenix.Role do
 
   def list_roles_by_ids(_ids), do: []
 
-  def create_role(attrs, actor_id \\ nil)
+  def create_role(attrs, actor_or_options \\ nil)
+
+  def create_role(attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize_write(options, "system:role:add", attrs) do
+      create_role(attrs, Authorization.actor_id(options))
+    end
+  end
 
   def create_role(attrs, actor_id) when is_map(attrs) do
     menu_ids = menu_ids_from(attrs) || []
@@ -85,7 +92,13 @@ defmodule KeystonePhoenix.Role do
 
   def create_role(_attrs, _actor_id), do: {:error, invalid_changeset(:role_name)}
 
-  def update_role(id, attrs, actor_id \\ nil)
+  def update_role(id, attrs, actor_or_options \\ nil)
+
+  def update_role(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize_write(options, "system:role:edit", attrs) do
+      update_role(id, attrs, Authorization.actor_id(options))
+    end
+  end
 
   def update_role(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, role} <- get_role(id) do
@@ -109,7 +122,15 @@ defmodule KeystonePhoenix.Role do
 
   def update_role(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:role_name)}
 
-  def delete_role(id, actor_id \\ nil) do
+  def delete_role(id, actor_or_options \\ nil)
+
+  def delete_role(id, options) when is_list(options) do
+    with :ok <- Authorization.authorize_write(options, "system:role:remove") do
+      delete_role(id, Authorization.actor_id(options))
+    end
+  end
+
+  def delete_role(id, actor_id) do
     with {:ok, role} <- get_role(id) do
       cond do
         role.role_key == "admin" ->
@@ -134,11 +155,23 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
-  def change_status(id, status, actor_id \\ nil) do
+  def change_status(id, status, actor_or_options \\ nil)
+
+  def change_status(id, status, options) when is_list(options) do
+    update_role(id, %{"status" => status, "menuIds" => menu_ids_for_role(id)}, options)
+  end
+
+  def change_status(id, status, actor_id) do
     update_role(id, %{"status" => status, "menuIds" => menu_ids_for_role(id)}, actor_id)
   end
 
-  def update_data_scope(id, attrs, actor_id \\ nil)
+  def update_data_scope(id, attrs, actor_or_options \\ nil)
+
+  def update_data_scope(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize_write(options, "system:role:permission", attrs) do
+      update_data_scope(id, attrs, Authorization.actor_id(options))
+    end
+  end
 
   def update_data_scope(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, role} <- get_role(id) do
@@ -202,7 +235,15 @@ defmodule KeystonePhoenix.Role do
   def user_counts(_role_ids), do: %{}
 
   @doc "Assigns a batch of users to an enabled role."
-  def assign_users(role_id, user_ids, actor \\ nil) do
+  def assign_users(role_id, user_ids, actor_or_options \\ nil)
+
+  def assign_users(role_id, user_ids, options) when is_list(options) do
+    with :ok <- Authorization.authorize_assignment(options, "system:role:edit") do
+      assign_users(role_id, user_ids, Authorization.actor_id(options))
+    end
+  end
+
+  def assign_users(role_id, user_ids, actor) do
     with :ok <- assignment_allowed?(actor),
          {:ok, role} <- get_role(role_id),
          true <- role.status == 1,
@@ -217,7 +258,15 @@ defmodule KeystonePhoenix.Role do
   end
 
   @doc "Removes role assignments from a batch of users."
-  def unassign_users(user_ids, actor \\ nil) do
+  def unassign_users(user_ids, actor_or_options \\ nil)
+
+  def unassign_users(user_ids, options) when is_list(options) do
+    with :ok <- Authorization.authorize_assignment(options, "system:role:edit") do
+      unassign_users(user_ids, Authorization.actor_id(options))
+    end
+  end
+
+  def unassign_users(user_ids, actor) do
     with :ok <- assignment_allowed?(actor),
          {:ok, user_ids} <- normalize_user_ids(user_ids) do
       update_user_assignments(user_ids, nil)
