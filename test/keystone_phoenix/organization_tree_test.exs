@@ -66,35 +66,49 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
     page = insert_menu(302, root.menu_id, 1, false, "页面")
 
     assert {:error, :invalid_parent} =
-             Menu.update_menu(root.menu_id, %{"parentId" => page.menu_id})
+             Menu.update_menu(root.menu_id, %{"parentId" => page.menu_id},
+               authorization: %{principal: %{is_admin: true}, permission: "system:menu:edit"}
+             )
 
-    assert {:error, :menu_type_locked} = Menu.update_menu(page.menu_id, %{"menuType" => 2})
+    assert {:error, :menu_type_locked} =
+             Menu.update_menu(page.menu_id, %{"menuType" => 2},
+               authorization: %{principal: %{is_admin: true}, permission: "system:menu:edit"}
+             )
 
     assert {:error, :menu_parent_invalid} =
-             Menu.create_menu(%{
-               "parentId" => page.menu_id,
-               "menuName" => "嵌套页面",
-               "menuType" => 1,
-               "status" => 1
-             })
+             Menu.create_menu(
+               %{
+                 "parentId" => page.menu_id,
+                 "menuName" => "嵌套页面",
+                 "menuType" => 1,
+                 "status" => 1
+               },
+               authorization: %{principal: %{is_admin: true}, permission: "system:menu:add"}
+             )
 
     assert {:error, :external_link_invalid} =
-             Menu.create_menu(%{
-               "parentId" => 0,
-               "menuName" => "外链",
-               "menuType" => 4,
-               "path" => "javascript:alert(1)",
-               "status" => 1
-             })
+             Menu.create_menu(
+               %{
+                 "parentId" => 0,
+                 "menuName" => "外链",
+                 "menuType" => 4,
+                 "path" => "javascript:alert(1)",
+                 "status" => 1
+               },
+               authorization: %{principal: %{is_admin: true}, permission: "system:menu:add"}
+             )
 
     assert {:error, :external_link_invalid} =
-             Menu.create_menu(%{
-               "parentId" => 0,
-               "menuName" => "相对外链",
-               "menuType" => 4,
-               "path" => "https:relative",
-               "status" => 1
-             })
+             Menu.create_menu(
+               %{
+                 "parentId" => 0,
+                 "menuName" => "相对外链",
+                 "menuType" => 4,
+                 "path" => "https:relative",
+                 "status" => 1
+               },
+               authorization: %{principal: %{is_admin: true}, permission: "system:menu:add"}
+             )
 
     role =
       %SysRole{}
@@ -108,7 +122,11 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
       |> Repo.insert!()
 
     Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: page.menu_id})
-    assert {:error, :assigned_to_role} = Menu.delete_menu(page.menu_id)
+
+    assert {:error, :assigned_to_role} =
+             Menu.delete_menu(page.menu_id,
+               authorization: %{principal: %{is_admin: true}, permission: "system:menu:remove"}
+             )
   end
 
   test "menu maps expose the frontend tree contract and button filter" do

@@ -36,7 +36,12 @@ defmodule KeystonePhoenixWeb.MenuController do
   @doc "Creates a menu or button permission."
   def create(conn, params) do
     if Authz.menu_metadata_allowed?(conn.assigns.current_user, params) do
-      case Menu.create_menu(params, conn.assigns.current_user.user_id) do
+      case Menu.create_menu(params,
+             authorization: %{
+               principal: conn.assigns.current_user,
+               permission: "system:menu:add"
+             }
+           ) do
         {:ok, _menu} -> conn |> put_status(:created) |> json(ApiResponse.ok())
         {:error, reason} -> render_error(conn, reason)
       end
@@ -48,7 +53,12 @@ defmodule KeystonePhoenixWeb.MenuController do
   @doc "Updates a menu or button permission."
   def update(conn, %{"menu_id" => menu_id} = params) do
     if Authz.menu_metadata_allowed?(conn.assigns.current_user, params) do
-      case Menu.update_menu(menu_id, params, conn.assigns.current_user.user_id) do
+      case Menu.update_menu(menu_id, params,
+             authorization: %{
+               principal: conn.assigns.current_user,
+               permission: "system:menu:edit"
+             }
+           ) do
         {:ok, _menu} -> json(conn, ApiResponse.ok())
         {:error, reason} -> render_error(conn, reason)
       end
@@ -59,7 +69,12 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   @doc "Soft deletes a menu or button permission."
   def delete(conn, %{"menu_id" => menu_id}) do
-    case Menu.delete_menu(menu_id, conn.assigns.current_user.user_id) do
+    case Menu.delete_menu(menu_id,
+           authorization: %{
+             principal: conn.assigns.current_user,
+             permission: "system:menu:remove"
+           }
+         ) do
       :ok -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end

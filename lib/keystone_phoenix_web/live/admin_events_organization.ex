@@ -462,8 +462,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
       result =
         if menu_id == "",
-          do: Menu.create_menu(params, current_user_id(socket)),
-          else: Menu.update_menu(menu_id, params, current_user_id(socket))
+          do: Menu.create_menu(params, authorization(socket, "system:menu:add")),
+          else: Menu.update_menu(menu_id, params, authorization(socket, "system:menu:edit"))
 
       case result do
         {:ok, _menu} ->
@@ -485,7 +485,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("toggle-menu-status", %{"menu-id" => menu_id, "status" => status}, socket) do
     if Support.permission_socket?(socket, "system:menu:edit") do
-      case Menu.update_menu(menu_id, %{"status" => status}, current_user_id(socket)) do
+      case Menu.update_menu(
+             menu_id,
+             %{"status" => status},
+             authorization(socket, "system:menu:edit")
+           ) do
         {:ok, _menu} ->
           {:noreply, assign(socket, menu_rows: Support.load_menus(), menu_feedback: "菜单状态已更新")}
 
@@ -499,7 +503,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("delete-menu", %{"menu-id" => menu_id}, socket) do
     if Support.permission_socket?(socket, "system:menu:remove") do
-      case Menu.delete_menu(menu_id, current_user_id(socket)) do
+      case Menu.delete_menu(menu_id, authorization(socket, "system:menu:remove")) do
         :ok ->
           {:noreply,
            assign(socket,
@@ -538,11 +542,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     else
       {:noreply, socket}
     end
-  end
-
-  defp current_user_id(socket) do
-    user = socket.assigns[:current_user] || %{}
-    Map.get(user, "userId") || Map.get(user, :user_id)
   end
 
   defp authorization(socket, permission) do

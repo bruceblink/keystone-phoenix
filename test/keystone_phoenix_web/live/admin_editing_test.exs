@@ -142,17 +142,20 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
 
   test "menu edit preserves the ID and saved route fields", ctx do
     {:ok, menu} =
-      Menu.create_menu(%{
-        "menuName" => unique("原菜单"),
-        "menuType" => 1,
-        "routerName" => unique("EditingRoute"),
-        "parentId" => 0,
-        "path" => "/editing-route",
-        "isButton" => false,
-        "permission" => "system:editing:read",
-        "metaInfo" => ~s({"title":"原菜单"}),
-        "status" => 1
-      })
+      Menu.create_menu(
+        %{
+          "menuName" => unique("原菜单"),
+          "menuType" => 1,
+          "routerName" => unique("EditingRoute"),
+          "parentId" => 0,
+          "path" => "/editing-route",
+          "isButton" => false,
+          "permission" => "system:editing:read",
+          "metaInfo" => ~s({"title":"原菜单"}),
+          "status" => 1
+        },
+        authorization: %{principal: ctx.admin, permission: "system:menu:add"}
+      )
 
     {:ok, view} = login(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "menus"})

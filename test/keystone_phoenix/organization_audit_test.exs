@@ -59,11 +59,22 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
     assert {:ok, menu} =
              Menu.create_menu(
                %{"menuName" => "审计菜单", "menuType" => 1, "parentId" => 0, "status" => 1},
-               actor.user_id
+               authorization: %{
+                 principal: %{user_id: actor.user_id, is_admin: true},
+                 permission: "system:menu:add"
+               }
              )
 
     assert menu.creator_id == actor.user_id
-    assert {:ok, menu} = Menu.update_menu(menu.menu_id, %{"status" => 0}, actor.user_id)
+
+    assert {:ok, menu} =
+             Menu.update_menu(menu.menu_id, %{"status" => 0},
+               authorization: %{
+                 principal: %{user_id: actor.user_id, is_admin: true},
+                 permission: "system:menu:edit"
+               }
+             )
+
     assert menu.updater_id == actor.user_id
 
     assert {:ok, role} =

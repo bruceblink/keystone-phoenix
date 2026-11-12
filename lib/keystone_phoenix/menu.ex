@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Menu do
   import Ecto.Query
 
   alias KeystonePhoenix.Audit
+  alias KeystonePhoenix.Authz.Command
   alias KeystonePhoenix.Authz.SysPermission
   alias KeystonePhoenix.Authz.PolicyCache
   alias KeystonePhoenix.Menu.SysMenu
@@ -55,9 +56,17 @@ defmodule KeystonePhoenix.Menu do
     end
   end
 
-  def create_menu(attrs, actor_id \\ nil)
+  def create_menu(attrs, options)
 
-  def create_menu(attrs, actor_id) when is_map(attrs) do
+  def create_menu(attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Command.authorize(options, "system:menu:add") do
+      do_create_menu(attrs, Command.actor_id(options))
+    end
+  end
+
+  def create_menu(_attrs, _options), do: {:error, :authorization_required}
+
+  defp do_create_menu(attrs, actor_id) when is_map(attrs) do
     attrs = normalize_attrs(attrs)
 
     with {:ok, parent_id} <- parent_id(attrs[:parent_id]),
@@ -78,11 +87,17 @@ defmodule KeystonePhoenix.Menu do
     end
   end
 
-  def create_menu(_attrs, _actor_id), do: {:error, invalid_changeset(:menu_name)}
+  def update_menu(id, attrs, options)
 
-  def update_menu(id, attrs, actor_id \\ nil)
+  def update_menu(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Command.authorize(options, "system:menu:edit") do
+      do_update_menu(id, attrs, Command.actor_id(options))
+    end
+  end
 
-  def update_menu(id, attrs, actor_id) when is_map(attrs) do
+  def update_menu(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_update_menu(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, menu} <- get_menu(id) do
       attrs = normalize_attrs(attrs)
 
@@ -106,9 +121,15 @@ defmodule KeystonePhoenix.Menu do
     end
   end
 
-  def update_menu(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:menu_name)}
+  def delete_menu(id, options) when is_list(options) do
+    with :ok <- Command.authorize(options, "system:menu:remove") do
+      do_delete_menu(id, Command.actor_id(options))
+    end
+  end
 
-  def delete_menu(id, actor_id \\ nil) do
+  def delete_menu(_id, _options), do: {:error, :authorization_required}
+
+  defp do_delete_menu(id, actor_id) do
     with {:ok, menu} <- get_menu(id) do
       cond do
         child_count(menu.menu_id) > 0 ->
@@ -412,9 +433,6 @@ defmodule KeystonePhoenix.Menu do
   defp assigned_to_role?(menu_id) do
     Repo.exists?(from role_menu in "sys_role_menu", where: role_menu.menu_id == ^menu_id)
   end
-
-  defp invalid_changeset(field),
-    do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysMenu{}), field, "参数无效")
 
   defp invalidate_policy_cache({:ok, _value} = result) do
     PolicyCache.invalidate()
