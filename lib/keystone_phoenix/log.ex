@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Log do
   import Ecto.Query
 
   alias KeystonePhoenix.Log.{SysLoginInfo, SysOperationLog}
+  alias KeystonePhoenix.Authz.Command
   alias KeystonePhoenix.Authz.Principal
   alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Repo
@@ -36,8 +37,21 @@ defmodule KeystonePhoenix.Log do
     paginate(query, params, :operation_id, &operation_log_to_map/1)
   end
 
-  def delete_login_logs(ids), do: soft_delete(SysLoginInfo, :info_id, ids)
-  def delete_operation_logs(ids), do: soft_delete(SysOperationLog, :operation_id, ids)
+  def delete_login_logs(ids, options) when is_list(options) do
+    with :ok <- Command.authorize(options, "monitor:logininfor:remove") do
+      soft_delete(SysLoginInfo, :info_id, ids)
+    end
+  end
+
+  def delete_login_logs(_ids, _options), do: {:error, :authorization_required}
+
+  def delete_operation_logs(ids, options) when is_list(options) do
+    with :ok <- Command.authorize(options, "monitor:operlog:remove") do
+      soft_delete(SysOperationLog, :operation_id, ids)
+    end
+  end
+
+  def delete_operation_logs(_ids, _options), do: {:error, :authorization_required}
 
   @doc "Records a login result without persisting passwords or tokens."
   def record_login(conn, username, status, message) when is_binary(username) do

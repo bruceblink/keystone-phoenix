@@ -57,7 +57,9 @@ defmodule KeystonePhoenixWeb.LogController do
 
   @doc "Soft deletes login audit records."
   def delete_login_logs(conn, %{"ids" => ids}) do
-    case Log.delete_login_logs(String.split(ids, ",")) do
+    case Log.delete_login_logs(String.split(ids, ","),
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
       :ok -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end
@@ -110,7 +112,9 @@ defmodule KeystonePhoenixWeb.LogController do
 
   @doc "Soft deletes operation audit records."
   def delete_operation_logs(conn, %{"operationIds" => ids}) do
-    case Log.delete_operation_logs(String.split(ids, ",")) do
+    case Log.delete_operation_logs(String.split(ids, ","),
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
       :ok -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end

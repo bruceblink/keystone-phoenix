@@ -455,7 +455,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("delete-login-log", %{"log-id" => log_id}, socket) do
     if Support.permission_socket?(socket, "monitor:logininfor:remove") do
-      case Log.delete_login_logs([log_id]) do
+      case Log.delete_login_logs([log_id], authorization: self_authorization(socket)) do
         :ok ->
           {:noreply,
            assign(socket,
@@ -473,7 +473,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("delete-operation-log", %{"log-id" => log_id}, socket) do
     if Support.permission_socket?(socket, "monitor:operlog:remove") do
-      case Log.delete_operation_logs([log_id]) do
+      case Log.delete_operation_logs([log_id], authorization: self_authorization(socket)) do
         :ok ->
           {:noreply,
            assign(socket,
