@@ -238,8 +238,9 @@ defmodule KeystonePhoenix.Role do
   def assign_users(role_id, user_ids, actor_or_options \\ nil)
 
   def assign_users(role_id, user_ids, options) when is_list(options) do
-    with :ok <- Authorization.authorize_assignment(options, "system:role:edit") do
-      assign_users(role_id, user_ids, Authorization.actor_id(options))
+    with :ok <- Authorization.authorize_assignment(options, "system:role:edit"),
+         {:ok, principal} <- Authorization.principal(options) do
+      assign_users(role_id, user_ids, principal)
     end
   end
 
@@ -261,8 +262,9 @@ defmodule KeystonePhoenix.Role do
   def unassign_users(user_ids, actor_or_options \\ nil)
 
   def unassign_users(user_ids, options) when is_list(options) do
-    with :ok <- Authorization.authorize_assignment(options, "system:role:edit") do
-      unassign_users(user_ids, Authorization.actor_id(options))
+    with :ok <- Authorization.authorize_assignment(options, "system:role:edit"),
+         {:ok, principal} <- Authorization.principal(options) do
+      unassign_users(user_ids, principal)
     end
   end
 
