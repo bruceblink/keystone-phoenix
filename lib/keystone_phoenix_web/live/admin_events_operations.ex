@@ -182,7 +182,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   def handle_event("logout-online-user", %{"token-id" => token_id}, socket) do
     if Support.permission_socket?(socket, "monitor:online:forceLogout") do
       feedback =
-        case Monitor.logout_online_user(token_id) do
+        case Monitor.logout_online_user(
+               token_id,
+               authorization(socket, "monitor:online:forceLogout")
+             ) do
           :ok -> "在线会话已强制下线"
           {:error, :not_found} -> Feedback.error("在线会话不存在或已经失效")
           {:error, :unavailable} -> Feedback.error("会话服务暂不可用")

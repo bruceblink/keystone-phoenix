@@ -2,6 +2,7 @@ defmodule KeystonePhoenix.Monitor do
   @moduledoc "Monitoring queries for ETS, the BEAM host, and online sessions."
 
   alias KeystonePhoenix.Auth.Session
+  alias KeystonePhoenix.Authz.Command
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Monitor.CpuSampler
@@ -54,8 +55,14 @@ defmodule KeystonePhoenix.Monitor do
     end
   end
 
-  @doc "Revokes one online refresh session."
-  def logout_online_user(token_id), do: Session.revoke_token(token_id)
+  @doc "Revokes one online refresh session after authorization."
+  def logout_online_user(token_id, options) when is_list(options) do
+    with :ok <- Command.authorize(options, "monitor:online:forceLogout") do
+      Session.revoke_token(token_id)
+    end
+  end
+
+  def logout_online_user(_token_id, _options), do: {:error, :authorization_required}
 
   @doc "Returns host and BEAM runtime metrics in the existing ServerInfo shape."
   @spec server_info() :: {:ok, map()} | {:error, :unavailable}
