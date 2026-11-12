@@ -67,16 +67,18 @@ defmodule KeystonePhoenix.Config do
 
   def get_config_value_by_key(_config_key), do: ""
 
-  @spec create_config(map()) :: {:ok, SysConfig.t()} | {:error, Ecto.Changeset.t()}
-  def create_config(attrs, actor_or_options \\ nil)
+  @spec create_config(map(), keyword()) :: {:ok, SysConfig.t()} | {:error, term()}
+  def create_config(attrs, options)
 
   def create_config(attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize(options, "system:config:add") do
-      create_config(attrs, Authorization.actor_id(options))
+      do_create_config(attrs, Authorization.actor_id(options))
     end
   end
 
-  def create_config(attrs, actor_id) do
+  def create_config(_attrs, _options), do: {:error, :authorization_required}
+
+  defp do_create_config(attrs, actor_id) do
     changeset = SysConfig.changeset(%SysConfig{}, normalize_attrs(attrs))
     changeset = Audit.put_actor(changeset, :creator_id, actor_id)
 
@@ -90,17 +92,19 @@ defmodule KeystonePhoenix.Config do
     end
   end
 
-  @spec update_config(integer() | String.t(), map()) ::
-          {:ok, SysConfig.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def update_config(id, attrs, actor_or_options \\ nil)
+  @spec update_config(integer() | String.t(), map(), keyword()) ::
+          {:ok, SysConfig.t()} | {:error, term()}
+  def update_config(id, attrs, options)
 
   def update_config(id, attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize(options, "system:config:edit") do
-      update_config(id, attrs, Authorization.actor_id(options))
+      do_update_config(id, attrs, Authorization.actor_id(options))
     end
   end
 
-  def update_config(id, attrs, actor_id) do
+  def update_config(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_update_config(id, attrs, actor_id) do
     with {:ok, config} <- get_config(id) do
       if config.is_allow_change do
         changeset = SysConfig.changeset(config, normalize_attrs(attrs))

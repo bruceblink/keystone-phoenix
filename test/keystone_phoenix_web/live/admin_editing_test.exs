@@ -37,13 +37,16 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
 
   test "config edit preserves the ID and saved fields before updating one row", ctx do
     {:ok, config} =
-      Config.create_config(%{
-        "configName" => "原配置名称",
-        "configKey" => unique("editing.config"),
-        "configOptions" => ~s(["alpha","beta"]),
-        "configValue" => "alpha",
-        "isAllowChange" => true
-      })
+      Config.create_config(
+        %{
+          "configName" => "原配置名称",
+          "configKey" => unique("editing.config"),
+          "configOptions" => ~s(["alpha","beta"]),
+          "configValue" => "alpha",
+          "isAllowChange" => true
+        },
+        authorization: %{principal: ctx.admin}
+      )
 
     {:ok, view} = login(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "configs"})
@@ -176,17 +179,23 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     type = unique("editing.dict")
 
     {:ok, _type} =
-      Dictionary.create_dict_type(%{"dictName" => "编辑测试", "dictType" => type, "status" => 1})
+      Dictionary.create_dict_type(
+        %{"dictName" => "编辑测试", "dictType" => type, "status" => 1},
+        authorization: %{principal: ctx.admin}
+      )
 
     {:ok, data} =
-      Dictionary.create_dict_data(%{
-        "dictType" => type,
-        "dictLabel" => "否",
-        "dictValue" => 0,
-        "dictSort" => 1,
-        "isDefault" => false,
-        "status" => 1
-      })
+      Dictionary.create_dict_data(
+        %{
+          "dictType" => type,
+          "dictLabel" => "否",
+          "dictValue" => 0,
+          "dictSort" => 1,
+          "isDefault" => false,
+          "status" => 1
+        },
+        authorization: %{principal: ctx.admin}
+      )
 
     {:ok, view} = login(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "dicts"})

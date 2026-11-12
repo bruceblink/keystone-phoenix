@@ -62,31 +62,35 @@ defmodule KeystonePhoenix.Dictionary do
     end
   end
 
-  @spec create_dict_type(map()) :: {:ok, DictType.t()} | {:error, Ecto.Changeset.t()}
-  def create_dict_type(attrs, actor_or_options \\ nil)
+  @spec create_dict_type(map(), keyword()) :: {:ok, DictType.t()} | {:error, term()}
+  def create_dict_type(attrs, options)
 
   def create_dict_type(attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Command.authorize(options, "system:dict:add") do
-      create_dict_type(attrs, Command.actor_id(options))
+      do_create_dict_type(attrs, Command.actor_id(options))
     end
   end
 
-  def create_dict_type(attrs, actor_id) do
+  def create_dict_type(_attrs, _options), do: {:error, :authorization_required}
+
+  defp do_create_dict_type(attrs, actor_id) do
     changeset = DictType.changeset(%DictType{}, normalize_attrs(attrs, @dict_type_attrs))
     Repo.insert(Audit.put_actor(changeset, :creator_id, actor_id))
   end
 
-  @spec update_dict_type(integer() | String.t(), map()) ::
-          {:ok, DictType.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def update_dict_type(id, attrs, actor_or_options \\ nil)
+  @spec update_dict_type(integer() | String.t(), map(), keyword()) ::
+          {:ok, DictType.t()} | {:error, term()}
+  def update_dict_type(id, attrs, options)
 
   def update_dict_type(id, attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Command.authorize(options, "system:dict:edit") do
-      update_dict_type(id, attrs, Command.actor_id(options))
+      do_update_dict_type(id, attrs, Command.actor_id(options))
     end
   end
 
-  def update_dict_type(id, attrs, actor_id) do
+  def update_dict_type(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_update_dict_type(id, attrs, actor_id) do
     with {:ok, dict_type} <- get_dict_type(id) do
       changeset = DictType.changeset(dict_type, normalize_attrs(attrs, @dict_type_attrs))
       changeset = Audit.put_actor(changeset, :updater_id, actor_id)
@@ -126,16 +130,18 @@ defmodule KeystonePhoenix.Dictionary do
     end
   end
 
-  @spec delete_dict_type(integer() | String.t()) :: :ok | {:error, :not_found | :has_data}
-  def delete_dict_type(id, options \\ nil)
+  @spec delete_dict_type(integer() | String.t(), keyword()) :: :ok | {:error, term()}
+  def delete_dict_type(id, options)
 
   def delete_dict_type(id, options) when is_list(options) do
     with :ok <- Command.authorize(options, "system:dict:remove") do
-      delete_dict_type(id)
+      do_delete_dict_type(id)
     end
   end
 
-  def delete_dict_type(id, _options) do
+  def delete_dict_type(_id, _options), do: {:error, :authorization_required}
+
+  defp do_delete_dict_type(id) do
     with {:ok, dict_type} <- get_dict_type(id) do
       data_count =
         from(d in DictData,
@@ -158,16 +164,18 @@ defmodule KeystonePhoenix.Dictionary do
     end
   end
 
-  @spec create_dict_data(map()) :: {:ok, DictData.t()} | {:error, Ecto.Changeset.t()}
-  def create_dict_data(attrs, actor_or_options \\ nil)
+  @spec create_dict_data(map(), keyword()) :: {:ok, DictData.t()} | {:error, term()}
+  def create_dict_data(attrs, options)
 
   def create_dict_data(attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Command.authorize(options, "system:dict:add") do
-      create_dict_data(attrs, Command.actor_id(options))
+      do_create_dict_data(attrs, Command.actor_id(options))
     end
   end
 
-  def create_dict_data(attrs, actor_id) do
+  def create_dict_data(_attrs, _options), do: {:error, :authorization_required}
+
+  defp do_create_dict_data(attrs, actor_id) do
     attrs = normalize_attrs(attrs, @dict_data_attrs)
 
     with :ok <- validate_dict_type(attrs[:dict_type]) do
@@ -185,17 +193,19 @@ defmodule KeystonePhoenix.Dictionary do
     end
   end
 
-  @spec update_dict_data(integer() | String.t(), map()) ::
-          {:ok, DictData.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def update_dict_data(id, attrs, actor_or_options \\ nil)
+  @spec update_dict_data(integer() | String.t(), map(), keyword()) ::
+          {:ok, DictData.t()} | {:error, term()}
+  def update_dict_data(id, attrs, options)
 
   def update_dict_data(id, attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Command.authorize(options, "system:dict:edit") do
-      update_dict_data(id, attrs, Command.actor_id(options))
+      do_update_dict_data(id, attrs, Command.actor_id(options))
     end
   end
 
-  def update_dict_data(id, attrs, actor_id) do
+  def update_dict_data(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_update_dict_data(id, attrs, actor_id) do
     with {:ok, dict_data} <- get_dict_data(id) do
       old_dict_type = dict_data.dict_type
       attrs = normalize_attrs(attrs, @dict_data_attrs)
@@ -217,16 +227,18 @@ defmodule KeystonePhoenix.Dictionary do
     end
   end
 
-  @spec delete_dict_data(integer() | String.t()) :: :ok | {:error, :not_found}
-  def delete_dict_data(id, options \\ nil)
+  @spec delete_dict_data(integer() | String.t(), keyword()) :: :ok | {:error, term()}
+  def delete_dict_data(id, options)
 
   def delete_dict_data(id, options) when is_list(options) do
     with :ok <- Command.authorize(options, "system:dict:remove") do
-      delete_dict_data(id)
+      do_delete_dict_data(id)
     end
   end
 
-  def delete_dict_data(id, _options) do
+  def delete_dict_data(_id, _options), do: {:error, :authorization_required}
+
+  defp do_delete_dict_data(id) do
     with {:ok, dict_data} <- get_dict_data(id) do
       case Repo.update(Ecto.Changeset.change(dict_data, deleted: true)) do
         {:ok, _deleted} ->

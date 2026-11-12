@@ -19,6 +19,14 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
       |> SysUser.create_changeset(%{username: unique("settings_actor"), password: "Strong!123"})
       |> Repo.insert!()
 
+    auth =
+      authorization(actor.user_id, [
+        "system:config:add",
+        "system:config:edit",
+        "system:dict:add",
+        "system:dict:edit"
+      ])
+
     assert {:ok, config} =
              Config.create_config(
                %{
@@ -28,20 +36,22 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
                  "configOptions" => ["enabled", "disabled"],
                  "isAllowChange" => 1
                },
-               actor.user_id
+               authorization: auth
              )
 
     assert config.creator_id == actor.user_id
 
     assert {:ok, updated_config} =
-             Config.update_config(config.config_id, %{"configValue" => "disabled"}, actor.user_id)
+             Config.update_config(config.config_id, %{"configValue" => "disabled"},
+               authorization: auth
+             )
 
     assert updated_config.updater_id == actor.user_id
 
     assert {:ok, dict_type} =
              Dictionary.create_dict_type(
                %{"dictName" => "审计字典", "dictType" => unique("audit.dict"), "status" => 1},
-               actor.user_id
+               authorization: auth
              )
 
     assert dict_type.creator_id == actor.user_id
@@ -56,7 +66,7 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
                  "isDefault" => 1,
                  "status" => 1
                },
-               actor.user_id
+               authorization: auth
              )
 
     assert dict_data.creator_id == actor.user_id
@@ -65,7 +75,7 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
              Dictionary.update_dict_data(
                dict_data.dict_code,
                %{"dictLabel" => "已启用"},
-               actor.user_id
+               authorization: auth
              )
 
     assert updated_data.updater_id == actor.user_id
@@ -73,23 +83,31 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
 
   test "immutable configuration and orphan dictionary data are rejected" do
     assert {:ok, config} =
-             Config.create_config(%{
-               "configName" => "不可修改配置",
-               "configKey" => unique("immutable.config"),
-               "configValue" => "enabled",
-               "isAllowChange" => false
-             })
+             Config.create_config(
+               %{
+                 "configName" => "不可修改配置",
+                 "configKey" => unique("immutable.config"),
+                 "configValue" => "enabled",
+                 "isAllowChange" => false
+               },
+               authorization: %{principal: %{is_admin: true}}
+             )
 
     assert {:error, :not_allow_change} =
-             Config.update_config(config.config_id, %{"configValue" => "disabled"})
+             Config.update_config(config.config_id, %{"configValue" => "disabled"},
+               authorization: %{principal: %{is_admin: true}}
+             )
 
     assert {:error, :dict_type_not_found} =
-             Dictionary.create_dict_data(%{
-               "dictType" => unique("missing.dict"),
-               "dictLabel" => "孤立",
-               "dictValue" => 1,
-               "status" => 1
-             })
+             Dictionary.create_dict_data(
+               %{
+                 "dictType" => unique("missing.dict"),
+                 "dictLabel" => "孤立",
+                 "dictValue" => 1,
+                 "status" => 1
+               },
+               authorization: %{principal: %{is_admin: true}}
+             )
   end
 
   test "invalid route identifiers return not found without raising cast errors" do
@@ -131,6 +149,9 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
     assert {:error, :permission_denied} =
              Notice.create_notice(%{"noticeTitle" => "受保护公告"}, authorization: authorization)
   end
+
+  defp authorization(user_id, permissions),
+    do: %{principal: %{user_id: user_id, permissions: permissions}}
 
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 end
