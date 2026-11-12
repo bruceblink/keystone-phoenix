@@ -9,6 +9,7 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
 
   alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Authz.Principal
+  alias KeystonePhoenix.Authz.PolicyCache
   alias KeystonePhoenix.Params
 
   @doc "Applies the legacy role data scope to a user or role-user query."
@@ -32,7 +33,11 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
         :deny
 
       true ->
-        Permission.allowed_decision?(principal, permission)
+        role_id = Map.get(principal, :role_id, Map.get(principal, "roleId"))
+
+        PolicyCache.decision(role_id, String.trim(permission), fn ->
+          Permission.allowed_decision?(principal, permission)
+        end)
     end
   end
 

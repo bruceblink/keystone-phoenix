@@ -8,6 +8,7 @@ defmodule KeystonePhoenix.Role do
   alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Authz
+  alias KeystonePhoenix.Authz.PolicyCache
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.Role.Authorization
@@ -88,6 +89,7 @@ defmodule KeystonePhoenix.Role do
       replace_menu_ids(role.role_id, menu_ids)
       role
     end)
+    |> invalidate_policy_cache()
   end
 
   def create_role(_attrs, _actor_id), do: {:error, invalid_changeset(:role_name)}
@@ -117,6 +119,7 @@ defmodule KeystonePhoenix.Role do
         if is_list(menu_ids), do: replace_menu_ids(updated.role_id, menu_ids)
         updated
       end)
+      |> invalidate_policy_cache()
     end
   end
 
@@ -151,6 +154,7 @@ defmodule KeystonePhoenix.Role do
               {:error, changeset} -> Repo.rollback(changeset)
             end
           end)
+          |> invalidate_policy_cache()
       end
     end
   end
@@ -181,6 +185,7 @@ defmodule KeystonePhoenix.Role do
       |> SysRole.changeset(attrs)
       |> Audit.put_actor(:updater_id, actor_id)
       |> Repo.update()
+      |> invalidate_policy_cache()
     end
   end
 
@@ -448,6 +453,18 @@ defmodule KeystonePhoenix.Role do
 
   defp invalid_changeset(field),
     do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysRole{}), field, "参数无效")
+
+  defp invalidate_policy_cache({:ok, _value} = result) do
+    PolicyCache.invalidate()
+    result
+  end
+
+  defp invalidate_policy_cache(:ok = result) do
+    PolicyCache.invalidate()
+    result
+  end
+
+  defp invalidate_policy_cache(result), do: result
 
   defp filter_contains(query, _field, nil), do: query
   defp filter_contains(query, _field, ""), do: query

@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Menu do
   import Ecto.Query
 
   alias KeystonePhoenix.Audit
+  alias KeystonePhoenix.Authz.PolicyCache
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
@@ -68,6 +69,7 @@ defmodule KeystonePhoenix.Menu do
       |> then(&SysMenu.changeset(%SysMenu{}, &1))
       |> Audit.put_actor(:creator_id, actor_id)
       |> Repo.insert()
+      |> invalidate_policy_cache()
     end
   end
 
@@ -89,6 +91,7 @@ defmodule KeystonePhoenix.Menu do
           |> SysMenu.changeset(Map.put(attrs, :parent_id, parent_id))
           |> Audit.put_actor(:updater_id, actor_id)
           |> Repo.update()
+          |> invalidate_policy_cache()
         end
       end
     end
@@ -110,8 +113,12 @@ defmodule KeystonePhoenix.Menu do
           changeset = Audit.put_actor(changeset, :updater_id, actor_id)
 
           case Repo.update(changeset) do
-            {:ok, _deleted} -> :ok
-            {:error, changeset} -> {:error, changeset}
+            {:ok, _deleted} ->
+              PolicyCache.invalidate()
+              :ok
+
+            {:error, changeset} ->
+              {:error, changeset}
           end
       end
     end
@@ -342,6 +349,13 @@ defmodule KeystonePhoenix.Menu do
 
   defp invalid_changeset(field),
     do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysMenu{}), field, "参数无效")
+
+  defp invalidate_policy_cache({:ok, _value} = result) do
+    PolicyCache.invalidate()
+    result
+  end
+
+  defp invalidate_policy_cache(result), do: result
 
   defp build_tree(menus) do
     Tree.nest(menus, "parentId", "menuId")
