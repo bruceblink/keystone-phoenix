@@ -68,19 +68,21 @@ defmodule KeystonePhoenix.PermissionTest do
       |> Repo.insert!()
 
     assert {:ok, _updated} =
-             KeystonePhoenix.Role.update_role(role.role_id, %{
-               "roleName" => role.role_name,
-               "roleKey" => role.role_key,
-               "roleSort" => role.role_sort,
-               "dataScope" => role.data_scope,
-               "status" => role.status,
-               "menuIds" => Integer.to_string(menu.menu_id)
-             },
-             authorization: %{
-               principal: %{user_id: 11, is_admin: true},
-               permission: "system:role:edit"
-             }
-           )
+             KeystonePhoenix.Role.update_role(
+               role.role_id,
+               %{
+                 "roleName" => role.role_name,
+                 "roleKey" => role.role_key,
+                 "roleSort" => role.role_sort,
+                 "dataScope" => role.data_scope,
+                 "status" => role.status,
+                 "menuIds" => Integer.to_string(menu.menu_id)
+               },
+               authorization: %{
+                 principal: %{is_admin: true},
+                 permission: "system:role:edit"
+               }
+             )
 
     assert Role.menu_ids_for_role(role.role_id) == [menu.menu_id]
   end
