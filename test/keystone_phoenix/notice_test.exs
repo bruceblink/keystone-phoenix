@@ -32,12 +32,13 @@ defmodule KeystonePhoenix.NoticeTest do
   end
 
   test "rejects non-map create and update inputs at the domain boundary" do
-    assert {:error, %Ecto.Changeset{}} = Notice.create_notice(:invalid)
-    assert {:error, %Ecto.Changeset{}} = Notice.update_notice(1, :invalid)
+    assert {:error, :authorization_required} = Notice.create_notice(:invalid, [])
+    assert {:error, :authorization_required} = Notice.update_notice(1, :invalid, [])
   end
 
   test "rejects invalid deletion IDs before accessing the database" do
-    assert {:error, :invalid_ids} = Notice.delete_notices([])
-    assert {:error, :invalid_ids} = Notice.delete_notices(["bad-id"])
+    authorization = [authorization: %{principal: %{is_admin: true}}]
+    assert {:error, :invalid_ids} = Notice.delete_notices([], authorization)
+    assert {:error, :invalid_ids} = Notice.delete_notices(["bad-id"], authorization)
   end
 end

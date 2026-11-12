@@ -45,15 +45,17 @@ defmodule KeystonePhoenix.Job do
   end
 
   @doc "Creates and validates a task definition."
-  def create_job(attrs, actor_or_options \\ nil)
+  def create_job(attrs, options)
 
   def create_job(attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize(options, "system:job:add") do
-      create_job(attrs, KeystonePhoenix.Authz.Command.actor_id(options))
+      do_create_job(attrs, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
 
-  def create_job(attrs, actor_id) when is_map(attrs) do
+  def create_job(_attrs, _options), do: {:error, :authorization_required}
+
+  defp do_create_job(attrs, actor_id) when is_map(attrs) do
     attrs = normalize_attrs(attrs)
 
     with :ok <- Invoke.validate_target(attrs[:invoke_target], attrs[:job_params]),
@@ -66,18 +68,18 @@ defmodule KeystonePhoenix.Job do
     end
   end
 
-  def create_job(_attrs, _actor_id), do: {:error, :invalid_params}
-
   @doc "Updates and validates a task definition."
-  def update_job(id, attrs, actor_or_options \\ nil)
+  def update_job(id, attrs, options)
 
   def update_job(id, attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize(options, "system:job:edit") do
-      update_job(id, attrs, KeystonePhoenix.Authz.Command.actor_id(options))
+      do_update_job(id, attrs, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
 
-  def update_job(id, attrs, actor_id) when is_map(attrs) do
+  def update_job(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_update_job(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, job} <- get_job(id),
          attrs <- normalize_attrs(attrs),
          :ok <- Invoke.validate_target(attrs[:invoke_target], attrs[:job_params]),
@@ -103,18 +105,18 @@ defmodule KeystonePhoenix.Job do
     end
   end
 
-  def update_job(_id, _attrs, _actor_id), do: {:error, :invalid_params}
-
   @doc "Changes a task status and returns the updated definition."
-  def update_job_status(id, status, options_or_actor \\ nil)
+  def update_job_status(id, status, options)
 
   def update_job_status(id, status, options) when is_list(options) do
     with :ok <- Authorization.authorize(options, "system:job:changeStatus") do
-      update_job_status(id, status, KeystonePhoenix.Authz.Command.actor_id(options))
+      do_update_job_status(id, status, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
 
-  def update_job_status(id, status, actor_id) do
+  def update_job_status(_id, _status, _options), do: {:error, :authorization_required}
+
+  defp do_update_job_status(id, status, actor_id) do
     with {:ok, job} <- get_job(id),
          {:ok, status} <- positive_status(status) do
       job
@@ -125,17 +127,17 @@ defmodule KeystonePhoenix.Job do
   end
 
   @doc "Deletes task definitions while preserving their execution logs."
-  def delete_jobs(ids), do: delete_jobs(ids, nil)
-
   def delete_jobs(ids, options)
 
   def delete_jobs(ids, options) when is_list(options) do
     with :ok <- Authorization.authorize(options, "system:job:remove") do
-      delete_jobs(ids)
+      do_delete_jobs(ids)
     end
   end
 
-  def delete_jobs(ids, _options) when is_list(ids) do
+  def delete_jobs(_ids, _options), do: {:error, :authorization_required}
+
+  defp do_delete_jobs(ids) when is_list(ids) do
     ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
@@ -146,18 +148,18 @@ defmodule KeystonePhoenix.Job do
     end
   end
 
-  def delete_jobs(_ids, _options), do: {:error, :invalid_ids}
-
   @doc "Runs a task immediately and persists a manual execution log."
-  def run_job(id, options \\ nil)
+  def run_job(id, options)
 
   def run_job(id, options) when is_list(options) do
     with :ok <- Authorization.authorize(options, "system:job:run") do
-      run_job(id)
+      do_run_job(id)
     end
   end
 
-  def run_job(id, _options) do
+  def run_job(_id, _options), do: {:error, :authorization_required}
+
+  defp do_run_job(id) do
     with {:ok, job} <- get_job(id),
          :ok <- Invoke.validate_target(job.invoke_target, job.job_params) do
       run_manual_job(job)
@@ -209,15 +211,17 @@ defmodule KeystonePhoenix.Job do
   end
 
   @doc "Cancels automatic runs currently executing for a task."
-  def cancel_job(id, options \\ nil)
+  def cancel_job(id, options)
 
   def cancel_job(id, options) when is_list(options) do
     with :ok <- Authorization.authorize(options, "system:job:run") do
-      cancel_job(id)
+      do_cancel_job(id)
     end
   end
 
-  def cancel_job(id, _options) do
+  def cancel_job(_id, _options), do: {:error, :authorization_required}
+
+  defp do_cancel_job(id) do
     case parse_positive_integer(id) do
       nil ->
         {:error, :invalid_id}

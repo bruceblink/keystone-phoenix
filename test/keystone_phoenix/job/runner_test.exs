@@ -49,7 +49,11 @@ defmodule KeystonePhoenix.Job.RunnerTest do
     scheduler = start_supervised!(Scheduler)
 
     assert_eventually(fn -> running?(scheduler, job.job_id) and lock_held?(job.job_id) end)
-    assert {:ok, _job} = KeystonePhoenix.Job.update_job_status(job.job_id, 0)
+
+    assert {:ok, _job} =
+             KeystonePhoenix.Job.update_job_status(job.job_id, 0,
+               authorization: %{principal: %{is_admin: true}}
+             )
 
     assert_eventually(fn ->
       Enum.any?(logs(job.job_id), &(&1.trigger_type == 1 and &1.status == 0))
@@ -69,7 +73,11 @@ defmodule KeystonePhoenix.Job.RunnerTest do
 
     job = create_job(concurrent: 0, invoke_target: "demoJobTask.simulateLongRunningJob()")
 
-    assert {:error, :execution_timeout} = KeystonePhoenix.Job.run_job(job.job_id)
+    assert {:error, :execution_timeout} =
+             KeystonePhoenix.Job.run_job(job.job_id,
+               authorization: %{principal: %{is_admin: true}}
+             )
+
     assert Enum.any?(logs(job.job_id), &(&1.trigger_type == 2 and &1.status == 0))
     assert lock_available?(job.job_id)
   end
@@ -93,7 +101,10 @@ defmodule KeystonePhoenix.Job.RunnerTest do
 
     job = create_job(concurrent: 1)
 
-    assert {:error, :resource_exhausted} = KeystonePhoenix.Job.run_job(job.job_id)
+    assert {:error, :resource_exhausted} =
+             KeystonePhoenix.Job.run_job(job.job_id,
+               authorization: %{principal: %{is_admin: true}}
+             )
   end
 
   test "a killed manual caller releases the job lock" do

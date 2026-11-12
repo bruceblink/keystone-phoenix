@@ -47,47 +47,49 @@ defmodule KeystonePhoenix.Notice do
     end
   end
 
-  def create_notice(attrs, actor_or_options \\ nil)
+  def create_notice(attrs, options)
 
   def create_notice(attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Command.authorize(options, "system:notice:add") do
-      create_notice(attrs, Command.actor_id(options))
+      do_create_notice(attrs, Command.actor_id(options))
     end
   end
 
-  def create_notice(attrs, actor_id) when is_map(attrs) do
+  def create_notice(_attrs, _options), do: {:error, :authorization_required}
+
+  defp do_create_notice(attrs, actor_id) when is_map(attrs) do
     changeset = SysNotice.changeset(%SysNotice{}, normalize_attrs(attrs))
     Repo.insert(Audit.put_actor(changeset, :creator_id, actor_id))
   end
 
-  def create_notice(_attrs, _actor_id), do: {:error, invalid_changeset(:notice_title)}
-
-  def update_notice(id, attrs, actor_or_options \\ nil)
+  def update_notice(id, attrs, options)
 
   def update_notice(id, attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Command.authorize(options, "system:notice:edit") do
-      update_notice(id, attrs, Command.actor_id(options))
+      do_update_notice(id, attrs, Command.actor_id(options))
     end
   end
 
-  def update_notice(id, attrs, actor_id) when is_map(attrs) do
+  def update_notice(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_update_notice(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, notice} <- get_notice(id) do
       changeset = SysNotice.changeset(notice, normalize_attrs(attrs))
       Repo.update(Audit.put_actor(changeset, :updater_id, actor_id))
     end
   end
 
-  def update_notice(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:notice_title)}
-
-  def delete_notices(ids, options \\ nil)
+  def delete_notices(ids, options)
 
   def delete_notices(ids, options) when is_list(options) do
     with :ok <- Command.authorize(options, "system:notice:remove") do
-      delete_notices(ids)
+      do_delete_notices(ids)
     end
   end
 
-  def delete_notices(ids, _options) when is_list(ids) do
+  def delete_notices(_ids, _options), do: {:error, :authorization_required}
+
+  defp do_delete_notices(ids) when is_list(ids) do
     ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
@@ -102,8 +104,6 @@ defmodule KeystonePhoenix.Notice do
       end
     end
   end
-
-  def delete_notices(_ids, _options), do: {:error, :invalid_ids}
 
   def notice_to_map(notice) do
     notice_to_map(notice, %{})
@@ -169,9 +169,6 @@ defmodule KeystonePhoenix.Notice do
   end
 
   defp parse_positive_integer(_value), do: nil
-
-  defp invalid_changeset(field),
-    do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysNotice{}), field, "参数无效")
 
   defp format_datetime(nil), do: nil
 

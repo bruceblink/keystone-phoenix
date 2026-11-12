@@ -21,7 +21,7 @@ defmodule KeystonePhoenix.Job.AuditTest do
                  "concurrent" => 0,
                  "status" => 0
                },
-               actor.user_id
+               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
              )
 
     assert job.creator_id == actor.user_id
@@ -35,11 +35,16 @@ defmodule KeystonePhoenix.Job.AuditTest do
                  "jobParams" => "",
                  "cronExpression" => "*/5 * * * * *"
                },
-               actor.user_id
+               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
              )
 
     assert job.updater_id == actor.user_id
-    assert {:ok, job} = Job.update_job_status(job.job_id, 1, actor.user_id)
+
+    assert {:ok, job} =
+             Job.update_job_status(job.job_id, 1,
+               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+             )
+
     assert job.updater_id == actor.user_id
   end
 
