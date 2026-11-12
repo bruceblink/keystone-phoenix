@@ -1,8 +1,6 @@
 defmodule KeystonePhoenixWeb.LogController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:create_operation_log]
-
   plug KeystonePhoenixWeb.Plugs.Authenticate,
        [
          permissions: %{
@@ -94,20 +92,6 @@ defmodule KeystonePhoenixWeb.LogController do
       @operation_export_headers,
       Enum.map(rows, &operation_export_row/1)
     )
-  end
-
-  @doc "Creates an operation audit record for the authenticated user."
-  def create_operation_log(conn, _params) do
-    case Log.create_operation_log(
-           %{},
-           conn.assigns.current_user,
-           conn.request_path,
-           conn.method
-         ) do
-      {:ok, _log} -> json(conn, ApiResponse.ok())
-      {:error, :invalid_log} -> render_error(conn, :invalid_log)
-      {:error, changeset} -> render_error(conn, changeset)
-    end
   end
 
   @doc "Soft deletes operation audit records."

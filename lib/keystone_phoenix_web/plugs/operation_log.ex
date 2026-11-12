@@ -2,10 +2,8 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLog do
   @moduledoc """
   Records authenticated write requests after a controller has produced its response.
 
-  Keystone's browser client calls the operation-log endpoint for some actions, but
-  relying on that extra request makes the audit trail incomplete. This plug keeps
-  the audit record on the server side and redacts credentials before persisting
-  request parameters.
+  This plug keeps the audit record on the server side and redacts credentials
+  before persisting request parameters.
   """
 
   import Plug.Conn
@@ -31,7 +29,7 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLog do
   def init(opts), do: opts
 
   def call(conn, _opts) do
-    if conn.method in @write_methods and not skip_request?(conn) do
+    if conn.method in @write_methods do
       register_before_send(conn, &record/1)
     else
       conn
@@ -66,10 +64,6 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLog do
   rescue
     _error ->
       :ok
-  end
-
-  defp skip_request?(conn) do
-    conn.request_path == "/logs/operationLogs" and conn.method == "POST"
   end
 
   defp request_module(conn) do
