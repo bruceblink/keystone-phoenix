@@ -7,17 +7,24 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   and `sys_role_menu` backed implementation.
   """
 
+  import Ecto.Query
+
+  alias KeystonePhoenix.Authz.SysPermission
   alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Authz.Principal
   alias KeystonePhoenix.Authz.PolicyCache
   alias KeystonePhoenix.Params
+  alias KeystonePhoenix.Repo
 
   @doc "Applies the legacy role data scope to a user or role-user query."
   def scope_query(query, principal), do: Permission.scope_users(query, principal)
 
   @doc "Checks an exact permission string against the current policy tables."
   def allowed?(principal, permission) do
-    Permission.allowed?(principal, permission)
+    case allowed_decision?(principal, permission) do
+      :allow -> true
+      _ -> false
+    end
   end
 
   @doc "Returns an exact permission decision while preserving storage failures."
@@ -36,7 +43,10 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
         role_id = Map.get(principal, :role_id, Map.get(principal, "roleId"))
 
         PolicyCache.decision(role_id, String.trim(permission), fn ->
-          Permission.allowed_decision?(principal, permission)
+          case normalized_decision(role_id, String.trim(permission)) do
+            :miss -> Permission.allowed_decision?(principal, permission)
+            decision -> decision
+          end
         end)
     end
   end
@@ -95,4 +105,38 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
     do: Map.get(principal, :permissions, Map.get(principal, "permissions"))
 
   defp permission_snapshot(_principal), do: nil
+
+  defp normalized_decision(role_id, permission) do
+    with {:ok, role_id} <- Params.parse_positive_integer(role_id),
+         true <- is_binary(permission) and permission != "",
+         permission_id when is_integer(permission_id) <- permission_id(permission) do
+      if Repo.exists?(
+           from role_permission in "sys_role_permission",
+             join: role in "sys_role",
+             on: role.role_id == role_permission.role_id,
+             where:
+               role_permission.role_id == ^role_id and
+                 role_permission.permission_id == ^permission_id and
+                 role.deleted == false and role.status == 1
+         ),
+         do: :allow,
+         else: :deny
+    else
+      :miss -> :miss
+      false -> :miss
+      :error -> :miss
+      _ -> :miss
+    end
+  rescue
+    _error -> {:error, :authorization_unavailable}
+  end
+
+  defp permission_id(permission) do
+    Repo.one(
+      from entry in SysPermission,
+        where:
+          entry.permission == ^permission and entry.status == 1 and entry.deprecated == false,
+        select: entry.permission_id
+    ) || :miss
+  end
 end
