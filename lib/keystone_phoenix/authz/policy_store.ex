@@ -41,13 +41,17 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
 
       true ->
         role_id = Map.get(principal, :role_id, Map.get(principal, "roleId"))
+        normalized_permission = String.trim(permission)
 
-        PolicyCache.decision(role_id, String.trim(permission), fn ->
-          case normalized_decision(role_id, String.trim(permission)) do
-            :miss -> Permission.allowed_decision?(principal, permission)
-            decision -> decision
-          end
-        end)
+        case normalized_decision(role_id, normalized_permission) do
+          :miss ->
+            # Legacy menu rows can change independently during migration, so
+            # their fallback decision must not be held in the role cache.
+            Permission.allowed_decision?(principal, permission)
+
+          decision ->
+            PolicyCache.decision(role_id, normalized_permission, fn -> decision end)
+        end
     end
   end
 
