@@ -17,7 +17,9 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
     grandchild = insert_dept(204, child.dept_id, "0,201,203", "孙部门")
 
     assert {:ok, _updated} =
-             Department.update_dept(old_parent.dept_id, %{"parentId" => new_parent.dept_id})
+             Department.update_dept(old_parent.dept_id, %{"parentId" => new_parent.dept_id},
+               authorization: %{principal: %{is_admin: true}}
+             )
 
     assert {:ok, moved} = Department.get_dept(old_parent.dept_id)
     assert {:ok, moved_child} = Department.get_dept(child.dept_id)
@@ -27,26 +29,36 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
     assert moved_grandchild.ancestors == "0,202,201,203"
 
     assert {:error, :invalid_parent} =
-             Department.update_dept(old_parent.dept_id, %{"parentId" => child.dept_id})
+             Department.update_dept(old_parent.dept_id, %{"parentId" => child.dept_id},
+               authorization: %{principal: %{is_admin: true}}
+             )
 
     assert {:error, :name_exists} =
-             Department.create_dept(%{
-               "parentId" => old_parent.dept_id,
-               "deptName" => "子部门",
-               "status" => 1
-             })
+             Department.create_dept(
+               %{
+                 "parentId" => old_parent.dept_id,
+                 "deptName" => "子部门",
+                 "status" => 1
+               },
+               authorization: %{principal: %{is_admin: true}}
+             )
 
     disabled = insert_dept(205, 0, "0", "停用部门", 0)
 
     assert {:error, :parent_disabled} =
-             Department.create_dept(%{
-               "parentId" => disabled.dept_id,
-               "deptName" => "非法子部门",
-               "status" => 1
-             })
+             Department.create_dept(
+               %{
+                 "parentId" => disabled.dept_id,
+                 "deptName" => "非法子部门",
+                 "status" => 1
+               },
+               authorization: %{principal: %{is_admin: true}}
+             )
 
     assert {:error, :status_invalid} =
-             Department.update_dept(new_parent.dept_id, %{"status" => 0})
+             Department.update_dept(new_parent.dept_id, %{"status" => 0},
+               authorization: %{principal: %{is_admin: true}}
+             )
   end
 
   test "menu rules prevent invalid trees and deleting assigned menus" do

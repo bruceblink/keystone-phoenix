@@ -18,12 +18,19 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
       |> Repo.insert!()
 
     assert {:ok, department} =
-             Department.create_dept(%{"deptName" => "审计部门", "status" => 1}, actor.user_id)
+             Department.create_dept(
+               %{"deptName" => "审计部门", "status" => 1},
+               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+             )
 
     assert department.creator_id == actor.user_id
 
     assert {:ok, department} =
-             Department.update_dept(department.dept_id, %{"status" => 0}, actor.user_id)
+             Department.update_dept(
+               department.dept_id,
+               %{"status" => 0},
+               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+             )
 
     assert department.updater_id == actor.user_id
 
@@ -35,11 +42,18 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
                  "postSort" => 1,
                  "status" => 1
                },
-               actor.user_id
+               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
              )
 
     assert post.creator_id == actor.user_id
-    assert {:ok, post} = Post.update_post(post.post_id, %{"status" => 0}, actor.user_id)
+
+    assert {:ok, post} =
+             Post.update_post(
+               post.post_id,
+               %{"status" => 0},
+               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+             )
+
     assert post.updater_id == actor.user_id
 
     assert {:ok, menu} =
