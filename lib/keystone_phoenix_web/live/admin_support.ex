@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   import Phoenix.Component, only: [assign: 2]
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Excel
@@ -350,7 +351,16 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   @doc "Checks a permission retained by the authenticated LiveView session."
   def permission_socket?(socket, permission) when is_binary(permission) do
-    admin_socket?(socket) or permission in List.wrap(socket.assigns[:permissions])
+    case socket.assigns[:current_user] do
+      user when is_map(user) ->
+        Authz.allowed?(
+          Map.put(user, :permissions, List.wrap(socket.assigns[:permissions])),
+          permission
+        )
+
+      _ ->
+        false
+    end
   end
 
   def permission_socket?(_socket, _permission), do: false
