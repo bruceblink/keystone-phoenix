@@ -155,6 +155,8 @@ API、LiveView、领域命令和服务账号都从这条关系读取权限。
 
 API-only 能力可以是隐藏节点，但必须登记在 sys_permission。菜单路径和排序变化不能改变角色实际拥有的 API 权限。
 
+当前 API-only 能力包括通用文件上传/下载（`system:file:upload`、`system:file:download`）、在线会话强制下线（`monitor:online:forceLogout`）和缓存刷新能力。它们不依赖菜单行存在，角色授权只通过 `sys_role_permission` 生效。
+
 ### 数据范围
 
 统一支持：
@@ -188,6 +190,8 @@ Plug 调用 Authz。Controller 不自行实现管理员例外，也不从菜单�
 ### LiveView
 
 菜单和按钮显隐只是展示优化。事件执行前必须再次调用 Authz。
+
+在线会话注销、日志删除和文件操作等 LiveView 事件也必须携带同一主体授权上下文，不能只依赖事件前的按钮显隐。
 
 ### Domain
 
@@ -229,6 +233,8 @@ policy_version:tenant_id:role_id:permission
 - created_at
 
 不记录密码、Token、验证码、完整请求参数、文件内容或敏感 Claim。
+
+操作审计由服务端 `OperationLog` Plug 在写请求完成后生成。公开的操作日志写入接口已删除，避免已认证用户伪造审计记录。
 
 Telemetry 事件：
 
