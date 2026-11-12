@@ -85,13 +85,20 @@ defmodule KeystonePhoenix.Authz do
   """
   @spec authorize(map() | Principal.t(), String.t(), term(), map()) :: :ok | denial()
   def authorize(principal, permission, resource \\ nil, context \\ %{}) do
-    if allowed?(principal, permission, context) do
-      case scope_decision(principal, resource, context) do
-        true -> :ok
-        false -> {:error, :data_scope_denied}
-      end
-    else
-      {:error, :permission_denied}
+    subject = Principal.from_user(principal)
+
+    case PolicyStore.allowed_decision?(Principal.to_user(subject), permission) do
+      :allow ->
+        case scope_decision(subject, resource, context) do
+          true -> :ok
+          false -> {:error, :data_scope_denied}
+        end
+
+      :deny ->
+        {:error, :permission_denied}
+
+      {:error, :authorization_unavailable} = error ->
+        error
     end
   rescue
     _error -> {:error, :authorization_unavailable}

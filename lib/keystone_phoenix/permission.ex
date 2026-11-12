@@ -37,6 +37,38 @@ defmodule KeystonePhoenix.Permission do
 
   def allowed?(_user, _permission), do: false
 
+  @doc "Returns a policy decision without collapsing storage failures into denial."
+  @spec allowed_decision?(map(), String.t()) ::
+          :allow | :deny | {:error, :authorization_unavailable}
+  def allowed_decision?(%{is_admin: true}, _permission), do: :allow
+  def allowed_decision?(%{"isAdmin" => 1}, _permission), do: :allow
+
+  def allowed_decision?(user, permission) when is_map(user) and is_binary(permission) do
+    role_id = user_value(user, :role_id, "roleId")
+    permission = String.trim(permission)
+
+    if positive_integer?(role_id) and permission != "" do
+      if Repo.exists?(
+           from menu in "sys_menu",
+             join: role_menu in "sys_role_menu",
+             on: role_menu.menu_id == menu.menu_id,
+             join: role in "sys_role",
+             on: role.role_id == role_menu.role_id,
+             where:
+               role_menu.role_id == ^role_id and role.deleted == false and role.status == 1 and
+                 menu.deleted == false and menu.status == 1 and menu.permission == ^permission
+         ),
+         do: :allow,
+         else: :deny
+    else
+      :deny
+    end
+  rescue
+    _error -> {:error, :authorization_unavailable}
+  end
+
+  def allowed_decision?(_user, _permission), do: :deny
+
   @doc "Checks whether a delegated role write may change permission metadata."
   def role_metadata_allowed?(user, attrs) when is_map(attrs) do
     admin?(user) or

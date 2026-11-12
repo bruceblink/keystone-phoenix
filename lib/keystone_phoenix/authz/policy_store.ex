@@ -17,6 +17,23 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
     Permission.allowed?(principal, permission)
   end
 
+  @doc "Returns an exact permission decision while preserving storage failures."
+  def allowed_decision?(principal, permission) do
+    cond do
+      admin?(principal) ->
+        :allow
+
+      is_list(permission_snapshot(principal)) and is_binary(permission) ->
+        if String.trim(permission) in permission_snapshot(principal), do: :allow, else: :deny
+
+      is_list(permission_snapshot(principal)) ->
+        :deny
+
+      true ->
+        Permission.allowed_decision?(principal, permission)
+    end
+  end
+
   @doc "Checks a single target against a role data scope."
   def scope_allowed?(principal, :dept, target),
     do: Permission.data_scope_allowed?(principal, :dept, target)
@@ -47,4 +64,13 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   @doc "Checks whether an actor may assign the requested role."
   def role_assignment_allowed?(principal, role_id),
     do: Permission.role_assignment_allowed?(principal, role_id)
+
+  defp admin?(%{is_admin: true}), do: true
+  defp admin?(%{"isAdmin" => value}), do: value in [true, 1, "1"]
+  defp admin?(_principal), do: false
+
+  defp permission_snapshot(principal) when is_map(principal),
+    do: Map.get(principal, :permissions, Map.get(principal, "permissions"))
+
+  defp permission_snapshot(_principal), do: nil
 end
