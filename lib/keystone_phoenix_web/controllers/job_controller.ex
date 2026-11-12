@@ -37,7 +37,7 @@ defmodule KeystonePhoenixWeb.JobController do
 
   @doc "Creates a scheduled job."
   def create(conn, params) do
-    case Job.create_job(params, conn.assigns.current_user.user_id) do
+    case Job.create_job(params, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, _job} -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end
@@ -45,7 +45,7 @@ defmodule KeystonePhoenixWeb.JobController do
 
   @doc "Updates a scheduled job."
   def update(conn, %{"job_id" => job_id} = params) do
-    case Job.update_job(job_id, params, conn.assigns.current_user.user_id) do
+    case Job.update_job(job_id, params, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, _job} -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end
@@ -53,7 +53,9 @@ defmodule KeystonePhoenixWeb.JobController do
 
   @doc "Changes a scheduled job status."
   def change_status(conn, %{"job_id" => job_id, "status" => status}) do
-    case Job.update_job_status(job_id, status, conn.assigns.current_user.user_id) do
+    case Job.update_job_status(job_id, status,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
       {:ok, _job} -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end
@@ -63,7 +65,7 @@ defmodule KeystonePhoenixWeb.JobController do
 
   @doc "Runs a scheduled job immediately and stores its execution log."
   def run(conn, %{"job_id" => job_id}) do
-    case Job.run_job(job_id) do
+    case Job.run_job(job_id, authorization: %{principal: conn.assigns.current_user}) do
       :ok ->
         json(conn, ApiResponse.ok())
 
@@ -80,7 +82,7 @@ defmodule KeystonePhoenixWeb.JobController do
 
   @doc "Cancels automatic executions currently running for a scheduled job."
   def cancel(conn, %{"job_id" => job_id}) do
-    case Job.cancel_job(job_id) do
+    case Job.cancel_job(job_id, authorization: %{principal: conn.assigns.current_user}) do
       :ok -> json(conn, ApiResponse.ok())
       {:error, :invalid_id} -> render_error(conn, :invalid_ids)
       :not_found -> render_error(conn, :not_running)
@@ -89,7 +91,9 @@ defmodule KeystonePhoenixWeb.JobController do
 
   @doc "Deletes one or more scheduled jobs."
   def delete(conn, %{"jobIds" => job_ids}) do
-    case Job.delete_jobs(String.split(to_string(job_ids), ",")) do
+    case Job.delete_jobs(String.split(to_string(job_ids), ","),
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
       :ok -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
     end

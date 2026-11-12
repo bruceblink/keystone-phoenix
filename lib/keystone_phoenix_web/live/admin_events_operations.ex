@@ -57,8 +57,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
       result =
         if job_id == "",
-          do: Job.create_job(params, socket.assigns.current_user["userId"]),
-          else: Job.update_job(job_id, params, socket.assigns.current_user["userId"])
+          do: Job.create_job(params, authorization(socket, "system:job:add")),
+          else: Job.update_job(job_id, params, authorization(socket, "system:job:edit"))
 
       case result do
         {:ok, _job} ->
@@ -80,7 +80,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("delete-job", %{"job-id" => job_id}, socket) do
     if Support.permission_socket?(socket, "system:job:remove") do
-      case Job.delete_jobs([job_id]) do
+      case Job.delete_jobs([job_id], authorization(socket, "system:job:remove")) do
         :ok ->
           {:noreply,
            assign(socket,
@@ -105,7 +105,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
           live_view = self()
 
           case Task.Supervisor.start_child(KeystonePhoenix.JobTaskSupervisor, fn ->
-                 result = Job.run_job(job_id)
+                 result = Job.run_job(job_id, authorization(socket, "system:job:run"))
                  send(live_view, {:admin_job_finished, job_id, result})
                end) do
             {:ok, _pid} ->
@@ -127,7 +127,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   def handle_event("cancel-job", %{"job-id" => job_id}, socket) do
     if Support.permission_socket?(socket, "system:job:run") do
       feedback =
-        case Job.cancel_job(job_id) do
+        case Job.cancel_job(job_id, authorization(socket, "system:job:run")) do
           :ok -> "任务已取消"
           {:error, :invalid_id} -> Feedback.error("任务编号无效")
           :not_found -> Feedback.error("没有正在运行的任务")
@@ -142,7 +142,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   def handle_event("toggle-job-status", %{"job-id" => job_id, "status" => status}, socket) do
     if Support.permission_socket?(socket, "system:job:changeStatus") do
       feedback =
-        case Job.update_job_status(job_id, status, socket.assigns.current_user["userId"]) do
+        case Job.update_job_status(
+               job_id,
+               status,
+               authorization(socket, "system:job:changeStatus")
+             ) do
           {:ok, _job} -> "任务状态已更新"
           {:error, reason} -> Feedback.error("任务状态更新失败：#{inspect(reason)}")
         end
@@ -189,5 +193,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
     else
       {:noreply, socket}
     end
+  end
+
+  defp authorization(socket, permission) do
+    principal =
+      (socket.assigns[:current_user] || %{})
+      |> Map.put(:permissions, List.wrap(socket.assigns[:permissions]))
+
+    [authorization: %{principal: principal, permission: permission}]
   end
 end

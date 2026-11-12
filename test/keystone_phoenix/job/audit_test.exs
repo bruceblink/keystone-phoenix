@@ -43,5 +43,17 @@ defmodule KeystonePhoenix.Job.AuditTest do
     assert job.updater_id == actor.user_id
   end
 
+  test "principal-aware job writes reject missing permissions" do
+    assert {:error, :permission_denied} =
+             Job.create_job(
+               %{
+                 "jobName" => "受保护任务",
+                 "jobGroup" => "测试",
+                 "invokeTarget" => "demoJobTask.printHeartbeat()"
+               },
+               authorization: %{principal: %{user_id: 1102, permissions: []}}
+             )
+  end
+
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 end
