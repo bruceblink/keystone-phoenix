@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   import Phoenix.LiveView, only: [consume_uploaded_entries: 3]
   import Phoenix.Component, only: [assign: 2]
+  alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Upload
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
@@ -62,20 +63,32 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       params = if user_id == "", do: params, else: Map.delete(params, "password")
 
       result =
-        if user_id == "",
-          do: User.create_user(params, socket.assigns.current_user["userId"]),
-          else: User.update_user(user_id, params, socket.assigns.current_user["userId"])
+        cond do
+          user_id == "" and
+              Permission.data_scope_allowed?(socket.assigns.current_user, :dept, params["deptId"]) ->
+            User.create_user(params, socket.assigns.current_user["userId"])
+
+          user_id != "" and
+              Permission.user_update_allowed?(socket.assigns.current_user, user_id, params) ->
+            User.update_user(user_id, params, socket.assigns.current_user["userId"])
+
+          true ->
+            {:error, :data_scope_denied}
+        end
 
       case result do
         {:ok, _user} ->
           {:noreply,
            assign(socket,
-             user_rows: Support.load_users(),
+             user_rows: Support.load_users_for_socket(socket),
              role_rows: Support.load_roles(),
              user_form: Support.empty_user_form(),
              active_modal: nil,
              user_feedback: if(user_id == "", do: "用户已创建", else: "用户已更新")
            )}
+
+        {:error, :data_scope_denied} ->
+          {:noreply, assign(socket, user_feedback: Feedback.error("没有数据权限"))}
 
         error ->
           {:noreply, assign(socket, user_feedback: Support.form_error(error))}
@@ -87,13 +100,27 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   def handle_event("toggle-user-status", %{"user-id" => user_id, "status" => status}, socket) do
     if Support.permission_socket?(socket, "system:user:edit") do
-      case User.change_status(user_id, status, socket.assigns.current_user["userId"]) do
+      result =
+        if Permission.data_scope_allowed?(socket.assigns.current_user, :user, user_id) do
+          User.change_status(user_id, status, socket.assigns.current_user["userId"])
+        else
+          {:error, :data_scope_denied}
+        end
+
+      case result do
         {:ok, _user} ->
           if to_string(socket.assigns.current_user["userId"]) == user_id and status in [0, "0"] do
             {:noreply, Support.expire_authentication(socket, "当前账号已停用，请联系管理员")}
           else
-            {:noreply, assign(socket, user_rows: Support.load_users(), user_feedback: "用户状态已更新")}
+            {:noreply,
+             assign(socket,
+               user_rows: Support.load_users_for_socket(socket),
+               user_feedback: "用户状态已更新"
+             )}
           end
+
+        {:error, :data_scope_denied} ->
+          {:noreply, assign(socket, user_feedback: Feedback.error("没有数据权限"))}
 
         error ->
           {:noreply, assign(socket, user_feedback: Support.form_error(error))}
@@ -105,16 +132,22 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   def handle_event("delete-user", %{"user-id" => user_id}, socket) do
     if Support.permission_socket?(socket, "system:user:remove") do
-      case User.delete_users([user_id], socket.assigns.current_user["userId"]) do
+      case if(Permission.data_scope_users_allowed?(socket.assigns.current_user, [user_id]),
+             do: User.delete_users([user_id], socket.assigns.current_user["userId"]),
+             else: {:error, :data_scope_denied}
+           ) do
         :ok ->
           {:noreply,
            assign(socket,
-             user_rows: Support.load_users(),
+             user_rows: Support.load_users_for_socket(socket),
              role_rows: Support.load_roles(),
              user_form: Support.empty_user_form(),
              active_modal: nil,
              user_feedback: "用户已删除"
            )}
+
+        {:error, :data_scope_denied} ->
+          {:noreply, assign(socket, user_feedback: Feedback.error("没有数据权限"))}
 
         error ->
           {:noreply, assign(socket, user_feedback: Support.form_error(error))}
@@ -129,17 +162,27 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       user_id = params["userId"] || params["user-id"]
       password = params["password"] || ""
 
-      case User.reset_password(
-             user_id,
-             %{"password" => password},
-             socket.assigns.current_user["userId"]
-           ) do
+      result =
+        if Permission.data_scope_allowed?(socket.assigns.current_user, :user, user_id) do
+          User.reset_password(
+            user_id,
+            %{"password" => password},
+            socket.assigns.current_user["userId"]
+          )
+        else
+          {:error, :data_scope_denied}
+        end
+
+      case result do
         {:ok, _user} ->
           if to_string(socket.assigns.current_user["userId"]) == to_string(user_id) do
             {:noreply, Support.expire_authentication(socket, "密码已重置，请重新登录")}
           else
             {:noreply, assign(socket, user_feedback: "用户密码已重置", active_modal: nil)}
           end
+
+        {:error, :data_scope_denied} ->
+          {:noreply, assign(socket, user_feedback: Feedback.error("没有数据权限"))}
 
         error ->
           {:noreply, assign(socket, user_feedback: Support.form_error(error))}
