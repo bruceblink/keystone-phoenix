@@ -12,6 +12,7 @@ defmodule KeystonePhoenix.Authz do
 
   alias KeystonePhoenix.Authz.PolicyStore
   alias KeystonePhoenix.Authz.Principal
+  alias KeystonePhoenix.Log
 
   @type denial ::
           {:error, :permission_denied}
@@ -190,6 +191,8 @@ defmodule KeystonePhoenix.Authz do
         subject_id: subject.subject_id
       }
     )
+
+    _ = Log.record_authorization_decision(subject, permission, decision)
   rescue
     _error -> :ok
   end

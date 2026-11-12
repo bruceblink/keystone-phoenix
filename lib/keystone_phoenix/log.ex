@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Log do
   import Ecto.Query
 
   alias KeystonePhoenix.Log.{SysLoginInfo, SysOperationLog}
+  alias KeystonePhoenix.Authz.Principal
   alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Repo
 
@@ -123,6 +124,32 @@ defmodule KeystonePhoenix.Log do
   def create_operation_log(_attrs, _user, _request_url, _request_method),
     do: {:error, :invalid_log}
 
+  @doc "Persists a sanitized authorization decision in the existing operation log."
+  def record_authorization_decision(principal, permission, decision) do
+    subject = Principal.from_user(principal)
+    outcome = authorization_outcome(decision)
+
+    attrs = %{
+      "businessType" => 0,
+      "requestMethod" => 0,
+      "requestModule" => "KeystonePhoenix.Authz",
+      "calledMethod" => normalize_permission(permission),
+      "operationParam" =>
+        Jason.encode!(%{
+          "subjectId" => subject.subject_id,
+          "outcome" => outcome
+        }),
+      "operationResult" => outcome,
+      "status" => if(outcome == "allow", do: 1, else: 0)
+    }
+
+    user = %{user_id: positive_integer(subject.subject_id) || 0, username: "authz"}
+    _ = create_operation_log(attrs, user, "/authz/decision", "AUTHZ")
+    :ok
+  rescue
+    _error -> :ok
+  end
+
   def login_info_to_map(log) do
     %{
       "logId" => to_string(log.info_id),
@@ -215,6 +242,26 @@ defmodule KeystonePhoenix.Log do
   defp operation_status_label(1), do: "成功"
   defp operation_status_label(0), do: "失败"
   defp operation_status_label(status), do: to_string(status || "")
+
+  defp authorization_outcome(:ok), do: "allow"
+  defp authorization_outcome({:error, reason}), do: to_string(reason)
+  defp authorization_outcome(_decision), do: "unknown"
+
+  defp normalize_permission(permission) when is_binary(permission),
+    do: String.slice(String.trim(permission), 0, 128)
+
+  defp normalize_permission(_permission), do: ""
+
+  defp positive_integer(value) when is_integer(value) and value > 0, do: value
+
+  defp positive_integer(value) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {number, ""} when number > 0 -> number
+      _ -> nil
+    end
+  end
+
+  defp positive_integer(_value), do: nil
 
   defp request_method_label(1), do: "GET"
   defp request_method_label(2), do: "POST"
