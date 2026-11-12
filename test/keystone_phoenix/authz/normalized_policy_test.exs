@@ -38,35 +38,11 @@ defmodule KeystonePhoenix.Authz.NormalizedPolicyTest do
     assert Authz.allowed?(%{role_id: role.role_id}, permission)
   end
 
-  test "falls back to legacy menu permissions when catalog has no entry" do
+  test "does not authorize from legacy menu permissions" do
     permission = "system:legacy:read_#{System.unique_integer([:positive])}"
     role = insert_role()
 
-    menu_id =
-      Repo.insert_all(
-        "sys_menu",
-        [
-          %{
-            menu_name: "兼容权限",
-            menu_type: 0,
-            parent_id: 0,
-            permission: permission,
-            status: 1,
-            deleted: false,
-            meta_info: "{}",
-            create_time: DateTime.utc_now(),
-            update_time: DateTime.utc_now()
-          }
-        ],
-        returning: [:menu_id]
-      )
-      |> elem(1)
-      |> List.first()
-      |> Map.fetch!(:menu_id)
-
-    Repo.insert_all("sys_role_menu", [%{role_id: role.role_id, menu_id: menu_id}])
-
-    assert Authz.allowed?(%{role_id: role.role_id}, permission)
+    refute Authz.allowed?(%{role_id: role.role_id}, permission)
   end
 
   defp insert_role do

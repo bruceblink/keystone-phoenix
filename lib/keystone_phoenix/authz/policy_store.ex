@@ -1,10 +1,9 @@
 defmodule KeystonePhoenix.Authz.PolicyStore do
   @moduledoc """
-  Compatibility policy store for the first authorization migration phase.
+  Canonical policy store for role permissions and data-scope checks.
 
-  The normalized policy tables are intentionally deferred.  This adapter keeps
-  the new decision point independent from the current `sys_role`, `sys_menu`
-  and `sys_role_menu` backed implementation.
+  Menu navigation is handled separately. API authorization reads only the
+  normalized `sys_permission` and `sys_role_permission` relations.
   """
 
   import Ecto.Query
@@ -43,15 +42,8 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
         role_id = Map.get(principal, :role_id, Map.get(principal, "roleId"))
         normalized_permission = String.trim(permission)
 
-        case normalized_decision(role_id, normalized_permission) do
-          :miss ->
-            # Legacy menu rows can change independently during migration, so
-            # their fallback decision must not be held in the role cache.
-            Permission.allowed_decision?(principal, permission)
-
-          decision ->
-            PolicyCache.decision(role_id, normalized_permission, fn -> decision end)
-        end
+        decision = normalized_decision(role_id, normalized_permission)
+        PolicyCache.decision(role_id, normalized_permission, fn -> decision end)
     end
   end
 
@@ -125,18 +117,10 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
          ) do
         :allow
       else
-        if Repo.exists?(
-             from role_permission in "sys_role_permission",
-               where: role_permission.role_id == ^role_id
-           ),
-           do: :deny,
-           else: :miss
+        :deny
       end
     else
-      :miss -> :miss
-      false -> :miss
-      :error -> :miss
-      _ -> :miss
+      _ -> :deny
     end
   rescue
     _error -> {:error, :authorization_unavailable}
@@ -148,6 +132,6 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
         where:
           entry.permission == ^permission and entry.status == 1 and entry.deprecated == false,
         select: entry.permission_id
-    ) || :miss
+    )
   end
 end
