@@ -70,5 +70,18 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
     assert role.updater_id == actor.user_id
   end
 
+  test "principal-aware department and post writes reject missing permissions" do
+    authorization = %{principal: %{user_id: 903, permissions: []}}
+
+    assert {:error, :permission_denied} =
+             Department.create_dept(%{"deptName" => "受保护部门"}, authorization: authorization)
+
+    assert {:error, :permission_denied} =
+             Post.create_post(
+               %{"postCode" => unique("protected_post"), "postName" => "受保护岗位"},
+               authorization: authorization
+             )
+  end
+
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 end

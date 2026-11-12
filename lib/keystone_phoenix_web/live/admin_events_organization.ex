@@ -63,8 +63,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
       result =
         if dept_id == "",
-          do: Department.create_dept(params, current_user_id(socket)),
-          else: Department.update_dept(dept_id, params, current_user_id(socket))
+          do: Department.create_dept(params, authorization(socket, "system:dept:add")),
+          else: Department.update_dept(dept_id, params, authorization(socket, "system:dept:edit"))
 
       case result do
         {:ok, _dept} ->
@@ -86,7 +86,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("toggle-dept-status", %{"dept-id" => dept_id, "status" => status}, socket) do
     if Support.permission_socket?(socket, "system:dept:edit") do
-      case Department.update_dept(dept_id, %{"status" => status}, current_user_id(socket)) do
+      case Department.update_dept(
+             dept_id,
+             %{"status" => status},
+             authorization(socket, "system:dept:edit")
+           ) do
         {:ok, _dept} ->
           {:noreply, assign(socket, dept_rows: Support.load_depts(), dept_feedback: "部门状态已更新")}
 
@@ -100,7 +104,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("delete-dept", %{"dept-id" => dept_id}, socket) do
     if Support.permission_socket?(socket, "system:dept:remove") do
-      case Department.delete_dept(dept_id, current_user_id(socket)) do
+      case Department.delete_dept(dept_id, authorization(socket, "system:dept:remove")) do
         :ok ->
           {:noreply,
            assign(socket,
@@ -171,8 +175,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
       result =
         if post_id == "",
-          do: Post.create_post(params, current_user_id(socket)),
-          else: Post.update_post(post_id, params, current_user_id(socket))
+          do: Post.create_post(params, authorization(socket, "system:post:add")),
+          else: Post.update_post(post_id, params, authorization(socket, "system:post:edit"))
 
       case result do
         {:ok, _post} ->
@@ -194,7 +198,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("toggle-post-status", %{"post-id" => post_id, "status" => status}, socket) do
     if Support.permission_socket?(socket, "system:post:edit") do
-      case Post.update_post(post_id, %{"status" => status}, current_user_id(socket)) do
+      case Post.update_post(
+             post_id,
+             %{"status" => status},
+             authorization(socket, "system:post:edit")
+           ) do
         {:ok, _post} ->
           {:noreply, assign(socket, post_rows: Support.load_posts(), post_feedback: "岗位状态已更新")}
 
@@ -208,7 +216,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("delete-post", %{"post-id" => post_id}, socket) do
     if Support.permission_socket?(socket, "system:post:remove") do
-      case Post.delete_posts([post_id], current_user_id(socket)) do
+      case Post.delete_posts([post_id], authorization(socket, "system:post:remove")) do
         :ok ->
           {:noreply,
            assign(socket,

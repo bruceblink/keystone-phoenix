@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Post do
   import Ecto.Query
 
   alias KeystonePhoenix.Audit
+  alias KeystonePhoenix.Post.Authorization
   alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Params
@@ -59,7 +60,13 @@ defmodule KeystonePhoenix.Post do
 
   def list_posts_by_ids(_ids), do: []
 
-  def create_post(attrs, actor_id \\ nil)
+  def create_post(attrs, actor_or_options \\ nil)
+
+  def create_post(attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize(options, "system:post:add") do
+      create_post(attrs, KeystonePhoenix.Authz.Command.actor_id(options))
+    end
+  end
 
   def create_post(attrs, actor_id) when is_map(attrs) do
     attrs
@@ -71,7 +78,13 @@ defmodule KeystonePhoenix.Post do
 
   def create_post(_attrs, _actor_id), do: {:error, invalid_changeset(:post_code)}
 
-  def update_post(id, attrs, actor_id \\ nil)
+  def update_post(id, attrs, actor_or_options \\ nil)
+
+  def update_post(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize(options, "system:post:edit") do
+      update_post(id, attrs, KeystonePhoenix.Authz.Command.actor_id(options))
+    end
+  end
 
   def update_post(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, post} <- get_post(id) do
@@ -84,7 +97,13 @@ defmodule KeystonePhoenix.Post do
 
   def update_post(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:post_code)}
 
-  def delete_posts(ids, actor_id \\ nil)
+  def delete_posts(ids, actor_or_options \\ nil)
+
+  def delete_posts(ids, options) when is_list(options) do
+    with :ok <- Authorization.authorize(options, "system:post:remove") do
+      delete_posts(ids, KeystonePhoenix.Authz.Command.actor_id(options))
+    end
+  end
 
   def delete_posts(ids, actor_id) when is_list(ids) do
     ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()

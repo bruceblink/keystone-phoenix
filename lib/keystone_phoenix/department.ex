@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Department do
   import Ecto.Query
 
   alias KeystonePhoenix.Audit
+  alias KeystonePhoenix.Department.Authorization
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
@@ -64,7 +65,13 @@ defmodule KeystonePhoenix.Department do
 
   def list_depts_by_ids(_ids), do: []
 
-  def create_dept(attrs, actor_id \\ nil)
+  def create_dept(attrs, actor_or_options \\ nil)
+
+  def create_dept(attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize_create(options) do
+      create_dept(attrs, KeystonePhoenix.Authz.Command.actor_id(options))
+    end
+  end
 
   def create_dept(attrs, actor_id) when is_map(attrs) do
     attrs = normalize_attrs(attrs)
@@ -83,7 +90,13 @@ defmodule KeystonePhoenix.Department do
 
   def create_dept(_attrs, _actor_id), do: {:error, invalid_changeset(:dept_name)}
 
-  def update_dept(id, attrs, actor_id \\ nil)
+  def update_dept(id, attrs, actor_or_options \\ nil)
+
+  def update_dept(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize_target(options, "system:dept:edit", id) do
+      update_dept(id, attrs, KeystonePhoenix.Authz.Command.actor_id(options))
+    end
+  end
 
   def update_dept(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, dept} <- get_dept(id),
@@ -104,7 +117,15 @@ defmodule KeystonePhoenix.Department do
 
   def update_dept(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:dept_name)}
 
-  def delete_dept(id, actor_id \\ nil) do
+  def delete_dept(id, options_or_actor \\ nil)
+
+  def delete_dept(id, options) when is_list(options) do
+    with :ok <- Authorization.authorize_target(options, "system:dept:remove", id) do
+      delete_dept(id, KeystonePhoenix.Authz.Command.actor_id(options))
+    end
+  end
+
+  def delete_dept(id, actor_id) do
     with {:ok, dept} <- get_dept(id) do
       cond do
         child_count(dept.dept_id) > 0 ->

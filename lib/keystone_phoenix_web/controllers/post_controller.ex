@@ -45,7 +45,7 @@ defmodule KeystonePhoenixWeb.PostController do
 
   @doc "Creates a post."
   def create(conn, params) do
-    case Post.create_post(params, conn.assigns.current_user.user_id) do
+    case Post.create_post(params, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, _post} -> conn |> put_status(:created) |> json(ApiResponse.ok())
       {:error, changeset} -> render_error(conn, changeset)
     end
@@ -63,7 +63,7 @@ defmodule KeystonePhoenixWeb.PostController do
   def update(conn, _params), do: render_error(conn, :invalid_id)
 
   defp update_post(conn, post_id, params) do
-    case Post.update_post(post_id, params, conn.assigns.current_user.user_id) do
+    case Post.update_post(post_id, params, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, _post} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
@@ -72,7 +72,9 @@ defmodule KeystonePhoenixWeb.PostController do
 
   @doc "Soft deletes posts."
   def delete(conn, %{"ids" => ids}) do
-    case Post.delete_posts(String.split(ids, ","), conn.assigns.current_user.user_id) do
+    case Post.delete_posts(String.split(ids, ","),
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
       :ok -> json(conn, ApiResponse.ok())
       {:error, :invalid_ids} -> render_error(conn, :invalid_ids)
       {:error, :not_found} -> render_error(conn, :not_found)
