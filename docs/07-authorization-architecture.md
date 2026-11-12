@@ -4,7 +4,7 @@
 
 ## 实施状态
 
-阶段一的兼容切片已经落地：`KeystonePhoenix.Authz`、`Principal` 和 `PolicyStore` 已建立，策略读取继续适配现有 `sys_role`、`sys_menu` 和 `sys_role_menu` 表。HTTP Authenticate Plug、管理 LiveView、角色/菜单元数据控制器和用户导入入口的权限、管理员识别、角色分配及用户数据范围判断都通过 Authz API；保留原有 `40302` 和 `40303` 错误码。用户 LiveView 的保存、状态切换、删除和密码重置事件会在写入前检查目标范围，并按当前主体范围刷新列表。用户和角色的范围查询也经由 Authz 的查询适配器，避免业务查询直接依赖旧策略模块。阶段二已为用户创建、更新、删除、状态切换和密码重置增加主体授权选项，HTTP 与用户 LiveView 已传递主体和权限上下文。
+阶段一的兼容切片已经落地：`KeystonePhoenix.Authz`、`Principal` 和 `PolicyStore` 已建立，策略读取继续适配现有 `sys_role`、`sys_menu` 和 `sys_role_menu` 表。HTTP Authenticate Plug、管理 LiveView、角色/菜单元数据控制器和用户导入入口的权限、管理员识别、角色分配及用户数据范围判断都通过 Authz API；保留原有 `40302` 和 `40303` 错误码。用户 LiveView 的保存、状态切换、删除和密码重置事件会在写入前检查目标范围，并按当前主体范围刷新列表。用户和角色的范围查询也经由 Authz 的查询适配器，避免业务查询直接依赖旧策略模块。阶段二已为用户创建、更新、删除、状态切换和密码重置增加主体授权选项，HTTP 与用户 LiveView 已传递主体和权限上下文；个人资料、改密和头像更新也增加了主体自身范围检查。
 
 本阶段仍保留旧领域函数签名和布尔兼容入口，便于逐步迁移直接领域调用。领域写入收口、权限目录规范化、缓存失效和授权审计属于后续阶段，不能由当前入口适配切片单独视为已完成。
 
@@ -155,7 +155,7 @@ User.update_user(user_id, attrs, principal: principal, permission: "system:user:
 
 ### 阶段二：领域写入收口（用户写入已开始迁移）
 
-- 用户写命令已增加 `authorization: %{principal: principal, permission: permission}` 入口，并在领域写入前检查权限、目标数据范围和角色分配。
+- 用户写命令已增加 `authorization: %{principal: principal, permission: permission}` 入口，并在领域写入前检查权限、目标数据范围和角色分配；个人资料、改密和头像命令使用主体自身范围检查。
 - 部门、岗位、角色、菜单、配置、字典、公告和任务写命令仍需继续增加主体上下文。
 - 删除、状态切换、密码重置、角色分配和批量导入统一检查目标范围。
 - 保留旧函数作为短期兼容入口，并在调用路径迁移完成后标记为内部函数。
