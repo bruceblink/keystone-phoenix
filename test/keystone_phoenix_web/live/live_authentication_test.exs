@@ -23,7 +23,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
 
   setup do
     ensure_captcha_config()
-    Config.refresh_cache()
+    Config.refresh_cache(authorization: %{principal: %{is_admin: true}})
     on_exit(&Config.refresh_cache/0)
 
     {:ok, admin} =
@@ -412,7 +412,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   defp set_captcha(value) do
     config = Repo.get_by!(SysConfig, config_key: @captcha_config_key, deleted: false)
     Repo.update!(Ecto.Changeset.change(config, config_value: value))
-    Config.refresh_cache()
+    Config.refresh_cache(authorization: %{principal: %{is_admin: true}})
   end
 
   defp ensure_captcha_config do

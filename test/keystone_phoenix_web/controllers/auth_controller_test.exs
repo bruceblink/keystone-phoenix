@@ -9,7 +9,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
   alias KeystonePhoenix.User.SysUser
 
   setup do
-    Config.refresh_cache()
+    Config.refresh_cache(authorization: %{principal: %{is_admin: true}})
 
     _captcha_config =
       %SysConfig{}
@@ -141,7 +141,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       |> Ecto.Changeset.change(config_value: if(enabled?, do: "true", else: "false"))
       |> Repo.update()
 
-    Config.refresh_cache()
+    Config.refresh_cache(authorization: %{principal: %{is_admin: true}})
   end
 
   defp store_captcha(ttl \\ 120) do

@@ -125,14 +125,15 @@ defmodule KeystonePhoenix.Config do
     end
   end
 
-  @spec refresh_cache() :: :ok
-  def refresh_cache, do: Cache.delete_prefix(@config_cache_prefix)
-
   def refresh_cache(options) when is_list(options) do
     with :ok <- Authorization.authorize(options, "system:config:refresh") do
-      refresh_cache()
+      do_refresh_cache()
     end
   end
+
+  def refresh_cache(_options), do: {:error, :authorization_required}
+
+  defp do_refresh_cache, do: Cache.delete_prefix(@config_cache_prefix)
 
   @spec config_to_map(SysConfig.t()) :: map()
   def config_to_map(config) do

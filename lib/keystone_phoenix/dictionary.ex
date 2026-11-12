@@ -305,14 +305,15 @@ defmodule KeystonePhoenix.Dictionary do
   defp validate_dict_type(_dict_type), do: {:error, :dict_type_not_found}
 
   @doc "Clears all cached dictionary data values."
-  @spec refresh_cache() :: :ok
-  def refresh_cache, do: Cache.delete_prefix("keystone:dictionary:data:")
-
   def refresh_cache(options) when is_list(options) do
     with :ok <- Command.authorize(options, "system:dict:refresh") do
-      refresh_cache()
+      do_refresh_cache()
     end
   end
+
+  def refresh_cache(_options), do: {:error, :authorization_required}
+
+  defp do_refresh_cache, do: Cache.delete_prefix("keystone:dictionary:data:")
 
   defp page_query(query, params, count_field, mapper) do
     Pagination.page(query, params, count_field, mapper)

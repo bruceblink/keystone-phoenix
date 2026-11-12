@@ -7,7 +7,7 @@ defmodule KeystonePhoenix.AuthTest do
   alias KeystonePhoenix.User.SysUser
 
   setup do
-    Config.refresh_cache()
+    Config.refresh_cache(authorization: %{principal: %{is_admin: true}})
 
     _captcha_config =
       %SysConfig{}
