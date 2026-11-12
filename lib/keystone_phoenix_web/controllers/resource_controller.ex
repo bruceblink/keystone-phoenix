@@ -1,6 +1,9 @@
 defmodule KeystonePhoenixWeb.ResourceController do
   use KeystonePhoenixWeb, :controller
 
+  alias KeystonePhoenix.Authz
+  alias KeystonePhoenix.Authz.Principal
+  alias KeystonePhoenix.Params
   alias KeystonePhoenix.Upload
 
   @image_extensions ~w(bmp gif jpg jpeg png webp)
@@ -30,18 +33,52 @@ defmodule KeystonePhoenixWeb.ResourceController do
 
   @doc "Serves uploaded profile resources from the configured local directory."
   def show(conn, %{"path" => path}) do
+    case owner_scoped_path(path) do
+      {:ok, owner_id, relative_path} ->
+        if owner_allowed?(conn.assigns[:current_user], owner_id) do
+          send_profile_file(conn, relative_path)
+        else
+          send_resp(conn, :forbidden, "Forbidden")
+        end
+
+      :error ->
+        send_resp(conn, :not_found, "Not found")
+    end
+  end
+
+  def show(conn, _params), do: send_resp(conn, :not_found, "Not found")
+
+  defp owner_scoped_path(["upload", owner | rest]) when rest != [] do
+    case Params.parse_positive_integer(owner) do
+      {:ok, owner_id} -> {:ok, owner_id, ["upload", owner | rest]}
+      :error -> :error
+    end
+  end
+
+  defp owner_scoped_path(_path), do: :error
+
+  defp owner_allowed?(principal, owner_id) when is_map(principal) do
+    subject = Principal.from_user(principal)
+
+    with {:ok, subject_id} <- Params.parse_positive_integer(subject.subject_id) do
+      Authz.admin?(subject) or subject_id == owner_id
+    else
+      _ -> false
+    end
+  end
+
+  defp owner_allowed?(_principal, _owner_id), do: false
+
+  defp send_profile_file(conn, path) do
     case Upload.resolve_profile_path(path) do
       {:ok, file} ->
         extension = file |> Path.extname() |> String.trim_leading(".") |> String.downcase()
-
         send_file_response(conn, file, extension in @image_extensions)
 
       {:error, :not_found} ->
         send_resp(conn, :not_found, "Not found")
     end
   end
-
-  def show(conn, _params), do: send_resp(conn, :not_found, "Not found")
 
   defp send_file_response(conn, file, true) do
     conn

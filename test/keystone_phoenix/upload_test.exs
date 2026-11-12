@@ -47,14 +47,16 @@ defmodule KeystonePhoenix.UploadTest do
     path = temporary_file("report.txt", "hello")
     upload = %Plug.Upload{path: path, filename: "report.txt", content_type: "text/plain"}
 
-    assert {:ok, %{"url" => url, "newFileName" => filename}} = Upload.store_file(upload)
-    assert url == "/profile/upload/" <> filename
+    assert {:ok, %{"url" => url, "newFileName" => filename}} = Upload.store_file(upload, 42)
+    assert url == "/profile/upload/42/" <> filename
 
     assert {:error, :invalid_file_name} = Upload.resolve_download_path("../secret.txt")
     assert {:error, :type_not_allowed} = Upload.resolve_download_path("secret.sh")
 
     conn =
-      ResourceController.show(conn(:get, url), %{"path" => ["upload", filename]})
+      conn(:get, url)
+      |> Plug.Conn.assign(:current_user, %{user_id: 42})
+      |> ResourceController.show(%{"path" => ["upload", "42", filename]})
 
     assert conn.status == 200
     assert conn.resp_body == "hello"

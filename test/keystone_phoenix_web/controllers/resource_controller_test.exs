@@ -1,6 +1,8 @@
 defmodule KeystonePhoenixWeb.ResourceControllerTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
+  alias KeystonePhoenixWeb.ResourceController
+
   setup do
     directory =
       Path.join(System.tmp_dir!(), "keystone-resource-#{System.unique_integer([:positive])}")
@@ -26,5 +28,35 @@ defmodule KeystonePhoenixWeb.ResourceControllerTest do
     response = get(conn, "/profile/download/private.txt")
     assert response.status == 401
     assert json_response(response, 401)["code"] == 40101
+  end
+
+  test "generic profile resources are limited to their owner", %{directory: directory} do
+    File.mkdir_p!(Path.join(directory, "upload/42"))
+    File.write!(Path.join(directory, "upload/42/report.txt"), "private")
+
+    owner_conn =
+      Plug.Conn.assign(Plug.Test.conn(:get, "/profile/upload/42/report.txt"), :current_user, %{
+        user_id: 42
+      })
+
+    owner_response =
+      ResourceController.show(owner_conn, %{"path" => ["upload", "42", "report.txt"]})
+
+    assert owner_response.status == 200
+    assert owner_response.resp_body == "private"
+
+    other_conn =
+      Plug.Conn.assign(Plug.Test.conn(:get, "/profile/upload/42/report.txt"), :current_user, %{
+        user_id: 43
+      })
+
+    other_response =
+      ResourceController.show(other_conn, %{"path" => ["upload", "42", "report.txt"]})
+
+    assert other_response.status == 403
+
+    legacy_conn = Plug.Test.conn(:get, "/profile/upload/report.txt")
+    legacy_response = ResourceController.show(legacy_conn, %{"path" => ["upload", "report.txt"]})
+    assert legacy_response.status == 404
   end
 end

@@ -10,13 +10,16 @@ defmodule KeystonePhoenix.Upload do
 
   @doc "Stores one generic file under the upload resource directory."
   @spec store_file(Plug.Upload.t()) :: {:ok, map()} | {:error, atom()}
-  def store_file(%Plug.Upload{} = upload) do
+  def store_file(upload), do: store_file(upload, nil)
+
+  @spec store_file(Plug.Upload.t(), pos_integer() | nil) :: {:ok, map()} | {:error, atom()}
+  def store_file(%Plug.Upload{} = upload, owner_id) do
     with {:ok, filename, extension} <- validate_generic_upload(upload),
-         directory <- Path.join(base_dir(), "upload"),
+         directory <- upload_directory(owner_id),
          :ok <- File.mkdir_p(directory),
          destination <- Path.join(directory, filename),
          :ok <- copy_file(upload.path, destination) do
-      relative = "/profile/upload/#{filename}"
+      relative = upload_relative_path(owner_id, filename)
 
       {:ok,
        %{
@@ -32,15 +35,20 @@ defmodule KeystonePhoenix.Upload do
     end
   end
 
-  def store_file(_upload), do: {:error, :invalid_upload}
+  def store_file(_upload, _owner_id), do: {:error, :invalid_upload}
 
-  @doc "Stores a batch of generic files."
+  @doc "Stores a batch of generic files under one owner's namespace."
   @spec store_files(list()) :: {:ok, list(map())} | {:error, atom()}
-  def store_files(uploads)
+  def store_files(uploads), do: store_files(uploads, nil)
+
+  @spec store_files(list(), pos_integer() | nil) :: {:ok, list(map())} | {:error, atom()}
+  def store_files(uploads, owner_id)
+
+  def store_files(uploads, owner_id)
       when is_list(uploads) and uploads != [] and length(uploads) <= @max_batch_entries do
     with :ok <- validate_batch_size(uploads) do
       Enum.reduce_while(uploads, {:ok, []}, fn upload, {:ok, stored} ->
-        case store_file(upload) do
+        case store_file(upload, owner_id) do
           {:ok, file} -> {:cont, {:ok, [file | stored]}}
           {:error, reason} -> {:halt, {:error, reason, stored}}
         end
@@ -56,10 +64,19 @@ defmodule KeystonePhoenix.Upload do
     end
   end
 
-  def store_files(uploads) when is_list(uploads) and length(uploads) > @max_batch_entries,
-    do: {:error, :too_many_files}
+  def store_files(uploads, _owner_id)
+      when is_list(uploads) and length(uploads) > @max_batch_entries,
+      do: {:error, :too_many_files}
 
-  def store_files(_uploads), do: {:error, :empty_upload}
+  def store_files(_uploads, _owner_id), do: {:error, :empty_upload}
+
+  defp upload_directory(nil), do: Path.join(base_dir(), "upload")
+
+  defp upload_directory(owner_id),
+    do: Path.join([base_dir(), "upload", Integer.to_string(owner_id)])
+
+  defp upload_relative_path(nil, filename), do: "/profile/upload/#{filename}"
+  defp upload_relative_path(owner_id, filename), do: "/profile/upload/#{owner_id}/#{filename}"
 
   defp validate_batch_size(uploads) do
     Enum.reduce_while(uploads, 0, fn
