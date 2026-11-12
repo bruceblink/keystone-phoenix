@@ -98,6 +98,26 @@ defmodule KeystonePhoenix.UploadTest do
     File.rm!(invalid)
   end
 
+  test "cleans owner-scoped files when a batch later fails" do
+    first = temporary_file("first.txt", "one")
+    invalid = temporary_file("invalid.sh", "echo unsafe")
+
+    uploads = [
+      %Plug.Upload{path: first, filename: "first.txt", content_type: "text/plain"},
+      %Plug.Upload{path: invalid, filename: "invalid.sh", content_type: "text/plain"}
+    ]
+
+    assert {:error, :type_not_allowed} = Upload.store_files(uploads, 42)
+
+    assert [] ==
+             Path.wildcard(
+               Path.join(Application.fetch_env!(:keystone_phoenix, :file_base_dir), "upload/42/*")
+             )
+
+    File.rm!(first)
+    File.rm!(invalid)
+  end
+
   test "rejects batches larger than the aggregate size limit" do
     paths =
       Enum.map(1..3, fn index ->

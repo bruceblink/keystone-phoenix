@@ -58,7 +58,7 @@ defmodule KeystonePhoenix.Upload do
           {:ok, Enum.reverse(stored)}
 
         {:error, reason, stored} ->
-          cleanup_stored_files(stored)
+          cleanup_stored_files(stored, owner_id)
           {:error, reason}
       end
     end
@@ -283,9 +283,9 @@ defmodule KeystonePhoenix.Upload do
     end
   end
 
-  defp cleanup_stored_files(stored) do
+  defp cleanup_stored_files(stored, owner_id) do
     Enum.each(stored, fn %{"newFileName" => filename} ->
-      _ = File.rm(Path.join([base_dir(), "upload", filename]))
+      _ = File.rm(Path.join([upload_directory(owner_id), filename]))
     end)
   end
 end
