@@ -60,15 +60,17 @@ defmodule KeystonePhoenix.Post do
 
   def list_posts_by_ids(_ids), do: []
 
-  def create_post(attrs, actor_or_options \\ nil)
+  def create_post(attrs, options)
 
   def create_post(attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize(options, "system:post:add") do
-      create_post(attrs, KeystonePhoenix.Authz.Command.actor_id(options))
+      do_create_post(attrs, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
 
-  def create_post(attrs, actor_id) when is_map(attrs) do
+  def create_post(_attrs, _options), do: {:error, :authorization_required}
+
+  defp do_create_post(attrs, actor_id) when is_map(attrs) do
     attrs
     |> normalize_attrs()
     |> then(&SysPost.changeset(%SysPost{}, &1))
@@ -76,17 +78,17 @@ defmodule KeystonePhoenix.Post do
     |> Repo.insert()
   end
 
-  def create_post(_attrs, _actor_id), do: {:error, invalid_changeset(:post_code)}
-
-  def update_post(id, attrs, actor_or_options \\ nil)
+  def update_post(id, attrs, options)
 
   def update_post(id, attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize(options, "system:post:edit") do
-      update_post(id, attrs, KeystonePhoenix.Authz.Command.actor_id(options))
+      do_update_post(id, attrs, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
 
-  def update_post(id, attrs, actor_id) when is_map(attrs) do
+  def update_post(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_update_post(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, post} <- get_post(id) do
       post
       |> SysPost.changeset(normalize_attrs(attrs))
@@ -95,17 +97,17 @@ defmodule KeystonePhoenix.Post do
     end
   end
 
-  def update_post(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:post_code)}
-
-  def delete_posts(ids, actor_or_options \\ nil)
+  def delete_posts(ids, options)
 
   def delete_posts(ids, options) when is_list(options) do
     with :ok <- Authorization.authorize(options, "system:post:remove") do
-      delete_posts(ids, KeystonePhoenix.Authz.Command.actor_id(options))
+      do_delete_posts(ids, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
 
-  def delete_posts(ids, actor_id) when is_list(ids) do
+  def delete_posts(_ids, _options), do: {:error, :authorization_required}
+
+  defp do_delete_posts(ids, actor_id) when is_list(ids) do
     ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
@@ -117,8 +119,6 @@ defmodule KeystonePhoenix.Post do
       end
     end
   end
-
-  def delete_posts(_ids, _actor_id), do: {:error, :invalid_ids}
 
   def post_to_map(post) do
     %{
@@ -186,9 +186,6 @@ defmodule KeystonePhoenix.Post do
   defp status_label(1), do: "正常"
   defp status_label(0), do: "停用"
   defp status_label(status), do: to_string(status || "")
-
-  defp invalid_changeset(field),
-    do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysPost{}), field, "参数无效")
 
   defp filter_contains(query, _field, nil), do: query
   defp filter_contains(query, _field, ""), do: query
