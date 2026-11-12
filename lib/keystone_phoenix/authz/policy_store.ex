@@ -32,4 +32,16 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
 
   def scope_allowed?(_principal, :none, _target), do: true
   def scope_allowed?(_principal, _kind, _target), do: false
+
+  @doc "Checks whether a role write may change permission metadata."
+  def role_metadata_allowed?(principal, attrs),
+    do: Permission.role_metadata_allowed?(principal, attrs)
+
+  @doc "Checks whether a menu write may change permission metadata."
+  def menu_metadata_allowed?(principal, attrs),
+    do: Permission.menu_metadata_allowed?(principal, attrs)
+
+  @doc "Checks whether an actor may assign the requested role."
+  def role_assignment_allowed?(principal, role_id),
+    do: Permission.role_assignment_allowed?(principal, role_id)
 end

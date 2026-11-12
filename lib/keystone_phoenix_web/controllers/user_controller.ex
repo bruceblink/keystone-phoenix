@@ -40,7 +40,7 @@ defmodule KeystonePhoenixWeb.UserController do
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Post
-  alias KeystonePhoenix.Permission
+  alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.ApiResponse
@@ -103,7 +103,7 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Creates a local user."
   def create(conn, params) do
-    if Permission.role_assignment_allowed?(conn.assigns.current_user, role_id_param(params)) do
+    if Authz.role_assignment_allowed?(conn.assigns.current_user, role_id_param(params)) do
       case User.create_user(params, conn.assigns.current_user.user_id) do
         {:ok, _user} -> conn |> put_status(:created) |> json(ApiResponse.ok())
         {:error, changeset} -> render_error(conn, changeset)
@@ -115,7 +115,7 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Updates editable fields for a local user."
   def update(conn, %{"user_id" => user_id} = params) do
-    if Permission.role_assignment_allowed?(conn.assigns.current_user, role_id_param(params)) do
+    if Authz.role_assignment_allowed?(conn.assigns.current_user, role_id_param(params)) do
       case User.update_user(user_id, params, conn.assigns.current_user.user_id) do
         {:ok, _user} -> json(conn, ApiResponse.ok())
         {:error, :not_found} -> render_error(conn, :not_found)
@@ -278,10 +278,10 @@ defmodule KeystonePhoenixWeb.UserController do
 
   defp import_authorized?(record, actor) do
     cond do
-      not Permission.data_scope_allowed?(actor, :dept, record["deptId"]) ->
+      not Authz.scope_allowed?(actor, :dept, record["deptId"]) ->
         {:error, :data_scope_denied}
 
-      not Permission.role_assignment_allowed?(actor, record["roleId"]) ->
+      not Authz.role_assignment_allowed?(actor, record["roleId"]) ->
         {:error, :role_assignment_forbidden}
 
       true ->

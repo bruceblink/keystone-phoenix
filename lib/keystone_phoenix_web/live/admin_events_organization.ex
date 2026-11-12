@@ -2,9 +2,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   @moduledoc "LiveView event handlers for the organization domain."
 
   import Phoenix.Component, only: [assign: 2]
+  alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Menu
-  alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
@@ -277,7 +277,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   def handle_event("save-role", params, socket) do
     if (Support.permission_socket?(socket, "system:role:add") or
           Support.permission_socket?(socket, "system:role:edit")) and
-         Permission.role_metadata_allowed?(socket.assigns.current_user, params) do
+         Authz.role_metadata_allowed?(socket.assigns.current_user, params) do
       role_id = String.trim(params["roleId"] || "")
       params = Map.update(params, "menuIds", "", &String.trim/1)
 
@@ -449,7 +449,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   def handle_event("save-menu", params, socket) do
     if (Support.permission_socket?(socket, "system:menu:add") or
           Support.permission_socket?(socket, "system:menu:edit")) and
-         Permission.menu_metadata_allowed?(socket.assigns.current_user, params) do
+         Authz.menu_metadata_allowed?(socket.assigns.current_user, params) do
       menu_id = String.trim(params["menuId"] || "")
 
       result =

@@ -38,6 +38,34 @@ defmodule KeystonePhoenix.Authz do
   @doc "Returns whether an actor has administrator status."
   def admin?(principal), do: Principal.admin?(Principal.from_user(principal))
 
+  @doc "Checks whether a role write may change permission metadata."
+  def role_metadata_allowed?(principal, attrs) when is_map(attrs) do
+    PolicyStore.role_metadata_allowed?(Principal.to_user(Principal.from_user(principal)), attrs)
+  rescue
+    _error -> false
+  end
+
+  def role_metadata_allowed?(_principal, _attrs), do: false
+
+  @doc "Checks whether a menu write may change permission metadata."
+  def menu_metadata_allowed?(principal, attrs) when is_map(attrs) do
+    PolicyStore.menu_metadata_allowed?(Principal.to_user(Principal.from_user(principal)), attrs)
+  rescue
+    _error -> false
+  end
+
+  def menu_metadata_allowed?(_principal, _attrs), do: false
+
+  @doc "Checks whether an actor may assign the requested role."
+  def role_assignment_allowed?(principal, role_id) do
+    PolicyStore.role_assignment_allowed?(
+      Principal.to_user(Principal.from_user(principal)),
+      role_id
+    )
+  rescue
+    _error -> false
+  end
+
   @doc """
   Checks a permission and, when present, the requested target scope.
 

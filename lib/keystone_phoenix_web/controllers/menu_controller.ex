@@ -12,7 +12,7 @@ defmodule KeystonePhoenixWeb.MenuController do
     }
 
   alias KeystonePhoenix.Menu
-  alias KeystonePhoenix.Permission
+  alias KeystonePhoenix.Authz
   alias KeystonePhoenixWeb.ApiResponse
 
   @doc "Returns the menu and permission list."
@@ -35,7 +35,7 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   @doc "Creates a menu or button permission."
   def create(conn, params) do
-    if Permission.menu_metadata_allowed?(conn.assigns.current_user, params) do
+    if Authz.menu_metadata_allowed?(conn.assigns.current_user, params) do
       case Menu.create_menu(params, conn.assigns.current_user.user_id) do
         {:ok, _menu} -> conn |> put_status(:created) |> json(ApiResponse.ok())
         {:error, reason} -> render_error(conn, reason)
@@ -47,7 +47,7 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   @doc "Updates a menu or button permission."
   def update(conn, %{"menu_id" => menu_id} = params) do
-    if Permission.menu_metadata_allowed?(conn.assigns.current_user, params) do
+    if Authz.menu_metadata_allowed?(conn.assigns.current_user, params) do
       case Menu.update_menu(menu_id, params, conn.assigns.current_user.user_id) do
         {:ok, _menu} -> json(conn, ApiResponse.ok())
         {:error, reason} -> render_error(conn, reason)

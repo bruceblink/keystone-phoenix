@@ -18,7 +18,7 @@ defmodule KeystonePhoenixWeb.RoleController do
     }
 
   alias KeystonePhoenix.Excel
-  alias KeystonePhoenix.Permission
+  alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.ExcelResponse
@@ -66,7 +66,7 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Creates a role and assigns its menus."
   def create(conn, params) do
-    if Permission.role_metadata_allowed?(conn.assigns.current_user, params) do
+    if Authz.role_metadata_allowed?(conn.assigns.current_user, params) do
       case Role.create_role(params, conn.assigns.current_user.user_id) do
         {:ok, _role} -> conn |> put_status(:created) |> json(ApiResponse.ok())
         {:error, changeset} -> render_error(conn, changeset)
@@ -78,7 +78,7 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Updates a role and optionally replaces its menu assignments."
   def update(conn, params) do
-    if Permission.role_metadata_allowed?(conn.assigns.current_user, params) do
+    if Authz.role_metadata_allowed?(conn.assigns.current_user, params) do
       case Role.update_role(
              params["roleId"] || params[:role_id],
              params,
