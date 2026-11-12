@@ -100,9 +100,7 @@ defmodule KeystonePhoenix.UserContractTest do
     }
 
     assert {:error, :permission_denied} =
-             User.update_user(user.user_id, %{"nickname" => "不应写入"},
-               authorization: authorization
-             )
+             User.update_user(user.user_id, %{"nickname" => "不应写入"}, authorization: authorization)
 
     assert Repo.get!(SysUser, user.user_id).nickname == "原始昵称"
   end
