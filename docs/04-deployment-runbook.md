@@ -87,4 +87,4 @@ pg_restore --clean --if-exists --dbname=keystone_restore_check keystone-*.dump
 
 先停止新容器并保留数据库和上传目录，再启动上一版本镜像。不要回滚已经执行过的迁移，除非对应 migration 有经过验证的 down 操作；优先使用向前兼容的应用版本修复。认证会话表保留，必要时用户重新登录即可。
 
-完成 smoke 检查后，再创建并推送 `v0.3.0` tag，让 GitHub Actions 构建并发布 GHCR 镜像。
+`v0.3.0` 已完成 smoke、签名和生产窗口验收。后续版本沿用同一流程：完成独立环境 smoke 后创建并推送对应的 `vX.Y.Z` tag，由 GitHub Actions 构建并发布 GHCR 镜像。
