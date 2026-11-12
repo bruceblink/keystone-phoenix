@@ -82,4 +82,27 @@ defmodule KeystonePhoenix.AuthzTest do
     refute Authz.scope_allowed?(%{user_id: 42}, :self, 43)
     assert Authz.scope_allowed?(%{is_admin: true}, :self, 43)
   end
+
+  test "authorization decisions emit sanitized telemetry" do
+    event = [:keystone_phoenix, :authz, :decision]
+    handler = "authz-test-#{System.unique_integer([:positive])}"
+    parent = self()
+
+    :telemetry.attach(
+      handler,
+      event,
+      fn ^event, measurements, metadata, _config ->
+        send(parent, {:authz_decision, measurements, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+
+    assert {:error, :permission_denied} =
+             Authz.authorize(%{user_id: 9, permissions: []}, "system:user:edit")
+
+    assert_receive {:authz_decision, %{count: 1},
+                    %{outcome: :permission_denied, permission: "system:user:edit", subject_id: 9}}
+  end
 end

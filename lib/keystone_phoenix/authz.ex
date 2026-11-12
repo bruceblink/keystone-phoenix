@@ -87,21 +87,28 @@ defmodule KeystonePhoenix.Authz do
   def authorize(principal, permission, resource \\ nil, context \\ %{}) do
     subject = Principal.from_user(principal)
 
-    case PolicyStore.allowed_decision?(Principal.to_user(subject), permission) do
-      :allow ->
-        case scope_decision(subject, resource, context) do
-          true -> :ok
-          false -> {:error, :data_scope_denied}
-        end
+    decision =
+      case PolicyStore.allowed_decision?(Principal.to_user(subject), permission) do
+        :allow ->
+          case scope_decision(subject, resource, context) do
+            true -> :ok
+            false -> {:error, :data_scope_denied}
+          end
 
-      :deny ->
-        {:error, :permission_denied}
+        :deny ->
+          {:error, :permission_denied}
 
-      {:error, :authorization_unavailable} = error ->
-        error
-    end
+        {:error, :authorization_unavailable} = error ->
+          error
+      end
+
+    emit_decision(subject, permission, decision)
+    decision
   rescue
-    _error -> {:error, :authorization_unavailable}
+    _error ->
+      decision = {:error, :authorization_unavailable}
+      emit_decision(principal, permission, decision)
+      decision
   end
 
   @doc "Returns true when a subject may access a target in its data scope."
@@ -170,4 +177,27 @@ defmodule KeystonePhoenix.Authz do
     string_key = to_string(atom_key)
     Map.get(context, atom_key, Map.get(context, string_key, default))
   end
+
+  defp emit_decision(principal, permission, decision) do
+    subject = Principal.from_user(principal)
+
+    :telemetry.execute(
+      [:keystone_phoenix, :authz, :decision],
+      %{count: 1},
+      %{
+        outcome: decision_outcome(decision),
+        permission: normalize_permission(permission),
+        subject_id: subject.subject_id
+      }
+    )
+  rescue
+    _error -> :ok
+  end
+
+  defp decision_outcome(:ok), do: :allow
+  defp decision_outcome({:error, reason}), do: reason
+  defp decision_outcome(_decision), do: :unknown
+
+  defp normalize_permission(permission) when is_binary(permission), do: String.trim(permission)
+  defp normalize_permission(_permission), do: ""
 end

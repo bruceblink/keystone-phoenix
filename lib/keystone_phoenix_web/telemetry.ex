@@ -96,6 +96,7 @@ defmodule KeystonePhoenixWeb.Telemetry do
       last_value("keystone_phoenix.repo.pool.pool_size"),
       last_value("keystone_phoenix.repo.pool.pool_count"),
       counter("keystone_phoenix.repo.pool.alert.count", tags: [:reason]),
+      counter("keystone_phoenix.authz.decision.count", tags: [:outcome]),
       summary("keystone_phoenix.job.run.duration",
         tags: [:job_id, :trigger_type, :status],
         unit: {:native, :millisecond}
