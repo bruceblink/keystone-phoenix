@@ -28,7 +28,9 @@ defmodule KeystonePhoenixWeb.ConfigController do
 
   @doc "Creates a system configuration entry."
   def create(conn, params) do
-    case Config.create_config(params, conn.assigns.current_user.user_id) do
+    case Config.create_config(params,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
       {:ok, _config} -> conn |> put_status(:created) |> json(ApiResponse.ok())
       {:error, changeset} -> render_error(conn, changeset)
     end
@@ -36,7 +38,9 @@ defmodule KeystonePhoenixWeb.ConfigController do
 
   @doc "Updates the value of a system configuration entry."
   def update(conn, %{"config_id" => config_id} = params) do
-    case Config.update_config(config_id, params, conn.assigns.current_user.user_id) do
+    case Config.update_config(config_id, params,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
       {:ok, _config} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, :not_allow_change} -> render_error(conn, :not_allow_change)
@@ -46,8 +50,10 @@ defmodule KeystonePhoenixWeb.ConfigController do
 
   @doc "Clears cached configuration values."
   def refresh_cache(conn, _params) do
-    Config.refresh_cache()
-    json(conn, ApiResponse.ok())
+    case Config.refresh_cache(authorization: %{principal: conn.assigns.current_user}) do
+      :ok -> json(conn, ApiResponse.ok())
+      {:error, reason} -> render_error(conn, reason)
+    end
   end
 
   defp render_error(conn, :not_found) do

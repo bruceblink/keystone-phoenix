@@ -7,6 +7,7 @@ defmodule KeystonePhoenix.Config do
 
   alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Cache
+  alias KeystonePhoenix.Config.Authorization
   alias KeystonePhoenix.Config.SysConfig
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Pagination
@@ -67,7 +68,13 @@ defmodule KeystonePhoenix.Config do
   def get_config_value_by_key(_config_key), do: ""
 
   @spec create_config(map()) :: {:ok, SysConfig.t()} | {:error, Ecto.Changeset.t()}
-  def create_config(attrs, actor_id \\ nil)
+  def create_config(attrs, actor_or_options \\ nil)
+
+  def create_config(attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize(options, "system:config:add") do
+      create_config(attrs, Authorization.actor_id(options))
+    end
+  end
 
   def create_config(attrs, actor_id) do
     changeset = SysConfig.changeset(%SysConfig{}, normalize_attrs(attrs))
@@ -85,7 +92,13 @@ defmodule KeystonePhoenix.Config do
 
   @spec update_config(integer() | String.t(), map()) ::
           {:ok, SysConfig.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def update_config(id, attrs, actor_id \\ nil)
+  def update_config(id, attrs, actor_or_options \\ nil)
+
+  def update_config(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize(options, "system:config:edit") do
+      update_config(id, attrs, Authorization.actor_id(options))
+    end
+  end
 
   def update_config(id, attrs, actor_id) do
     with {:ok, config} <- get_config(id) do
@@ -110,6 +123,12 @@ defmodule KeystonePhoenix.Config do
 
   @spec refresh_cache() :: :ok
   def refresh_cache, do: Cache.delete_prefix(@config_cache_prefix)
+
+  def refresh_cache(options) when is_list(options) do
+    with :ok <- Authorization.authorize(options, "system:config:refresh") do
+      refresh_cache()
+    end
+  end
 
   @spec config_to_map(SysConfig.t()) :: map()
   def config_to_map(config) do

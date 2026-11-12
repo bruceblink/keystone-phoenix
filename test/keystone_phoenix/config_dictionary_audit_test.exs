@@ -105,5 +105,19 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
     assert {:error, :not_found} = User.get_user("abc")
   end
 
+  test "principal-aware configuration writes reject missing permission" do
+    attrs = %{
+      "configName" => "受保护配置",
+      "configKey" => unique("protected.config"),
+      "configValue" => "enabled",
+      "isAllowChange" => true
+    }
+
+    assert {:error, :permission_denied} =
+             Config.create_config(attrs,
+               authorization: %{principal: %{user_id: 901, permissions: []}}
+             )
+  end
+
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 end

@@ -12,7 +12,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   def handle_event("refresh-config", _params, socket) do
     if Support.panel_allowed?(socket, "configs") do
       can_refresh? = Support.permission_socket?(socket, "system:config:refresh")
-      if can_refresh?, do: Config.refresh_cache()
+      if can_refresh?, do: Config.refresh_cache(authorization: self_authorization(socket))
 
       {:noreply,
        assign(socket,
@@ -71,8 +71,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
       result =
         if config_id == "",
-          do: Config.create_config(params, current_user_id(socket)),
-          else: Config.update_config(config_id, params, current_user_id(socket))
+          do: Config.create_config(params, authorization: self_authorization(socket)),
+          else: Config.update_config(config_id, params, authorization: self_authorization(socket))
 
       case result do
         {:ok, _config} ->
@@ -484,5 +484,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   defp current_user_id(socket) do
     user = socket.assigns[:current_user] || %{}
     Map.get(user, "userId") || Map.get(user, :user_id)
+  end
+
+  defp self_authorization(socket) do
+    principal =
+      (socket.assigns[:current_user] || %{})
+      |> Map.put(:permissions, List.wrap(socket.assigns[:permissions]))
+
+    %{principal: principal}
   end
 end
