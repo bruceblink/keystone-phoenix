@@ -118,9 +118,16 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
                role_permission.role_id == ^role_id and
                  role_permission.permission_id == ^permission_id and
                  role.deleted == false and role.status == 1
-         ),
-         do: :allow,
-         else: :deny
+         ) do
+        :allow
+      else
+        if Repo.exists?(
+             from role_permission in "sys_role_permission",
+               where: role_permission.role_id == ^role_id
+           ),
+           do: :deny,
+           else: :miss
+      end
     else
       :miss -> :miss
       false -> :miss
