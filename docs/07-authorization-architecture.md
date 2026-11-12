@@ -4,7 +4,7 @@
 
 ## 实施状态
 
-阶段一的兼容切片已经落地：`KeystonePhoenix.Authz`、`Principal` 和 `PolicyStore` 已建立，策略读取继续适配现有 `sys_role`、`sys_menu` 和 `sys_role_menu` 表。HTTP Authenticate Plug 和管理 LiveView 的权限、管理员识别及用户数据范围判断都通过 Authz API；保留原有 `40302` 和 `40303` 错误码。用户 LiveView 的保存、状态切换、删除和密码重置事件会在写入前检查目标范围，并按当前主体范围刷新列表。
+阶段一的兼容切片已经落地：`KeystonePhoenix.Authz`、`Principal` 和 `PolicyStore` 已建立，策略读取继续适配现有 `sys_role`、`sys_menu` 和 `sys_role_menu` 表。HTTP Authenticate Plug、管理 LiveView、角色/菜单元数据控制器和用户导入入口的权限、管理员识别、角色分配及用户数据范围判断都通过 Authz API；保留原有 `40302` 和 `40303` 错误码。用户 LiveView 的保存、状态切换、删除和密码重置事件会在写入前检查目标范围，并按当前主体范围刷新列表。用户和角色的范围查询也经由 Authz 的查询适配器，避免业务查询直接依赖旧策略模块。
 
 本阶段仍保留旧领域函数签名和布尔兼容入口，便于逐步迁移直接领域调用。领域写入收口、权限目录规范化、缓存失效和授权审计属于后续阶段，不能由当前入口适配切片单独视为已完成。
 
@@ -150,6 +150,7 @@ User.update_user(user_id, attrs, principal: principal, permission: "system:user:
 - 新增 `Authz`、`Principal` 和 `PolicyStore`，兼容读取现有角色菜单权限。
 - 将 `Authenticate` Plug 的权限和数据范围判断改为调用 `Authz`。
 - 将 LiveView 的 `permission_socket?` 和目标范围判断改为调用 `Authz`。
+- 将角色/菜单元数据、角色分配和用户/角色范围查询改为通过 `Authz` 的策略适配器。
 - 保留现有错误码：权限拒绝 `40302`，数据范围拒绝 `40303`。
 
 ### 阶段二：领域写入收口
@@ -173,6 +174,6 @@ User.update_user(user_id, attrs, principal: principal, permission: "system:user:
 
 ## 当前切片与回滚
 
-当前已完成统一决策 API 的兼容切片，并修复用户 LiveView 写事件的数据范围缺口：拥有 `system:user:edit` 等权限字符串的非管理员用户仍必须通过角色数据范围检查，成功刷新使用范围内列表。`Authz` 单元测试、权限回归测试、LiveView 越界回归和 HTTP 集成授权测试均已通过。该切片不改变旧表结构，回滚时只需回退策略读取适配层和入口转发，不回退已经写入的业务数据和审计记录。
+当前已完成统一决策 API 的兼容切片，并修复用户 LiveView 写事件的数据范围缺口：拥有 `system:user:edit` 等权限字符串的非管理员用户仍必须通过角色数据范围检查，成功刷新使用范围内列表。`Authz` 单元测试、权限回归测试、LiveView 越界回归和 HTTP 集成授权测试均已通过；角色/菜单元数据与范围查询入口也已完成迁移。该切片不改变旧表结构，回滚时只需回退策略读取适配层和入口转发，不回退已经写入的业务数据和审计记录。
 
 每个迁移阶段单独提交和推送。策略存储迁移先读旧表再写新表，保留向后兼容读取；出现问题时回退策略读取适配层，不回退已经写入的业务数据和审计记录。
