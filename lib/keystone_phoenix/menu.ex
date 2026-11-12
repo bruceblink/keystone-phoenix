@@ -158,6 +158,9 @@ defmodule KeystonePhoenix.Menu do
 
   def permissions_for_user(%{"isAdmin" => 1}), do: ["*:*:*"]
 
+  def permissions_for_user(%{role_id: nil}), do: []
+  def permissions_for_user(%{"roleId" => nil}), do: []
+
   def permissions_for_user(user) do
     role_id = Map.get(user, :role_id, Map.get(user, "roleId"))
 

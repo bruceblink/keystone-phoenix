@@ -2,6 +2,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Authz.{SysMenuPermission, SysPermission, SysRolePermission}
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Dictionary.{DictData, DictType}
   alias KeystonePhoenix.Menu.SysMenu
@@ -171,12 +172,24 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
         menu_type: menu_type,
         parent_id: 0,
         is_button: is_button,
-        permission: permission,
         status: 1
       })
       |> Repo.insert!()
 
+    entry =
+      Repo.get_by(SysPermission, permission: permission) ||
+        Repo.insert!(%SysPermission{
+          permission: permission,
+          resource: "system",
+          domain: permission |> String.split(":") |> Enum.at(1),
+          action: permission |> String.split(":") |> List.last(),
+          status: 1,
+          deprecated: false
+        })
+
     Repo.insert!(%SysRoleMenu{role_id: role_id, menu_id: menu.menu_id})
+    Repo.insert!(%SysRolePermission{role_id: role_id, permission_id: entry.permission_id})
+    Repo.insert!(%SysMenuPermission{menu_id: menu.menu_id, permission_id: entry.permission_id})
     menu
   end
 

@@ -6,6 +6,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   alias KeystonePhoenix.Auth.Captcha
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Session
+  alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Config.SysConfig
   alias KeystonePhoenix.Department.SysDept
@@ -263,10 +264,12 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     {user, role} = create_scoped_user()
     first_menu = create_menu("system:user:list")
     Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: first_menu.menu_id})
+    link_permission(role.role_id, first_menu, "system:user:list")
     {:ok, view, _html} = login_view(conn, user)
 
     second_menu = create_menu(unique("system:profile:edit"))
     Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: second_menu.menu_id})
+    link_permission(role.role_id, second_menu, second_menu.menu_name)
     {:ok, before} = User.get_user(user.user_id)
     html = render_submit(view, "save-profile", %{"nickname" => "不应保存"})
 
@@ -529,12 +532,33 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
       parent_id: 0,
       path: "/live-auth",
       is_button: true,
-      permission: permission,
       meta_info: "{}",
       status: 1,
       remark: ""
     })
     |> Repo.insert!()
+  end
+
+  defp link_permission(role_id, menu, permission) do
+    [resource, domain, action] = String.split(permission, ":", parts: 3)
+
+    entry =
+      Repo.get_by(SysPermission, permission: permission) ||
+        Repo.insert!(%SysPermission{
+          permission: permission,
+          resource: resource,
+          domain: domain,
+          action: action,
+          status: 1,
+          deprecated: false
+        })
+
+    Repo.insert!(%SysRolePermission{role_id: role_id, permission_id: entry.permission_id})
+
+    Repo.insert!(%KeystonePhoenix.Authz.SysMenuPermission{
+      menu_id: menu.menu_id,
+      permission_id: entry.permission_id
+    })
   end
 
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"

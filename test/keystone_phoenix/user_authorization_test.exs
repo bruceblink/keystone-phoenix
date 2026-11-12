@@ -2,6 +2,7 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
   use KeystonePhoenix.DataCase, async: false
 
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Authz.{SysMenuPermission, SysPermission, SysRolePermission}
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
@@ -80,10 +81,29 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
         menu_name: "用户编辑",
         menu_type: 0,
         parent_id: 0,
-        permission: "system:user:edit",
         status: 1
       })
       |> Repo.insert!()
+
+    permission_entry =
+      Repo.insert!(%SysPermission{
+        permission: "system:user:edit",
+        resource: "system",
+        domain: "user",
+        action: "edit",
+        status: 1,
+        deprecated: false
+      })
+
+    Repo.insert!(%SysMenuPermission{
+      menu_id: menu.menu_id,
+      permission_id: permission_entry.permission_id
+    })
+
+    Repo.insert!(%SysRolePermission{
+      role_id: role.role_id,
+      permission_id: permission_entry.permission_id
+    })
 
     Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: menu.menu_id})
 
