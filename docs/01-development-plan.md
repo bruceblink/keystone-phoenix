@@ -1,6 +1,6 @@
 # Keystone Phoenix 开发计划
 
-更新日期：2026-11-12。当前代码基线为 `2817ca3`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
+更新日期：2026-11-12。当前代码基线为 `16236c7`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
 
 ## 目标与范围
 
@@ -403,6 +403,6 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 
 ### 2026-11-12 授权架构复核
 
-当前代码基线为 `2817ca3`，远端 `v0.3.0` 标签已存在。现代授权设计基线见 [`07-authorization-architecture.md`](07-authorization-architecture.md)。当前模型继续采用 RBAC 角色绑定权限字符串，并由数据范围限制目标资源。
+当前代码基线为 `16236c7`，远端 `v0.3.0` 标签已存在。现代授权设计基线见 [`07-authorization-architecture.md`](07-authorization-architecture.md)。当前模型继续采用 RBAC 角色绑定权限字符串，并由数据范围限制目标资源。
 
-本轮复核发现并修复 `2817ca3`：LiveView 用户保存、状态切换、删除和密码重置事件现在同时检查具体权限字符串和目标数据范围，成功后按当前主体范围重新加载用户列表。新增越界回归测试证明拥有 `system:user:edit` 权限字符串的非管理员角色不能修改其他部门用户，数据库保持不变。默认测试为 164 项通过、20 项排除，集成测试为 184 项通过。
+本轮复核发现并修复 `2817ca3`：LiveView 用户保存、状态切换、删除和密码重置事件现在同时检查具体权限字符串和目标数据范围，成功后按当前主体范围重新加载用户列表。`cca52dc`、`7ad47fa` 和 `121c196` 将 HTTP Plug、LiveView 权限入口、管理员识别和用户范围判断迁移到 `Authz`；`6d0ea8a` 新增 `Authz`、`Principal`、`PolicyStore` 及回归测试；`16236c7` 更新架构实施状态。新增越界回归测试证明拥有 `system:user:edit` 权限字符串的非管理员角色不能修改其他部门用户，数据库保持不变。当前默认测试为 74 项通过、20 项排除，集成测试为 20 项通过；格式、源码行数和 dev/prod 严格编译通过。
