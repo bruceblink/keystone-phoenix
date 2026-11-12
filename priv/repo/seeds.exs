@@ -300,6 +300,44 @@ if Repo.aggregate(KeystonePhoenix.Role.SysRoleMenu, :count, :role_id) == 0 do
   Repo.insert_all("sys_role_menu", role_menu_entries)
 end
 
+# Keep the normalized permission catalog synchronized with the legacy menu
+# bindings during bootstrap. The migration backfills existing databases; this
+# also covers fresh databases where sys_menu rows are created by this script.
+Repo.query!("""
+INSERT INTO sys_permission
+  (permission, resource, domain, action, description, risk, deprecated, status, create_time, update_time)
+SELECT DISTINCT ON (trim(menu.permission))
+  trim(menu.permission),
+  split_part(trim(menu.permission), ':', 1),
+  split_part(trim(menu.permission), ':', 2),
+  split_part(trim(menu.permission), ':', 3),
+  '',
+  CASE
+    WHEN split_part(trim(menu.permission), ':', 3) IN ('remove', 'resetPwd', 'forceLogout') THEN 'high'
+    WHEN split_part(trim(menu.permission), ':', 3) IN ('add', 'edit', 'changeStatus', 'run') THEN 'medium'
+    ELSE 'low'
+  END,
+  false,
+  1,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+FROM sys_menu menu
+WHERE menu.permission IS NOT NULL
+  AND trim(menu.permission) <> ''
+  AND array_length(string_to_array(trim(menu.permission), ':'), 1) = 3
+ORDER BY trim(menu.permission), menu.menu_id
+ON CONFLICT (permission) DO NOTHING
+""")
+
+Repo.query!("""
+INSERT INTO sys_role_permission (role_id, permission_id)
+SELECT DISTINCT role_menu.role_id, permission.permission_id
+FROM sys_role_menu role_menu
+JOIN sys_menu menu ON menu.menu_id = role_menu.menu_id
+JOIN sys_permission permission ON permission.permission = trim(menu.permission)
+ON CONFLICT (role_id, permission_id) DO NOTHING
+""")
+
 notice_entries = [
   %{
     notice_id: 1,
