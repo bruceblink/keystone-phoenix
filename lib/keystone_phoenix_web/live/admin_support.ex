@@ -345,7 +345,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def human_error(reason), do: "操作失败：#{inspect(reason)}"
 
   def admin_socket?(socket),
-    do: is_map(socket.assigns.current_user) and socket.assigns.current_user["isAdmin"] == 1
+    do: is_map(socket.assigns.current_user) and Authz.admin?(socket.assigns.current_user)
 
   def authenticated_socket?(socket), do: is_map(socket.assigns.current_user)
 
