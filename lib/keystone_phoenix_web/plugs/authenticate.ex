@@ -4,7 +4,7 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
   import Plug.Conn
 
   alias KeystonePhoenix.Auth
-  alias KeystonePhoenix.Permission
+  alias KeystonePhoenix.Authz
   alias KeystonePhoenixWeb.ApiResponse
 
   def init(opts), do: opts
@@ -43,7 +43,7 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
 
   defp authorize(user, conn, opts) do
     cond do
-      Keyword.get(opts, :admin, false) and not Map.get(user, :is_admin, false) ->
+      Keyword.get(opts, :admin, false) and not Authz.admin?(user) ->
         {:error, :forbidden}
 
       not permission_allowed?(user, conn, Keyword.get(opts, :permissions, %{})) ->
@@ -62,7 +62,7 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
   defp permission_allowed?(user, conn, permissions) do
     case Map.get(permissions, conn.private[:phoenix_action]) do
       nil -> false
-      permission -> Map.get(user, :is_admin, false) or Permission.allowed?(user, permission)
+      permission -> Authz.allowed?(user, permission, %{connection: conn})
     end
   end
 
@@ -71,16 +71,16 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
   defp data_scope_allowed?(user, conn, scopes) do
     case Map.get(scopes, conn.private[:phoenix_action]) do
       {:dept, key} ->
-        Permission.data_scope_allowed?(user, :dept, param(conn.params, key))
+        Authz.scope_allowed?(user, :dept, param(conn.params, key), %{params: conn.params})
 
       {:user, key} ->
-        Permission.data_scope_allowed?(user, :user, param(conn.params, key))
+        Authz.scope_allowed?(user, :user, param(conn.params, key), %{params: conn.params})
 
       {:user_update, key} ->
-        Permission.user_update_allowed?(user, param(conn.params, key), conn.params)
+        Authz.scope_allowed?(user, :user_update, param(conn.params, key), %{attrs: conn.params})
 
       {:users, key} ->
-        Permission.data_scope_users_allowed?(user, param(conn.params, key))
+        Authz.scope_allowed?(user, :users, param(conn.params, key), %{params: conn.params})
 
       nil ->
         true
