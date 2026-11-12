@@ -1,180 +1,250 @@
-# Keystone Phoenix 授权架构设计
+# Keystone Phoenix 最终认证与授权架构设计
 
-更新日期：2026-11-12。本文是后续授权改造的设计基线。当前系统继续使用已有的角色、菜单权限字符串和数据范围；实现按本文逐步收敛到统一授权决策服务。
+更新日期：2026-11-12。本文件是最终架构基线，后续实现不保留菜单权限回退或双重授权来源。
 
-## 实施状态
+## 1. 总体架构
 
-阶段一的兼容切片已经落地：`KeystonePhoenix.Authz`、`Principal` 和 `PolicyStore` 已建立，策略读取继续适配现有 `sys_role`、`sys_menu` 和 `sys_role_menu` 表。HTTP Authenticate Plug、管理 LiveView、角色/菜单元数据控制器和用户导入入口的权限、管理员识别、角色分配及用户数据范围判断都通过 Authz API；保留原有 `40302` 和 `40303` 错误码。用户 LiveView 的保存、状态切换、删除和密码重置事件会在写入前检查目标范围，并按当前主体范围刷新列表。用户和角色的范围查询也经由 Authz 的查询适配器，避免业务查询直接依赖旧策略模块。阶段二已为用户、角色、部门、岗位、配置、字典、公告和任务写命令增加主体授权选项，HTTP 与管理 LiveView 已传递主体和权限上下文；个人资料、改密和头像更新也增加了主体自身范围检查。通用上传资源使用用户所有者命名空间，受保护资源只允许所有者或管理员访问。
+系统将认证、授权、资源范围和审计分层：
 
-本阶段仍保留旧领域函数签名和布尔兼容入口，便于逐步迁移直接领域调用。权限目录兼容验证、规范化权限表、策略存储异常返回、版本化策略缓存、主体自身范围判断、授权决策 Telemetry 和持久化审计已加入。
+~~~text
+OIDC/OAuth2
+  -> Principal
+  -> RBAC 基础权限
+  -> ABAC/ReBAC 数据范围
+  -> Authz PDP
+  -> HTTP / LiveView / Domain PEP
+  -> 审计与缓存
+~~~
 
-## 目标
+认证回答“你是谁、会话是否有效”。授权回答“你能执行什么动作、能操作哪项资源”。菜单只负责展示入口，不承担安全边界。
 
-授权系统需要同时回答两个问题：
+## 2. 身份认证
 
-1. 当前主体是否拥有执行某个动作的权限字符串？
-2. 当前主体是否有权访问或修改目标资源？
+外部身份使用 OIDC/OAuth2：
 
-RBAC 负责主体与角色、角色与权限的关系。数据范围负责目标资源边界。接口路径、LiveView 事件和领域命令都必须经过同一套授权语义，默认拒绝，失败时返回稳定的权限或数据范围错误。
+- 浏览器和移动端使用 Authorization Code + PKCE。
+- 服务间调用使用 Client Credentials、mTLS 或工作负载身份。
+- Access Token 短期有效，Refresh Token 轮换并可撤销。
+- 每个请求验证签发方、受众、过期时间、令牌类型和会话状态。
+- 认证层不根据 URL、菜单名称或前端字段授权。
 
-架构保留现有 HTTP 路径、响应字段和权限字符串，逐步替换散落在控制器、LiveView 和领域模块中的重复判断。现有 `sys_role`、`sys_menu` 和 `sys_role_menu` 是第一阶段的策略存储，不立即进行破坏性迁移。
+## 3. Principal
 
-## 核心模型
+所有授权决策只接受统一主体：
 
-### 主体
+~~~elixir
+%Principal{
+  subject_id: 123,
+  tenant_id: 10,
+  roles: [%{id: 2, version: 7}],
+  department_id: 20,
+  session_id: "session-id",
+  authentication_method: :oidc,
+  claims: %{}
+}
+~~~
 
-`Principal` 表示发起操作的主体，当前包括本地用户和管理员用户。后续可以扩展服务账号，但服务账号必须明确绑定角色或机器权限，不能通过特殊分支绕过策略。
+主体必须包含租户、角色版本、部门、会话和认证方式。is_admin 只作为最终切换前的兼容字段，最终由系统角色或显式系统能力替代。
 
-主体上下文至少包含：
+## 4. 授权模型
 
-- `subject_id`：用户 ID 或服务主体 ID。
-- `roles`：有效角色及角色版本。
-- `is_admin`：系统级管理员标志，仅作为最高级 RBAC 角色的兼容字段。
-- `department_id`：主体所属部门。
-- `session_id`：当前认证会话，用于审计和会话失效检查。
+### RBAC
 
-### 权限
+RBAC 提供基础动作能力：
 
-权限字符串采用稳定的 `resource:action` 形式，例如：
+~~~text
+subject -> role -> permission
+~~~
 
-- `system:user:list`
-- `system:user:edit`
-- `system:user:remove`
-- `system:dict:refresh`
-- `monitor:online:forceLogout`
+权限采用稳定的 resource:action 字符串：
 
-权限字符串代表动作能力，不代表具体 URL。一个动作可以被多个 HTTP 路径或多个 LiveView 事件调用；入口只负责提取资源和上下文，授权服务负责决策。
+- system:user:list
+- system:user:edit
+- system:user:remove
+- system:job:run
+- monitor:online:forceLogout
 
-权限目录应逐步从菜单记录中的自由文本收敛为可审计的权限目录。第一阶段继续读取 `sys_menu.permission`，新增或修改权限元数据必须经过权限元数据专属权限，避免普通业务写权限植入新的授权标识。
+### ABAC
+
+ABAC 根据主体、资源和环境属性判断数据范围：
+
+- 租户。
+- 部门和部门树。
+- 自定义部门集合。
+- 资源所有者。
+- 请求来源、时间和风险等级。
+
+### ReBAC
+
+ReBAC 表示主体与资源的关系：
+
+- 用户是项目成员。
+- 用户是文档所有者。
+- 用户属于部门。
+- 用户是任务维护者。
+
+RBAC、ABAC、ReBAC 可以同时参与一次决策，任一层拒绝即拒绝。
+
+## 5. PDP 与 PEP
+
+KeystonePhoenix.Authz 是统一 PDP 适配层，未来可替换为 OPA、Cedar、SpiceDB 或 Authzed。
+
+执行点：
+
+1. HTTP PEP：Authenticate Plug。
+2. LiveView PEP：事件入口。
+3. Domain PEP：事务写入前。
+
+统一接口：
+
+~~~elixir
+Authz.authorize(principal, permission, resource, context)
+Authz.allowed?(principal, permission, context)
+Authz.scope_allowed?(principal, scope, resource, context)
+~~~
+
+结果固定为：
+
+- :ok
+- {:error, :permission_denied}
+- {:error, :data_scope_denied}
+- {:error, :authorization_unavailable}
+
+缺少权限映射、主体无效或资源上下文不完整时默认拒绝。
+
+## 6. 最终数据模型
+
+### 权限目录
+
+sys_permission 是唯一权限目录：
+
+~~~text
+permission_id
+permission unique
+resource
+domain
+action
+description
+risk
+status
+deprecated
+version
+~~~
+
+### 角色授权
+
+sys_role_permission 是唯一角色授权关系：
+
+~~~text
+role_id
+permission_id
+~~~
+
+API、LiveView、领域命令和服务账号都从这条关系读取权限。
+
+### 菜单能力
+
+菜单是 UI 投影，不是授权事实来源。保留 sys_role_menu 控制导航可见性，使用 sys_menu_permission 关联菜单展示所需权限。
+
+菜单能力类型：
+
+- page：页面入口。
+- button：页面操作。
+- api：没有页面入口的 API 能力。
+- system：任务、刷新缓存、强制下线等系统能力。
+
+API-only 能力可以是隐藏节点，但必须登记在 sys_permission。菜单路径和排序变化不能改变角色实际拥有的 API 权限。
 
 ### 数据范围
 
-数据范围是动作通过权限字符串检查后的第二层判断：
+统一支持：
 
-- `all`：所有资源。
-- `department`：主体当前部门。
-- `department_tree`：当前部门及下级部门。
-- `custom_departments`：角色配置的部门集合。
-- `self`：主体自身资源。
+- all
+- tenant
+- department
+- department_tree
+- custom_departments
+- self
+- owner
+- member
 
-数据范围判断必须基于数据库查询或目标资源快照，不能只依赖客户端列表。批量操作必须对所有目标逐一检查，任何一个目标越界时整批失败并回滚。
+批量操作必须逐个检查目标，任一目标越界时整个事务回滚。
 
-## 目标架构
-
-### 统一授权决策点
-
-新增 `KeystonePhoenix.Authz` 作为唯一授权入口，提供以下接口：
-
-```elixir
-Authz.authorize(principal, "system:user:edit", resource, context)
-Authz.allowed?(principal, "system:user:list", context)
-Authz.scope_allowed?(principal, :user, user_id, context)
-```
-
-返回值保持简单且可组合：
-
-- `:ok`
-- `{:error, :permission_denied}`
-- `{:error, :data_scope_denied}`
-- `{:error, :authorization_unavailable}`
-
-授权服务只负责策略判断，不执行领域写入。领域命令在事务边界内再次调用授权服务，防止绕过 HTTP 或 LiveView 直接调用领域函数。
-
-### 策略存储与缓存
-
-第一阶段使用现有表结构：
-
-- `sys_role`：角色状态、数据范围和部门集合。
-- `sys_menu`：权限字符串目录和菜单元数据。
-- `sys_role_menu`：角色到权限字符串的绑定。
-- `sys_user.role_id`：用户当前角色。
-
-后续可增加规范化的 `sys_permission` 和 `sys_role_permission` 表，将菜单展示与动作授权分离。迁移期间由 `PolicyStore` 同时读取旧菜单权限和新权限目录，决策结果保持一致。
-
-权限和角色策略可以使用 ETS 做节点内缓存，但缓存键必须包含角色或权限版本。角色、菜单、角色菜单、用户角色和数据范围变更时必须使相关版本递增并清理缓存；缓存不可用时默认拒绝管理写操作。
-
-### 三个强制执行点
-
-1. **HTTP Plug**：认证后提取 `principal`，按 Phoenix action 映射权限字符串和资源参数，调用 `Authz.authorize/4`。
-2. **LiveView 事件入口**：所有管理事件先检查具体权限字符串，再检查目标资源和数据范围。面板可见性只决定是否显示入口，不承担动作授权。
-3. **领域命令**：接收 `principal` 或授权上下文，在事务内检查目标资源。现有接收 `actor_id` 的函数逐步增加兼容重载，旧调用方迁移完成后移除只传 ID 的写入口。
-
-## 入口约定
+## 7. 各入口规则
 
 ### HTTP
 
-控制器声明动作到权限字符串的映射，Plug 负责统一校验：
+Controller 只声明权限映射：
 
-```elixir
+~~~elixir
 permissions: %{
   update: "system:user:edit",
   delete: "system:user:remove"
-},
-data_scope: %{
-  update: {:user_update, "user_id"},
-  delete: {:users, "user_ids"}
 }
-```
+~~~
 
-控制器不再自行决定管理员例外。管理员通过 RBAC 角色获得全量权限和 `all` 数据范围；兼容性的 `is_admin` 只在策略存储迁移期间映射为系统管理员角色。
+Plug 调用 Authz。Controller 不自行实现管理员例外，也不从菜单表读取 API 权限。
 
 ### LiveView
 
-事件名称不是权限。事件必须显式映射到权限字符串，例如：
+菜单和按钮显隐只是展示优化。事件执行前必须再次调用 Authz。
 
-| LiveView 事件 | 权限字符串 | 数据范围 |
-| --- | --- | --- |
-| `save-user` | `system:user:add` 或 `system:user:edit` | 创建部门、更新用户 |
-| `toggle-user-status` | `system:user:edit` | 目标用户 |
-| `delete-user` | `system:user:remove` | 目标用户 |
-| `reset-user-password` | `system:user:resetPwd` | 目标用户 |
-| `run-job` | `system:job:run` | 任务资源 |
-| `force-logout` | `monitor:online:forceLogout` | 在线会话 |
+### Domain
 
-事件成功后重新加载数据时必须使用当前主体的数据范围。禁止使用无主体参数的全量加载函数向普通用户返回列表。
+所有写命令接收主体授权上下文：
 
-### 领域层
+~~~elixir
+User.update_user(user_id, attrs,
+  authorization: %{
+    principal: principal,
+    permission: "system:user:edit"
+  }
+)
+~~~
 
-领域层接收授权上下文的推荐形态：
+领域层在事务内检查权限、数据范围、资源关系和批量目标。只传 actor_id 的写入口删除。
 
-```elixir
-User.update_user(user_id, attrs, principal: principal, permission: "system:user:edit")
-```
+## 8. 缓存与审计
 
-授权失败必须在写入前返回，批量命令必须将授权检查和写入放入同一个事务。审计日志记录主体、权限字符串、资源 ID、数据范围、结果和拒绝原因，但不记录密码、令牌、验证码或服务器路径。
+策略缓存键包含：
 
-## 迁移步骤
+~~~text
+policy_version:tenant_id:role_id:permission
+~~~
 
-### 阶段一：统一决策 API（已完成兼容切片）
+权限目录、角色权限、角色状态、用户角色、数据范围或菜单能力变更时递增版本并清理缓存。缓存或策略存储不可用时管理写操作默认拒绝。
 
-- 新增 `Authz`、`Principal` 和 `PolicyStore`，兼容读取现有角色菜单权限。
-- 将 `Authenticate` Plug 的权限和数据范围判断改为调用 `Authz`。
-- 将 LiveView 的 `permission_socket?` 和目标范围判断改为调用 `Authz`。
-- 将角色/菜单元数据、角色分配和用户/角色范围查询改为通过 `Authz` 的策略适配器。
-- 保留现有错误码：权限拒绝 `40302`，数据范围拒绝 `40303`。
+授权审计记录：
 
-### 阶段二：领域写入收口（主要业务写入已迁移）
+- subject_id
+- session_id
+- tenant_id
+- permission
+- resource_type
+- resource_id
+- scope
+- decision
+- reason
+- request_id
+- created_at
 
-- 用户写命令已增加 `authorization: %{principal: principal, permission: permission}` 入口，并在领域写入前检查权限、目标数据范围和角色分配；个人资料、改密和头像命令使用主体自身范围检查。
-- 部门、岗位、角色、菜单、配置、字典、公告和任务写命令已增加主体上下文，旧 actor ID 调用保留为短期兼容入口。
-- 删除、状态切换、密码重置、角色分配和批量导入统一检查目标范围。
-- 保留旧函数作为短期兼容入口，并在调用路径迁移完成后标记为内部函数。
+不记录密码、Token、验证码、完整请求参数、文件内容或敏感 Claim。
 
-### 阶段三：权限目录规范化（已完成兼容迁移）
+Telemetry 事件：
 
-- 建立权限目录，记录资源、动作、描述、风险等级和废弃状态；`sys_permission` 与 `sys_role_permission` 已建立并回填旧菜单权限。
-- 将 `sys_menu.permission` 映射到权限目录，检测重复、空值和未登记权限；运行时优先读取规范化绑定，目录缺失时兼容旧菜单策略。
-- 角色编辑只允许绑定已登记权限；权限目录变更写入审计日志。
+~~~text
+[:keystone_phoenix, :authz, :decision]
+~~~
 
-### 阶段四：缓存、审计和验证（核心切片已完成）
+至少统计允许、权限拒绝、数据范围拒绝和策略不可用。
 
-- 为角色、权限和数据范围增加版本号与 ETS 缓存失效机制；角色和菜单写入会使策略版本递增。
-- 增加授权决策审计事件和拒绝原因指标；当前已发出 `[:keystone_phoenix, :authz, :decision]` Telemetry 事件，并写入脱敏授权操作日志。
-- 建立每个权限入口的五类契约测试：成功、未登录、无权限、参数错误、目标不存在或越界。
-- 增加 HTTP、LiveView、领域直调三条路径的越界回归测试，保证入口不同但决策一致。
+## 9. 一步到位实施计划
 
-## 当前切片与回滚
+1. 建立最终权限目录、角色权限和菜单能力关联。
+2. 将登录权限列表、菜单树、HTTP、LiveView 和 Domain 全部切换到规范化模型。
+3. 删除 sys_menu.permission 授权读取和所有旧回退逻辑。
+4. 删除只传 actor_id 的写入口。
+5. 启用版本化缓存、授权审计和拒绝原因指标。
+6. 执行迁移前数据检查、重复迁移、越权回归和三入口一致性测试。
 
-当前已完成统一决策 API、领域写入收口、资源所有者隔离、规范化权限读取、版本化策略缓存和授权审计观测：拥有 `system:user:edit` 等权限字符串的非管理员用户仍必须通过角色数据范围检查，成功刷新使用范围内列表；直接领域调用缺少权限、目标越界或资源所有者不匹配时会在写入/读取前拒绝。`Authz` 单元测试、规范化策略回归、缓存失效回归、审计脱敏回归、领域直调回归、LiveView 越界回归、资源路径回归、Telemetry 事件测试和 HTTP 集成授权测试均已通过。该切片增加权限目录表及其回填迁移，保留旧菜单策略兼容读取；回滚时优先回退策略适配层，不回退已经写入的业务数据和审计记录。
-
-每个迁移阶段单独提交和推送。策略存储迁移先读旧表再写新表，保留向后兼容读取；出现问题时回退策略读取适配层，不回退已经写入的业务数据和审计记录。
+本次迁移允许破坏性更新。执行前必须完成数据库备份、权限冲突检查和迁移演练；迁移失败时停止发布，不自动降级到旧授权模型。
