@@ -31,7 +31,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       |> Ecto.Changeset.put_change(:is_admin, true)
       |> Repo.insert!()
 
-    on_exit(&Config.refresh_cache/0)
+    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{is_admin: true}}) end)
 
     {:ok, user: user}
   end

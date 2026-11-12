@@ -24,7 +24,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   setup do
     ensure_captcha_config()
     Config.refresh_cache(authorization: %{principal: %{is_admin: true}})
-    on_exit(&Config.refresh_cache/0)
+    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{is_admin: true}}) end)
 
     {:ok, admin} =
       create_user(%{
