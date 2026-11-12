@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Notice do
   import Ecto.Query
 
   alias KeystonePhoenix.Audit
+  alias KeystonePhoenix.Authz.Command
   alias KeystonePhoenix.Notice.SysNotice
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Pagination
@@ -46,7 +47,13 @@ defmodule KeystonePhoenix.Notice do
     end
   end
 
-  def create_notice(attrs, actor_id \\ nil)
+  def create_notice(attrs, actor_or_options \\ nil)
+
+  def create_notice(attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Command.authorize(options, "system:notice:add") do
+      create_notice(attrs, Command.actor_id(options))
+    end
+  end
 
   def create_notice(attrs, actor_id) when is_map(attrs) do
     changeset = SysNotice.changeset(%SysNotice{}, normalize_attrs(attrs))
@@ -55,7 +62,13 @@ defmodule KeystonePhoenix.Notice do
 
   def create_notice(_attrs, _actor_id), do: {:error, invalid_changeset(:notice_title)}
 
-  def update_notice(id, attrs, actor_id \\ nil)
+  def update_notice(id, attrs, actor_or_options \\ nil)
+
+  def update_notice(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Command.authorize(options, "system:notice:edit") do
+      update_notice(id, attrs, Command.actor_id(options))
+    end
+  end
 
   def update_notice(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, notice} <- get_notice(id) do
@@ -66,7 +79,15 @@ defmodule KeystonePhoenix.Notice do
 
   def update_notice(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:notice_title)}
 
-  def delete_notices(ids) when is_list(ids) do
+  def delete_notices(ids, options \\ nil)
+
+  def delete_notices(ids, options) when is_list(options) do
+    with :ok <- Command.authorize(options, "system:notice:remove") do
+      delete_notices(ids)
+    end
+  end
+
+  def delete_notices(ids, _options) when is_list(ids) do
     ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
@@ -82,7 +103,7 @@ defmodule KeystonePhoenix.Notice do
     end
   end
 
-  def delete_notices(_ids), do: {:error, :invalid_ids}
+  def delete_notices(_ids, _options), do: {:error, :invalid_ids}
 
   def notice_to_map(notice) do
     notice_to_map(notice, %{})

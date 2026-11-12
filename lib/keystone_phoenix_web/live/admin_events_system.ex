@@ -179,8 +179,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
       result =
         if dict_id == "",
-          do: Dictionary.create_dict_type(params, current_user_id(socket)),
-          else: Dictionary.update_dict_type(dict_id, params, current_user_id(socket))
+          do: Dictionary.create_dict_type(params, authorization: self_authorization(socket)),
+          else:
+            Dictionary.update_dict_type(dict_id, params,
+              authorization: self_authorization(socket)
+            )
 
       case result do
         {:ok, _dict_type} ->
@@ -206,7 +209,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("delete-dict-type", %{"dict-id" => dict_id}, socket) do
     if Support.permission_socket?(socket, "system:dict:remove") do
-      case Dictionary.delete_dict_type(dict_id) do
+      case Dictionary.delete_dict_type(dict_id, authorization: self_authorization(socket)) do
         :ok ->
           dictionary = Support.load_dictionary("")
 
@@ -267,8 +270,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
       result =
         if dict_code == "",
-          do: Dictionary.create_dict_data(params, current_user_id(socket)),
-          else: Dictionary.update_dict_data(dict_code, params, current_user_id(socket))
+          do: Dictionary.create_dict_data(params, authorization: self_authorization(socket)),
+          else:
+            Dictionary.update_dict_data(dict_code, params,
+              authorization: self_authorization(socket)
+            )
 
       case result do
         {:ok, _dict_data} ->
@@ -293,7 +299,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("delete-dict-data", %{"dict-code" => dict_code}, socket) do
     if Support.permission_socket?(socket, "system:dict:remove") do
-      case Dictionary.delete_dict_data(dict_code) do
+      case Dictionary.delete_dict_data(dict_code, authorization: self_authorization(socket)) do
         :ok ->
           {:noreply,
            assign(socket,
@@ -378,9 +384,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
       result =
         if notice_id == "" do
-          Notice.create_notice(params, current_user_id(socket))
+          Notice.create_notice(params, authorization: self_authorization(socket))
         else
-          Notice.update_notice(notice_id, params, current_user_id(socket))
+          Notice.update_notice(notice_id, params, authorization: self_authorization(socket))
         end
 
       case result do
@@ -407,7 +413,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
         socket
       ) do
     if Support.permission_socket?(socket, "system:notice:edit") do
-      case Notice.update_notice(notice_id, %{"status" => status}, current_user_id(socket)) do
+      case Notice.update_notice(notice_id, %{"status" => status},
+             authorization: self_authorization(socket)
+           ) do
         {:ok, _notice} ->
           {:noreply,
            assign(socket, notice_rows: Support.load_notices(), notice_feedback: "公告状态已更新")}
@@ -425,7 +433,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("delete-notice", %{"notice-id" => notice_id}, socket) do
     if Support.permission_socket?(socket, "system:notice:remove") do
-      case Notice.delete_notices([notice_id]) do
+      case Notice.delete_notices([notice_id], authorization: self_authorization(socket)) do
         :ok ->
           {:noreply,
            assign(socket,
@@ -479,11 +487,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     else
       {:noreply, socket}
     end
-  end
-
-  defp current_user_id(socket) do
-    user = socket.assigns[:current_user] || %{}
-    Map.get(user, "userId") || Map.get(user, :user_id)
   end
 
   defp self_authorization(socket) do

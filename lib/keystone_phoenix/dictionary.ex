@@ -6,6 +6,7 @@ defmodule KeystonePhoenix.Dictionary do
   import Ecto.Query
 
   alias KeystonePhoenix.Audit
+  alias KeystonePhoenix.Authz.Command
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Dictionary.{DictData, DictType}
   alias KeystonePhoenix.Params
@@ -62,7 +63,13 @@ defmodule KeystonePhoenix.Dictionary do
   end
 
   @spec create_dict_type(map()) :: {:ok, DictType.t()} | {:error, Ecto.Changeset.t()}
-  def create_dict_type(attrs, actor_id \\ nil)
+  def create_dict_type(attrs, actor_or_options \\ nil)
+
+  def create_dict_type(attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Command.authorize(options, "system:dict:add") do
+      create_dict_type(attrs, Command.actor_id(options))
+    end
+  end
 
   def create_dict_type(attrs, actor_id) do
     changeset = DictType.changeset(%DictType{}, normalize_attrs(attrs, @dict_type_attrs))
@@ -71,7 +78,13 @@ defmodule KeystonePhoenix.Dictionary do
 
   @spec update_dict_type(integer() | String.t(), map()) ::
           {:ok, DictType.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def update_dict_type(id, attrs, actor_id \\ nil)
+  def update_dict_type(id, attrs, actor_or_options \\ nil)
+
+  def update_dict_type(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Command.authorize(options, "system:dict:edit") do
+      update_dict_type(id, attrs, Command.actor_id(options))
+    end
+  end
 
   def update_dict_type(id, attrs, actor_id) do
     with {:ok, dict_type} <- get_dict_type(id) do
@@ -114,7 +127,15 @@ defmodule KeystonePhoenix.Dictionary do
   end
 
   @spec delete_dict_type(integer() | String.t()) :: :ok | {:error, :not_found | :has_data}
-  def delete_dict_type(id) do
+  def delete_dict_type(id, options \\ nil)
+
+  def delete_dict_type(id, options) when is_list(options) do
+    with :ok <- Command.authorize(options, "system:dict:remove") do
+      delete_dict_type(id)
+    end
+  end
+
+  def delete_dict_type(id, _options) do
     with {:ok, dict_type} <- get_dict_type(id) do
       data_count =
         from(d in DictData,
@@ -138,7 +159,13 @@ defmodule KeystonePhoenix.Dictionary do
   end
 
   @spec create_dict_data(map()) :: {:ok, DictData.t()} | {:error, Ecto.Changeset.t()}
-  def create_dict_data(attrs, actor_id \\ nil)
+  def create_dict_data(attrs, actor_or_options \\ nil)
+
+  def create_dict_data(attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Command.authorize(options, "system:dict:add") do
+      create_dict_data(attrs, Command.actor_id(options))
+    end
+  end
 
   def create_dict_data(attrs, actor_id) do
     attrs = normalize_attrs(attrs, @dict_data_attrs)
@@ -160,7 +187,13 @@ defmodule KeystonePhoenix.Dictionary do
 
   @spec update_dict_data(integer() | String.t(), map()) ::
           {:ok, DictData.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def update_dict_data(id, attrs, actor_id \\ nil)
+  def update_dict_data(id, attrs, actor_or_options \\ nil)
+
+  def update_dict_data(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Command.authorize(options, "system:dict:edit") do
+      update_dict_data(id, attrs, Command.actor_id(options))
+    end
+  end
 
   def update_dict_data(id, attrs, actor_id) do
     with {:ok, dict_data} <- get_dict_data(id) do
@@ -185,7 +218,15 @@ defmodule KeystonePhoenix.Dictionary do
   end
 
   @spec delete_dict_data(integer() | String.t()) :: :ok | {:error, :not_found}
-  def delete_dict_data(id) do
+  def delete_dict_data(id, options \\ nil)
+
+  def delete_dict_data(id, options) when is_list(options) do
+    with :ok <- Command.authorize(options, "system:dict:remove") do
+      delete_dict_data(id)
+    end
+  end
+
+  def delete_dict_data(id, _options) do
     with {:ok, dict_data} <- get_dict_data(id) do
       case Repo.update(Ecto.Changeset.change(dict_data, deleted: true)) do
         {:ok, _deleted} ->
@@ -254,6 +295,12 @@ defmodule KeystonePhoenix.Dictionary do
   @doc "Clears all cached dictionary data values."
   @spec refresh_cache() :: :ok
   def refresh_cache, do: Cache.delete_prefix("keystone:dictionary:data:")
+
+  def refresh_cache(options) when is_list(options) do
+    with :ok <- Command.authorize(options, "system:dict:refresh") do
+      refresh_cache()
+    end
+  end
 
   defp page_query(query, params, count_field, mapper) do
     Pagination.page(query, params, count_field, mapper)

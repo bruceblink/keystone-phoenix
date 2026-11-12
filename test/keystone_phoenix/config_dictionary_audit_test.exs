@@ -119,5 +119,18 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
              )
   end
 
+  test "principal-aware dictionary and notice writes reject missing permissions" do
+    authorization = %{principal: %{user_id: 902, permissions: []}}
+
+    assert {:error, :permission_denied} =
+             Dictionary.create_dict_type(
+               %{"dictName" => "受保护字典", "dictType" => unique("protected.dict")},
+               authorization: authorization
+             )
+
+    assert {:error, :permission_denied} =
+             Notice.create_notice(%{"noticeTitle" => "受保护公告"}, authorization: authorization)
+  end
+
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 end
