@@ -267,9 +267,10 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     link_permission(role.role_id, first_menu, "system:user:list")
     {:ok, view, _html} = login_view(conn, user)
 
-    second_menu = create_menu(unique("system:profile:edit"))
+    second_permission = unique("system:profile:edit")
+    second_menu = create_menu(second_permission)
     Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: second_menu.menu_id})
-    link_permission(role.role_id, second_menu, second_menu.menu_name)
+    link_permission(role.role_id, second_menu, second_permission)
     {:ok, before} = User.get_user(user.user_id)
     html = render_submit(view, "save-profile", %{"nickname" => "不应保存"})
 
@@ -523,7 +524,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     })
   end
 
-  defp create_menu(permission) do
+  defp create_menu(_permission) do
     %SysMenu{}
     |> SysMenu.changeset(%{
       menu_name: unique("Live 认证菜单"),
