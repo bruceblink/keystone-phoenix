@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Permission do
   import Ecto.Query
 
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Authz.SysPermission
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
@@ -19,14 +20,15 @@ defmodule KeystonePhoenix.Permission do
 
     if positive_integer?(role_id) and permission != "" do
       Repo.exists?(
-        from menu in "sys_menu",
-          join: role_menu in "sys_role_menu",
-          on: role_menu.menu_id == menu.menu_id,
+        from role_permission in "sys_role_permission",
+          join: permission_entry in SysPermission,
+          on: permission_entry.permission_id == role_permission.permission_id,
           join: role in "sys_role",
-          on: role.role_id == role_menu.role_id,
+          on: role.role_id == role_permission.role_id,
           where:
-            role_menu.role_id == ^role_id and role.deleted == false and role.status == 1 and
-              menu.deleted == false and menu.status == 1 and menu.permission == ^permission
+            role_permission.role_id == ^role_id and role.deleted == false and role.status == 1 and
+              permission_entry.status == 1 and permission_entry.deprecated == false and
+              permission_entry.permission == ^permission
       )
     else
       false
@@ -49,14 +51,15 @@ defmodule KeystonePhoenix.Permission do
 
     if positive_integer?(role_id) and permission != "" do
       if Repo.exists?(
-           from menu in "sys_menu",
-             join: role_menu in "sys_role_menu",
-             on: role_menu.menu_id == menu.menu_id,
+           from role_permission in "sys_role_permission",
+             join: permission_entry in SysPermission,
+             on: permission_entry.permission_id == role_permission.permission_id,
              join: role in "sys_role",
-             on: role.role_id == role_menu.role_id,
+             on: role.role_id == role_permission.role_id,
              where:
-               role_menu.role_id == ^role_id and role.deleted == false and role.status == 1 and
-                 menu.deleted == false and menu.status == 1 and menu.permission == ^permission
+               role_permission.role_id == ^role_id and role.deleted == false and role.status == 1 and
+                 permission_entry.status == 1 and permission_entry.deprecated == false and
+                 permission_entry.permission == ^permission
          ),
          do: :allow,
          else: :deny

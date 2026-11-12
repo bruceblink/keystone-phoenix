@@ -65,15 +65,17 @@ defmodule KeystonePhoenix.Role do
 
   def list_roles_by_ids(_ids), do: []
 
-  def create_role(attrs, actor_or_options \\ nil)
+  def create_role(attrs, options)
 
   def create_role(attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize_write(options, "system:role:add", attrs) do
-      create_role(attrs, Authorization.actor_id(options))
+      do_create_role(attrs, Authorization.actor_id(options))
     end
   end
 
-  def create_role(attrs, actor_id) when is_map(attrs) do
+  def create_role(_attrs, _options), do: {:error, :authorization_required}
+
+  defp do_create_role(attrs, actor_id) when is_map(attrs) do
     menu_ids = menu_ids_from(attrs) || []
     attrs = normalize_attrs(attrs)
 
@@ -92,17 +94,17 @@ defmodule KeystonePhoenix.Role do
     |> invalidate_policy_cache()
   end
 
-  def create_role(_attrs, _actor_id), do: {:error, invalid_changeset(:role_name)}
-
-  def update_role(id, attrs, actor_or_options \\ nil)
+  def update_role(id, attrs, options)
 
   def update_role(id, attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize_write(options, "system:role:edit", attrs) do
-      update_role(id, attrs, Authorization.actor_id(options))
+      do_update_role(id, attrs, Authorization.actor_id(options))
     end
   end
 
-  def update_role(id, attrs, actor_id) when is_map(attrs) do
+  def update_role(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_update_role(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, role} <- get_role(id) do
       menu_ids = menu_ids_from(attrs)
       attrs = normalize_attrs(attrs)
@@ -123,17 +125,17 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
-  def update_role(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:role_name)}
-
-  def delete_role(id, actor_or_options \\ nil)
+  def delete_role(id, options)
 
   def delete_role(id, options) when is_list(options) do
     with :ok <- Authorization.authorize_write(options, "system:role:remove") do
-      delete_role(id, Authorization.actor_id(options))
+      do_delete_role(id, Authorization.actor_id(options))
     end
   end
 
-  def delete_role(id, actor_id) do
+  def delete_role(_id, _options), do: {:error, :authorization_required}
+
+  defp do_delete_role(id, actor_id) do
     with {:ok, role} <- get_role(id) do
       cond do
         role.role_key == "admin" ->
@@ -159,25 +161,25 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
-  def change_status(id, status, actor_or_options \\ nil)
+  def change_status(id, status, options)
 
   def change_status(id, status, options) when is_list(options) do
     update_role(id, %{"status" => status, "menuIds" => menu_ids_for_role(id)}, options)
   end
 
-  def change_status(id, status, actor_id) do
-    update_role(id, %{"status" => status, "menuIds" => menu_ids_for_role(id)}, actor_id)
-  end
+  def change_status(_id, _status, _options), do: {:error, :authorization_required}
 
-  def update_data_scope(id, attrs, actor_or_options \\ nil)
+  def update_data_scope(id, attrs, options)
 
   def update_data_scope(id, attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize_write(options, "system:role:permission", attrs) do
-      update_data_scope(id, attrs, Authorization.actor_id(options))
+      do_update_data_scope(id, attrs, Authorization.actor_id(options))
     end
   end
 
-  def update_data_scope(id, attrs, actor_id) when is_map(attrs) do
+  def update_data_scope(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_update_data_scope(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, role} <- get_role(id) do
       attrs = normalize_attrs(attrs)
 
@@ -188,8 +190,6 @@ defmodule KeystonePhoenix.Role do
       |> invalidate_policy_cache()
     end
   end
-
-  def update_data_scope(_id, _attrs, _actor_id), do: {:error, invalid_changeset(:data_scope)}
 
   def menu_ids_for_role(role_id) do
     from(rm in SysRoleMenu,
@@ -240,16 +240,18 @@ defmodule KeystonePhoenix.Role do
   def user_counts(_role_ids), do: %{}
 
   @doc "Assigns a batch of users to an enabled role."
-  def assign_users(role_id, user_ids, actor_or_options \\ nil)
+  def assign_users(role_id, user_ids, options)
 
   def assign_users(role_id, user_ids, options) when is_list(options) do
     with :ok <- Authorization.authorize_assignment(options, "system:role:edit"),
          {:ok, principal} <- Authorization.principal(options) do
-      assign_users(role_id, user_ids, principal)
+      do_assign_users(role_id, user_ids, principal)
     end
   end
 
-  def assign_users(role_id, user_ids, actor) do
+  def assign_users(_role_id, _user_ids, _options), do: {:error, :authorization_required}
+
+  defp do_assign_users(role_id, user_ids, actor) do
     with :ok <- assignment_allowed?(actor),
          {:ok, role} <- get_role(role_id),
          true <- role.status == 1,
@@ -264,16 +266,18 @@ defmodule KeystonePhoenix.Role do
   end
 
   @doc "Removes role assignments from a batch of users."
-  def unassign_users(user_ids, actor_or_options \\ nil)
+  def unassign_users(user_ids, options)
 
   def unassign_users(user_ids, options) when is_list(options) do
     with :ok <- Authorization.authorize_assignment(options, "system:role:edit"),
          {:ok, principal} <- Authorization.principal(options) do
-      unassign_users(user_ids, principal)
+      do_unassign_users(user_ids, principal)
     end
   end
 
-  def unassign_users(user_ids, actor) do
+  def unassign_users(_user_ids, _options), do: {:error, :authorization_required}
+
+  defp do_unassign_users(user_ids, actor) do
     with :ok <- assignment_allowed?(actor),
          {:ok, user_ids} <- normalize_user_ids(user_ids) do
       update_user_assignments(user_ids, nil)
@@ -450,9 +454,6 @@ defmodule KeystonePhoenix.Role do
   end
 
   defp parse_positive_integer(_value), do: nil
-
-  defp invalid_changeset(field),
-    do: Ecto.Changeset.add_error(Ecto.Changeset.change(%SysRole{}), field, "参数无效")
 
   defp invalidate_policy_cache({:ok, _value} = result) do
     PolicyCache.invalidate()

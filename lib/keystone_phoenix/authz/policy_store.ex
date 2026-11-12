@@ -83,11 +83,24 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
 
   @doc "Checks whether a role write may change permission metadata."
   def role_metadata_allowed?(principal, attrs),
-    do: Permission.role_metadata_allowed?(principal, attrs)
+    do:
+      admin?(principal) or
+        not has_any_key?(attrs, [
+          "menuIds",
+          "dataScope",
+          "deptIdSet",
+          :menu_ids,
+          :data_scope,
+          :dept_id_set
+        ]) or
+        allowed?(principal, "system:role:permission")
 
   @doc "Checks whether a menu write may change permission metadata."
   def menu_metadata_allowed?(principal, attrs),
-    do: Permission.menu_metadata_allowed?(principal, attrs)
+    do:
+      admin?(principal) or
+        not has_any_key?(attrs, ["permission", "permissionKey", :permission, :permission_key]) or
+        allowed?(principal, "system:menu:permission")
 
   @doc "Checks whether an actor may assign the requested role."
   def role_assignment_allowed?(principal, role_id),
@@ -101,6 +114,9 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
     do: Map.get(principal, :permissions, Map.get(principal, "permissions"))
 
   defp permission_snapshot(_principal), do: nil
+
+  defp has_any_key?(attrs, keys) when is_map(attrs), do: Enum.any?(keys, &Map.has_key?(attrs, &1))
+  defp has_any_key?(_attrs, _keys), do: false
 
   defp normalized_decision(role_id, permission) do
     with {:ok, role_id} <- Params.parse_positive_integer(role_id),
