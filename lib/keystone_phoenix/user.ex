@@ -16,6 +16,7 @@ defmodule KeystonePhoenix.User do
   alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role
+  alias KeystonePhoenix.User.Authorization
   alias KeystonePhoenix.User.SysUser
 
   @empty_relation_names %{departments: %{}, posts: %{}, roles: %{}, users: %{}}
@@ -101,7 +102,13 @@ defmodule KeystonePhoenix.User do
 
   @doc "Creates a local user and stores only a bcrypt password hash."
   @spec create_user(map()) :: {:ok, SysUser.t()} | {:error, Ecto.Changeset.t()}
-  def create_user(attrs, actor_id \\ nil)
+  def create_user(attrs, actor_or_options \\ nil)
+
+  def create_user(attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize_create(attrs, options) do
+      create_user(attrs, Authorization.actor_id(options))
+    end
+  end
 
   def create_user(attrs, actor_id) when is_map(attrs) do
     attrs = normalize_attrs(attrs)
@@ -119,7 +126,13 @@ defmodule KeystonePhoenix.User do
   @doc "Updates editable user fields and revokes a disabled user's session."
   @spec update_user(integer() | String.t(), map()) ::
           {:ok, SysUser.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def update_user(id, attrs, actor_id \\ nil)
+  def update_user(id, attrs, actor_or_options \\ nil)
+
+  def update_user(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize_update(id, attrs, options) do
+      update_user(id, attrs, Authorization.actor_id(options))
+    end
+  end
 
   def update_user(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, user} <- get_user(id) do
@@ -149,6 +162,12 @@ defmodule KeystonePhoenix.User do
 
   @doc "Soft deletes users and prevents deleting the current or an administrator account."
   @spec delete_users(list(), integer() | String.t()) :: :ok | {:error, atom()}
+  def delete_users(ids, options) when is_list(ids) and is_list(options) do
+    with :ok <- Authorization.authorize_delete(ids, options) do
+      delete_users(ids, Authorization.actor_id(options))
+    end
+  end
+
   def delete_users(ids, actor_id) when is_list(ids) do
     ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
     actor_id = parse_positive_integer(actor_id)
@@ -168,7 +187,13 @@ defmodule KeystonePhoenix.User do
   @doc "Replaces a user's password and invalidates the active refresh session."
   @spec reset_password(integer() | String.t(), map()) ::
           {:ok, SysUser.t()} | {:error, :not_found | :unavailable | Ecto.Changeset.t()}
-  def reset_password(id, attrs, actor_id \\ nil)
+  def reset_password(id, attrs, actor_or_options \\ nil)
+
+  def reset_password(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize_target(id, options, "system:user:resetPwd") do
+      reset_password(id, attrs, Authorization.actor_id(options))
+    end
+  end
 
   def reset_password(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, user_id} <- Params.parse_positive_integer(id) do
@@ -191,7 +216,13 @@ defmodule KeystonePhoenix.User do
   @doc "Changes a user's enabled status and invalidates disabled sessions."
   @spec change_status(integer() | String.t(), term()) ::
           {:ok, SysUser.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def change_status(id, status, actor_id \\ nil) do
+  def change_status(id, status, actor_or_options \\ nil)
+
+  def change_status(id, status, options) when is_list(options) do
+    update_user(id, %{"status" => status}, options)
+  end
+
+  def change_status(id, status, actor_id) do
     update_user(id, %{"status" => status}, actor_id)
   end
 

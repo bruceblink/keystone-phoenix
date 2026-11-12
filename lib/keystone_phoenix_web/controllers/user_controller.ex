@@ -104,7 +104,12 @@ defmodule KeystonePhoenixWeb.UserController do
   @doc "Creates a local user."
   def create(conn, params) do
     if Authz.role_assignment_allowed?(conn.assigns.current_user, role_id_param(params)) do
-      case User.create_user(params, conn.assigns.current_user.user_id) do
+      case User.create_user(params,
+             authorization: %{
+               principal: conn.assigns.current_user,
+               permission: "system:user:add"
+             }
+           ) do
         {:ok, _user} -> conn |> put_status(:created) |> json(ApiResponse.ok())
         {:error, changeset} -> render_error(conn, changeset)
       end
@@ -116,7 +121,12 @@ defmodule KeystonePhoenixWeb.UserController do
   @doc "Updates editable fields for a local user."
   def update(conn, %{"user_id" => user_id} = params) do
     if Authz.role_assignment_allowed?(conn.assigns.current_user, role_id_param(params)) do
-      case User.update_user(user_id, params, conn.assigns.current_user.user_id) do
+      case User.update_user(user_id, params,
+             authorization: %{
+               principal: conn.assigns.current_user,
+               permission: "system:user:edit"
+             }
+           ) do
         {:ok, _user} -> json(conn, ApiResponse.ok())
         {:error, :not_found} -> render_error(conn, :not_found)
         {:error, changeset} -> render_error(conn, changeset)
@@ -128,7 +138,12 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Soft deletes one or more local users."
   def delete(conn, %{"user_ids" => user_ids}) do
-    case User.delete_users(String.split(user_ids, ","), conn.assigns.current_user.user_id) do
+    case User.delete_users(String.split(user_ids, ","),
+           authorization: %{
+             principal: conn.assigns.current_user,
+             permission: "system:user:remove"
+           }
+         ) do
       :ok -> json(conn, ApiResponse.ok())
       {:error, :invalid_ids} -> render_error(conn, :invalid_ids)
       {:error, :not_found} -> render_error(conn, :not_found)
@@ -139,7 +154,12 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Replaces a user's password."
   def reset_password(conn, %{"user_id" => user_id} = params) do
-    case User.reset_password(user_id, params, conn.assigns.current_user.user_id) do
+    case User.reset_password(user_id, params,
+           authorization: %{
+             principal: conn.assigns.current_user,
+             permission: "system:user:resetPwd"
+           }
+         ) do
       {:ok, _user} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, :unavailable} -> render_error(conn, :unavailable)
@@ -149,7 +169,12 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Enables or disables a local user."
   def change_status(conn, %{"user_id" => user_id, "status" => status}) do
-    case User.change_status(user_id, status, conn.assigns.current_user.user_id) do
+    case User.change_status(user_id, status,
+           authorization: %{
+             principal: conn.assigns.current_user,
+             permission: "system:user:edit"
+           }
+         ) do
       {:ok, _user} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
@@ -257,7 +282,12 @@ defmodule KeystonePhoenixWeb.UserController do
 
         case import_authorized?(record, actor) do
           :ok ->
-            case User.create_user(record, current_user_id(actor)) do
+            case User.create_user(record,
+                   authorization: %{
+                     principal: actor,
+                     permission: "system:user:import"
+                   }
+                 ) do
               {:ok, _user} -> {success + 1, failed}
               {:error, reason} -> {success, [import_failure(row_number, record, reason) | failed]}
             end
@@ -288,8 +318,6 @@ defmodule KeystonePhoenixWeb.UserController do
         :ok
     end
   end
-
-  defp current_user_id(actor), do: Map.get(actor, :user_id, Map.get(actor, "userId"))
 
   defp role_id_param(params), do: Map.get(params, "roleId", Map.get(params, :role_id))
 

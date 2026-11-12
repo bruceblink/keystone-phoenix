@@ -70,7 +70,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
                 :dept,
                 params["deptId"]
               ) ->
-            User.create_user(params, socket.assigns.current_user["userId"])
+            User.create_user(params,
+              authorization: authorization(socket, "system:user:add")
+            )
 
           user_id != "" and
               Authz.scope_allowed?(
@@ -79,7 +81,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
                 user_id,
                 %{attrs: params}
               ) ->
-            User.update_user(user_id, params, socket.assigns.current_user["userId"])
+            User.update_user(user_id, params,
+              authorization: authorization(socket, "system:user:edit")
+            )
 
           true ->
             {:error, :data_scope_denied}
@@ -111,7 +115,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     if Support.permission_socket?(socket, "system:user:edit") do
       result =
         if Authz.scope_allowed?(socket.assigns.current_user, :user, user_id) do
-          User.change_status(user_id, status, socket.assigns.current_user["userId"])
+          User.change_status(user_id, status,
+            authorization: authorization(socket, "system:user:edit")
+          )
         else
           {:error, :data_scope_denied}
         end
@@ -142,7 +148,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   def handle_event("delete-user", %{"user-id" => user_id}, socket) do
     if Support.permission_socket?(socket, "system:user:remove") do
       case if(Authz.scope_allowed?(socket.assigns.current_user, :users, [user_id]),
-             do: User.delete_users([user_id], socket.assigns.current_user["userId"]),
+             do:
+               User.delete_users([user_id],
+                 authorization: authorization(socket, "system:user:remove")
+               ),
              else: {:error, :data_scope_denied}
            ) do
         :ok ->
@@ -173,10 +182,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
       result =
         if Authz.scope_allowed?(socket.assigns.current_user, :user, user_id) do
-          User.reset_password(
-            user_id,
-            %{"password" => password},
-            socket.assigns.current_user["userId"]
+          User.reset_password(user_id, %{"password" => password},
+            authorization: authorization(socket, "system:user:resetPwd")
           )
         else
           {:error, :data_scope_denied}
@@ -324,5 +331,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     else
       {:noreply, socket}
     end
+  end
+
+  defp authorization(socket, permission) do
+    principal =
+      Map.put(
+        socket.assigns.current_user,
+        :permissions,
+        List.wrap(socket.assigns[:permissions])
+      )
+
+    %{principal: principal, permission: permission}
   end
 end

@@ -83,5 +83,29 @@ defmodule KeystonePhoenix.UserContractTest do
     assert {:error, :not_found} = User.reset_password("invalid", %{"password" => "Strong!123"})
   end
 
+  test "principal-aware user writes reject missing permissions before updating" do
+    user =
+      %SysUser{}
+      |> SysUser.create_changeset(%{
+        username: unique("protected_user"),
+        password: "Strong!123",
+        nickname: "原始昵称",
+        status: 1
+      })
+      |> Repo.insert!()
+
+    authorization = %{
+      principal: %{user_id: 9001, permissions: []},
+      permission: "system:user:edit"
+    }
+
+    assert {:error, :permission_denied} =
+             User.update_user(user.user_id, %{"nickname" => "不应写入"},
+               authorization: authorization
+             )
+
+    assert Repo.get!(SysUser, user.user_id).nickname == "原始昵称"
+  end
+
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 end
