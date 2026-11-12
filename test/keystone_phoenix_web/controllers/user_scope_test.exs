@@ -2,6 +2,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
   alias KeystonePhoenix.{Auth, Excel, Permission, Repo, User}
+  alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
@@ -32,11 +33,22 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
           menu_name: permission,
           menu_type: 0,
           parent_id: 0,
-          permission: permission,
           status: 1
         })
         |> Repo.insert!()
 
+      entry =
+        Repo.get_by(SysPermission, permission: permission) ||
+          Repo.insert!(%SysPermission{
+            permission: permission,
+            resource: "system",
+            domain: permission |> String.split(":") |> Enum.at(1),
+            action: permission |> String.split(":") |> List.last(),
+            status: 1,
+            deprecated: false
+          })
+
+      Repo.insert!(%SysRolePermission{role_id: role.role_id, permission_id: entry.permission_id})
       Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: menu.menu_id})
     end
 

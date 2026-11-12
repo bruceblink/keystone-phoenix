@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
   import Phoenix.LiveViewTest
 
   alias KeystonePhoenix.Config
+  alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Config.SysConfig
   alias KeystonePhoenix.Dictionary.DictData
   alias KeystonePhoenix.Dictionary.DictType
@@ -254,6 +255,23 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
       |> Repo.insert!()
 
     Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: menu.menu_id})
+
+    permission_entry =
+      Repo.get_by(SysPermission, permission: permission) ||
+        Repo.insert!(%SysPermission{
+          permission: permission,
+          resource: "system",
+          domain: permission |> String.split(":") |> Enum.at(1),
+          action: permission |> String.split(":") |> List.last(),
+          status: 1,
+          deprecated: false
+        })
+
+    Repo.insert!(%SysRolePermission{
+      role_id: role.role_id,
+      permission_id: permission_entry.permission_id
+    })
+
     role
   end
 

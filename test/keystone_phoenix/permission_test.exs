@@ -2,6 +2,7 @@ defmodule KeystonePhoenix.PermissionTest do
   use KeystonePhoenix.DataCase, async: false
 
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Repo
@@ -23,6 +24,7 @@ defmodule KeystonePhoenix.PermissionTest do
       |> Repo.insert!()
 
     Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: menu.menu_id})
+    insert_permission(role.role_id, "system:user:list")
     user = %{user_id: 10, role_id: role.role_id, is_admin: false}
 
     assert Permission.allowed?(user, "system:user:list")
@@ -98,6 +100,7 @@ defmodule KeystonePhoenix.PermissionTest do
       |> Repo.insert!()
 
     Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: permission_menu.menu_id})
+    insert_permission(role.role_id, "system:role:permission")
     assert Permission.role_metadata_allowed?(user, %{"menuIds" => "1"})
   end
 
@@ -140,4 +143,19 @@ defmodule KeystonePhoenix.PermissionTest do
   end
 
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
+
+  defp insert_permission(role_id, permission) do
+    entry =
+      Repo.get_by(SysPermission, permission: permission) ||
+        Repo.insert!(%SysPermission{
+          permission: permission,
+          resource: "system",
+          domain: permission |> String.split(":") |> Enum.at(1),
+          action: permission |> String.split(":") |> List.last(),
+          status: 1,
+          deprecated: false
+        })
+
+    Repo.insert!(%SysRolePermission{role_id: role_id, permission_id: entry.permission_id})
+  end
 end

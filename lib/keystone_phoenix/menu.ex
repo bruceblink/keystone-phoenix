@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Menu do
   import Ecto.Query
 
   alias KeystonePhoenix.Audit
+  alias KeystonePhoenix.Authz.SysPermission
   alias KeystonePhoenix.Authz.PolicyCache
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Params
@@ -65,11 +66,15 @@ defmodule KeystonePhoenix.Menu do
          :ok <- validate_menu_rules(attrs, parent_id, nil) do
       attrs = Map.put(attrs, :parent_id, parent_id)
 
-      attrs
-      |> then(&SysMenu.changeset(%SysMenu{}, &1))
-      |> Audit.put_actor(:creator_id, actor_id)
-      |> Repo.insert()
-      |> invalidate_policy_cache()
+      with {:ok, permission_id} <- permission_id(attrs[:permission]) do
+        attrs
+        |> Map.delete(:permission)
+        |> then(&SysMenu.changeset(%SysMenu{}, &1))
+        |> Audit.put_actor(:creator_id, actor_id)
+        |> Repo.insert()
+        |> persist_menu_permission(permission_id)
+        |> invalidate_policy_cache()
+      end
     end
   end
 
@@ -87,11 +92,15 @@ defmodule KeystonePhoenix.Menu do
              :ok <-
                ensure_name_available(attrs[:menu_name] || menu.menu_name, parent_id, menu.menu_id),
              :ok <- validate_menu_rules(attrs, parent_id, menu) do
-          menu
-          |> SysMenu.changeset(Map.put(attrs, :parent_id, parent_id))
-          |> Audit.put_actor(:updater_id, actor_id)
-          |> Repo.update()
-          |> invalidate_policy_cache()
+          with {:ok, permission_id} <-
+                 permission_id(Map.get(attrs, :permission, permission_for_menu(menu.menu_id))) do
+            menu
+            |> SysMenu.changeset(Map.put(attrs, :parent_id, parent_id) |> Map.delete(:permission))
+            |> Audit.put_actor(:updater_id, actor_id)
+            |> Repo.update()
+            |> persist_menu_permission(permission_id)
+            |> invalidate_policy_cache()
+          end
         end
       end
     end
@@ -150,10 +159,20 @@ defmodule KeystonePhoenix.Menu do
   def permissions_for_user(%{"isAdmin" => 1}), do: ["*:*:*"]
 
   def permissions_for_user(user) do
-    menus_for_user(user)
-    |> Enum.map(&Map.get(&1, "permission"))
-    |> Enum.filter(&(is_binary(&1) and String.trim(&1) != ""))
-    |> Enum.uniq()
+    role_id = Map.get(user, :role_id, Map.get(user, "roleId"))
+
+    from(role_permission in "sys_role_permission",
+      join: permission in SysPermission,
+      on: permission.permission_id == role_permission.permission_id,
+      join: role in "sys_role",
+      on: role.role_id == role_permission.role_id,
+      where:
+        role_permission.role_id == ^role_id and role.deleted == false and role.status == 1 and
+          permission.status == 1 and permission.deprecated == false,
+      select: permission.permission,
+      order_by: permission.permission
+    )
+    |> Repo.all()
   end
 
   @doc "Builds the authenticated user's router tree."
@@ -177,7 +196,7 @@ defmodule KeystonePhoenix.Menu do
       "parentId" => menu.parent_id,
       "path" => menu.path,
       "isButton" => menu.is_button,
-      "permission" => menu.permission,
+      "permission" => permission_for_menu(menu.menu_id),
       "meta" => meta,
       "rank" => Map.get(meta, "rank"),
       "icon" => Map.get(meta, "icon"),
@@ -187,6 +206,50 @@ defmodule KeystonePhoenix.Menu do
       "createTime" => format_datetime(menu.create_time)
     }
   end
+
+  defp permission_id(nil), do: {:ok, nil}
+
+  defp permission_id(permission) when is_binary(permission) do
+    case Repo.get_by(SysPermission,
+           permission: String.trim(permission),
+           status: 1,
+           deprecated: false
+         ) do
+      nil -> {:error, :permission_not_found}
+      entry -> {:ok, entry.permission_id}
+    end
+  end
+
+  defp permission_id(_permission), do: {:error, :permission_not_found}
+
+  defp permission_for_menu(menu_id) do
+    Repo.one(
+      from menu_permission in "sys_menu_permission",
+        join: permission in SysPermission,
+        on: permission.permission_id == menu_permission.permission_id,
+        where: menu_permission.menu_id == ^menu_id and permission.status == 1,
+        select: permission.permission
+    )
+  end
+
+  defp persist_menu_permission({:ok, menu}, nil) do
+    Repo.delete_all(from link in "sys_menu_permission", where: link.menu_id == ^menu.menu_id)
+    {:ok, menu}
+  end
+
+  defp persist_menu_permission({:ok, menu}, permission_id) do
+    Repo.delete_all(from link in "sys_menu_permission", where: link.menu_id == ^menu.menu_id)
+
+    Repo.insert_all(
+      "sys_menu_permission",
+      [%{menu_id: menu.menu_id, permission_id: permission_id}],
+      on_conflict: :nothing
+    )
+
+    {:ok, menu}
+  end
+
+  defp persist_menu_permission(error, _permission_id), do: error
 
   defp normalize_attrs(attrs) do
     attrs =

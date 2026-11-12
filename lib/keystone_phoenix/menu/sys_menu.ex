@@ -14,7 +14,6 @@ defmodule KeystonePhoenix.Menu.SysMenu do
     field :parent_id, :integer, default: 0
     field :path, :string
     field :is_button, :boolean, default: false
-    field :permission, :string
     field :meta_info, :string, default: "{}"
     field :status, :integer, default: 1
     field :remark, :string, default: ""
@@ -34,7 +33,6 @@ defmodule KeystonePhoenix.Menu.SysMenu do
       :parent_id,
       :path,
       :is_button,
-      :permission,
       :meta_info,
       :status,
       :remark
@@ -43,7 +41,6 @@ defmodule KeystonePhoenix.Menu.SysMenu do
     |> validate_length(:menu_name, max: 64)
     |> validate_length(:router_name, max: 255)
     |> validate_length(:path, max: 255)
-    |> validate_length(:permission, max: 128)
     |> validate_length(:meta_info, max: 1024)
     |> validate_length(:remark, max: 256)
     |> validate_inclusion(:menu_type, [0, 1, 2, 3, 4])

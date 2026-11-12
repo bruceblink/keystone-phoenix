@@ -2,6 +2,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Authz.{SysMenuPermission, SysPermission, SysRolePermission}
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Repo
@@ -284,13 +285,25 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
         menu_name: permission,
         menu_type: 0,
         parent_id: 0,
-        permission: permission,
         status: 1
       })
       |> Repo.insert!()
 
+    entry =
+      Repo.get_by(SysPermission, permission: permission) ||
+        Repo.insert!(%SysPermission{
+          permission: permission,
+          resource: "system",
+          domain: permission |> String.split(":") |> Enum.at(1),
+          action: permission |> String.split(":") |> List.last(),
+          status: 1,
+          deprecated: false
+        })
+
+    Repo.insert!(%SysMenuPermission{menu_id: menu.menu_id, permission_id: entry.permission_id})
+    Repo.insert!(%SysRolePermission{role_id: role_id, permission_id: entry.permission_id})
     Repo.insert!(%SysRoleMenu{role_id: role_id, menu_id: menu.menu_id})
-    menu
+    Map.put(menu, :permission, permission)
   end
 
   defp insert_user(role_id) do
