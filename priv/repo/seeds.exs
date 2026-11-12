@@ -3,6 +3,7 @@ if Mix.env() == :prod and System.get_env("ALLOW_PROD_SEEDS") not in ["true", "1"
 end
 
 alias KeystonePhoenix.Repo
+alias KeystonePhoenix.Authz.PermissionCatalog
 alias KeystonePhoenix.Authz.SysPermission
 
 import Ecto.Query
@@ -308,25 +309,12 @@ if Repo.aggregate(KeystonePhoenix.Role.SysRoleMenu, :count, :role_id) == 0 do
 end
 
 permission_entries =
-  menu_entries
-  |> Enum.map(&Map.get(&1, :permission, ""))
-  |> Enum.filter(&(is_binary(&1) and String.trim(&1) != ""))
-  |> Enum.uniq()
-  |> Enum.map(fn permission ->
-    [resource, domain, action] = String.split(permission, ":", parts: 3)
-
-    %{
-      permission: permission,
-      resource: resource,
-      domain: domain,
-      action: action,
-      description: "",
-      risk: if(action in ["remove", "resetPwd", "forceLogout"], do: "high", else: "low"),
-      deprecated: false,
-      status: 1,
-      create_time: now,
-      update_time: now
-    }
+  PermissionCatalog.entries()
+  |> Enum.map(fn entry ->
+    entry
+    |> Map.take([:permission, :resource, :domain, :action, :description, :risk, :deprecated])
+    |> Map.put(:risk, Atom.to_string(entry.risk))
+    |> Map.merge(%{status: 1, create_time: now, update_time: now})
   end)
 
 Repo.insert_all("sys_permission", permission_entries,

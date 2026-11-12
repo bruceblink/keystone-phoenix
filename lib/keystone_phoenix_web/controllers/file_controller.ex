@@ -1,14 +1,21 @@
 defmodule KeystonePhoenixWeb.FileController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+    permissions: %{
+      upload: "system:file:upload",
+      uploads: "system:file:upload",
+      download: "system:file:download"
+    }
 
   alias KeystonePhoenix.Upload
   alias KeystonePhoenixWeb.ApiResponse
 
   @doc "Uploads one generic file."
   def upload(conn, %{"file" => %Plug.Upload{} = file}) do
-    case Upload.store_file(file, conn.assigns.current_user.user_id) do
+    case Upload.store_file(file, conn.assigns.current_user.user_id,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
       {:ok, upload} -> json(conn, ApiResponse.ok(upload))
       {:error, reason} -> render_error(conn, reason)
     end
@@ -18,7 +25,9 @@ defmodule KeystonePhoenixWeb.FileController do
 
   @doc "Uploads multiple generic files."
   def uploads(conn, %{"files" => files}) when is_list(files) do
-    case Upload.store_files(files, conn.assigns.current_user.user_id) do
+    case Upload.store_files(files, conn.assigns.current_user.user_id,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
       {:ok, uploads} -> json(conn, ApiResponse.ok(uploads))
       {:error, reason} -> render_error(conn, reason)
     end

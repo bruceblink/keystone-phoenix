@@ -47,7 +47,9 @@ defmodule KeystonePhoenix.UploadTest do
     path = temporary_file("report.txt", "hello")
     upload = %Plug.Upload{path: path, filename: "report.txt", content_type: "text/plain"}
 
-    assert {:ok, %{"url" => url, "newFileName" => filename}} = Upload.store_file(upload, 42)
+    assert {:ok, %{"url" => url, "newFileName" => filename}} =
+             Upload.store_file(upload, 42, auth_options())
+
     assert url == "/profile/upload/42/" <> filename
 
     assert {:error, :invalid_file_name} = Upload.resolve_download_path("../secret.txt")
@@ -72,7 +74,7 @@ defmodule KeystonePhoenix.UploadTest do
       %Plug.Upload{path: second, filename: "second.pdf", content_type: "application/pdf"}
     ]
 
-    assert {:ok, stored} = Upload.store_files(uploads)
+    assert {:ok, stored} = Upload.store_files(uploads, nil, auth_options())
     assert length(stored) == 2
     File.rm!(first)
     File.rm!(second)
@@ -87,7 +89,7 @@ defmodule KeystonePhoenix.UploadTest do
       %Plug.Upload{path: invalid, filename: "invalid.sh", content_type: "text/plain"}
     ]
 
-    assert {:error, :type_not_allowed} = Upload.store_files(uploads)
+    assert {:error, :type_not_allowed} = Upload.store_files(uploads, nil, auth_options())
 
     assert [] ==
              Path.wildcard(
@@ -107,7 +109,7 @@ defmodule KeystonePhoenix.UploadTest do
       %Plug.Upload{path: invalid, filename: "invalid.sh", content_type: "text/plain"}
     ]
 
-    assert {:error, :type_not_allowed} = Upload.store_files(uploads, 42)
+    assert {:error, :type_not_allowed} = Upload.store_files(uploads, 42, auth_options())
 
     assert [] ==
              Path.wildcard(
@@ -134,7 +136,7 @@ defmodule KeystonePhoenix.UploadTest do
         %Plug.Upload{path: path, filename: Path.basename(path), content_type: "text/plain"}
       end)
 
-    assert {:error, :batch_too_large} = Upload.store_files(uploads)
+    assert {:error, :batch_too_large} = Upload.store_files(uploads, nil, auth_options())
     Enum.each(paths, &File.rm!/1)
   end
 
@@ -148,4 +150,6 @@ defmodule KeystonePhoenix.UploadTest do
     File.write!(path, content)
     path
   end
+
+  defp auth_options, do: [authorization: %{principal: %{is_admin: true}}]
 end

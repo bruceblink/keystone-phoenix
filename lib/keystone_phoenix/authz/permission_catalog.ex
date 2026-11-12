@@ -35,6 +35,8 @@ defmodule KeystonePhoenix.Authz.PermissionCatalog do
     system:dict:query
     system:dict:refresh
     system:dict:remove
+    system:file:download
+    system:file:upload
     system:job:add
     system:job:changeStatus
     system:job:edit
