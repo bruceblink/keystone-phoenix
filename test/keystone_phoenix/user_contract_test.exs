@@ -61,15 +61,21 @@ defmodule KeystonePhoenix.UserContractTest do
 
   test "normalizes empty relation identifiers and ignores invalid integer filters" do
     assert {:ok, user} =
-             User.create_user(%{
-               "username" => unique("normalized_user"),
-               "password" => "Strong!123",
-               "nickname" => "参数用户",
-               "deptId" => "0",
-               "postId" => "",
-               "roleId" => "0",
-               "status" => "1"
-             })
+             User.create_user(
+               %{
+                 "username" => unique("normalized_user"),
+                 "password" => "Strong!123",
+                 "nickname" => "参数用户",
+                 "deptId" => "0",
+                 "postId" => "",
+                 "roleId" => "0",
+                 "status" => "1"
+               },
+               authorization: %{
+                 principal: %{is_admin: true},
+                 permission: "system:user:add"
+               }
+             )
 
     assert is_nil(user.dept_id)
     assert is_nil(user.post_id)
@@ -80,7 +86,14 @@ defmodule KeystonePhoenix.UserContractTest do
 
     assert %{rows: [_row], total: 1} = User.list_users(%{"userId" => "invalid"})
     assert {:error, :not_found} = User.get_user("0")
-    assert {:error, :not_found} = User.reset_password("invalid", %{"password" => "Strong!123"})
+
+    assert {:error, :data_scope_denied} =
+             User.reset_password("invalid", %{"password" => "Strong!123"},
+               authorization: %{
+                 principal: %{is_admin: true},
+                 permission: "system:user:resetPwd"
+               }
+             )
   end
 
   test "principal-aware user writes reject missing permissions before updating" do

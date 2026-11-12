@@ -15,7 +15,8 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
       user_id: actor.user_id,
       role_id: actor.role_id,
       dept_id: actor.dept_id,
-      is_admin: false
+      is_admin: false,
+      permissions: ["system:user:edit"]
     }
 
     assert {:error, :data_scope_denied} =

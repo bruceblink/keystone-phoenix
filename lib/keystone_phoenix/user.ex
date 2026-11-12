@@ -101,16 +101,18 @@ defmodule KeystonePhoenix.User do
   def get_user_by_username(_username), do: {:error, :not_found}
 
   @doc "Creates a local user and stores only a bcrypt password hash."
-  @spec create_user(map()) :: {:ok, SysUser.t()} | {:error, Ecto.Changeset.t()}
-  def create_user(attrs, actor_or_options \\ nil)
+  @spec create_user(map(), keyword()) :: {:ok, SysUser.t()} | {:error, term()}
+  def create_user(attrs, options)
 
   def create_user(attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize_create(attrs, options) do
-      create_user(attrs, Authorization.actor_id(options))
+      do_create_user(attrs, Authorization.actor_id(options))
     end
   end
 
-  def create_user(attrs, actor_id) when is_map(attrs) do
+  def create_user(_attrs, _options), do: {:error, :authorization_required}
+
+  defp do_create_user(attrs, actor_id) when is_map(attrs) do
     attrs = normalize_attrs(attrs)
 
     with :ok <- validate_relations(attrs) do
@@ -121,20 +123,20 @@ defmodule KeystonePhoenix.User do
     end
   end
 
-  def create_user(_attrs, _actor_id), do: {:error, invalid_changeset(%SysUser{}, :username)}
-
   @doc "Updates editable user fields and revokes a disabled user's session."
-  @spec update_user(integer() | String.t(), map()) ::
+  @spec update_user(integer() | String.t(), map(), keyword()) ::
           {:ok, SysUser.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def update_user(id, attrs, actor_or_options \\ nil)
+  def update_user(id, attrs, options)
 
   def update_user(id, attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize_update(id, attrs, options) do
-      update_user(id, attrs, Authorization.actor_id(options))
+      do_update_user(id, attrs, Authorization.actor_id(options))
     end
   end
 
-  def update_user(id, attrs, actor_id) when is_map(attrs) do
+  def update_user(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_update_user(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, user} <- get_user(id) do
       attrs = normalize_attrs(attrs)
 
@@ -144,8 +146,6 @@ defmodule KeystonePhoenix.User do
       end
     end
   end
-
-  def update_user(_id, _attrs, _actor_id), do: {:error, invalid_changeset(%SysUser{}, :username)}
 
   defp update_user_record(user, attrs, actor_id) do
     changeset = SysUser.update_changeset(user, attrs) |> Audit.put_actor(:updater_id, actor_id)
@@ -161,14 +161,16 @@ defmodule KeystonePhoenix.User do
   end
 
   @doc "Soft deletes users and prevents deleting the current or an administrator account."
-  @spec delete_users(list(), integer() | String.t()) :: :ok | {:error, atom()}
+  @spec delete_users(list(), keyword()) :: :ok | {:error, atom()}
   def delete_users(ids, options) when is_list(ids) and is_list(options) do
     with :ok <- Authorization.authorize_delete(ids, options) do
-      delete_users(ids, Authorization.actor_id(options))
+      do_delete_users(ids, Authorization.actor_id(options))
     end
   end
 
-  def delete_users(ids, actor_id) when is_list(ids) do
+  def delete_users(_ids, _options), do: {:error, :authorization_required}
+
+  defp do_delete_users(ids, actor_id) when is_list(ids) do
     ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
     actor_id = parse_positive_integer(actor_id)
 
@@ -182,20 +184,20 @@ defmodule KeystonePhoenix.User do
     end
   end
 
-  def delete_users(_ids, _actor_id), do: {:error, :invalid_ids}
-
   @doc "Replaces a user's password and invalidates the active refresh session."
-  @spec reset_password(integer() | String.t(), map()) ::
+  @spec reset_password(integer() | String.t(), map(), keyword()) ::
           {:ok, SysUser.t()} | {:error, :not_found | :unavailable | Ecto.Changeset.t()}
-  def reset_password(id, attrs, actor_or_options \\ nil)
+  def reset_password(id, attrs, options)
 
   def reset_password(id, attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize_target(id, options, "system:user:resetPwd") do
-      reset_password(id, attrs, Authorization.actor_id(options))
+      do_reset_password(id, attrs, Authorization.actor_id(options))
     end
   end
 
-  def reset_password(id, attrs, actor_id) when is_map(attrs) do
+  def reset_password(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_reset_password(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, user_id} <- Params.parse_positive_integer(id) do
       Session.update_account_and_revoke(user_id, fn ->
         with {:ok, user} <- get_user(user_id) do
@@ -210,21 +212,16 @@ defmodule KeystonePhoenix.User do
     end
   end
 
-  def reset_password(_id, _attrs, _actor_id),
-    do: {:error, invalid_changeset(%SysUser{}, :password)}
-
   @doc "Changes a user's enabled status and invalidates disabled sessions."
-  @spec change_status(integer() | String.t(), term()) ::
+  @spec change_status(integer() | String.t(), term(), keyword()) ::
           {:ok, SysUser.t()} | {:error, :not_found | Ecto.Changeset.t()}
-  def change_status(id, status, actor_or_options \\ nil)
+  def change_status(id, status, options)
 
   def change_status(id, status, options) when is_list(options) do
     update_user(id, %{"status" => status}, options)
   end
 
-  def change_status(id, status, actor_id) do
-    update_user(id, %{"status" => status}, actor_id)
-  end
+  def change_status(_id, _status, _options), do: {:error, :authorization_required}
 
   @doc "Returns the profile view for an authenticated user."
   def profile(id) do
@@ -257,15 +254,19 @@ defmodule KeystonePhoenix.User do
     do: user |> List.wrap() |> user_maps() |> List.first() || user_to_map(user)
 
   @doc "Updates editable profile fields without allowing account privilege changes."
-  def update_profile(id, attrs, actor_or_options \\ nil)
+  @spec update_profile(integer() | String.t(), map(), keyword()) ::
+          {:ok, SysUser.t()} | {:error, term()}
+  def update_profile(id, attrs, options)
 
   def update_profile(id, attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize_self(id, options) do
-      update_profile(id, attrs, Authorization.actor_id(options))
+      do_update_profile(id, attrs, Authorization.actor_id(options))
     end
   end
 
-  def update_profile(id, attrs, actor_id) when is_map(attrs) do
+  def update_profile(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_update_profile(id, attrs, actor_id) when is_map(attrs) do
     attrs =
       %{}
       |> maybe_put(attrs, "nickname", ["nickName", "nickname"])
@@ -273,24 +274,23 @@ defmodule KeystonePhoenix.User do
       |> maybe_put(attrs, "email", ["email"])
       |> maybe_put(attrs, "sex", ["sex"])
 
-    update_user(id, attrs, actor_id)
+    do_update_user(id, attrs, actor_id)
   end
 
-  def update_profile(_id, _attrs, _actor_id),
-    do: {:error, invalid_changeset(%SysUser{}, :nickname)}
-
   @doc "Changes a password after checking the current password."
-  @spec update_password(integer() | String.t(), map(), term()) ::
+  @spec update_password(integer() | String.t(), map(), keyword()) ::
           {:ok, SysUser.t()} | {:error, term()}
-  def update_password(id, attrs, actor_or_options \\ nil)
+  def update_password(id, attrs, options)
 
   def update_password(id, attrs, options) when is_map(attrs) and is_list(options) do
     with :ok <- Authorization.authorize_self(id, options) do
-      update_password(id, attrs, Authorization.actor_id(options))
+      do_update_password(id, attrs, Authorization.actor_id(options))
     end
   end
 
-  def update_password(id, attrs, actor_id) when is_map(attrs) do
+  def update_password(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  defp do_update_password(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, user_id} <- Params.parse_positive_integer(id),
          {:ok, old_password, new_password} <- password_inputs(attrs) do
       Session.update_account_and_revoke(user_id, fn ->
@@ -312,23 +312,22 @@ defmodule KeystonePhoenix.User do
     end
   end
 
-  def update_password(_id, _attrs, _actor_id),
-    do: {:error, invalid_changeset(%SysUser{}, :password)}
-
   @doc "Updates an avatar URL supplied by the file service."
-  def update_avatar(id, avatar, actor_or_options \\ nil)
+  @spec update_avatar(integer() | String.t(), String.t(), keyword()) ::
+          {:ok, SysUser.t()} | {:error, term()}
+  def update_avatar(id, avatar, options)
 
   def update_avatar(id, avatar, options) when is_list(options) do
     with :ok <- Authorization.authorize_self(id, options) do
-      update_avatar(id, avatar, Authorization.actor_id(options))
+      do_update_avatar(id, avatar, Authorization.actor_id(options))
     end
   end
 
-  def update_avatar(id, avatar, actor_id) when is_binary(avatar) do
-    update_user(id, %{"avatar" => avatar}, actor_id)
-  end
+  def update_avatar(_id, _avatar, _options), do: {:error, :authorization_required}
 
-  def update_avatar(_id, _avatar, _actor_id), do: {:error, invalid_changeset(%SysUser{}, :avatar)}
+  defp do_update_avatar(id, avatar, actor_id) when is_binary(avatar) do
+    do_update_user(id, %{"avatar" => avatar}, actor_id)
+  end
 
   defp maybe_put(target, source, target_key, source_keys) do
     case Enum.find(source_keys, &Map.has_key?(source, &1)) do

@@ -157,7 +157,15 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   test "a disabled account cannot submit a profile event", %{conn: conn, admin: admin} do
     disable_captcha()
     {:ok, view, _html} = login_view(conn, admin)
-    {:ok, _disabled} = User.change_status(admin.user_id, 0)
+
+    {:ok, _disabled} =
+      User.change_status(admin.user_id, 0,
+        authorization: %{
+          principal: %{user_id: admin.user_id, is_admin: true},
+          permission: "system:user:edit"
+        }
+      )
+
     {:ok, before} = User.get_user(admin.user_id)
 
     html = render_submit(view, "save-profile", %{"nickname" => "不应保存"})
@@ -170,7 +178,15 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   test "a password reset invalidates an existing LiveView session", %{conn: conn, admin: admin} do
     disable_captcha()
     {:ok, view, _html} = login_view(conn, admin)
-    assert {:ok, _reset} = User.reset_password(admin.user_id, %{"password" => "Reset!456"})
+
+    assert {:ok, _reset} =
+             User.reset_password(admin.user_id, %{"password" => "Reset!456"},
+               authorization: %{
+                 principal: %{user_id: admin.user_id, is_admin: true},
+                 permission: "system:user:resetPwd"
+               }
+             )
+
     {:ok, before} = User.get_user(admin.user_id)
 
     html = render_submit(view, "save-profile", %{"nickname" => "不应保存"})

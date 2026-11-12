@@ -166,7 +166,15 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     }
 
     attrs = if is_nil(role_id), do: attrs, else: Map.put(attrs, "roleId", role_id)
-    {:ok, user} = User.create_user(attrs)
+
+    {:ok, user} =
+      User.create_user(attrs,
+        authorization: %{
+          principal: %{user_id: 9100, is_admin: true},
+          permission: "system:user:add"
+        }
+      )
+
     user
   end
 

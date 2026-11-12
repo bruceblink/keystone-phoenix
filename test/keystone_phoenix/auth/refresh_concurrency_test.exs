@@ -118,7 +118,12 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
       spawn_monitor(fn ->
         result =
           with_unboxed(fn ->
-            User.reset_password(fixture.user_id, %{"password" => "Reset!456"})
+            User.reset_password(fixture.user_id, %{"password" => "Reset!456"},
+              authorization: %{
+                principal: %{user_id: fixture.user_id, is_admin: true},
+                permission: "system:user:resetPwd"
+              }
+            )
           end)
 
         send(test_pid, {reset_ref, result})
@@ -181,7 +186,12 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
       spawn_monitor(fn ->
         result =
           with_unboxed(fn ->
-            User.reset_password(fixture.user_id, %{"password" => "Reset!456"})
+            User.reset_password(fixture.user_id, %{"password" => "Reset!456"},
+              authorization: %{
+                principal: %{user_id: fixture.user_id, is_admin: true},
+                permission: "system:user:resetPwd"
+              }
+            )
           end)
 
         send(test_pid, {reset_ref, result})

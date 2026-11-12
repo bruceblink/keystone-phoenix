@@ -19,18 +19,28 @@ defmodule KeystonePhoenix.UserAuditTest do
                  "nickname" => "被管理用户",
                  "status" => 1
                },
-               actor.user_id
+               authorization: auth(actor, "system:user:add")
              )
 
     assert user.creator_id == actor.user_id
-    assert {:ok, user} = User.update_user(user.user_id, %{"nickname" => "已更新"}, actor.user_id)
+
+    assert {:ok, user} =
+             User.update_user(user.user_id, %{"nickname" => "已更新"},
+               authorization: auth(actor, "system:user:edit")
+             )
+
     assert user.updater_id == actor.user_id
 
     assert {:ok, user} =
-             User.reset_password(user.user_id, %{"password" => "NewStrong!123"}, actor.user_id)
+             User.reset_password(user.user_id, %{"password" => "NewStrong!123"},
+               authorization: auth(actor, "system:user:resetPwd")
+             )
 
     assert user.updater_id == actor.user_id
-    assert {:ok, user} = User.change_status(user.user_id, 0, actor.user_id)
+
+    assert {:ok, user} =
+             User.change_status(user.user_id, 0, authorization: auth(actor, "system:user:edit"))
+
     assert user.updater_id == actor.user_id
 
     assert {:ok, another_user} =
@@ -40,14 +50,21 @@ defmodule KeystonePhoenix.UserAuditTest do
                  "password" => "Strong!123",
                  "status" => 1
                },
-               actor.user_id
+               authorization: auth(actor, "system:user:add")
              )
 
-    assert :ok = User.delete_users([another_user.user_id], actor.user_id)
+    assert :ok =
+             User.delete_users([another_user.user_id],
+               authorization: auth(actor, "system:user:remove")
+             )
+
     deleted = Repo.get!(SysUser, another_user.user_id)
     assert deleted.deleted
     assert deleted.updater_id == actor.user_id
   end
 
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
+
+  defp auth(actor, permission),
+    do: %{principal: %{user_id: actor.user_id, is_admin: true}, permission: permission}
 end
