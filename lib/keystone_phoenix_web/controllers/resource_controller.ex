@@ -2,7 +2,6 @@ defmodule KeystonePhoenixWeb.ResourceController do
   use KeystonePhoenixWeb, :controller
 
   alias KeystonePhoenix.Authz
-  alias KeystonePhoenix.Authz.Principal
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Upload
 
@@ -65,13 +64,7 @@ defmodule KeystonePhoenixWeb.ResourceController do
     do: segment in [".", ".."] or String.contains?(to_string(segment), ["\\", "\0"])
 
   defp owner_allowed?(principal, owner_id) when is_map(principal) do
-    subject = Principal.from_user(principal)
-
-    with {:ok, subject_id} <- Params.parse_positive_integer(subject.subject_id) do
-      Authz.admin?(subject) or subject_id == owner_id
-    else
-      _ -> false
-    end
+    Authz.scope_allowed?(principal, :self, owner_id)
   end
 
   defp owner_allowed?(_principal, _owner_id), do: false

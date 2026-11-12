@@ -76,4 +76,10 @@ defmodule KeystonePhoenix.AuthzTest do
     actor = %{permissions: ["system:job:run"]}
     assert :ok = Authz.authorize(actor, "system:job:run", nil, %{scope: :none})
   end
+
+  test "self scope is limited to the principal subject" do
+    assert Authz.scope_allowed?(%{user_id: 42}, :self, 42)
+    refute Authz.scope_allowed?(%{user_id: 42}, :self, 43)
+    assert Authz.scope_allowed?(%{is_admin: true}, :self, 43)
+  end
 end

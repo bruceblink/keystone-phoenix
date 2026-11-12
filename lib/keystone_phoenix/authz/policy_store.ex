@@ -8,6 +8,8 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   """
 
   alias KeystonePhoenix.Permission
+  alias KeystonePhoenix.Authz.Principal
+  alias KeystonePhoenix.Params
 
   @doc "Applies the legacy role data scope to a user or role-user query."
   def scope_query(query, principal), do: Permission.scope_users(query, principal)
@@ -49,6 +51,21 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
 
   def scope_allowed?(principal, :user_update, target),
     do: Permission.user_update_allowed?(principal, target, %{})
+
+  def scope_allowed?(principal, :self, target) do
+    subject = Principal.from_user(principal)
+
+    if Principal.admin?(subject) do
+      true
+    else
+      with {:ok, subject_id} <- Params.parse_positive_integer(subject.subject_id),
+           {:ok, target_id} <- Params.parse_positive_integer(target) do
+        subject_id == target_id
+      else
+        _ -> false
+      end
+    end
+  end
 
   def scope_allowed?(_principal, :none, _target), do: true
   def scope_allowed?(_principal, _kind, _target), do: false
