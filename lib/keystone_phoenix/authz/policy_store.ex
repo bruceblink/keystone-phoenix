@@ -9,6 +9,9 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
 
   alias KeystonePhoenix.Permission
 
+  @doc "Applies the legacy role data scope to a user or role-user query."
+  def scope_query(query, principal), do: Permission.scope_users(query, principal)
+
   @doc "Checks an exact permission string against the current policy tables."
   def allowed?(principal, permission) do
     Permission.allowed?(principal, permission)

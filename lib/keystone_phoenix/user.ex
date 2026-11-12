@@ -12,7 +12,7 @@ defmodule KeystonePhoenix.User do
   alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Post
-  alias KeystonePhoenix.Permission
+  alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role
@@ -43,7 +43,7 @@ defmodule KeystonePhoenix.User do
   @doc "Lists only users in the authenticated actor's data scope."
   @spec list_users(map(), map()) :: %{rows: list(), total: non_neg_integer()}
   def list_users(params, actor) do
-    params |> users_query() |> Permission.scope_users(actor) |> page_query(params)
+    params |> users_query() |> Authz.scope_query(actor) |> page_query(params)
   end
 
   defp users_query(params) do

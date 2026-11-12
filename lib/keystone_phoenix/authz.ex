@@ -8,6 +8,8 @@ defmodule KeystonePhoenix.Authz do
   tables without changing their schema.
   """
 
+  import Ecto.Query, only: [where: 2]
+
   alias KeystonePhoenix.Authz.PolicyStore
   alias KeystonePhoenix.Authz.Principal
 
@@ -37,6 +39,14 @@ defmodule KeystonePhoenix.Authz do
 
   @doc "Returns whether an actor has administrator status."
   def admin?(principal), do: Principal.admin?(Principal.from_user(principal))
+
+  @doc "Applies the actor's data scope to an Ecto query."
+  def scope_query(query, principal) do
+    subject = principal |> Principal.from_user() |> Principal.to_user()
+    PolicyStore.scope_query(query, subject)
+  rescue
+    _error -> where(query, false)
+  end
 
   @doc "Checks whether a role write may change permission metadata."
   def role_metadata_allowed?(principal, attrs) when is_map(attrs) do

@@ -7,7 +7,7 @@ defmodule KeystonePhoenix.Role do
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Repo
-  alias KeystonePhoenix.Permission
+  alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.User
@@ -284,7 +284,7 @@ defmodule KeystonePhoenix.Role do
         :unallocated -> where(query, [user], is_nil(user.role_id) or user.role_id != ^role_id)
       end
 
-    query = Permission.scope_users(query, actor || %{is_admin: true})
+    query = Authz.scope_query(query, actor || %{is_admin: true})
 
     query =
       query
@@ -297,7 +297,7 @@ defmodule KeystonePhoenix.Role do
   defp assignment_allowed?(nil), do: :ok
 
   defp assignment_allowed?(actor),
-    do: if(Permission.admin?(actor), do: :ok, else: {:error, :forbidden})
+    do: if(Authz.admin?(actor), do: :ok, else: {:error, :forbidden})
 
   defp normalize_user_ids(user_ids) when is_list(user_ids) do
     normalized = Enum.map(user_ids, &parse_positive_integer/1)
