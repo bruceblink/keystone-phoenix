@@ -1,10 +1,9 @@
 defmodule KeystonePhoenix.Authz.PermissionCatalog do
   @moduledoc """
-  Stable permission catalog for the legacy menu-backed policy store.
+  Stable permission catalog for the canonical policy store.
 
-  The catalog is intentionally read-only in this migration phase.  Existing
-  `sys_menu.permission` values remain authoritative, while this module gives
-  writes and audits a common format, metadata shape, and duplicate check.
+  The catalog gives writes and audits a common format, metadata shape, and
+  duplicate check. Menu navigation references these canonical capabilities.
   """
 
   @permission_pattern ~r/\A[a-z][a-z0-9_-]*:[a-z][a-z0-9_-]*:[A-Za-z][A-Za-z0-9_-]*\z/
@@ -77,7 +76,7 @@ defmodule KeystonePhoenix.Authz.PermissionCatalog do
     system:user:resetPwd
   )
 
-  @doc "Returns every permission registered during the compatibility phase."
+  @doc "Returns every permission registered in the canonical catalog."
   def permissions, do: @permissions
 
   @doc "Returns metadata for every registered permission."
