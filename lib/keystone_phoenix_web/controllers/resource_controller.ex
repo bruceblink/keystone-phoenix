@@ -49,13 +49,20 @@ defmodule KeystonePhoenixWeb.ResourceController do
   def show(conn, _params), do: send_resp(conn, :not_found, "Not found")
 
   defp owner_scoped_path(["upload", owner | rest]) when rest != [] do
-    case Params.parse_positive_integer(owner) do
-      {:ok, owner_id} -> {:ok, owner_id, ["upload", owner | rest]}
-      :error -> :error
+    if Enum.any?(rest, &unsafe_segment?/1) do
+      :error
+    else
+      case Params.parse_positive_integer(owner) do
+        {:ok, owner_id} -> {:ok, owner_id, ["upload", owner | rest]}
+        :error -> :error
+      end
     end
   end
 
   defp owner_scoped_path(_path), do: :error
+
+  defp unsafe_segment?(segment),
+    do: segment in [".", ".."] or String.contains?(to_string(segment), ["\\", "\0"])
 
   defp owner_allowed?(principal, owner_id) when is_map(principal) do
     subject = Principal.from_user(principal)

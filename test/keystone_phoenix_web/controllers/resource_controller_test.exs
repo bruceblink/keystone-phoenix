@@ -58,5 +58,16 @@ defmodule KeystonePhoenixWeb.ResourceControllerTest do
     legacy_conn = Plug.Test.conn(:get, "/profile/upload/report.txt")
     legacy_response = ResourceController.show(legacy_conn, %{"path" => ["upload", "report.txt"]})
     assert legacy_response.status == 404
+
+    traversal_conn =
+      Plug.Test.conn(:get, "/profile/upload/42/../43/report.txt")
+      |> Plug.Conn.assign(:current_user, %{user_id: 42})
+
+    traversal_response =
+      ResourceController.show(traversal_conn, %{
+        "path" => ["upload", "42", "..", "43", "report.txt"]
+      })
+
+    assert traversal_response.status == 404
   end
 end
