@@ -47,6 +47,17 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
              )
   end
 
+  test "principal-aware profile writes are limited to the authenticated subject" do
+    {actor, target} = users_fixture()
+
+    assert {:error, :data_scope_denied} =
+             User.update_profile(target.user_id, %{"nickname" => "不应保存"},
+               authorization: %{principal: %{user_id: actor.user_id}}
+             )
+
+    assert Repo.get!(SysUser, target.user_id).nickname == "范围外用户"
+  end
+
   defp users_fixture do
     actor_dept = insert_dept("actor")
     target_dept = insert_dept("target")

@@ -212,7 +212,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     if Support.authenticated_socket?(socket) do
       user_id = socket.assigns.current_user["userId"]
 
-      case User.update_profile(user_id, params, socket.assigns.current_user["userId"]) do
+      case User.update_profile(user_id, params, authorization: self_authorization(socket)) do
         {:ok, _user} ->
           case User.profile(user_id) do
             {:ok, profile} ->
@@ -242,7 +242,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       case User.update_password(
              socket.assigns.current_user["userId"],
              params,
-             socket.assigns.current_user["userId"]
+             authorization: self_authorization(socket)
            ) do
         {:ok, _user} ->
           {:noreply, Support.expire_authentication(socket, "密码已更新，请重新登录")}
@@ -262,7 +262,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       case User.update_avatar(
              socket.assigns.current_user["userId"],
              avatar,
-             socket.assigns.current_user["userId"]
+             authorization: self_authorization(socket)
            ) do
         {:ok, _user} ->
           if is_binary(previous_avatar) and previous_avatar != avatar,
@@ -296,7 +296,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           }
 
           with {:ok, avatar_url} <- Upload.store_avatar(upload) do
-            case User.update_avatar(user_id, avatar_url, user_id) do
+            case User.update_avatar(user_id, avatar_url,
+                   authorization: self_authorization(socket)
+                 ) do
               {:ok, _user} ->
                 if is_binary(previous_avatar) and previous_avatar != avatar_url,
                   do: Upload.delete_avatar(previous_avatar)
@@ -342,5 +344,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       )
 
     %{principal: principal, permission: permission}
+  end
+
+  defp self_authorization(socket) do
+    principal =
+      Map.put(
+        socket.assigns.current_user,
+        :permissions,
+        List.wrap(socket.assigns[:permissions])
+      )
+
+    %{principal: principal}
   end
 end

@@ -20,7 +20,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
     case User.update_profile(
            conn.assigns.current_user.user_id,
            params,
-           conn.assigns.current_user.user_id
+           authorization: %{principal: conn.assigns.current_user}
          ) do
       {:ok, _user} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
@@ -33,7 +33,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
     case User.update_password(
            conn.assigns.current_user.user_id,
            params,
-           conn.assigns.current_user.user_id
+           authorization: %{principal: conn.assigns.current_user}
          ) do
       {:ok, _user} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
@@ -51,7 +51,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
       case User.update_avatar(
              conn.assigns.current_user.user_id,
              avatar_url,
-             conn.assigns.current_user.user_id
+             authorization: %{principal: conn.assigns.current_user}
            ) do
         {:ok, _user} ->
           delete_previous_avatar(current_user.avatar, avatar_url)
@@ -76,7 +76,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
       case User.update_avatar(
              conn.assigns.current_user.user_id,
              avatar,
-             conn.assigns.current_user.user_id
+             authorization: %{principal: conn.assigns.current_user}
            ) do
         {:ok, _user} ->
           delete_previous_avatar(current_user.avatar, avatar)

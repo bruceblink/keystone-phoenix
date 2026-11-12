@@ -257,7 +257,13 @@ defmodule KeystonePhoenix.User do
     do: user |> List.wrap() |> user_maps() |> List.first() || user_to_map(user)
 
   @doc "Updates editable profile fields without allowing account privilege changes."
-  def update_profile(id, attrs, actor_id \\ nil)
+  def update_profile(id, attrs, actor_or_options \\ nil)
+
+  def update_profile(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize_self(id, options) do
+      update_profile(id, attrs, Authorization.actor_id(options))
+    end
+  end
 
   def update_profile(id, attrs, actor_id) when is_map(attrs) do
     attrs =
@@ -276,7 +282,13 @@ defmodule KeystonePhoenix.User do
   @doc "Changes a password after checking the current password."
   @spec update_password(integer() | String.t(), map(), term()) ::
           {:ok, SysUser.t()} | {:error, term()}
-  def update_password(id, attrs, actor_id \\ nil)
+  def update_password(id, attrs, actor_or_options \\ nil)
+
+  def update_password(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize_self(id, options) do
+      update_password(id, attrs, Authorization.actor_id(options))
+    end
+  end
 
   def update_password(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, user_id} <- Params.parse_positive_integer(id),
@@ -304,7 +316,13 @@ defmodule KeystonePhoenix.User do
     do: {:error, invalid_changeset(%SysUser{}, :password)}
 
   @doc "Updates an avatar URL supplied by the file service."
-  def update_avatar(id, avatar, actor_id \\ nil)
+  def update_avatar(id, avatar, actor_or_options \\ nil)
+
+  def update_avatar(id, avatar, options) when is_list(options) do
+    with :ok <- Authorization.authorize_self(id, options) do
+      update_avatar(id, avatar, Authorization.actor_id(options))
+    end
+  end
 
   def update_avatar(id, avatar, actor_id) when is_binary(avatar) do
     update_user(id, %{"avatar" => avatar}, actor_id)

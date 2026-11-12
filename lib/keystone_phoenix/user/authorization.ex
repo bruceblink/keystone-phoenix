@@ -2,6 +2,8 @@ defmodule KeystonePhoenix.User.Authorization do
   @moduledoc "Authorization checks for principal-aware user write commands."
 
   alias KeystonePhoenix.Authz
+  alias KeystonePhoenix.Authz.Principal
+  alias KeystonePhoenix.Params
 
   def authorize_create(attrs, options) do
     with {:ok, principal, permission} <- authorization_options(options, "system:user:add"),
@@ -43,6 +45,20 @@ defmodule KeystonePhoenix.User.Authorization do
     end
   end
 
+  @doc "Checks that a profile command targets the authenticated principal itself."
+  def authorize_self(id, options) do
+    with {:ok, principal} <- principal_from_options(options),
+         {:ok, target_id} <- Params.parse_positive_integer(id),
+         %Principal{} = subject <- Principal.from_user(principal),
+         true <- Authz.admin?(subject) or subject.subject_id == target_id do
+      :ok
+    else
+      false -> {:error, :data_scope_denied}
+      :error -> {:error, :data_scope_denied}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   def actor_id(options) do
     authorization = Keyword.fetch!(options, :authorization)
     actor_id = Map.get(authorization, :actor_id, Map.get(authorization, "actor_id"))
@@ -63,6 +79,18 @@ defmodule KeystonePhoenix.User.Authorization do
         if is_map(principal) and is_binary(permission),
           do: {:ok, principal, permission},
           else: {:error, :authorization_required}
+
+      _ ->
+        {:error, :authorization_required}
+    end
+  end
+
+  defp principal_from_options(options) do
+    case Keyword.get(options, :authorization) do
+      authorization when is_map(authorization) ->
+        principal = Map.get(authorization, :principal, Map.get(authorization, "principal"))
+
+        if is_map(principal), do: {:ok, principal}, else: {:error, :authorization_required}
 
       _ ->
         {:error, :authorization_required}
