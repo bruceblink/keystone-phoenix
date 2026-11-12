@@ -62,11 +62,22 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
                  "status" => 1,
                  "menuIds" => []
                },
-               actor.user_id
+               authorization: %{
+                 principal: %{user_id: actor.user_id, is_admin: true},
+                 permission: "system:role:add"
+               }
              )
 
     assert role.creator_id == actor.user_id
-    assert {:ok, role} = Role.update_role(role.role_id, %{"roleName" => "更新角色"}, actor.user_id)
+
+    assert {:ok, role} =
+             Role.update_role(role.role_id, %{"roleName" => "更新角色"},
+               authorization: %{
+                 principal: %{user_id: actor.user_id, is_admin: true},
+                 permission: "system:role:edit"
+               }
+             )
+
     assert role.updater_id == actor.user_id
   end
 

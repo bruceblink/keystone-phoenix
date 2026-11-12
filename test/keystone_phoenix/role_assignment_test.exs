@@ -14,7 +14,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     before = user_state(user)
 
     assert {:error, :not_found} =
-             Role.assign_users(target_role.role_id, [user.user_id, missing_user_id])
+             Role.assign_users(target_role.role_id, [user.user_id, missing_user_id], admin_auth())
 
     assert user_state(user) == before
   end
@@ -29,7 +29,11 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     deleted_before = user_state(deleted_user)
 
     assert {:error, :not_found} =
-             Role.assign_users(target_role.role_id, [active_user.user_id, deleted_user.user_id])
+             Role.assign_users(
+               target_role.role_id,
+               [active_user.user_id, deleted_user.user_id],
+               admin_auth()
+             )
 
     assert user_state(active_user) == active_before
     assert user_state(deleted_user) == deleted_before
@@ -41,7 +45,8 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     missing_user_id = missing_user_id()
     before = user_state(user)
 
-    assert {:error, :not_found} = Role.unassign_users([user.user_id, missing_user_id])
+    assert {:error, :not_found} =
+             Role.unassign_users([user.user_id, missing_user_id], admin_auth())
 
     assert user_state(user) == before
   end
@@ -55,7 +60,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     deleted_before = user_state(deleted_user)
 
     assert {:error, :not_found} =
-             Role.unassign_users([active_user.user_id, deleted_user.user_id])
+             Role.unassign_users([active_user.user_id, deleted_user.user_id], admin_auth())
 
     assert user_state(active_user) == active_before
     assert user_state(deleted_user) == deleted_before
@@ -66,7 +71,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     users = [create_user(), create_user()]
     ids = Enum.map(users, & &1.user_id)
 
-    assert :ok = Role.assign_users(role.role_id, ids ++ [hd(ids)])
+    assert :ok = Role.assign_users(role.role_id, ids ++ [hd(ids)], admin_auth())
 
     for user <- users do
       assert {:ok, updated} = User.get_user(user.user_id)
@@ -79,7 +84,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     users = [create_user(role.role_id), create_user(role.role_id)]
     ids = Enum.map(users, & &1.user_id)
 
-    assert :ok = Role.unassign_users(ids ++ [hd(ids)])
+    assert :ok = Role.unassign_users(ids ++ [hd(ids)], admin_auth())
 
     for user <- users do
       assert {:ok, updated} = User.get_user(user.user_id)
@@ -91,7 +96,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     role = create_role()
     user = create_user()
 
-    assert :ok = Role.assign_users(role.role_id, [user.user_id])
+    assert :ok = Role.assign_users(role.role_id, [user.user_id], admin_auth())
     assert {:ok, updated} = User.get_user(user.user_id)
     assert updated.role_id == role.role_id
   end
@@ -100,7 +105,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     role = create_role()
     user = create_user(role.role_id)
 
-    assert :ok = Role.unassign_users([user.user_id])
+    assert :ok = Role.unassign_users([user.user_id], admin_auth())
     assert {:ok, updated} = User.get_user(user.user_id)
     assert is_nil(updated.role_id)
   end
@@ -117,8 +122,12 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     user = create_user()
     before = user_state(user)
 
-    assert {:error, :role_unavailable} = Role.assign_users(disabled_role.role_id, [user.user_id])
-    assert {:error, :not_found} = Role.assign_users(deleted_role.role_id, [user.user_id])
+    assert {:error, :role_unavailable} =
+             Role.assign_users(disabled_role.role_id, [user.user_id], admin_auth())
+
+    assert {:error, :not_found} =
+             Role.assign_users(deleted_role.role_id, [user.user_id], admin_auth())
+
     assert user_state(user) == before
   end
 
@@ -128,8 +137,16 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     actor = %{is_admin: false, role_id: target_role.role_id, user_id: user.user_id}
     before = user_state(user)
 
-    assert {:error, :forbidden} = Role.assign_users(target_role.role_id, [user.user_id], actor)
-    assert {:error, :forbidden} = Role.unassign_users([user.user_id], actor)
+    assert {:error, :forbidden} =
+             Role.assign_users(target_role.role_id, [user.user_id],
+               authorization: %{principal: actor, permission: "system:role:edit"}
+             )
+
+    assert {:error, :forbidden} =
+             Role.unassign_users([user.user_id],
+               authorization: %{principal: actor, permission: "system:role:edit"}
+             )
+
     assert user_state(user) == before
   end
 
@@ -155,9 +172,12 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
       "menuIds" => []
     }
 
-    {:ok, role} = Role.create_role(attrs)
+    {:ok, role} = Role.create_role(attrs, admin_auth("system:role:add"))
     role
   end
+
+  defp admin_auth(permission \\ "system:role:edit"),
+    do: [authorization: %{principal: %{is_admin: true}, permission: permission}]
 
   defp create_user(role_id \\ nil) do
     attrs = %{
@@ -170,7 +190,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     {:ok, user} =
       User.create_user(attrs,
         authorization: %{
-          principal: %{user_id: 9100, is_admin: true},
+          principal: %{is_admin: true},
           permission: "system:user:add"
         }
       )

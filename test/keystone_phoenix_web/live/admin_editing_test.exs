@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
   import Phoenix.LiveViewTest
 
   alias KeystonePhoenix.{Config, Dictionary, Log, Menu, Repo, Role}
+  alias KeystonePhoenix.Authz.SysPermission
   alias KeystonePhoenix.Config.SysConfig
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.SysRole
@@ -21,6 +22,15 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
         is_admin: true,
         status: 1
       })
+
+    Repo.insert!(%SysPermission{
+      permission: "system:editing:read",
+      resource: "system",
+      domain: "editing",
+      action: "read",
+      status: 1,
+      deprecated: false
+    })
 
     {:ok, admin: admin}
   end
@@ -57,14 +67,17 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
 
   test "role edit preserves the ID and updates the original row", ctx do
     {:ok, role} =
-      Role.create_role(%{
-        "roleName" => unique("原角色"),
-        "roleKey" => unique("editing_role"),
-        "roleSort" => 7,
-        "dataScope" => 3,
-        "status" => 1,
-        "menuIds" => []
-      })
+      Role.create_role(
+        %{
+          "roleName" => unique("原角色"),
+          "roleKey" => unique("editing_role"),
+          "roleSort" => 7,
+          "dataScope" => 3,
+          "status" => 1,
+          "menuIds" => []
+        },
+        authorization: %{principal: ctx.admin, permission: "system:role:add"}
+      )
 
     {:ok, view} = login(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "roles"})
@@ -87,14 +100,17 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
 
   test "refreshing or deleting a role clears its selected users", ctx do
     {:ok, role} =
-      Role.create_role(%{
-        "roleName" => unique("待清理角色"),
-        "roleKey" => unique("stale_role"),
-        "roleSort" => 7,
-        "dataScope" => 3,
-        "status" => 1,
-        "menuIds" => []
-      })
+      Role.create_role(
+        %{
+          "roleName" => unique("待清理角色"),
+          "roleKey" => unique("stale_role"),
+          "roleSort" => 7,
+          "dataScope" => 3,
+          "status" => 1,
+          "menuIds" => []
+        },
+        authorization: %{principal: ctx.admin, permission: "system:role:add"}
+      )
 
     {:ok, view} = login(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "roles"})
@@ -130,7 +146,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
         "parentId" => 0,
         "path" => "/editing-route",
         "isButton" => false,
-        "permission" => "editing:read",
+        "permission" => "system:editing:read",
         "metaInfo" => ~s({"title":"原菜单"}),
         "status" => 1
       })
