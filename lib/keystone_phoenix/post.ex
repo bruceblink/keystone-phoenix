@@ -34,7 +34,7 @@ defmodule KeystonePhoenix.Post do
   end
 
   def get_post(id) do
-    case Params.parse_positive_integer(id) do
+    case Params.parse_uuid(id) do
       {:ok, id} ->
         case Repo.get_by(SysPost, post_id: id, deleted: false) do
           nil -> {:error, :not_found}
@@ -48,7 +48,7 @@ defmodule KeystonePhoenix.Post do
 
   @doc "Returns active posts keyed by ID with one database query."
   def list_posts_by_ids(ids) when is_list(ids) do
-    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+    ids = ids |> Enum.map(&parse_uuid/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
 
     if ids == [] do
       []
@@ -108,7 +108,7 @@ defmodule KeystonePhoenix.Post do
   def delete_posts(_ids, _options), do: {:error, :authorization_required}
 
   defp do_delete_posts(ids, actor_id) when is_list(ids) do
-    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
+    ids = ids |> Enum.map(&parse_uuid/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}
@@ -172,16 +172,12 @@ defmodule KeystonePhoenix.Post do
     end)
   end
 
-  defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
-
-  defp parse_positive_integer(value) when is_binary(value) do
-    case Integer.parse(String.trim(value)) do
-      {integer, ""} when integer > 0 -> integer
-      _ -> nil
+  defp parse_uuid(value) do
+    case Params.parse_uuid(value) do
+      {:ok, uuid} -> uuid
+      :error -> nil
     end
   end
-
-  defp parse_positive_integer(_value), do: nil
 
   defp status_label(1), do: "正常"
   defp status_label(0), do: "停用"

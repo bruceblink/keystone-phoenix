@@ -7,6 +7,6 @@ defmodule KeystonePhoenix.Role.SysRoleMenu do
 
   schema "sys_role_menu" do
     field :role_id, :binary_id, primary_key: true
-    field :menu_id, :integer, primary_key: true
+    field :menu_id, :binary_id, primary_key: true
   end
 end

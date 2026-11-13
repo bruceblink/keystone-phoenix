@@ -8,8 +8,7 @@ defmodule KeystonePhoenix.User.SysUser do
   @foreign_key_type :binary_id
 
   schema "sys_user" do
-    # 岗位表在后续身份切片迁移；本切片只改用户、角色和部门 ID。
-    field :post_id, :integer
+    field :post_id, :binary_id
     field :role_id, :binary_id
     field :dept_id, :binary_id
     field :username, :string

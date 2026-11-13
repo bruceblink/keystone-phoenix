@@ -448,16 +448,12 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
-  defp parse_menu_id(value) when is_integer(value) and value > 0, do: value
-
-  defp parse_menu_id(value) when is_binary(value) do
-    case Params.parse_positive_integer(value) do
-      {:ok, id} -> id
+  defp parse_menu_id(value) do
+    case Params.parse_uuid(value) do
+      {:ok, uuid} -> uuid
       :error -> nil
     end
   end
-
-  defp parse_menu_id(_value), do: nil
 
   defp invalidate_policy_cache({:ok, _value} = result) do
     PolicyCache.invalidate()

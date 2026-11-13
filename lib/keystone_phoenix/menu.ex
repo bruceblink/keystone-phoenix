@@ -44,7 +44,7 @@ defmodule KeystonePhoenix.Menu do
   end
 
   def get_menu(id) do
-    case Params.parse_positive_integer(id) do
+    case Params.parse_uuid(id) do
       {:ok, id} ->
         case Repo.get_by(SysMenu, menu_id: id, deleted: false) do
           nil -> {:error, :not_found}
@@ -292,16 +292,16 @@ defmodule KeystonePhoenix.Menu do
     end
   end
 
-  defp parent_id(nil), do: {:ok, 0}
+  defp parent_id(nil), do: {:ok, nil}
 
   defp parent_id(value) do
-    case Params.non_negative_integer(value) do
+    case Params.parse_uuid(value) do
       {:ok, id} -> {:ok, id}
       :error -> {:error, :invalid_parent}
     end
   end
 
-  defp ensure_parent(0), do: :ok
+  defp ensure_parent(nil), do: :ok
 
   defp ensure_parent(id) do
     case get_menu(id) do
@@ -313,7 +313,7 @@ defmodule KeystonePhoenix.Menu do
   defp ensure_not_descendant(menu_id, parent_id) when menu_id == parent_id,
     do: {:error, :invalid_parent}
 
-  defp ensure_not_descendant(_menu_id, 0), do: :ok
+  defp ensure_not_descendant(_menu_id, nil), do: :ok
 
   defp ensure_not_descendant(menu_id, parent_id) do
     if parent_chain_contains?(parent_id, menu_id, MapSet.new()),
@@ -331,7 +331,7 @@ defmodule KeystonePhoenix.Menu do
 
       true ->
         case get_menu(current_id) do
-          {:ok, %{parent_id: 0}} ->
+          {:ok, %{parent_id: nil}} ->
             false
 
           {:ok, parent} ->
@@ -386,7 +386,7 @@ defmodule KeystonePhoenix.Menu do
 
   defp validate_type_change(_current_menu, _menu_type), do: :ok
 
-  defp validate_parent_type(0, _is_button), do: :ok
+  defp validate_parent_type(nil, _is_button), do: :ok
 
   defp validate_parent_type(parent_id, is_button) do
     case get_menu(parent_id) do

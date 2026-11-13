@@ -486,28 +486,6 @@ defmodule KeystonePhoenix.User do
     end
   end
 
-  defp normalize_relation_value(:post_id, value) do
-    case value do
-      nil ->
-        nil
-
-      "" ->
-        nil
-
-      "0" ->
-        nil
-
-      value when is_binary(value) ->
-        case Params.parse_positive_integer(value) do
-          {:ok, id} when id > 0 -> id
-          _ -> value
-        end
-
-      value ->
-        value
-    end
-  end
-
   defp normalize_relation_value(_field, value), do: value
 
   defp parse_uuid(value) do

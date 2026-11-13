@@ -6,7 +6,10 @@ alias KeystonePhoenix.Repo
 alias KeystonePhoenix.Authz.PermissionCatalog
 alias KeystonePhoenix.Authz.SysPermission
 alias KeystonePhoenix.Authz.SysRolePermission
+alias KeystonePhoenix.Authz.SysMenuPermission
 alias KeystonePhoenix.Department.SysDept
+alias KeystonePhoenix.Menu.SysMenu
+alias KeystonePhoenix.Post.SysPost
 alias KeystonePhoenix.Role.SysRole
 alias KeystonePhoenix.Role.SysRoleMenu
 alias KeystonePhoenix.User.SysUser
@@ -25,6 +28,14 @@ common_role_id = Identity.v5(namespace, "system:role:common")
 admin_user_id = Identity.v5(namespace, "system:user:admin")
 tester_user_id = Identity.v5(namespace, "system:user:tester")
 operator_user_id = Identity.v5(namespace, "system:user:operator")
+post_ceo_id = Identity.v5(namespace, "system:post:ceo")
+post_engineer_id = Identity.v5(namespace, "system:post:engineer")
+post_user_id = Identity.v5(namespace, "system:post:user")
+menu_system_id = Identity.v5(namespace, "system:menu:system")
+menu_user_id = Identity.v5(namespace, "system:menu:users")
+menu_role_id = Identity.v5(namespace, "system:menu:roles")
+menu_dept_id = Identity.v5(namespace, "system:menu:departments")
+menu_post_id = Identity.v5(namespace, "system:menu:posts")
 
 dict_types = [
   %{
@@ -217,17 +228,38 @@ Repo.insert_all(
 )
 
 post_entries = [
-  %{post_id: 1, post_code: "ceo", post_name: "董事长", post_sort: 1, status: 1, remark: ""},
-  %{post_id: 2, post_code: "se", post_name: "项目经理", post_sort: 2, status: 1, remark: ""},
-  %{post_id: 3, post_code: "user", post_name: "普通员工", post_sort: 5, status: 0, remark: ""}
+  %{
+    post_id: post_ceo_id,
+    post_code: "ceo",
+    post_name: "董事长",
+    post_sort: 1,
+    status: 1,
+    remark: ""
+  },
+  %{
+    post_id: post_engineer_id,
+    post_code: "se",
+    post_name: "项目经理",
+    post_sort: 2,
+    status: 1,
+    remark: ""
+  },
+  %{
+    post_id: post_user_id,
+    post_code: "user",
+    post_name: "普通员工",
+    post_sort: 5,
+    status: 0,
+    remark: ""
+  }
 ]
 
-if Repo.aggregate(KeystonePhoenix.Post.SysPost, :count, :post_id) == 0 do
-  Repo.insert_all(
-    "sys_post",
-    Enum.map(post_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now}))
-  )
-end
+Repo.insert_all(
+  SysPost,
+  Enum.map(post_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now})),
+  on_conflict: :nothing,
+  conflict_target: :post_id
+)
 
 role_entries = [
   %{
@@ -261,11 +293,11 @@ Repo.insert_all(
 
 menu_entries = [
   %{
-    menu_id: 1,
+    menu_id: menu_system_id,
     menu_name: "系统管理",
     menu_type: 2,
     router_name: "",
-    parent_id: 0,
+    parent_id: nil,
     path: "/system",
     is_button: false,
     permission: "",
@@ -274,11 +306,11 @@ menu_entries = [
     remark: "系统管理目录"
   },
   %{
-    menu_id: 5,
+    menu_id: menu_user_id,
     menu_name: "用户管理",
     menu_type: 1,
     router_name: "SystemUser",
-    parent_id: 1,
+    parent_id: menu_system_id,
     path: "/system/user/index",
     is_button: false,
     # 菜单仅绑定目录中的新权限键，不负责创建权限。
@@ -288,11 +320,11 @@ menu_entries = [
     remark: "用户管理菜单"
   },
   %{
-    menu_id: 6,
+    menu_id: menu_role_id,
     menu_name: "角色管理",
     menu_type: 1,
     router_name: "SystemRole",
-    parent_id: 1,
+    parent_id: menu_system_id,
     path: "/system/role/index",
     is_button: false,
     permission: "role:read",
@@ -301,11 +333,11 @@ menu_entries = [
     remark: "角色管理菜单"
   },
   %{
-    menu_id: 8,
+    menu_id: menu_dept_id,
     menu_name: "部门管理",
     menu_type: 1,
     router_name: "Department",
-    parent_id: 1,
+    parent_id: menu_system_id,
     path: "/system/dept/index",
     is_button: false,
     permission: "department:read",
@@ -314,11 +346,11 @@ menu_entries = [
     remark: "部门管理菜单"
   },
   %{
-    menu_id: 9,
+    menu_id: menu_post_id,
     menu_name: "岗位管理",
     menu_type: 1,
     router_name: "Post",
-    parent_id: 1,
+    parent_id: menu_system_id,
     path: "/system/post/index",
     is_button: false,
     permission: "post:read",
@@ -328,16 +360,16 @@ menu_entries = [
   }
 ]
 
-if Repo.aggregate(KeystonePhoenix.Menu.SysMenu, :count, :menu_id) == 0 do
-  Repo.insert_all(
-    "sys_menu",
-    Enum.map(menu_entries, fn entry ->
-      entry
-      |> Map.delete(:permission)
-      |> Map.merge(%{deleted: false, create_time: now, update_time: now})
-    end)
-  )
-end
+Repo.insert_all(
+  SysMenu,
+  Enum.map(menu_entries, fn entry ->
+    entry
+    |> Map.delete(:permission)
+    |> Map.merge(%{deleted: false, create_time: now, update_time: now})
+  end),
+  on_conflict: :nothing,
+  conflict_target: :menu_id
+)
 
 role_menu_entries =
   Enum.map(Enum.map(menu_entries, & &1.menu_id), &%{role_id: common_role_id, menu_id: &1})
@@ -368,12 +400,20 @@ permission_ids =
 menu_permission_entries =
   Enum.flat_map(menu_entries, fn entry ->
     case Map.get(permission_ids, Map.get(entry, :permission, "")) do
-      nil -> []
-      permission_id -> [%{menu_id: entry.menu_id, permission_id: Ecto.UUID.dump!(permission_id)}]
+      nil ->
+        []
+
+      permission_id ->
+        [
+          %{
+            menu_id: entry.menu_id,
+            permission_id: permission_id
+          }
+        ]
     end
   end)
 
-Repo.insert_all("sys_menu_permission", menu_permission_entries, on_conflict: :nothing)
+Repo.insert_all(SysMenuPermission, menu_permission_entries, on_conflict: :nothing)
 
 Repo.insert_all(
   SysRolePermission,
@@ -419,7 +459,7 @@ end
 user_entries = [
   %{
     user_id: admin_user_id,
-    post_id: 1,
+    post_id: post_ceo_id,
     role_id: admin_role_id,
     dept_id: engineering_dept_id,
     username: "admin",
@@ -440,7 +480,7 @@ user_entries = [
   },
   %{
     user_id: tester_user_id,
-    post_id: 2,
+    post_id: post_engineer_id,
     role_id: common_role_id,
     dept_id: market_dept_id,
     username: "ag1",
@@ -461,7 +501,7 @@ user_entries = [
   },
   %{
     user_id: operator_user_id,
-    post_id: 2,
+    post_id: post_engineer_id,
     # 未分配角色使用 NULL，符合可选角色外键约束。
     role_id: nil,
     dept_id: market_dept_id,
