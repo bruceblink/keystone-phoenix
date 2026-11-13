@@ -65,15 +65,20 @@ defmodule KeystonePhoenixWeb.NoticeController do
   def delete(conn, _params), do: render_error(conn, :invalid_ids)
 
   defp render_error(conn, :not_found) do
-    conn |> put_status(:not_found) |> json(ApiResponse.error(10001, "找不到请求的公告"))
+    conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "找不到请求的公告"))
   end
 
   defp render_error(conn, :invalid_ids) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10002, "公告编号无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "公告编号无效"))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
     errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(99999, "参数校验失败", errors))
+
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
   end
 end

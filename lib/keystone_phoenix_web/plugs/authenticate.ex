@@ -18,25 +18,25 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
       {:error, :forbidden} ->
         conn
         |> put_status(:forbidden)
-        |> Phoenix.Controller.json(ApiResponse.error(40301, "需要管理员权限"))
+        |> Phoenix.Controller.json(ApiResponse.error(:permission_denied, "没有操作权限"))
         |> halt()
 
       {:error, :permission_denied} ->
         conn
         |> put_status(:forbidden)
-        |> Phoenix.Controller.json(ApiResponse.error(40302, "没有操作权限"))
+        |> Phoenix.Controller.json(ApiResponse.error(:permission_denied, "没有操作权限"))
         |> halt()
 
       {:error, :data_scope_denied} ->
         conn
         |> put_status(:forbidden)
-        |> Phoenix.Controller.json(ApiResponse.error(40303, "没有数据权限"))
+        |> Phoenix.Controller.json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
         |> halt()
 
       _ ->
         conn
         |> put_status(:unauthorized)
-        |> Phoenix.Controller.json(ApiResponse.error(40101, "登录状态已过期"))
+        |> Phoenix.Controller.json(ApiResponse.error(:session_revoked, "登录状态已失效"))
         |> halt()
     end
   end

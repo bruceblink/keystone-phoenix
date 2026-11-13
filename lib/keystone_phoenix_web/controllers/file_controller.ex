@@ -55,7 +55,9 @@ defmodule KeystonePhoenixWeb.FileController do
   def download(conn, _params), do: render_error(conn, :invalid_file_name)
 
   defp render_error(conn, reason) when reason in [:empty_upload, :invalid_upload] do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(40001, "上传文件不能为空"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "上传文件不能为空"))
   end
 
   defp render_error(conn, reason)
@@ -66,14 +68,18 @@ defmodule KeystonePhoenixWeb.FileController do
               :too_many_files,
               :batch_too_large
             ] do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(40002, "文件类型或大小无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "文件类型或大小无效"))
   end
 
   defp render_error(conn, :not_found) do
-    conn |> put_status(:not_found) |> json(ApiResponse.error(40401, "文件不存在"))
+    conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "文件不存在"))
   end
 
   defp render_error(conn, reason) when reason in [:invalid_file_name, :storage_error] do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(40003, "文件路径无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "文件路径无效"))
   end
 end

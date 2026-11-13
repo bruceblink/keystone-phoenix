@@ -176,19 +176,26 @@ defmodule KeystonePhoenixWeb.LogController do
   defp operator_type_label(type), do: to_string(type || "")
 
   defp render_error(conn, :invalid_ids) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10001, "日志编号无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "日志编号无效"))
   end
 
   defp render_error(conn, :not_found) do
-    conn |> put_status(:not_found) |> json(ApiResponse.error(10002, "找不到请求的日志"))
+    conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "找不到请求的日志"))
   end
 
   defp render_error(conn, :invalid_log) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10003, "日志参数无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "日志参数无效"))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
     errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(99999, "参数校验失败", errors))
+
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
   end
 end

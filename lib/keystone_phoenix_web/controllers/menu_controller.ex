@@ -83,11 +83,11 @@ defmodule KeystonePhoenixWeb.MenuController do
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(ApiResponse.error(10001, "找不到请求的菜单"))
+    |> json(ApiResponse.error(:validation_failed, "找不到请求的菜单"))
   end
 
   defp render_error(conn, :permission_denied) do
-    conn |> put_status(:forbidden) |> json(ApiResponse.error(40302, "没有操作权限"))
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "没有操作权限"))
   end
 
   defp render_error(conn, reason)
@@ -116,11 +116,14 @@ defmodule KeystonePhoenixWeb.MenuController do
 
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(10002, Map.fetch!(messages, reason)))
+    |> json(ApiResponse.error(:validation_failed, Map.fetch!(messages, reason)))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
     errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(99999, "参数校验失败", errors))
+
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
   end
 end

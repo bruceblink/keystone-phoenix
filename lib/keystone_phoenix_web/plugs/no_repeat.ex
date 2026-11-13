@@ -28,13 +28,15 @@ defmodule KeystonePhoenixWeb.Plugs.NoRepeat do
         conn
         |> put_resp_header("retry-after", Integer.to_string(retry_after))
         |> put_status(:too_many_requests)
-        |> Phoenix.Controller.json(ApiResponse.error(42902, "请勿重复提交"))
+        |> Phoenix.Controller.json(ApiResponse.error(:validation_failed, "请勿重复提交"))
         |> halt()
 
       {:error, reason} when reason in [:capacity, :unavailable] ->
         conn
         |> put_status(:service_unavailable)
-        |> Phoenix.Controller.json(ApiResponse.error(50302, "限流服务暂不可用，请稍后重试"))
+        |> Phoenix.Controller.json(
+          ApiResponse.error(:authorization_unavailable, "限流服务暂不可用，请稍后重试")
+        )
         |> halt()
     end
   end

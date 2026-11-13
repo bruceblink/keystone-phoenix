@@ -26,6 +26,6 @@ defmodule KeystonePhoenixWeb.ExcelResponse do
   def render_error(conn, message) do
     conn
     |> put_status(:unprocessable_entity)
-    |> Phoenix.Controller.json(ApiResponse.error(10404, message))
+    |> Phoenix.Controller.json(ApiResponse.error(:validation_failed, message))
   end
 end

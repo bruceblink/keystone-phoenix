@@ -31,14 +31,14 @@ defmodule KeystonePhoenixWeb.Plugs.RateLimit do
     conn
     |> put_resp_header("retry-after", Integer.to_string(retry_after))
     |> put_status(:too_many_requests)
-    |> Phoenix.Controller.json(ApiResponse.error(42901, "请求过于频繁，请稍后再试"))
+    |> Phoenix.Controller.json(ApiResponse.error(:validation_failed, "请求过于频繁，请稍后再试"))
     |> halt()
   end
 
   defp unavailable(conn) do
     conn
     |> put_status(:service_unavailable)
-    |> Phoenix.Controller.json(ApiResponse.error(50302, "限流服务暂不可用，请稍后重试"))
+    |> Phoenix.Controller.json(ApiResponse.error(:authorization_unavailable, "限流服务暂不可用，请稍后重试"))
     |> halt()
   end
 

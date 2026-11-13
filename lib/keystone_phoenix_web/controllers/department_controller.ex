@@ -62,7 +62,7 @@ defmodule KeystonePhoenixWeb.DepartmentController do
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(ApiResponse.error(10001, "找不到请求的部门"))
+    |> json(ApiResponse.error(:validation_failed, "找不到请求的部门"))
   end
 
   defp render_error(conn, reason)
@@ -89,7 +89,7 @@ defmodule KeystonePhoenixWeb.DepartmentController do
 
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(10002, Map.fetch!(messages, reason)))
+    |> json(ApiResponse.error(:validation_failed, Map.fetch!(messages, reason)))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
@@ -97,6 +97,6 @@ defmodule KeystonePhoenixWeb.DepartmentController do
 
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(99999, "参数校验失败", errors))
+    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
   end
 end

@@ -59,13 +59,13 @@ defmodule KeystonePhoenixWeb.ConfigController do
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(ApiResponse.error(10001, "找不到请求的系统配置"))
+    |> json(ApiResponse.error(:validation_failed, "找不到请求的系统配置"))
   end
 
   defp render_error(conn, :not_allow_change) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(10002, "该配置不允许修改"))
+    |> json(ApiResponse.error(:validation_failed, "该配置不允许修改"))
   end
 
   defp render_error(conn, changeset) do
@@ -74,6 +74,6 @@ defmodule KeystonePhoenixWeb.ConfigController do
 
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(99999, "参数校验失败", errors))
+    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
   end
 end

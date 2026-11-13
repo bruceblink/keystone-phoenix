@@ -117,19 +117,19 @@ defmodule KeystonePhoenixWeb.DictionaryController do
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(ApiResponse.error(10001, "找不到请求的字典数据"))
+    |> json(ApiResponse.error(:validation_failed, "找不到请求的字典数据"))
   end
 
   defp render_error(conn, :has_data) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(11101, "字典类型下存在字典数据，请先删除字典数据"))
+    |> json(ApiResponse.error(:validation_failed, "字典类型下存在字典数据，请先删除字典数据"))
   end
 
   defp render_error(conn, :dict_type_not_found) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(11102, "字典类型不存在或已停用"))
+    |> json(ApiResponse.error(:validation_failed, "字典类型不存在或已停用"))
   end
 
   defp render_error(conn, changeset) do
@@ -138,6 +138,6 @@ defmodule KeystonePhoenixWeb.DictionaryController do
 
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(99999, "参数校验失败", errors))
+    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
   end
 end

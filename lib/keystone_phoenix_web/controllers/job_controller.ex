@@ -102,57 +102,71 @@ defmodule KeystonePhoenixWeb.JobController do
   def delete(conn, _params), do: render_error(conn, :invalid_ids)
 
   defp render_error(conn, :not_found) do
-    conn |> put_status(:not_found) |> json(ApiResponse.error(10001, "找不到请求的定时任务"))
+    conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "找不到请求的定时任务"))
   end
 
   defp render_error(conn, :invalid_ids) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10003, "任务编号无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "任务编号无效"))
   end
 
   defp render_error(conn, :invalid_status) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(11206, "任务状态值无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "任务状态值无效"))
   end
 
   defp render_error(conn, :not_running) do
-    conn |> put_status(:not_found) |> json(ApiResponse.error(11207, "没有正在运行的任务"))
+    conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "没有正在运行的任务"))
   end
 
   defp render_error(conn, :invalid_params) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(99999, "参数无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "参数无效"))
   end
 
   defp render_error(conn, :invoke_target_invalid) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(11201, "调用目标无效，请从候选列表选择"))
+    |> json(ApiResponse.error(:validation_failed, "调用目标无效，请从候选列表选择"))
   end
 
   defp render_error(conn, :invoke_target_not_found) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(11202, "调用目标不存在"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "调用目标不存在"))
   end
 
   defp render_error(conn, :params_invalid) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(11205, "任务参数无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "任务参数无效"))
   end
 
   defp render_error(conn, :execute_failed) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(11204, "任务执行失败"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "任务执行失败"))
   end
 
   defp render_error(conn, :log_persist_failed) do
-    conn |> put_status(:service_unavailable) |> json(ApiResponse.error(50301, "任务日志保存失败"))
+    conn
+    |> put_status(:service_unavailable)
+    |> json(ApiResponse.error(:authorization_unavailable, "任务日志保存失败"))
   end
 
   defp render_error(conn, :execution_timeout) do
     conn
     |> put_status(:service_unavailable)
-    |> json(ApiResponse.error(50302, "任务执行超时，任务已终止"))
+    |> json(ApiResponse.error(:authorization_unavailable, "任务执行超时，任务已终止"))
   end
 
   defp render_error(conn, :resource_exhausted) do
     conn
     |> put_status(:service_unavailable)
-    |> json(ApiResponse.error(50303, "任务执行资源暂不可用"))
+    |> json(ApiResponse.error(:authorization_unavailable, "任务执行资源暂不可用"))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
@@ -160,10 +174,12 @@ defmodule KeystonePhoenixWeb.JobController do
 
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(99999, "参数校验失败", errors))
+    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
   end
 
   defp render_error(conn, _reason) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(99999, "任务参数无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "任务参数无效"))
   end
 end

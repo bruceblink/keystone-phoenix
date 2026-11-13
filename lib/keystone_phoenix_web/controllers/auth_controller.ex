@@ -66,7 +66,7 @@ defmodule KeystonePhoenixWeb.AuthController do
   def register(conn, _params) do
     conn
     |> put_status(:not_implemented)
-    |> json(ApiResponse.error(50101, "暂不支持用户注册"))
+    |> json(ApiResponse.error(:validation_failed, "暂不支持用户注册"))
   end
 
   @doc "Authenticates a local username and password."
@@ -180,60 +180,60 @@ defmodule KeystonePhoenixWeb.AuthController do
   defp render_error(conn, :invalid_credentials) do
     conn
     |> put_status(:unauthorized)
-    |> json(ApiResponse.error(10002, "用户名或密码错误"))
+    |> json(ApiResponse.error(:invalid_credential, "用户名或密码错误"))
   end
 
   defp render_error(conn, :captcha_required) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(10205, "验证码为空"))
+    |> json(ApiResponse.error(:validation_failed, "验证码为空"))
   end
 
   defp render_error(conn, :captcha_invalid) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(10203, "验证码错误"))
+    |> json(ApiResponse.error(:validation_failed, "验证码错误"))
   end
 
   defp render_error(conn, :captcha_expired) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(10204, "验证码过期"))
+    |> json(ApiResponse.error(:validation_failed, "验证码过期"))
   end
 
   defp render_error(conn, :invalid_refresh_token) do
     conn
     |> put_status(:unauthorized)
-    |> json(ApiResponse.error(40102, "刷新令牌无效或已过期"))
+    |> json(ApiResponse.error(:session_revoked, "刷新令牌无效或已过期"))
   end
 
   defp render_error(conn, :already_logged_in) do
     conn
     |> put_status(:conflict)
-    |> json(ApiResponse.error(10210, "该账号已经登录"))
+    |> json(ApiResponse.error(:validation_failed, "该账号已经登录"))
   end
 
   defp render_error(conn, :unavailable) do
     conn
     |> put_status(:service_unavailable)
-    |> json(ApiResponse.error(50301, "认证会话暂不可用"))
+    |> json(ApiResponse.error(:authorization_unavailable, "认证会话暂不可用"))
   end
 
   defp render_error(conn, :token_configuration) do
     conn
-    |> put_status(:internal_server_error)
-    |> json(ApiResponse.error(50001, "认证密钥配置无效"))
+    |> put_status(:service_unavailable)
+    |> json(ApiResponse.error(:authorization_unavailable, "认证密钥配置无效"))
   end
 
   defp render_error(conn, :rate_limited) do
     conn
     |> put_status(:too_many_requests)
-    |> json(ApiResponse.error(42903, "登录尝试过于频繁，请稍后再试"))
+    |> json(ApiResponse.error(:validation_failed, "登录尝试过于频繁，请稍后再试"))
   end
 
   defp render_error(conn, :rate_limited_unavailable) do
     conn
     |> put_status(:service_unavailable)
-    |> json(ApiResponse.error(50302, "限流服务暂不可用，请稍后重试"))
+    |> json(ApiResponse.error(:authorization_unavailable, "限流服务暂不可用，请稍后重试"))
   end
 end

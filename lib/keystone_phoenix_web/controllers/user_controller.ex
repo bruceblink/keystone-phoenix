@@ -363,43 +363,43 @@ defmodule KeystonePhoenixWeb.UserController do
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(ApiResponse.error(10001, "找不到请求的用户"))
+    |> json(ApiResponse.error(:validation_failed, "找不到请求的用户"))
   end
 
   defp render_error(conn, :invalid_ids) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(10003, "用户编号无效"))
+    |> json(ApiResponse.error(:validation_failed, "用户编号无效"))
   end
 
   defp render_error(conn, :protected_user) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(10004, "当前用户或管理员不能删除"))
+    |> json(ApiResponse.error(:validation_failed, "当前用户或管理员不能删除"))
   end
 
   defp render_error(conn, :update_failed) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(10005, "用户更新失败"))
+    |> json(ApiResponse.error(:validation_failed, "用户更新失败"))
   end
 
   defp render_error(conn, :unavailable) do
     conn
     |> put_status(:service_unavailable)
-    |> json(ApiResponse.error(50301, "认证会话暂不可用"))
+    |> json(ApiResponse.error(:authorization_unavailable, "认证会话暂不可用"))
   end
 
   defp render_error(conn, :invalid_status) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(10006, "用户状态无效"))
+    |> json(ApiResponse.error(:validation_failed, "用户状态无效"))
   end
 
   defp render_error(conn, :role_assignment_forbidden) do
     conn
     |> put_status(:forbidden)
-    |> json(ApiResponse.error(40301, "没有角色分配权限"))
+    |> json(ApiResponse.error(:permission_denied, "没有角色分配权限"))
   end
 
   defp render_error(conn, reason)
@@ -413,7 +413,7 @@ defmodule KeystonePhoenixWeb.UserController do
 
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(10007, message))
+    |> json(ApiResponse.error(:validation_failed, message))
   end
 
   defp render_error(conn, changeset) do
@@ -422,6 +422,6 @@ defmodule KeystonePhoenixWeb.UserController do
 
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(99999, "参数校验失败", errors))
+    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
   end
 end

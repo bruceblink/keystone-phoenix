@@ -208,36 +208,48 @@ defmodule KeystonePhoenixWeb.RoleController do
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(ApiResponse.error(10001, "找不到请求的角色"))
+    |> json(ApiResponse.error(:validation_failed, "找不到请求的角色"))
   end
 
   defp render_error(conn, reason) when reason in [:protected_role, :has_users] do
     message = if reason == :protected_role, do: "管理员角色不能删除", else: "角色存在用户，不能删除"
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10002, message))
+
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, message))
   end
 
   defp render_error(conn, :role_unavailable) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10003, "角色已停用"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "角色已停用"))
   end
 
   defp render_error(conn, :forbidden) do
-    conn |> put_status(:forbidden) |> json(ApiResponse.error(40301, "需要管理员权限"))
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "需要管理员权限"))
   end
 
   defp render_error(conn, :permission_denied) do
-    conn |> put_status(:forbidden) |> json(ApiResponse.error(40302, "没有操作权限"))
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "没有操作权限"))
   end
 
   defp render_error(conn, :menu_not_found) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10005, "菜单不存在"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "菜单不存在"))
   end
 
   defp render_error(conn, :invalid_ids) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10004, "用户编号无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "用户编号无效"))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
     errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(99999, "参数校验失败", errors))
+
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
   end
 end

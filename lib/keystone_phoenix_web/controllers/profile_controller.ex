@@ -96,25 +96,31 @@ defmodule KeystonePhoenixWeb.ProfileController do
   def update_avatar(conn, _params), do: render_error(conn, :invalid_avatar)
 
   defp render_error(conn, :not_found) do
-    conn |> put_status(:not_found) |> json(ApiResponse.error(10001, "找不到当前用户"))
+    conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "找不到当前用户"))
   end
 
   defp render_error(conn, :invalid_old_password) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10007, "旧密码错误"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "旧密码错误"))
   end
 
   defp render_error(conn, :same_password) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10008, "新密码不能与旧密码相同"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "新密码不能与旧密码相同"))
   end
 
   defp render_error(conn, :unavailable) do
     conn
     |> put_status(:service_unavailable)
-    |> json(ApiResponse.error(50301, "认证会话暂不可用"))
+    |> json(ApiResponse.error(:authorization_unavailable, "认证会话暂不可用"))
   end
 
   defp render_error(conn, :invalid_avatar) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10009, "头像地址无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "头像地址无效"))
   end
 
   defp render_error(conn, reason)
@@ -126,12 +132,17 @@ defmodule KeystonePhoenixWeb.ProfileController do
               :type_not_allowed,
               :storage_error
             ] do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10009, "头像文件无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "头像文件无效"))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
     errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(99999, "参数校验失败", errors))
+
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
   end
 
   defp delete_previous_avatar(previous, current)

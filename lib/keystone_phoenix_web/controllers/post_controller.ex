@@ -104,22 +104,30 @@ defmodule KeystonePhoenixWeb.PostController do
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(ApiResponse.error(10001, "找不到请求的岗位"))
+    |> json(ApiResponse.error(:validation_failed, "找不到请求的岗位"))
   end
 
   defp render_error(conn, :invalid_ids) do
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10002, "岗位编号无效"))
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "岗位编号无效"))
   end
 
   defp render_error(conn, :invalid_id), do: render_error(conn, :invalid_ids)
 
   defp render_error(conn, reason) when reason in [:has_users, :update_failed] do
     message = if reason == :has_users, do: "岗位存在用户，不能删除", else: "岗位更新失败"
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(10003, message))
+
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, message))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
     errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
-    conn |> put_status(:unprocessable_entity) |> json(ApiResponse.error(99999, "参数校验失败", errors))
+
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
   end
 end
