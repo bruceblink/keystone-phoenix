@@ -21,7 +21,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
         role_name: unique("编辑管理员角色"),
         role_key: unique("editing_admin_role"),
         role_sort: 1,
-        data_scope: 1,
+        data_scope: "ALL",
         dept_id_set: "",
         status: 1
       })
@@ -86,7 +86,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
           "roleName" => unique("原角色"),
           "roleKey" => unique("editing_role"),
           "roleSort" => 7,
-          "dataScope" => 3,
+          "dataScope" => "DEPARTMENT",
           "status" => 1,
           "menuIds" => []
         },
@@ -109,7 +109,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     assert live_socket(view).assigns.active_modal == nil
     assert Repo.aggregate(SysRole, :count) == count
     assert Repo.get!(SysRole, role.role_id).role_name == "角色已修改"
-    assert Repo.get!(SysRole, role.role_id).data_scope == 3
+    assert Repo.get!(SysRole, role.role_id).data_scope == "DEPARTMENT"
   end
 
   test "refreshing or deleting a role clears its selected users", ctx do
@@ -119,7 +119,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
           "roleName" => unique("待清理角色"),
           "roleKey" => unique("stale_role"),
           "roleSort" => 7,
-          "dataScope" => 3,
+          "dataScope" => "DEPARTMENT",
           "status" => 1,
           "menuIds" => []
         },

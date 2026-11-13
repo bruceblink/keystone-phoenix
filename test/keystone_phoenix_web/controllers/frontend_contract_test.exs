@@ -99,7 +99,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
         role_name: "契约角色",
         role_key: unique("contract_role"),
         role_sort: 1,
-        data_scope: 1,
+        data_scope: "ALL",
         dept_id_set: department.dept_id,
         status: 1
       })

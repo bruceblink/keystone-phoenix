@@ -122,7 +122,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
       "roleName" => role_name,
       "roleKey" => role_key,
       "roleSort" => "10",
-      "dataScope" => "1",
+      "dataScope" => "ALL",
       "deptIdSet" => "",
       "status" => "1",
       "menuIds" => "",

@@ -31,7 +31,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
         "roleName" => "",
         "roleKey" => "",
         "roleSort" => 0,
-        "dataScope" => 1,
+        "dataScope" => "ALL",
         "status" => 1
       },
       role_feedback: nil,

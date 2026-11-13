@@ -45,7 +45,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
 
     role =
       insert_role(%{
-        data_scope: 3,
+        data_scope: "DEPARTMENT",
         permission: "user:read"
       })
 
@@ -237,7 +237,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
         role_name: unique("只读角色"),
         role_key: unique("readonly_role"),
         role_sort: 1,
-        data_scope: Map.get(attrs, :data_scope, 1),
+        data_scope: Map.get(attrs, :data_scope, "ALL"),
         dept_id_set: "",
         status: 1
       })

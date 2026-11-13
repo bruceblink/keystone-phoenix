@@ -12,7 +12,7 @@ defmodule KeystonePhoenix.RoleAuthorizationTest do
         role_name: "受保护角色",
         role_key: "protected_#{System.unique_integer([:positive])}",
         role_sort: 1,
-        data_scope: 1,
+        data_scope: "ALL",
         status: 1
       })
       |> Repo.insert!()

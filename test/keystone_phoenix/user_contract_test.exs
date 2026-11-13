@@ -31,7 +31,7 @@ defmodule KeystonePhoenix.UserContractTest do
         role_name: "合同角色",
         role_key: unique("contract_role"),
         role_sort: 1,
-        data_scope: 1,
+        data_scope: "ALL",
         status: 1
       })
       |> Repo.insert!()

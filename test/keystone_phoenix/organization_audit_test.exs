@@ -78,7 +78,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
                  "roleName" => "审计角色",
                  "roleKey" => unique("audit_role"),
                  "roleSort" => 1,
-                 "dataScope" => 1,
+                 "dataScope" => "ALL",
                  "status" => 1,
                  "menuIds" => []
                },

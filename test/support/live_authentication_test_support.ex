@@ -155,7 +155,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTestSupport do
         role_name: unique("Live 管理角色"),
         role_key: unique("live_admin_role"),
         role_sort: 1,
-        data_scope: 1,
+        data_scope: "ALL",
         dept_id_set: "",
         status: 1
       })
@@ -182,7 +182,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTestSupport do
         role_name: unique("Live 认证角色"),
         role_key: unique("live_auth_role"),
         role_sort: 10,
-        data_scope: 1,
+        data_scope: "ALL",
         dept_id_set: "",
         status: 1
       })

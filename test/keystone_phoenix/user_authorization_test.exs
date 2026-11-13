@@ -76,7 +76,7 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
         role_name: unique("scope_role"),
         role_key: unique("scope_role"),
         role_sort: 1,
-        data_scope: 3,
+        data_scope: "DEPARTMENT",
         status: 1
       })
       |> Repo.insert!()

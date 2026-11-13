@@ -197,7 +197,9 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     {:ok, view, _html} = login_view(conn, user)
 
     assert {:ok, _role} =
-             Repo.update(Ecto.Changeset.change(role, data_scope: 2, dept_id_set: user.dept_id))
+             Repo.update(
+               Ecto.Changeset.change(role, data_scope: "CUSTOM", dept_id_set: user.dept_id)
+             )
 
     {:ok, before} = User.get_user(user.user_id)
     html = render_submit(view, "save-profile", %{"nickname" => "不应保存"})

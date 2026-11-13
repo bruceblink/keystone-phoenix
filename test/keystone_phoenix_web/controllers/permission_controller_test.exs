@@ -311,7 +311,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
       role_name: "权限接口角色",
       role_key: unique("api_role"),
       role_sort: 1,
-      data_scope: 1,
+      data_scope: "ALL",
       status: 1
     })
     |> Repo.insert!()

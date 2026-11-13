@@ -16,7 +16,7 @@ defmodule KeystonePhoenix.Authz.NormalizedPolicyTest do
         role_name: "规范权限角色",
         role_key: "normalized_#{System.unique_integer([:positive])}",
         role_sort: 1,
-        data_scope: 1,
+        data_scope: "ALL",
         status: 1
       })
       |> Repo.insert!()
@@ -41,7 +41,7 @@ defmodule KeystonePhoenix.Authz.NormalizedPolicyTest do
       role_name: "旧权限角色",
       role_key: "legacy_#{System.unique_integer([:positive])}",
       role_sort: 1,
-      data_scope: 1,
+      data_scope: "ALL",
       status: 1
     })
     |> Repo.insert!()
