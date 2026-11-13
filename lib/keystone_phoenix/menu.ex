@@ -5,11 +5,15 @@ defmodule KeystonePhoenix.Menu do
 
   alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Authz.Command
+  alias KeystonePhoenix.Authz.SysMenuPermission
   alias KeystonePhoenix.Authz.SysPermission
+  alias KeystonePhoenix.Authz.SysRolePermission
   alias KeystonePhoenix.Authz.PolicyCache
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Role.SysRole
+  alias KeystonePhoenix.Role.SysRoleMenu
   alias KeystonePhoenix.Tree
 
   @menu_attrs [
@@ -159,9 +163,9 @@ defmodule KeystonePhoenix.Menu do
 
   def menus_for_user(user) do
     from(m in SysMenu,
-      join: rm in "sys_role_menu",
+      join: rm in SysRoleMenu,
       on: rm.menu_id == m.menu_id,
-      join: role in "sys_role",
+      join: role in SysRole,
       on: role.role_id == rm.role_id,
       where:
         m.deleted == false and m.status == 1 and role.deleted == false and role.status == 1 and
@@ -181,10 +185,12 @@ defmodule KeystonePhoenix.Menu do
   def permissions_for_user(user) do
     role_id = Map.get(user, :role_id, Map.get(user, "roleId"))
 
-    from(role_permission in "sys_role_permission",
+    # 使用带有 `:binary_id` 字段类型的 schema，让 Ecto 把 UUID 字符串转换为
+    # PostgreSQL 的 16 字节 uuid。直接查询表名会跳过类型转换并导致绑定失败。
+    from(role_permission in SysRolePermission,
       join: permission in SysPermission,
       on: permission.permission_id == role_permission.permission_id,
-      join: role in "sys_role",
+      join: role in SysRole,
       on: role.role_id == role_permission.role_id,
       where:
         role_permission.role_id == ^role_id and role.deleted == false and role.status == 1 and
@@ -244,7 +250,7 @@ defmodule KeystonePhoenix.Menu do
 
   defp permission_for_menu(menu_id) do
     Repo.one(
-      from menu_permission in "sys_menu_permission",
+      from menu_permission in SysMenuPermission,
         join: permission in SysPermission,
         on: permission.permission_id == menu_permission.permission_id,
         where: menu_permission.menu_id == ^menu_id and permission.status == 1,
@@ -253,15 +259,15 @@ defmodule KeystonePhoenix.Menu do
   end
 
   defp persist_menu_permission({:ok, menu}, nil) do
-    Repo.delete_all(from link in "sys_menu_permission", where: link.menu_id == ^menu.menu_id)
+    Repo.delete_all(from link in SysMenuPermission, where: link.menu_id == ^menu.menu_id)
     {:ok, menu}
   end
 
   defp persist_menu_permission({:ok, menu}, permission_id) do
-    Repo.delete_all(from link in "sys_menu_permission", where: link.menu_id == ^menu.menu_id)
+    Repo.delete_all(from link in SysMenuPermission, where: link.menu_id == ^menu.menu_id)
 
     Repo.insert_all(
-      "sys_menu_permission",
+      SysMenuPermission,
       [%{menu_id: menu.menu_id, permission_id: permission_id}],
       on_conflict: :nothing
     )
@@ -427,7 +433,7 @@ defmodule KeystonePhoenix.Menu do
   end
 
   defp assigned_to_role?(menu_id) do
-    Repo.exists?(from role_menu in "sys_role_menu", where: role_menu.menu_id == ^menu_id)
+    Repo.exists?(from role_menu in SysRoleMenu, where: role_menu.menu_id == ^menu_id)
   end
 
   defp invalidate_policy_cache({:ok, _value} = result) do

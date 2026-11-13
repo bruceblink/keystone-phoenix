@@ -8,9 +8,9 @@ defmodule KeystonePhoenix.IntegrityConstraintsTest do
       Repo.query("""
       SELECT COUNT(*)
       FROM pg_constraint
-      WHERE conname LIKE '%_fk'
+      WHERE contype = 'f'
       """)
 
-    assert result.rows == [[28]]
+    assert result.rows == [[26]]
   end
 end

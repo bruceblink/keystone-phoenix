@@ -2,22 +2,23 @@ defmodule KeystonePhoenix.AuthTest do
   use KeystonePhoenix.DataCase, async: false
 
   alias KeystonePhoenix.Auth
-  alias KeystonePhoenix.Config
+  alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Config.SysConfig
   alias KeystonePhoenix.User.SysUser
 
   setup do
-    Config.refresh_cache(authorization: %{principal: %{}})
+    Cache.delete_prefix("keystone:system:config:")
 
     _captcha_config =
-      %SysConfig{}
-      |> SysConfig.changeset(%{
-        config_name: "验证码开关",
-        config_key: "sys.account.captchaOnOff",
-        config_value: "false",
-        is_allow_change: true
-      })
-      |> Repo.insert!()
+      Repo.get_by(SysConfig, config_key: "sys.account.captchaOnOff", deleted: false) ||
+        %SysConfig{}
+        |> SysConfig.changeset(%{
+          config_name: "验证码开关",
+          config_key: "sys.account.captchaOnOff",
+          config_value: "false",
+          is_allow_change: true
+        })
+        |> Repo.insert!()
 
     user =
       %SysUser{}
@@ -28,7 +29,7 @@ defmodule KeystonePhoenix.AuthTest do
       })
       |> Repo.insert!()
 
-    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{}}) end)
+    on_exit(fn -> Cache.delete_prefix("keystone:system:config:") end)
 
     {:ok, user: user}
   end

@@ -7,7 +7,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
-  alias KeystonePhoenix.Config
+  alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Config.SysConfig
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Menu.SysMenu
@@ -23,13 +23,16 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
 
   setup do
     ensure_captcha_config()
-    Config.refresh_cache(authorization: %{principal: %{}})
-    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{}}) end)
+    clear_config_cache()
+    on_exit(&clear_config_cache/0)
+
+    admin_role = create_admin_role()
 
     {:ok, admin} =
       create_user(%{
         "username" => unique("live_auth_admin"),
-        "nickname" => "认证管理员"
+        "nickname" => "认证管理员",
+        "role_id" => admin_role.role_id
       })
 
     {:ok, admin: admin}
@@ -161,8 +164,8 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     {:ok, _disabled} =
       User.change_status(admin.user_id, 0,
         authorization: %{
-          principal: %{user_id: admin.user_id},
-          permission: "system:user:edit"
+          principal: admin_principal(admin),
+          permission: "user:update"
         }
       )
 
@@ -182,8 +185,8 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     assert {:ok, _reset} =
              User.reset_password(admin.user_id, %{"password" => "Reset!456"},
                authorization: %{
-                 principal: %{user_id: admin.user_id},
-                 permission: "system:user:resetPwd"
+                 principal: admin_principal(admin),
+                 permission: "user:reset-password"
                }
              )
 
@@ -202,7 +205,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     {:ok, view, _html} = login_view(conn, user)
 
     assert {:ok, _role} =
-             Repo.update(Ecto.Changeset.change(role, data_scope: 2, dept_id_set: "1"))
+             Repo.update(Ecto.Changeset.change(role, data_scope: 2, dept_id_set: user.dept_id))
 
     {:ok, before} = User.get_user(user.user_id)
     html = render_submit(view, "save-profile", %{"nickname" => "不应保存"})
@@ -218,7 +221,11 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     {:ok, view, _html} = login_view(conn, user)
 
     assert {:ok, _role} =
-             Repo.update(Ecto.Changeset.change(role, dept_id_set: "1,2"))
+             Repo.update(
+               Ecto.Changeset.change(role,
+                 dept_id_set: Enum.join([user.dept_id, user.dept_id], ",")
+               )
+             )
 
     {:ok, before} = User.get_user(user.user_id)
     html = render_submit(view, "save-profile", %{"nickname" => "不应保存"})
@@ -249,7 +256,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     {user, _role} = create_scoped_user()
     {:ok, view, _html} = login_view(conn, user)
 
-    assert {:ok, _updated_user} = Repo.update(Ecto.Changeset.change(user, dept_id: 2))
+    assert {:ok, _updated_user} = Repo.update(Ecto.Changeset.change(user, dept_id: nil))
     {:ok, before} = User.get_user(user.user_id)
     html = render_submit(view, "save-profile", %{"nickname" => "不应保存"})
 
@@ -261,12 +268,12 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   test "a changed role menu permission invalidates the session", %{conn: conn} do
     disable_captcha()
     {user, role} = create_scoped_user()
-    first_menu = create_menu("system:user:list")
+    first_menu = create_menu("user:read")
     Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: first_menu.menu_id})
-    link_permission(role.role_id, first_menu, "system:user:list")
+    link_permission(role.role_id, first_menu, "user:read")
     {:ok, view, _html} = login_view(conn, user)
 
-    second_permission = unique("system:profile:edit")
+    second_permission = "menu:read"
     second_menu = create_menu(second_permission)
     Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: second_menu.menu_id})
     link_permission(role.role_id, second_menu, second_permission)
@@ -282,7 +289,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     disable_captcha()
     {:ok, target} = create_user(%{"nickname" => "目标用户"})
     {:ok, view, _html} = login_view(conn, admin)
-    assert {:ok, _updated_admin} = Repo.update(Ecto.Changeset.change(admin))
+    assert {:ok, _updated_admin} = Repo.update(Ecto.Changeset.change(admin, role_id: nil))
     {:ok, before} = User.get_user(target.user_id)
 
     html =
@@ -411,7 +418,17 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   defp set_captcha(value) do
     config = Repo.get_by!(SysConfig, config_key: @captcha_config_key, deleted: false)
     Repo.update!(Ecto.Changeset.change(config, config_value: value))
-    Config.refresh_cache(authorization: %{principal: %{}})
+    clear_config_cache()
+  end
+
+  defp clear_config_cache, do: Cache.delete_prefix("keystone:system:config:")
+
+  defp admin_principal(admin) do
+    %{
+      user_id: admin.user_id,
+      role_id: admin.role_id,
+      permissions: ["permission:manage", "user:update", "user:reset-password"]
+    }
   end
 
   defp ensure_captcha_config do
@@ -476,10 +493,37 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
       %SysUser{}
       |> SysUser.create_changeset(attrs)
       |> Repo.insert!()
+
+    {:ok, user}
+  end
+
+  defp create_admin_role do
+    role =
+      %SysRole{}
+      |> SysRole.changeset(%{
+        role_name: unique("Live 管理角色"),
+        role_key: unique("live_admin_role"),
+        role_sort: 1,
+        data_scope: 1,
+        dept_id_set: "",
+        status: 1
+      })
+      |> Repo.insert!()
+
+    for code <- ["permission:manage", "user:update", "user:reset-password"] do
+      permission = Repo.get_by!(SysPermission, permission: code)
+
+      Repo.insert!(%SysRolePermission{
+        role_id: role.role_id,
+        permission_id: permission.permission_id
+      })
+    end
+
+    role
   end
 
   defp create_scoped_user do
-    insert_test_departments()
+    {actor_dept, _target_dept} = insert_test_departments()
 
     role =
       %SysRole{}
@@ -495,26 +539,34 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
 
     {:ok, user} = create_user(%{})
 
-    user = Repo.update!(Ecto.Changeset.change(user, role_id: role.role_id, dept_id: 1))
+    user =
+      Repo.update!(
+        Ecto.Changeset.change(user, role_id: role.role_id, dept_id: actor_dept.dept_id)
+      )
+
     {user, role}
   end
 
   defp insert_test_departments do
-    Repo.insert!(%SysDept{
-      dept_id: 1,
-      parent_id: 0,
-      ancestors: "0",
-      dept_name: unique("认证部门一"),
-      status: 1
-    })
+    first =
+      Repo.insert!(%SysDept{
+        dept_id: KeystonePhoenix.Identity.v7(),
+        parent_id: nil,
+        ancestors: "",
+        dept_name: unique("认证部门一"),
+        status: 1
+      })
 
-    Repo.insert!(%SysDept{
-      dept_id: 2,
-      parent_id: 0,
-      ancestors: "0",
-      dept_name: unique("认证部门二"),
-      status: 1
-    })
+    second =
+      Repo.insert!(%SysDept{
+        dept_id: KeystonePhoenix.Identity.v7(),
+        parent_id: nil,
+        ancestors: "",
+        dept_name: unique("认证部门二"),
+        status: 1
+      })
+
+    {first, second}
   end
 
   defp create_menu(_permission) do
@@ -523,7 +575,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
       menu_name: unique("Live 认证菜单"),
       menu_type: 1,
       router_name: "",
-      parent_id: 0,
+      parent_id: nil,
       path: "/live-auth",
       is_button: true,
       meta_info: "{}",
@@ -534,14 +586,14 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   end
 
   defp link_permission(role_id, menu, permission) do
-    [resource, domain, action] = String.split(permission, ":", parts: 3)
+    [resource, action] = String.split(permission, ":", parts: 2)
 
     entry =
       Repo.get_by(SysPermission, permission: permission) ||
         Repo.insert!(%SysPermission{
           permission: permission,
           resource: resource,
-          domain: domain,
+          domain: "default",
           action: action,
           status: 1,
           deprecated: false
