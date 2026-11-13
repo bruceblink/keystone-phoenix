@@ -1,6 +1,8 @@
 defmodule KeystonePhoenixWeb.AuthController do
   use KeystonePhoenixWeb, :controller
 
+  plug KeystonePhoenixWeb.Plugs.RejectApiKey
+
   plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:current_user, :routers, :logout]
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,

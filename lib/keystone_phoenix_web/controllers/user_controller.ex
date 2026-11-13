@@ -1,6 +1,8 @@
 defmodule KeystonePhoenixWeb.UserController do
   use KeystonePhoenixWeb, :controller
 
+  plug KeystonePhoenixWeb.Plugs.RejectApiKey when action in [:create, :import, :reset_password]
+
   plug KeystonePhoenixWeb.Plugs.Authenticate,
        [
          permissions: %{

@@ -1,6 +1,7 @@
 defmodule KeystonePhoenixWeb.ProfileController do
   use KeystonePhoenixWeb, :controller
 
+  plug KeystonePhoenixWeb.Plugs.RejectApiKey
   plug KeystonePhoenixWeb.Plugs.Authenticate
 
   alias KeystonePhoenix.Upload

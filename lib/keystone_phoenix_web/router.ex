@@ -12,6 +12,9 @@ defmodule KeystonePhoenixWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+
+    # 业务接口支持 Bearer 和 API Key；敏感的人类会话入口由 RejectApiKey 拒绝。
+    plug KeystonePhoenixWeb.Plugs.ApiKeyAuthenticate
     plug KeystonePhoenixWeb.Plugs.OperationLog
   end
 
@@ -165,5 +168,7 @@ defmodule KeystonePhoenixWeb.Router do
 
   scope "/api", KeystonePhoenixWeb do
     pipe_through :api
+
+    get "/.well-known/jwks.json", JwkController, :show
   end
 end

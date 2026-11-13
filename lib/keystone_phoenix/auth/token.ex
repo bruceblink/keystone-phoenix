@@ -121,6 +121,31 @@ defmodule KeystonePhoenix.Auth.Token do
     pem
   end
 
+  @doc "按 RFC 7517 JWK Set 格式返回用于验签的 RSA 公钥。"
+  @spec public_jwk_set() :: {:ok, map()} | {:error, term()}
+  def public_jwk_set do
+    key_id = Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone")
+
+    if valid_key_id?(key_id) do
+      {_fields, jwk} = JOSE.JWK.to_map(public_jwk())
+
+      {:ok,
+       %{
+         "keys" => [
+           Map.merge(jwk, %{
+             "alg" => "RS256",
+             "kid" => String.trim(key_id),
+             "use" => "sig"
+           })
+         ]
+       }}
+    else
+      {:error, :invalid_key_id}
+    end
+  rescue
+    error -> {:error, {:jwk_configuration, error}}
+  end
+
   @doc "Returns the public key as Base64 encoded X.509 SubjectPublicKeyInfo."
   @spec public_key_base64() :: binary()
   def public_key_base64 do
@@ -237,4 +262,10 @@ defmodule KeystonePhoenix.Auth.Token do
   end
 
   defp normalize_pem(pem) when is_binary(pem), do: String.replace(pem, "\\n", "\n")
+
+  defp valid_key_id?(value) when is_binary(value) do
+    Regex.match?(~r/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/, String.trim(value))
+  end
+
+  defp valid_key_id?(_value), do: false
 end

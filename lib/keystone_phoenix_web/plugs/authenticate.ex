@@ -10,35 +10,56 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
   def init(opts), do: opts
 
   def call(conn, opts) do
+    case conn.assigns[:api_key_principal] do
+      principal when is_map(principal) ->
+        authorize_principal(conn, principal, opts)
+
+      _ ->
+        authenticate_bearer(conn, opts)
+    end
+  end
+
+  defp authenticate_bearer(conn, opts) do
     with ["Bearer " <> token] <- get_req_header(conn, "authorization"),
          {:ok, user} <- Auth.authenticate_access_token(token),
          :ok <- authorize(user, conn, opts) do
       assign(conn, :current_user, user)
     else
-      {:error, :forbidden} ->
-        conn
-        |> put_status(:forbidden)
-        |> Phoenix.Controller.json(ApiResponse.error(:permission_denied, "没有操作权限"))
-        |> halt()
-
-      {:error, :permission_denied} ->
-        conn
-        |> put_status(:forbidden)
-        |> Phoenix.Controller.json(ApiResponse.error(:permission_denied, "没有操作权限"))
-        |> halt()
-
-      {:error, :data_scope_denied} ->
-        conn
-        |> put_status(:forbidden)
-        |> Phoenix.Controller.json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
-        |> halt()
-
-      _ ->
-        conn
-        |> put_status(:unauthorized)
-        |> Phoenix.Controller.json(ApiResponse.error(:session_revoked, "登录状态已失效"))
-        |> halt()
+      reason -> render_authentication_error(conn, reason)
     end
+  end
+
+  # API Key 已在路由认证阶段建立服务主体；这里复用同一权限和数据范围判定。
+  defp authorize_principal(conn, principal, opts) do
+    case authorize(principal, conn, opts) do
+      :ok -> assign(conn, :current_user, principal)
+      reason -> render_authentication_error(conn, reason)
+    end
+  end
+
+  defp render_authentication_error(conn, {:error, :forbidden}) do
+    render_authentication_error(conn, {:error, :permission_denied})
+  end
+
+  defp render_authentication_error(conn, {:error, :permission_denied}) do
+    conn
+    |> put_status(:forbidden)
+    |> Phoenix.Controller.json(ApiResponse.error(:permission_denied, "没有操作权限"))
+    |> halt()
+  end
+
+  defp render_authentication_error(conn, {:error, :data_scope_denied}) do
+    conn
+    |> put_status(:forbidden)
+    |> Phoenix.Controller.json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
+    |> halt()
+  end
+
+  defp render_authentication_error(conn, _reason) do
+    conn
+    |> put_status(:unauthorized)
+    |> Phoenix.Controller.json(ApiResponse.error(:session_revoked, "登录状态已失效"))
+    |> halt()
   end
 
   defp authorize(user, conn, opts) do

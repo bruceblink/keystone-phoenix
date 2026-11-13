@@ -142,7 +142,10 @@ defmodule KeystonePhoenix.Auth.ApiKey do
          subject_id: subject.id,
          user_id: user.user_id,
          username: user.username,
+         role_id: user.role_id,
+         dept_id: user.dept_id,
          credential_type: "API_KEY",
+         permissions: scopes,
          scopes: scopes,
          approved_scopes: scopes
        }}

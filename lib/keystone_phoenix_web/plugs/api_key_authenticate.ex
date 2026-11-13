@@ -9,10 +9,17 @@ defmodule KeystonePhoenixWeb.Plugs.ApiKeyAuthenticate do
   def init(opts), do: opts
 
   def call(conn, _opts) do
-    with ["ApiKey " <> value] <- get_req_header(conn, "authorization"),
-         {:ok, principal} <- ApiKey.authenticate(value, conn.remote_ip) do
-      assign(conn, :api_key_principal, principal)
-    else
+    case get_req_header(conn, "authorization") do
+      ["ApiKey " <> value] -> authenticate(conn, value)
+      _ -> conn
+    end
+  end
+
+  defp authenticate(conn, value) do
+    case ApiKey.authenticate(value, conn.remote_ip) do
+      {:ok, principal} ->
+        assign(conn, :api_key_principal, principal)
+
       _ ->
         conn
         |> put_status(:unauthorized)
