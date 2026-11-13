@@ -76,6 +76,10 @@ defmodule KeystonePhoenixWeb.Router do
     put "/auth/mfa/policy/:user_id", AuthController, :set_mfa_policy
     post "/auth/mfa/step-up", AuthController, :begin_mfa_step_up
     post "/auth/mfa/step-up/verify", AuthController, :verify_mfa_step_up
+    post "/api-keys", ApiKeyController, :create
+    get "/api-keys", ApiKeyController, :index
+    post "/api-keys/:id/rotate", ApiKeyController, :rotate
+    delete "/api-keys/:id", ApiKeyController, :delete
     get "/system/dict/types", DictionaryController, :list_types
     get "/system/dict/type/list", DictionaryController, :list_types
     get "/system/dict/type/:dict_id", DictionaryController, :show_type
