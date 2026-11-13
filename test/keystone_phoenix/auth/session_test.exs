@@ -19,7 +19,7 @@ defmodule KeystonePhoenix.Auth.SessionTest do
   end
 
   test "persists and revokes a refresh session", %{user: user} do
-    jti = "session-#{System.unique_integer([:positive])}"
+    jti = Identity.v7()
 
     assert :ok = Session.occupy(user.user_id, jti, 600)
     assert Session.valid?(jti, user.user_id)
@@ -42,8 +42,8 @@ defmodule KeystonePhoenix.Auth.SessionTest do
   end
 
   test "force login replaces the previous active session", %{user: user} do
-    first_jti = "first-#{System.unique_integer([:positive])}"
-    second_jti = "second-#{System.unique_integer([:positive])}"
+    first_jti = Identity.v7()
+    second_jti = Identity.v7()
 
     assert :ok = Session.occupy(user.user_id, first_jti, 600)
     assert {:error, :already_logged_in} = Session.occupy(user.user_id, second_jti, 600)

@@ -66,11 +66,10 @@ defmodule KeystonePhoenix.Auth do
     with {:ok, claims} <- Token.verify(refresh_token, Token.refresh_type()),
          {:ok, user_id} <- parse_user_id(claims["sub"]),
          jti when is_binary(jti) <- claims["jti"],
+         session_id when is_binary(session_id) <- claims["sid"],
          {:ok, tokens} <-
-           Session.rotate(user_id, jti, fn user ->
-             with {:ok, tokens} <- issue_pair(user, false) do
-               {:ok, Map.put(tokens, :current_user, current_login_user(user))}
-             end
+           Session.rotate(user_id, jti, session_id, refresh_token, fn user, session ->
+             issue_pair_for_session(user, session)
            end) do
       {:ok, tokens}
     else
@@ -98,9 +97,9 @@ defmodule KeystonePhoenix.Auth do
   @spec logout_access(String.t()) :: :ok
   def logout_access(token) when is_binary(token) do
     with {:ok, claims} <- Token.verify(token, Token.access_type()),
-         {:ok, user_id} <- parse_user_id(claims["sub"]),
+         {:ok, _user_id} <- parse_user_id(claims["sub"]),
          session_id when is_binary(session_id) <- claims["sid"] do
-      Session.revoke(user_id, session_id)
+      Session.revoke_session(session_id)
     else
       _ -> :ok
     end
@@ -136,9 +135,20 @@ defmodule KeystonePhoenix.Auth do
   end
 
   defp issue_pair(user, force_login) do
-    with {:ok, refresh} <- Token.issue(user, Token.refresh_type()),
-         :ok <- Session.occupy(user.user_id, refresh.jti, refresh.expires_in, force_login) do
-      issue_access_pair(user, refresh)
+    session_id = Session.new_session_id()
+
+    with {:ok, refresh} <- Token.issue(user, Token.refresh_type(), session_id),
+         :ok <-
+           Session.occupy(
+             user.user_id,
+             refresh.jti,
+             refresh.expires_in,
+             force_login,
+             session_id,
+             "web",
+             refresh.token
+           ) do
+      issue_access_pair(user, refresh, session_id)
     else
       {:error, :already_logged_in} -> {:error, :already_logged_in}
       {:error, {:token_configuration, _reason}} -> {:error, :token_configuration}
@@ -146,20 +156,37 @@ defmodule KeystonePhoenix.Auth do
     end
   end
 
-  defp issue_access_pair(user, refresh) do
-    case Token.issue(user, Token.access_type(), refresh.jti) do
+  defp issue_access_pair(user, refresh, session_id) do
+    case Token.issue(user, Token.access_type(), session_id) do
       {:ok, access} ->
         {:ok,
          %{
            token: access.token,
            refresh_token: refresh.token,
            expires_in: access.expires_in,
-           refresh_expires_in: refresh.expires_in
+           refresh_expires_in: refresh.expires_in,
+           refresh_jti: refresh.jti,
+           session_id: session_id
          }}
 
       {:error, {:token_configuration, _reason}} ->
-        Session.revoke(user.user_id, refresh.jti)
+        Session.revoke_session(session_id)
         {:error, :token_configuration}
+    end
+  end
+
+  defp issue_pair_for_session(user, session) do
+    with {:ok, refresh} <- Token.issue(user, Token.refresh_type(), session.id),
+         {:ok, access} <- Token.issue(user, Token.access_type(), session.id) do
+      {:ok,
+       %{
+         token: access.token,
+         refresh_token: refresh.token,
+         expires_in: access.expires_in,
+         refresh_expires_in: refresh.expires_in,
+         refresh_jti: refresh.jti,
+         session_id: session.id
+       }}
     end
   end
 

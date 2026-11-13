@@ -308,11 +308,12 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
 
   defp hold_refresh_row(jti) do
     test_pid = self()
+    {:ok, jti_bytes} = Ecto.UUID.dump(jti)
 
     spawn_monitor(fn ->
       with_unboxed(fn ->
         Repo.transaction(fn ->
-          Repo.query!("SELECT id FROM auth_sessions WHERE jti = $1 FOR UPDATE", [jti])
+          Repo.query!("SELECT id FROM auth_sessions WHERE jti = $1 FOR UPDATE", [jti_bytes])
           send(test_pid, {:refresh_row_locked, self()})
 
           receive do

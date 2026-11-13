@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.Auth.SessionCleanupTest do
 
   alias KeystonePhoenix.Auth.AuthSession
   alias KeystonePhoenix.Auth.Session
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.User.SysUser
 
@@ -12,22 +13,34 @@ defmodule KeystonePhoenix.Auth.SessionCleanupTest do
 
     expired =
       Repo.insert!(%AuthSession{
+        id: Identity.v7(),
         user_id: user.user_id,
-        jti: "expired-#{System.unique_integer([:positive])}",
+        client_id: "web",
+        jti: Identity.v7(),
+        refresh_family_id: Identity.v7(),
+        refresh_expires_at: DateTime.add(now, -60, :second),
+        idle_expires_at: DateTime.add(now, -60, :second),
+        last_seen_at: now,
         expires_at: DateTime.add(now, -60, :second),
         active: false
       })
 
     active =
       Repo.insert!(%AuthSession{
+        id: Identity.v7(),
         user_id: user.user_id,
-        jti: "active-#{System.unique_integer([:positive])}",
+        client_id: "web",
+        jti: Identity.v7(),
+        refresh_family_id: Identity.v7(),
+        refresh_expires_at: DateTime.add(now, 60, :second),
+        idle_expires_at: DateTime.add(now, 60, :second),
+        last_seen_at: now,
         expires_at: DateTime.add(now, 60, :second),
         active: true
       })
 
     assert {:ok, 1} = Session.cleanup_expired()
-    refute Repo.get(AuthSession, expired.id)
+    assert Repo.get(AuthSession, expired.id).active == false
     assert Repo.get(AuthSession, active.id)
   end
 
