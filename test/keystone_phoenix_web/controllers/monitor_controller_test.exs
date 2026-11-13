@@ -5,6 +5,6 @@ defmodule KeystonePhoenixWeb.MonitorControllerTest do
     response = get(conn, "/monitor/networkStatus/stream")
 
     assert response.status == 401
-    assert json_response(response, 401)["code"] == 40101
+    assert get_in(json_response(response, 401), ["error", "code"]) == "session_revoked"
   end
 end

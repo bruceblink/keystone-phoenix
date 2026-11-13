@@ -69,7 +69,8 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   def scope_allowed?(principal, :self, target) do
     subject = Principal.from_user(principal)
 
-    if Permission.admin?(subject) do
+    # 数据范围判断需要使用带有 role_id 的原始主体，不能把 Principal 结构直接交给旧策略适配器。
+    if Permission.admin?(Principal.to_user(subject)) do
       true
     else
       with {:ok, subject_id} <- Params.parse_uuid(subject.subject_id),
@@ -86,7 +87,8 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   def scope_allowed?(principal, kind, target) do
     subject = Principal.from_user(principal)
 
-    if Permission.admin?(subject) do
+    # 旧策略读取 role_id；先还原规范主体保存的原始用户字段，确保管理员范围正确放行。
+    if Permission.admin?(Principal.to_user(subject)) do
       true
     else
       scope_allowed_without_admin?(subject, kind, target)

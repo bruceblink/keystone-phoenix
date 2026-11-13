@@ -3,14 +3,15 @@ defmodule KeystonePhoenix.Authz.NormalizedPolicyTest do
 
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
 
   test "uses normalized role permission bindings when present" do
-    permission = "system:normalized:read_#{System.unique_integer([:positive])}"
+    permission = "user:read"
 
     role =
-      %SysRole{}
+      %SysRole{role_id: Identity.v7()}
       |> SysRole.changeset(%{
         role_name: "规范权限角色",
         role_key: "normalized_#{System.unique_integer([:positive])}",
@@ -20,18 +21,7 @@ defmodule KeystonePhoenix.Authz.NormalizedPolicyTest do
       })
       |> Repo.insert!()
 
-    entry =
-      %SysPermission{}
-      |> Ecto.Changeset.change(%{
-        permission: permission,
-        resource: "system",
-        domain: "normalized",
-        action: "read",
-        risk: "low",
-        status: 1,
-        deprecated: false
-      })
-      |> Repo.insert!()
+    entry = Repo.get_by!(SysPermission, permission: permission)
 
     Repo.insert!(%SysRolePermission{role_id: role.role_id, permission_id: entry.permission_id})
 
@@ -39,14 +29,14 @@ defmodule KeystonePhoenix.Authz.NormalizedPolicyTest do
   end
 
   test "does not authorize from legacy menu permissions" do
-    permission = "system:legacy:read_#{System.unique_integer([:positive])}"
+    permission = "legacy:read"
     role = insert_role()
 
     refute Authz.allowed?(%{role_id: role.role_id}, permission)
   end
 
   defp insert_role do
-    %SysRole{}
+    %SysRole{role_id: Identity.v7()}
     |> SysRole.changeset(%{
       role_name: "旧权限角色",
       role_key: "legacy_#{System.unique_integer([:positive])}",

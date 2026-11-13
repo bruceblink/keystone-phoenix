@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
 
   setup_all do
@@ -37,11 +38,14 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
   end
 
   setup %{function_name: _function_name} do
+    admin_role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+
     user =
       %SysUser{}
       |> SysUser.create_changeset(%{
         username: "password_session_#{System.unique_integer([:positive])}",
         password: "Strong!123",
+        role_id: admin_role.role_id,
         status: 1
       })
       |> Repo.insert!()
@@ -61,7 +65,7 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
       |> authorized(token)
       |> put("/system/users/#{user.user_id}/password", %{"password" => "Reset!456"})
 
-    assert %{"code" => 50301} = json_response(response, 503)
+    assert get_in(json_response(response, 503), ["error", "code"]) == "authorization_unavailable"
     assert Auth.Session.active?(user.user_id, session_id(token))
   end
 
@@ -78,7 +82,7 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
         "newPassword" => "Reset!456"
       })
 
-    assert %{"code" => 50301} = json_response(response, 503)
+    assert get_in(json_response(response, 503), ["error", "code"]) == "authorization_unavailable"
     assert Auth.Session.active?(user.user_id, session_id(token))
   end
 
