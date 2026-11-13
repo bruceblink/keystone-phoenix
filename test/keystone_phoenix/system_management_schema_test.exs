@@ -66,10 +66,14 @@ defmodule KeystonePhoenix.SystemManagementSchemaTest do
   end
 
   test "log maps omit database-only deletion fields" do
-    login = %SysLoginInfo{info_id: 1, username: "admin", status: 1}
+    login = %SysLoginInfo{
+      info_id: "018f2a7e-5d3c-7b01-8a11-000000000141",
+      username: "admin",
+      status: 1
+    }
 
     operation = %SysOperationLog{
-      operation_id: 2,
+      operation_id: "018f2a7e-5d3c-7b01-8a11-000000000142",
       username: "admin",
       business_type: 1,
       request_method: 2,
@@ -82,7 +86,7 @@ defmodule KeystonePhoenix.SystemManagementSchemaTest do
 
     refute Map.has_key?(login_map, "deleted")
     refute Map.has_key?(operation_map, "deleted")
-    assert login_map["logId"] == "1"
+    assert login_map["logId"] == "018f2a7e-5d3c-7b01-8a11-000000000141"
     assert login_map["statusStr"] == "登录成功"
     assert operation_map["businessTypeStr"] == "添加"
     assert operation_map["requestMethod"] == "POST"

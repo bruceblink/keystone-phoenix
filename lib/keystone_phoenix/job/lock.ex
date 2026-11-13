@@ -14,17 +14,17 @@ defmodule KeystonePhoenix.Job.Lock do
   end
 
   @doc "Attempts to acquire a job lock for the calling process."
-  def acquire(job_id) when is_integer(job_id) do
+  def acquire(job_id) when is_binary(job_id) do
     GenServer.call(__MODULE__, {:acquire, job_id, self()})
   end
 
   @doc "Releases a job lock owned by the calling process."
-  def release(job_id) when is_integer(job_id) do
+  def release(job_id) when is_binary(job_id) do
     GenServer.call(__MODULE__, {:release, job_id, self()})
   end
 
   @doc "Returns whether a job currently has an execution lock."
-  def held?(job_id) when is_integer(job_id) do
+  def held?(job_id) when is_binary(job_id) do
     GenServer.call(__MODULE__, {:held?, job_id})
   end
 

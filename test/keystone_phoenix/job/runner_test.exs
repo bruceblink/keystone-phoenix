@@ -52,7 +52,7 @@ defmodule KeystonePhoenix.Job.RunnerTest do
 
     assert {:ok, _job} =
              KeystonePhoenix.Job.update_job_status(job.job_id, 0,
-               authorization: %{principal: %{is_admin: true}}
+               authorization: %{principal: %{permissions: ["job:update-status"]}}
              )
 
     assert_eventually(fn ->
@@ -75,7 +75,7 @@ defmodule KeystonePhoenix.Job.RunnerTest do
 
     assert {:error, :execution_timeout} =
              KeystonePhoenix.Job.run_job(job.job_id,
-               authorization: %{principal: %{is_admin: true}}
+               authorization: %{principal: %{permissions: ["job:run"]}}
              )
 
     assert Enum.any?(logs(job.job_id), &(&1.trigger_type == 2 and &1.status == 0))
@@ -103,7 +103,7 @@ defmodule KeystonePhoenix.Job.RunnerTest do
 
     assert {:error, :resource_exhausted} =
              KeystonePhoenix.Job.run_job(job.job_id,
-               authorization: %{principal: %{is_admin: true}}
+               authorization: %{principal: %{permissions: ["job:run"]}}
              )
   end
 

@@ -32,7 +32,7 @@ defmodule KeystonePhoenix.Job do
 
   @doc "Returns one task definition."
   def get_job(id) do
-    case Params.parse_positive_integer(id) do
+    case Params.parse_uuid(id) do
       {:ok, id} ->
         case Repo.get(SysJob, id) do
           nil -> {:error, :not_found}
@@ -138,7 +138,7 @@ defmodule KeystonePhoenix.Job do
   def delete_jobs(_ids, _options), do: {:error, :authorization_required}
 
   defp do_delete_jobs(ids) when is_list(ids) do
-    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
+    ids = ids |> Enum.map(&parse_uuid/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}
@@ -222,7 +222,7 @@ defmodule KeystonePhoenix.Job do
   def cancel_job(_id, _options), do: {:error, :authorization_required}
 
   defp do_cancel_job(id) do
-    case parse_positive_integer(id) do
+    case parse_uuid(id) do
       nil ->
         {:error, :invalid_id}
 
@@ -244,7 +244,7 @@ defmodule KeystonePhoenix.Job do
 
     query =
       query
-      |> filter_integer(:job_id, params["jobId"] || params[:job_id])
+      |> filter_uuid(:job_id, params["jobId"] || params[:job_id])
       |> filter_contains(:job_name, params["jobName"] || params[:job_name])
       |> filter_contains(:job_group, params["jobGroup"] || params[:job_group])
       |> filter_contains(:invoke_target, params["invokeTarget"] || params[:invoke_target])
@@ -334,16 +334,21 @@ defmodule KeystonePhoenix.Job do
     end
   end
 
-  defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
+  defp filter_uuid(query, _field, value) when value in [nil, ""], do: query
 
-  defp parse_positive_integer(value) when is_binary(value) do
-    case Integer.parse(String.trim(value)) do
-      {number, ""} when number > 0 -> number
-      _ -> nil
+  defp filter_uuid(query, field, value) do
+    case Params.parse_uuid(value) do
+      {:ok, uuid} -> where(query, [record], field(record, ^field) == ^uuid)
+      :error -> query
     end
   end
 
-  defp parse_positive_integer(_value), do: nil
+  defp parse_uuid(value) do
+    case Params.parse_uuid(value) do
+      {:ok, uuid} -> uuid
+      :error -> nil
+    end
+  end
 
   defp yes_or_no(1), do: "是"
   defp yes_or_no(_value), do: "否"

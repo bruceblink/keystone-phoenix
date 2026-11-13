@@ -6,8 +6,8 @@ defmodule KeystonePhoenix.Job.SysJob do
 
   alias KeystonePhoenix.Job.Cron
 
-  @primary_key {:job_id, :id, autogenerate: true}
-  @foreign_key_type :id
+  @primary_key {:job_id, :binary_id, autogenerate: false}
+  @foreign_key_type :binary_id
 
   schema "sys_job" do
     field :job_name, :string
@@ -18,8 +18,8 @@ defmodule KeystonePhoenix.Job.SysJob do
     field :concurrent, :integer, default: 0
     field :status, :integer, default: 0
     field :remark, :string
-    field :creator_id, :integer
-    field :updater_id, :integer
+    field :creator_id, :binary_id
+    field :updater_id, :binary_id
 
     timestamps(inserted_at: :create_time, updated_at: :update_time, type: :utc_datetime_usec)
   end
@@ -38,6 +38,7 @@ defmodule KeystonePhoenix.Job.SysJob do
   def changeset(job, attrs) do
     job
     |> cast(attrs, @fields)
+    |> put_new_id()
     |> validate_required([
       :job_name,
       :job_group,
@@ -55,6 +56,13 @@ defmodule KeystonePhoenix.Job.SysJob do
     |> validate_inclusion(:status, [0, 1])
     |> validate_cron()
     |> validate_params()
+  end
+
+  # 新任务 ID 使用 UUIDv7；固定系统任务由 seed 显式提供 UUIDv5。
+  defp put_new_id(changeset) do
+    if get_field(changeset, :job_id),
+      do: changeset,
+      else: put_change(changeset, :job_id, KeystonePhoenix.Identity.v7())
   end
 
   defp validate_cron(changeset) do

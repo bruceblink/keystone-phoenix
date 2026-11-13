@@ -4,11 +4,11 @@ defmodule KeystonePhoenix.Job.SysJobLog do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @primary_key {:job_log_id, :id, autogenerate: true}
-  @foreign_key_type :id
+  @primary_key {:job_log_id, :binary_id, autogenerate: false}
+  @foreign_key_type :binary_id
 
   schema "sys_job_log" do
-    field :job_id, :integer
+    field :job_id, :binary_id
     field :job_name, :string
     field :job_group, :string
     field :invoke_target, :string
@@ -44,6 +44,7 @@ defmodule KeystonePhoenix.Job.SysJobLog do
   def changeset(log, attrs) do
     log
     |> cast(attrs, @fields)
+    |> put_new_id()
     |> validate_required([
       :job_name,
       :job_group,
@@ -59,5 +60,12 @@ defmodule KeystonePhoenix.Job.SysJobLog do
     |> validate_length(:exception_info, max: 2000)
     |> validate_inclusion(:trigger_type, [1, 2])
     |> validate_inclusion(:status, [0, 1, 2])
+  end
+
+  # 每条执行日志使用独立 UUIDv7，job_id 引用任务 UUID。
+  defp put_new_id(changeset) do
+    if get_field(changeset, :job_log_id),
+      do: changeset,
+      else: put_change(changeset, :job_log_id, KeystonePhoenix.Identity.v7())
   end
 end

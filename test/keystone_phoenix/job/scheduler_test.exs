@@ -6,10 +6,14 @@ defmodule KeystonePhoenix.Job.SchedulerTest do
   alias KeystonePhoenix.Job.Scheduler
 
   test "prunes trigger timestamps for disabled or deleted jobs" do
-    state = %{last_trigger: %{1 => 10, 2 => 20, 3 => 30}, running: %{}}
-    jobs = [%{job_id: 1}, %{job_id: 3}]
+    first_id = "018f2a7e-5d3c-7b01-8a11-000000000111"
+    second_id = "018f2a7e-5d3c-7b01-8a11-000000000112"
+    third_id = "018f2a7e-5d3c-7b01-8a11-000000000113"
+    state = %{last_trigger: %{first_id => 10, second_id => 20, third_id => 30}, running: %{}}
+    jobs = [%{job_id: first_id}, %{job_id: third_id}]
 
-    assert %{last_trigger: %{1 => 10, 3 => 30}} = Scheduler.prune_last_triggers(state, jobs)
+    assert %{last_trigger: %{^first_id => 10, ^third_id => 30}} =
+             Scheduler.prune_last_triggers(state, jobs)
   end
 
   test "only scheduler-marked cancellation and timeout kills are expected" do
@@ -28,7 +32,9 @@ defmodule KeystonePhoenix.Job.SchedulerTest do
 
     state = %{
       last_trigger: %{},
-      running: %{1 => %{pid => %{ref: ref, termination: nil}}}
+      running: %{
+        "018f2a7e-5d3c-7b01-8a11-000000000114" => %{pid => %{ref: ref, termination: nil}}
+      }
     }
 
     log =

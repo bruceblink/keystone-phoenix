@@ -3,8 +3,8 @@ defmodule KeystonePhoenix.Log.SysLoginInfo do
 
   use Ecto.Schema
 
-  @primary_key {:info_id, :id, autogenerate: true}
-  @foreign_key_type :id
+  @primary_key {:info_id, :binary_id, autogenerate: false}
+  @foreign_key_type :binary_id
 
   schema "sys_login_info" do
     field :username, :string

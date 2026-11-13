@@ -7,7 +7,7 @@ defmodule KeystonePhoenix.Job.AuditTest do
 
   test "job definition writes store creator and updater IDs" do
     actor =
-      %SysUser{user_id: 1101}
+      %SysUser{user_id: "018f2a7e-5d3c-7b01-8a11-000000000101"}
       |> SysUser.create_changeset(%{username: unique("job_actor"), password: "Strong!123"})
       |> Repo.insert!()
 
@@ -21,7 +21,7 @@ defmodule KeystonePhoenix.Job.AuditTest do
                  "concurrent" => 0,
                  "status" => 0
                },
-               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+               authorization: %{principal: %{user_id: actor.user_id, permissions: ["job:create"]}}
              )
 
     assert job.creator_id == actor.user_id
@@ -35,14 +35,16 @@ defmodule KeystonePhoenix.Job.AuditTest do
                  "jobParams" => "",
                  "cronExpression" => "*/5 * * * * *"
                },
-               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+               authorization: %{principal: %{user_id: actor.user_id, permissions: ["job:update"]}}
              )
 
     assert job.updater_id == actor.user_id
 
     assert {:ok, job} =
              Job.update_job_status(job.job_id, 1,
-               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+               authorization: %{
+                 principal: %{user_id: actor.user_id, permissions: ["job:update-status"]}
+               }
              )
 
     assert job.updater_id == actor.user_id
@@ -56,7 +58,9 @@ defmodule KeystonePhoenix.Job.AuditTest do
                  "jobGroup" => "测试",
                  "invokeTarget" => "demoJobTask.printHeartbeat()"
                },
-               authorization: %{principal: %{user_id: 1102, permissions: []}}
+               authorization: %{
+                 principal: %{user_id: "018f2a7e-5d3c-7b01-8a11-000000000102", permissions: []}
+               }
              )
   end
 

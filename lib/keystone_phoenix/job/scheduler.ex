@@ -13,6 +13,7 @@ defmodule KeystonePhoenix.Job.Scheduler do
 
   alias KeystonePhoenix.Job.{Cron, Runner, SysJob}
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Params
 
   @default_tick_interval_ms 1_000
 
@@ -221,16 +222,12 @@ defmodule KeystonePhoenix.Job.Scheduler do
     end
   end
 
-  defp parse_job_id(value) when is_integer(value) and value > 0, do: value
-
-  defp parse_job_id(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {id, ""} when id > 0 -> id
-      _ -> nil
+  defp parse_job_id(value) do
+    case Params.parse_uuid(value) do
+      {:ok, uuid} -> uuid
+      :error -> nil
     end
   end
-
-  defp parse_job_id(_value), do: nil
 
   defp remove_running_ref(state, ref, pid) do
     Enum.reduce(state.running, state, fn {job_id, running}, state ->

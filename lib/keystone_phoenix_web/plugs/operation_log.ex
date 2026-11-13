@@ -39,7 +39,7 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLog do
   defp record(conn) do
     case conn.assigns[:current_user] do
       %{user_id: user_id, username: username} = user
-      when is_integer(user_id) and is_binary(username) ->
+      when is_binary(user_id) and is_binary(username) ->
         attrs = %{
           business_type: business_type(conn.method),
           request_method: request_method_code(conn.method),

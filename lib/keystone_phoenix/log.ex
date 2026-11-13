@@ -7,6 +7,8 @@ defmodule KeystonePhoenix.Log do
   alias KeystonePhoenix.Authz.Command
   alias KeystonePhoenix.Authz.Principal
   alias KeystonePhoenix.Pagination
+  alias KeystonePhoenix.Identity
+  alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
 
   def list_login_logs(params \\ %{}) do
@@ -72,6 +74,7 @@ defmodule KeystonePhoenix.Log do
     attrs =
       Map.merge(
         %{
+          info_id: Identity.v7(),
           username: truncate(username, 50),
           ip_address: "",
           login_location: "",
@@ -101,6 +104,7 @@ defmodule KeystonePhoenix.Log do
 
   def create_operation_log(attrs, user, request_url, request_method) when is_map(attrs) do
     normalized = %{
+      operation_id: Identity.v7(),
       business_type: attrs["businessType"] || attrs[:business_type] || 0,
       request_method:
         attrs["requestMethod"] || attrs[:request_method] || request_method_code(request_method),
@@ -243,7 +247,7 @@ defmodule KeystonePhoenix.Log do
   end
 
   defp soft_delete(schema, field, ids) when is_list(ids) do
-    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
+    ids = ids |> Enum.map(&parse_uuid/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}
@@ -318,16 +322,12 @@ defmodule KeystonePhoenix.Log do
   defp operator_type_label(3), do: "手机端用户"
   defp operator_type_label(type), do: to_string(type || "")
 
-  defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
-
-  defp parse_positive_integer(value) when is_binary(value) do
-    case Integer.parse(String.trim(value)) do
-      {number, ""} when number > 0 -> number
-      _ -> nil
+  defp parse_uuid(value) do
+    case Params.parse_uuid(value) do
+      {:ok, uuid} -> uuid
+      :error -> nil
     end
   end
-
-  defp parse_positive_integer(_value), do: nil
 
   defp request_method_code(method) when method in ["GET", "POST", "PUT", "DELETE"],
     do: %{"GET" => 1, "POST" => 2, "PUT" => 3, "DELETE" => 4}[method]

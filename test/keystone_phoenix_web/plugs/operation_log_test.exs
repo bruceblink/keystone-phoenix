@@ -12,6 +12,12 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLogTest do
   alias KeystonePhoenixWeb.Plugs.OperationLog
 
   test "records a sanitized authenticated write request" do
+    user_id = "018f2a7e-5d3c-7b01-8a11-000000000131"
+
+    %SysUser{user_id: user_id}
+    |> SysUser.create_changeset(%{username: unique("operation_actor"), password: "Strong!123"})
+    |> Repo.insert!()
+
     conn =
       :put
       |> conn("/system/user/profile", "")
@@ -21,7 +27,10 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLogTest do
         "refreshToken" => "do-not-persist",
         "captchaCodeKey" => "one-time-key"
       })
-      |> assign(:current_user, %SysUser{user_id: 42, username: "tester"})
+      |> assign(:current_user, %SysUser{
+        user_id: user_id,
+        username: "tester"
+      })
       |> Map.put(:private, %{
         phoenix_controller: KeystonePhoenixWeb.ProfileController,
         phoenix_action: :update
@@ -46,7 +55,13 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLogTest do
   end
 
   test "bounds operation and login log fields before persistence" do
-    user = %SysUser{user_id: 43, username: String.duplicate("u", 100)}
+    user_id = "018f2a7e-5d3c-7b01-8a11-000000000132"
+
+    user =
+      %SysUser{user_id: user_id}
+      |> SysUser.create_changeset(%{username: unique("operation_bounds"), password: "Strong!123"})
+      |> Repo.insert!()
+      |> Map.put(:username, String.duplicate("u", 100))
 
     assert {:ok, log} =
              Log.create_operation_log(
@@ -76,4 +91,6 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLogTest do
     assert byte_size(login.username) <= 50
     assert byte_size(login.msg) <= 255
   end
+
+  defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 end

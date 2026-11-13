@@ -3,8 +3,8 @@ defmodule KeystonePhoenix.Log.SysOperationLog do
 
   use Ecto.Schema
 
-  @primary_key {:operation_id, :id, autogenerate: true}
-  @foreign_key_type :id
+  @primary_key {:operation_id, :binary_id, autogenerate: false}
+  @foreign_key_type :binary_id
 
   schema "sys_operation_log" do
     field :business_type, :integer
