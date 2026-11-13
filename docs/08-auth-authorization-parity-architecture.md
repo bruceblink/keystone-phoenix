@@ -16,7 +16,7 @@
 | 授权执行点 | Policy Enforcement Point（PEP） | 在 HTTP、LiveView 或领域命令入口执行 PDP 决策。 | 不复制另一套权限规则。 |
 | 安全事件 | Security event | 记录登录、令牌、API Key、MFA 和授权结果。 | 不保存密码、令牌或完整 API Key。 |
 
-新系统只使用两段权限格式：`resource:action`，例如 `user:read`、`user:write`、`api-key:create`、`session:revoke`。三段权限、菜单权限字段和角色名称不属于新接口、数据库或授权输入。权限目录使用固定 UUIDv5，角色只保存权限目录 ID。
+新系统只使用两段权限格式：`resource:action`，例如 `user:read`、`user:update`、`api-key:create`、`session:revoke`。三段权限、菜单权限字段和角色名称不属于新接口、数据库或授权输入。权限目录使用固定 UUIDv5，角色只保存权限目录 ID。
 
 ## 主键和标识符
 

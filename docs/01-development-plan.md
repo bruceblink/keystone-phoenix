@@ -2,7 +2,7 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
-更新日期：2026-11-14。当前代码基线为 `4c105fa`，当前文档提交为 `7d66b63`。`9457759` 及更早镜像仅作为历史证据。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
+更新日期：2026-11-14。当前代码基线为 `008651f`，文档变更待本次提交。`9457759` 及更早镜像仅作为历史证据。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
 
 本文较早的功能和验收记录只用于识别需要替换的范围，不代表新系统已经完成。一次性重构从 U0 阶段重新实现和验收；现有实体、迁移、接口和测试只有在符合统一架构后才能继续使用。
 
@@ -11,6 +11,8 @@
 将 Keystone 的账号、组织权限、系统管理、监控、定时任务和管理前端迁移到 Elixir、Phoenix、Ecto、PostgreSQL 和 LiveView。保留已确定的 HTTP 路径、有效输入、响应字段和业务行为。旧 Java 项目与 `keystone-frontend` 是接口参考，不要求视觉或实现方式逐项复制。
 
 当前采用单节点部署。PostgreSQL 保存业务数据与认证会话。Erlang 运行时内置表存储（Erlang Term Storage / ETS）只保存可以重建的验证码、缓存和本节点限流记录。它不负责跨节点同步。
+
+2026-11-14 clean-break 实施进度：`12d592f` 完成 71 项规范权限目录和生产授权调用点迁移；`9962fb7` 完成用户、角色、部门及认证直接关系的 PostgreSQL UUID 主键迁移；`01ba63a` 更新 UUID 授权测试夹具；`008651f` 修复迁移后的固定 UUIDv5 启动记录和可重复 seeds。已验证目标授权测试 30 项通过、核心身份测试 3 项通过、编译无 warning。菜单、岗位、公告、配置、字典、任务和日志业务主键仍待后续切片；`is_admin` 字段和旧响应封装的删除也未完成。
 
 2026-11-08 至 2026-11-10 已将限流、批量角色写入、用户数据范围、认证、页面、镜像构建和前端交互优化修复提交并推送。`492205d` 已完成角色分配授权、Excel multipart 导入和逐行范围检查；`72472fd` 完成登录页与管理外壳视觉整理；`3fc626c` 增加管理表单提交锁定；`e483870` 记录最新前端验收状态。`3568a95` 将 Dockerfile 默认 Hex 源切换为标准 registry，并显式配置 CA 路径和 UTF-8 运行参数。发布验收仍有环境限制。功能验收和发布验收分别记录。
 
