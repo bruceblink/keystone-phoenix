@@ -2,6 +2,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
   use KeystonePhoenix.DataCase, async: false
 
   alias KeystonePhoenix.Department
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Repo
@@ -10,7 +11,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
 
   test "organization writes store the authenticated actor" do
     actor =
-      %SysUser{user_id: 901}
+      %SysUser{user_id: Identity.v7()}
       |> SysUser.create_changeset(%{
         username: unique("organization_actor"),
         password: "Strong!123"
@@ -20,7 +21,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
     assert {:ok, department} =
              Department.create_dept(
                %{"deptName" => "审计部门", "status" => 1},
-               authorization: %{principal: %{user_id: actor.user_id}}
+               authorization: authorization(actor)
              )
 
     assert department.creator_id == actor.user_id
@@ -29,7 +30,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
              Department.update_dept(
                department.dept_id,
                %{"status" => 0},
-               authorization: %{principal: %{user_id: actor.user_id}}
+               authorization: authorization(actor)
              )
 
     assert department.updater_id == actor.user_id
@@ -42,7 +43,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
                  "postSort" => 1,
                  "status" => 1
                },
-               authorization: %{principal: %{user_id: actor.user_id}}
+               authorization: authorization(actor)
              )
 
     assert post.creator_id == actor.user_id
@@ -51,28 +52,22 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
              Post.update_post(
                post.post_id,
                %{"status" => 0},
-               authorization: %{principal: %{user_id: actor.user_id}}
+               authorization: authorization(actor)
              )
 
     assert post.updater_id == actor.user_id
 
     assert {:ok, menu} =
              Menu.create_menu(
-               %{"menuName" => "审计菜单", "menuType" => 1, "parentId" => 0, "status" => 1},
-               authorization: %{
-                 principal: %{user_id: actor.user_id},
-                 permission: "system:menu:add"
-               }
+               %{"menuName" => "审计菜单", "menuType" => 1, "parentId" => nil, "status" => 1},
+               authorization: authorization(actor, "menu:create")
              )
 
     assert menu.creator_id == actor.user_id
 
     assert {:ok, menu} =
              Menu.update_menu(menu.menu_id, %{"status" => 0},
-               authorization: %{
-                 principal: %{user_id: actor.user_id},
-                 permission: "system:menu:edit"
-               }
+               authorization: authorization(actor, "menu:update")
              )
 
     assert menu.updater_id == actor.user_id
@@ -87,20 +82,14 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
                  "status" => 1,
                  "menuIds" => []
                },
-               authorization: %{
-                 principal: %{user_id: actor.user_id},
-                 permission: "system:role:add"
-               }
+               authorization: authorization(actor, "role:create")
              )
 
     assert role.creator_id == actor.user_id
 
     assert {:ok, role} =
              Role.update_role(role.role_id, %{"roleName" => "更新角色"},
-               authorization: %{
-                 principal: %{user_id: actor.user_id},
-                 permission: "system:role:edit"
-               }
+               authorization: authorization(actor, "role:update")
              )
 
     assert role.updater_id == actor.user_id
@@ -120,4 +109,21 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
   end
 
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
+
+  defp authorization(actor, permission \\ nil) do
+    permissions = [
+      "permission:manage",
+      "department:create",
+      "department:update",
+      "post:create",
+      "post:update",
+      "menu:create",
+      "menu:update",
+      "role:create",
+      "role:update"
+    ]
+
+    %{principal: %{user_id: actor.user_id, permissions: permissions}, permission: permission}
+    |> Map.update!(:permission, &(&1 || "permission:manage"))
+  end
 end

@@ -2,12 +2,13 @@ defmodule KeystonePhoenix.UserAuditTest do
   use KeystonePhoenix.DataCase, async: false
 
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
 
   test "user writes store creator and updater IDs" do
     actor =
-      %SysUser{user_id: 1001}
+      %SysUser{user_id: Identity.v7()}
       |> SysUser.create_changeset(%{username: unique("user_actor"), password: "Strong!123"})
       |> Repo.insert!()
 
@@ -19,27 +20,27 @@ defmodule KeystonePhoenix.UserAuditTest do
                  "nickname" => "被管理用户",
                  "status" => 1
                },
-               authorization: auth(actor, "system:user:add")
+               authorization: auth(actor, "user:create")
              )
 
     assert user.creator_id == actor.user_id
 
     assert {:ok, user} =
              User.update_user(user.user_id, %{"nickname" => "已更新"},
-               authorization: auth(actor, "system:user:edit")
+               authorization: auth(actor, "user:update")
              )
 
     assert user.updater_id == actor.user_id
 
     assert {:ok, user} =
              User.reset_password(user.user_id, %{"password" => "NewStrong!123"},
-               authorization: auth(actor, "system:user:resetPwd")
+               authorization: auth(actor, "user:reset-password")
              )
 
     assert user.updater_id == actor.user_id
 
     assert {:ok, user} =
-             User.change_status(user.user_id, 0, authorization: auth(actor, "system:user:edit"))
+             User.change_status(user.user_id, 0, authorization: auth(actor, "user:update"))
 
     assert user.updater_id == actor.user_id
 
@@ -50,12 +51,12 @@ defmodule KeystonePhoenix.UserAuditTest do
                  "password" => "Strong!123",
                  "status" => 1
                },
-               authorization: auth(actor, "system:user:add")
+               authorization: auth(actor, "user:create")
              )
 
     assert :ok =
              User.delete_users([another_user.user_id],
-               authorization: auth(actor, "system:user:remove")
+               authorization: auth(actor, "user:delete")
              )
 
     deleted = Repo.get!(SysUser, another_user.user_id)
@@ -66,5 +67,8 @@ defmodule KeystonePhoenix.UserAuditTest do
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 
   defp auth(actor, permission),
-    do: %{principal: %{user_id: actor.user_id}, permission: permission}
+    do: %{
+      principal: %{user_id: actor.user_id, permissions: ["permission:manage", permission]},
+      permission: permission
+    }
 end

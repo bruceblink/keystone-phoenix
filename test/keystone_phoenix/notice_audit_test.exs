@@ -3,11 +3,12 @@ defmodule KeystonePhoenix.NoticeAuditTest do
 
   alias KeystonePhoenix.Notice
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.User.SysUser
 
   test "notice writes actor IDs and exposes the creator name" do
     actor =
-      %SysUser{user_id: 701}
+      %SysUser{user_id: Identity.v7()}
       |> SysUser.create_changeset(%{username: unique("notice_actor"), password: "Strong!123"})
       |> Repo.insert!()
 
@@ -19,14 +20,14 @@ defmodule KeystonePhoenix.NoticeAuditTest do
                  "noticeContent" => "内容",
                  "status" => 1
                },
-               authorization: %{principal: %{user_id: actor.user_id}}
+               authorization: authorization(actor)
              )
 
     assert notice.creator_id == actor.user_id
 
     assert {:ok, updated} =
              Notice.update_notice(notice.notice_id, %{"status" => 0},
-               authorization: %{principal: %{user_id: actor.user_id}}
+               authorization: authorization(actor)
              )
 
     assert updated.updater_id == actor.user_id
@@ -39,4 +40,13 @@ defmodule KeystonePhoenix.NoticeAuditTest do
   end
 
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
+
+  defp authorization(actor) do
+    %{
+      principal: %{
+        user_id: actor.user_id,
+        permissions: ["permission:manage", "notice:create", "notice:update"]
+      }
+    }
+  end
 end

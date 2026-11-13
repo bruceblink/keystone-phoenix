@@ -3,16 +3,25 @@ defmodule KeystonePhoenix.Monitor.BatchQueriesTest do
 
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
 
   test "batch user and department queries return active records in one boundary" do
-    department = Repo.insert!(%SysDept{dept_name: "批量部门", status: 1})
+    department =
+      Repo.insert!(%SysDept{
+        dept_id: Identity.v7(),
+        parent_id: nil,
+        ancestors: "",
+        dept_name: "批量部门",
+        status: 1
+      })
 
     active_user =
       Repo.insert!(%SysUser{
+        user_id: Identity.v7(),
         username: "batch_active_#{System.unique_integer([:positive])}",
         nickname: "在线用户",
         password: "password-hash",
@@ -22,6 +31,7 @@ defmodule KeystonePhoenix.Monitor.BatchQueriesTest do
 
     deleted_user =
       Repo.insert!(%SysUser{
+        user_id: Identity.v7(),
         username: "batch_deleted_#{System.unique_integer([:positive])}",
         nickname: "已删除用户",
         password: "password-hash",

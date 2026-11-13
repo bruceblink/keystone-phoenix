@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
 
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Department
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Menu
@@ -15,16 +16,16 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
 
   test "configuration and dictionary writes store the authenticated actor" do
     actor =
-      %SysUser{user_id: 801}
+      %SysUser{user_id: Identity.v7()}
       |> SysUser.create_changeset(%{username: unique("settings_actor"), password: "Strong!123"})
       |> Repo.insert!()
 
     auth =
       authorization(actor.user_id, [
-        "system:config:add",
-        "system:config:edit",
-        "system:dict:add",
-        "system:dict:edit"
+        "config:create",
+        "config:update",
+        "dictionary:create",
+        "dictionary:update"
       ])
 
     assert {:ok, config} =
@@ -90,12 +91,12 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
                  "configValue" => "enabled",
                  "isAllowChange" => false
                },
-               authorization: %{principal: %{}}
+               authorization: admin_authorization()
              )
 
     assert {:error, :not_allow_change} =
              Config.update_config(config.config_id, %{"configValue" => "disabled"},
-               authorization: %{principal: %{}}
+               authorization: admin_authorization()
              )
 
     assert {:error, :dict_type_not_found} =
@@ -106,7 +107,7 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
                  "dictValue" => 1,
                  "status" => 1
                },
-               authorization: %{principal: %{}}
+               authorization: admin_authorization()
              )
   end
 
@@ -151,7 +152,15 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
   end
 
   defp authorization(user_id, permissions),
-    do: %{principal: %{user_id: user_id, permissions: permissions}}
+    do: %{principal: %{user_id: user_id, permissions: ["permission:manage" | permissions]}}
+
+  defp admin_authorization do
+    %{
+      principal: %{
+        permissions: ["permission:manage", "config:create", "config:update", "dictionary:create"]
+      }
+    }
+  end
 
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 end
