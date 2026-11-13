@@ -11,7 +11,7 @@ defmodule KeystonePhoenix.Upload do
   @file_extensions ~w(bmp gif jpg jpeg png doc docx xls xlsx ppt pptx html htm txt rar zip gz bz2 mp4 avi rmvb pdf)
 
   @doc "Stores one generic file under the upload resource directory after authorization."
-  @spec store_file(Plug.Upload.t(), pos_integer() | nil, keyword()) ::
+  @spec store_file(Plug.Upload.t(), String.t() | nil, keyword()) ::
           {:ok, map()} | {:error, atom()}
   def store_file(%Plug.Upload{} = upload, owner_id, options) when is_list(options) do
     with :ok <- Command.authorize(options, "file:write") do
@@ -46,7 +46,7 @@ defmodule KeystonePhoenix.Upload do
   defp do_store_file(_upload, _owner_id), do: {:error, :invalid_upload}
 
   @doc "Stores a batch of generic files under one owner's namespace after authorization."
-  @spec store_files(list(), pos_integer() | nil, keyword()) ::
+  @spec store_files(list(), String.t() | nil, keyword()) ::
           {:ok, list(map())} | {:error, atom()}
   def store_files(uploads, owner_id, options)
       when is_list(uploads) and is_list(options) do
@@ -80,11 +80,13 @@ defmodule KeystonePhoenix.Upload do
 
   defp upload_directory(nil), do: Path.join(base_dir(), "upload")
 
-  defp upload_directory(owner_id),
-    do: Path.join([base_dir(), "upload", Integer.to_string(owner_id)])
+  defp upload_directory(owner_id) when is_binary(owner_id),
+    do: Path.join([base_dir(), "upload", owner_id])
 
   defp upload_relative_path(nil, filename), do: "/profile/upload/#{filename}"
-  defp upload_relative_path(owner_id, filename), do: "/profile/upload/#{owner_id}/#{filename}"
+
+  defp upload_relative_path(owner_id, filename) when is_binary(owner_id),
+    do: "/profile/upload/#{owner_id}/#{filename}"
 
   defp validate_batch_size(uploads) do
     Enum.reduce_while(uploads, 0, fn

@@ -3,6 +3,8 @@ defmodule KeystonePhoenixWeb.ResourceControllerTest do
 
   alias KeystonePhoenixWeb.ResourceController
 
+  @owner_id "018f2a7e-5d3c-7b01-8a11-000000000042"
+
   setup do
     directory =
       Path.join(System.tmp_dir!(), "keystone-resource-#{System.unique_integer([:positive])}")
@@ -27,31 +29,35 @@ defmodule KeystonePhoenixWeb.ResourceControllerTest do
 
     response = get(conn, "/profile/download/private.txt")
     assert response.status == 401
-    assert json_response(response, 401)["code"] == 40101
+    assert get_in(json_response(response, 401), ["error", "code"]) == "session_revoked"
   end
 
   test "generic profile resources are limited to their owner", %{directory: directory} do
-    File.mkdir_p!(Path.join(directory, "upload/42"))
-    File.write!(Path.join(directory, "upload/42/report.txt"), "private")
+    File.mkdir_p!(Path.join(directory, "upload/#{@owner_id}"))
+    File.write!(Path.join(directory, "upload/#{@owner_id}/report.txt"), "private")
 
     owner_conn =
-      Plug.Conn.assign(Plug.Test.conn(:get, "/profile/upload/42/report.txt"), :current_user, %{
-        user_id: 42
-      })
+      Plug.Conn.assign(
+        Plug.Test.conn(:get, "/profile/upload/#{@owner_id}/report.txt"),
+        :current_user,
+        %{user_id: @owner_id}
+      )
 
     owner_response =
-      ResourceController.show(owner_conn, %{"path" => ["upload", "42", "report.txt"]})
+      ResourceController.show(owner_conn, %{"path" => ["upload", @owner_id, "report.txt"]})
 
     assert owner_response.status == 200
     assert owner_response.resp_body == "private"
 
     other_conn =
-      Plug.Conn.assign(Plug.Test.conn(:get, "/profile/upload/42/report.txt"), :current_user, %{
-        user_id: 43
-      })
+      Plug.Conn.assign(
+        Plug.Test.conn(:get, "/profile/upload/#{@owner_id}/report.txt"),
+        :current_user,
+        %{user_id: "018f2a7e-5d3c-7b01-8a11-000000000043"}
+      )
 
     other_response =
-      ResourceController.show(other_conn, %{"path" => ["upload", "42", "report.txt"]})
+      ResourceController.show(other_conn, %{"path" => ["upload", @owner_id, "report.txt"]})
 
     assert other_response.status == 403
 
@@ -60,12 +66,12 @@ defmodule KeystonePhoenixWeb.ResourceControllerTest do
     assert legacy_response.status == 404
 
     traversal_conn =
-      Plug.Test.conn(:get, "/profile/upload/42/../43/report.txt")
-      |> Plug.Conn.assign(:current_user, %{user_id: 42})
+      Plug.Test.conn(:get, "/profile/upload/#{@owner_id}/../43/report.txt")
+      |> Plug.Conn.assign(:current_user, %{user_id: @owner_id})
 
     traversal_response =
       ResourceController.show(traversal_conn, %{
-        "path" => ["upload", "42", "..", "43", "report.txt"]
+        "path" => ["upload", @owner_id, "..", "43", "report.txt"]
       })
 
     assert traversal_response.status == 404

@@ -9,22 +9,25 @@ defmodule KeystonePhoenixWeb.AdminEventsAccountsScopeTest do
   test "user edit permission still respects the actor role data scope" do
     actor_dept =
       Repo.insert!(%KeystonePhoenix.Department.SysDept{
+        dept_id: Ecto.UUID.generate(),
         dept_name: unique("actor_dept"),
-        parent_id: 0,
-        ancestors: "0",
+        parent_id: nil,
+        ancestors: "",
         status: 1
       })
 
     target_dept =
       Repo.insert!(%KeystonePhoenix.Department.SysDept{
+        dept_id: Ecto.UUID.generate(),
         dept_name: unique("target_dept"),
-        parent_id: 0,
-        ancestors: "0",
+        parent_id: nil,
+        ancestors: "",
         status: 1
       })
 
     role =
       Repo.insert!(%SysRole{
+        role_id: Ecto.UUID.generate(),
         role_name: unique("scope_role"),
         role_key: unique("scope_role"),
         role_sort: 1,
@@ -34,6 +37,7 @@ defmodule KeystonePhoenixWeb.AdminEventsAccountsScopeTest do
 
     actor =
       Repo.insert!(%SysUser{
+        user_id: Ecto.UUID.generate(),
         username: unique("scope_actor"),
         password: "password-hash",
         role_id: role.role_id,
@@ -43,6 +47,7 @@ defmodule KeystonePhoenixWeb.AdminEventsAccountsScopeTest do
 
     target =
       Repo.insert!(%SysUser{
+        user_id: Ecto.UUID.generate(),
         username: unique("scope_target"),
         password: "password-hash",
         dept_id: target_dept.dept_id,

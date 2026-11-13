@@ -9,17 +9,18 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
   alias KeystonePhoenix.User.SysUser
 
   setup do
-    Config.refresh_cache(authorization: %{principal: %{}})
+    Config.refresh_cache(authorization: %{principal: %{permissions: ["config:refresh"]}})
 
     _captcha_config =
-      %SysConfig{}
-      |> SysConfig.changeset(%{
-        config_name: "验证码开关",
-        config_key: "sys.account.captchaOnOff",
-        config_value: "false",
-        is_allow_change: true
-      })
-      |> Repo.insert!()
+      Repo.get_by(SysConfig, config_key: "sys.account.captchaOnOff") ||
+        %SysConfig{}
+        |> SysConfig.changeset(%{
+          config_name: "验证码开关",
+          config_key: "sys.account.captchaOnOff",
+          config_value: "false",
+          is_allow_change: true
+        })
+        |> Repo.insert!()
 
     user =
       %SysUser{}
@@ -30,7 +31,9 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       })
       |> Repo.insert!()
 
-    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{}}) end)
+    on_exit(fn ->
+      Config.refresh_cache(authorization: %{principal: %{permissions: ["config:refresh"]}})
+    end)
 
     {:ok, user: user}
   end
@@ -45,7 +48,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       })
 
     assert conn.status == 409
-    assert %{"code" => 10210} = json_response(conn, 409)
+    assert get_in(json_response(conn, 409), ["error", "code"]) == "validation_failed"
   end
 
   test "limits repeated HTTP login attempts", %{user: user} do
@@ -55,12 +58,16 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     }
 
     for _attempt <- 1..10 do
-      assert %{"code" => 10002} = build_conn() |> post("/login", params) |> json_response(401)
+      assert get_in(build_conn() |> post("/login", params) |> json_response(401), [
+               "error",
+               "code"
+             ]) ==
+               "invalid_credential"
     end
 
     conn = build_conn() |> post("/login", params)
     assert conn.status == 429
-    assert %{"code" => 42903} = json_response(conn, 429)
+    assert get_in(json_response(conn, 429), ["error", "code"]) == "validation_failed"
     assert [retry_after] = get_resp_header(conn, "retry-after")
     assert String.to_integer(retry_after) >= 1
   end
@@ -71,56 +78,68 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
   } do
     set_captcha(true)
 
-    assert %{"code" => 10205} =
+    assert get_in(
              conn
              |> post("/login", login_params(user, captcha_code: nil, captcha_key: nil))
-             |> json_response(422)
+             |> json_response(422),
+             ["error", "code"]
+           ) == "validation_failed"
 
     {expired_key, expired_answer} = store_captcha(-1)
 
-    assert %{"code" => 10204} =
+    assert get_in(
              conn
              |> post(
                "/login",
                login_params(user, captcha_code: expired_answer, captcha_key: expired_key)
              )
-             |> json_response(422)
+             |> json_response(422),
+             ["error", "code"]
+           ) == "validation_failed"
 
     {valid_key, valid_answer} = store_captcha()
 
-    assert %{"code" => 10203} =
+    assert get_in(
              conn
              |> post(
                "/login",
                login_params(user, captcha_code: "incorrect", captcha_key: valid_key)
              )
-             |> json_response(422)
+             |> json_response(422),
+             ["error", "code"]
+           ) == "validation_failed"
 
-    assert %{"code" => 10204} =
+    assert get_in(
              conn
              |> post(
                "/login",
                login_params(user, captcha_code: valid_answer, captcha_key: valid_key)
              )
-             |> json_response(422)
+             |> json_response(422),
+             ["error", "code"]
+           ) == "validation_failed"
 
     {one_time_key, one_time_answer} = store_captcha()
 
-    assert %{"code" => 0} =
+    assert get_in(
              conn
              |> post(
                "/login",
                login_params(user, captcha_code: one_time_answer, captcha_key: one_time_key)
              )
-             |> json_response(200)
+             |> json_response(200),
+             ["success"]
+           ) == true
 
-    assert %{"code" => 10204} =
+    assert get_in(
              build_conn()
              |> post(
                "/login",
                login_params(user, captcha_code: one_time_answer, captcha_key: one_time_key)
              )
-             |> json_response(422)
+             |> json_response(422),
+             ["error", "code"]
+           ) == "validation_failed"
   end
 
   defp login_params(user, opts) do
@@ -140,7 +159,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       |> Ecto.Changeset.change(config_value: if(enabled?, do: "true", else: "false"))
       |> Repo.update()
 
-    Config.refresh_cache(authorization: %{principal: %{}})
+    Config.refresh_cache(authorization: %{principal: %{permissions: ["config:refresh"]}})
   end
 
   defp store_captcha(ttl \\ 120) do

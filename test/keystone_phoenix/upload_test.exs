@@ -6,6 +6,8 @@ defmodule KeystonePhoenix.UploadTest do
   alias KeystonePhoenix.Upload
   alias KeystonePhoenixWeb.ResourceController
 
+  @owner_id "018f2a7e-5d3c-7b01-8a11-000000000042"
+
   setup do
     directory =
       Path.join(System.tmp_dir!(), "keystone-upload-#{System.unique_integer([:positive])}")
@@ -48,17 +50,17 @@ defmodule KeystonePhoenix.UploadTest do
     upload = %Plug.Upload{path: path, filename: "report.txt", content_type: "text/plain"}
 
     assert {:ok, %{"url" => url, "newFileName" => filename}} =
-             Upload.store_file(upload, 42, auth_options())
+             Upload.store_file(upload, @owner_id, auth_options())
 
-    assert url == "/profile/upload/42/" <> filename
+    assert url == "/profile/upload/" <> @owner_id <> "/" <> filename
 
     assert {:error, :invalid_file_name} = Upload.resolve_download_path("../secret.txt")
     assert {:error, :type_not_allowed} = Upload.resolve_download_path("secret.sh")
 
     conn =
       conn(:get, url)
-      |> Plug.Conn.assign(:current_user, %{user_id: 42})
-      |> ResourceController.show(%{"path" => ["upload", "42", filename]})
+      |> Plug.Conn.assign(:current_user, %{user_id: @owner_id})
+      |> ResourceController.show(%{"path" => ["upload", @owner_id, filename]})
 
     assert conn.status == 200
     assert conn.resp_body == "hello"
@@ -109,11 +111,15 @@ defmodule KeystonePhoenix.UploadTest do
       %Plug.Upload{path: invalid, filename: "invalid.sh", content_type: "text/plain"}
     ]
 
-    assert {:error, :type_not_allowed} = Upload.store_files(uploads, 42, auth_options())
+    assert {:error, :type_not_allowed} =
+             Upload.store_files(uploads, @owner_id, auth_options())
 
     assert [] ==
              Path.wildcard(
-               Path.join(Application.fetch_env!(:keystone_phoenix, :file_base_dir), "upload/42/*")
+               Path.join(
+                 Application.fetch_env!(:keystone_phoenix, :file_base_dir),
+                 "upload/#{@owner_id}/*"
+               )
              )
 
     File.rm!(first)
@@ -151,5 +157,6 @@ defmodule KeystonePhoenix.UploadTest do
     path
   end
 
-  defp auth_options, do: [authorization: %{principal: %{}}]
+  defp auth_options,
+    do: [authorization: %{principal: %{permissions: ["file:read", "file:write"]}}]
 end

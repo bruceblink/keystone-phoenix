@@ -51,7 +51,7 @@ defmodule KeystonePhoenixWeb.ResourceController do
     if Enum.any?(rest, &unsafe_segment?/1) do
       :error
     else
-      case Params.parse_positive_integer(owner) do
+      case Params.parse_uuid(owner) do
         {:ok, owner_id} -> {:ok, owner_id, ["upload", owner | rest]}
         :error -> :error
       end
