@@ -121,6 +121,7 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
 
     actor =
       Repo.insert!(%SysUser{
+        user_id: Identity.v7(),
         username: unique("scope_actor"),
         password: "password-hash",
         role_id: role.role_id,
@@ -130,6 +131,7 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
 
     target =
       Repo.insert!(%SysUser{
+        user_id: Identity.v7(),
         username: unique("scope_target"),
         password: "password-hash",
         dept_id: target_dept.dept_id,
@@ -144,8 +146,8 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
     %SysDept{}
     |> SysDept.changeset(%{
       dept_name: "#{label}-#{unique("department")}",
-      parent_id: 0,
-      ancestors: "0",
+      parent_id: nil,
+      ancestors: "",
       status: 1
     })
     |> Repo.insert!()

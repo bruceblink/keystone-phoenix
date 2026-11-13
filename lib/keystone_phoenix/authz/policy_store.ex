@@ -9,6 +9,7 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   import Ecto.Query
 
   alias KeystonePhoenix.Authz.SysPermission
+  alias KeystonePhoenix.Authz.SysRolePermission
   alias KeystonePhoenix.Authz.PermissionCatalog
   alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Authz.Principal
@@ -48,21 +49,22 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
     end
   end
 
-  @doc "Checks a single target against a role data scope."
-  def scope_allowed?(principal, :dept, target),
+  defp scope_allowed_without_admin?(principal, :dept, target),
     do: Permission.data_scope_allowed?(principal, :dept, target)
 
-  def scope_allowed?(principal, :user, target),
+  defp scope_allowed_without_admin?(principal, :user, target),
     do: Permission.data_scope_allowed?(principal, :user, target)
 
-  def scope_allowed?(principal, :users, target),
+  defp scope_allowed_without_admin?(principal, :users, target),
     do: Permission.data_scope_users_allowed?(principal, target)
 
-  def scope_allowed?(principal, :user_update, {target_id, attrs}),
+  defp scope_allowed_without_admin?(principal, :user_update, {target_id, attrs}),
     do: Permission.user_update_allowed?(principal, target_id, attrs)
 
-  def scope_allowed?(principal, :user_update, target),
+  defp scope_allowed_without_admin?(principal, :user_update, target),
     do: Permission.user_update_allowed?(principal, target, %{})
+
+  defp scope_allowed_without_admin?(_principal, _kind, _target), do: false
 
   def scope_allowed?(principal, :self, target) do
     subject = Principal.from_user(principal)
@@ -80,7 +82,16 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   end
 
   def scope_allowed?(_principal, :none, _target), do: true
-  def scope_allowed?(_principal, _kind, _target), do: false
+
+  def scope_allowed?(principal, kind, target) do
+    subject = Principal.from_user(principal)
+
+    if Permission.admin?(subject) do
+      true
+    else
+      scope_allowed_without_admin?(subject, kind, target)
+    end
+  end
 
   @doc "Checks whether a role write may change permission metadata."
   def role_metadata_allowed?(principal, attrs),
@@ -105,9 +116,20 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
 
   @doc "Checks whether an actor may assign the requested role."
   def role_assignment_allowed?(principal, role_id),
-    do: Permission.role_assignment_allowed?(principal, role_id)
+    do:
+      if(is_nil(parse_uuid(role_id)),
+        do: true,
+        else: allowed?(principal, "role:assign")
+      )
 
   defp admin?(principal), do: Permission.admin?(principal)
+
+  defp parse_uuid(value) do
+    case Params.parse_uuid(value) do
+      {:ok, uuid} -> uuid
+      :error -> nil
+    end
+  end
 
   defp permission_snapshot(principal) when is_map(principal),
     do: Map.get(principal, :permissions, Map.get(principal, "permissions"))
@@ -122,7 +144,7 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
          true <- is_binary(permission) and permission != "",
          permission_id when is_binary(permission_id) <- permission_id(permission) do
       if Repo.exists?(
-           from role_permission in "sys_role_permission",
+           from role_permission in SysRolePermission,
              join: role in "sys_role",
              on: role.role_id == role_permission.role_id,
              where:

@@ -6,6 +6,7 @@ defmodule KeystonePhoenix.Permission do
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Authz.PermissionCatalog
   alias KeystonePhoenix.Authz.SysPermission
+  alias KeystonePhoenix.Authz.SysRolePermission
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
@@ -18,7 +19,7 @@ defmodule KeystonePhoenix.Permission do
 
     if uuid?(role_id) and PermissionCatalog.registered?(permission) do
       Repo.exists?(
-        from role_permission in "sys_role_permission",
+        from role_permission in SysRolePermission,
           join: permission_entry in SysPermission,
           on: permission_entry.permission_id == role_permission.permission_id,
           join: role in "sys_role",
@@ -46,7 +47,7 @@ defmodule KeystonePhoenix.Permission do
 
     if uuid?(role_id) and PermissionCatalog.registered?(permission) do
       if Repo.exists?(
-           from role_permission in "sys_role_permission",
+           from role_permission in SysRolePermission,
              join: permission_entry in SysPermission,
              on: permission_entry.permission_id == role_permission.permission_id,
              join: role in "sys_role",

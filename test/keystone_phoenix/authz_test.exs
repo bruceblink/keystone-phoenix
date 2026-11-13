@@ -4,39 +4,43 @@ defmodule KeystonePhoenix.AuthzTest do
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Authz.Principal
 
+  @user_id "018f2a7e-5d3c-7b01-8a11-000000000001"
+  @role_id "018f2a7e-5d3c-7b01-8a11-000000000002"
+  @dept_id "018f2a7e-5d3c-7b01-8a11-000000000003"
+
   test "normalizes API user fields into a principal" do
     principal =
       Principal.from_user(%{
-        "userId" => 42,
-        "roleId" => 7,
-        "deptId" => 3,
+        "userId" => @user_id,
+        "roleId" => @role_id,
+        "deptId" => @dept_id,
         "sessionId" => "session-1",
         "permissions" => ["user:read"]
       })
 
-    assert principal.subject_id == 42
-    assert principal.roles == [7]
-    assert principal.department_id == 3
+    assert principal.subject_id == @user_id
+    assert principal.roles == [@role_id]
+    assert principal.department_id == @dept_id
     assert principal.session_id == "session-1"
     refute principal.is_admin
-    assert principal.raw["userId"] == 42
+    assert principal.raw["userId"] == @user_id
   end
 
   test "falls back from nil atom fields to API-shaped string fields" do
     principal =
       Principal.from_user(%{
-        "userId" => 42,
-        "roleId" => 7,
-        "deptId" => 3,
+        "userId" => @user_id,
+        "roleId" => @role_id,
+        "deptId" => @dept_id,
         user_id: nil,
         role_id: nil,
         dept_id: nil,
         is_admin: nil
       })
 
-    assert principal.subject_id == 42
-    assert principal.roles == [7]
-    assert principal.department_id == 3
+    assert principal.subject_id == @user_id
+    assert principal.roles == [@role_id]
+    assert principal.department_id == @dept_id
     refute principal.is_admin
   end
 
@@ -56,19 +60,19 @@ defmodule KeystonePhoenix.AuthzTest do
     assert {:error, :permission_denied} = Authz.authorize(%{}, "")
 
     assert {:error, :data_scope_denied} =
-             Authz.authorize(%{permissions: ["user:update"]}, "user:update", 1, %{
+             Authz.authorize(%{permissions: ["user:update"]}, "user:update", @user_id, %{
                scope: :unknown
              })
   end
 
   test "returns stable authorization errors" do
-    actor = %{user_id: 1, permissions: ["user:update"]}
+    actor = %{user_id: @user_id, permissions: ["user:update"]}
 
     assert :ok = Authz.authorize(actor, "user:update")
     assert {:error, :permission_denied} = Authz.authorize(actor, "user:delete")
 
     assert {:error, :data_scope_denied} =
-             Authz.authorize(actor, "user:update", 9, %{scope: :users})
+             Authz.authorize(actor, "user:update", @role_id, %{scope: :users})
   end
 
   test "none scope is always allowed after the permission check" do
@@ -77,9 +81,9 @@ defmodule KeystonePhoenix.AuthzTest do
   end
 
   test "self scope is limited to the principal subject" do
-    assert Authz.scope_allowed?(%{user_id: 42}, :self, 42)
-    refute Authz.scope_allowed?(%{user_id: 42}, :self, 43)
-    assert Authz.scope_allowed?(%{permissions: ["permission:manage"]}, :self, 43)
+    assert Authz.scope_allowed?(%{user_id: @user_id}, :self, @user_id)
+    refute Authz.scope_allowed?(%{user_id: @user_id}, :self, @role_id)
+    assert Authz.scope_allowed?(%{permissions: ["permission:manage"]}, :self, @role_id)
   end
 
   test "authorization decisions emit sanitized telemetry" do
@@ -99,9 +103,13 @@ defmodule KeystonePhoenix.AuthzTest do
     on_exit(fn -> :telemetry.detach(handler) end)
 
     assert {:error, :permission_denied} =
-             Authz.authorize(%{user_id: 9, permissions: []}, "user:update")
+             Authz.authorize(%{user_id: @user_id, permissions: []}, "user:update")
 
     assert_receive {:authz_decision, %{count: 1},
-                    %{outcome: :permission_denied, permission: "user:update", subject_id: 9}}
+                    %{
+                      outcome: :permission_denied,
+                      permission: "user:update",
+                      subject_id: @user_id
+                    }}
   end
 end

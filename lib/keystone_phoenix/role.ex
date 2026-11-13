@@ -288,7 +288,7 @@ defmodule KeystonePhoenix.Role do
         Repo.delete_all(from(rm in SysRoleMenu, where: rm.role_id == ^role_id))
 
         if menu_ids != [] do
-          Repo.insert_all("sys_role_menu", Enum.map(menu_ids, &%{role_id: role_id, menu_id: &1}))
+          Repo.insert_all(SysRoleMenu, Enum.map(menu_ids, &%{role_id: role_id, menu_id: &1}))
         end
 
         :ok

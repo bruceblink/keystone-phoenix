@@ -2,6 +2,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
   use KeystonePhoenix.DataCase, async: false
 
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
@@ -134,17 +135,17 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
   test "non-administrators cannot change role assignments" do
     target_role = create_role()
     user = create_user()
-    actor = %{is_admin: false, role_id: target_role.role_id, user_id: user.user_id}
+    actor = %{permissions: [], role_id: target_role.role_id, user_id: user.user_id}
     before = user_state(user)
 
     assert {:error, :forbidden} =
              Role.assign_users(target_role.role_id, [user.user_id],
-               authorization: %{principal: actor, permission: "system:role:edit"}
+               authorization: %{principal: actor, permission: "role:assign"}
              )
 
     assert {:error, :forbidden} =
              Role.unassign_users([user.user_id],
-               authorization: %{principal: actor, permission: "system:role:edit"}
+               authorization: %{principal: actor, permission: "role:assign"}
              )
 
     assert user_state(user) == before
@@ -172,12 +173,17 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
       "menuIds" => []
     }
 
-    {:ok, role} = Role.create_role(attrs, admin_auth("system:role:add"))
+    {:ok, role} = Role.create_role(attrs, admin_auth("role:create"))
     role
   end
 
-  defp admin_auth(permission \\ "system:role:edit"),
-    do: [authorization: %{principal: %{is_admin: true}, permission: permission}]
+  defp admin_auth(permission \\ "role:assign"),
+    do: [
+      authorization: %{
+        principal: %{permissions: [permission, "permission:manage"]},
+        permission: permission
+      }
+    ]
 
   defp create_user(role_id \\ nil) do
     attrs = %{
@@ -190,8 +196,8 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     {:ok, user} =
       User.create_user(attrs,
         authorization: %{
-          principal: %{is_admin: true},
-          permission: "system:user:add"
+          principal: %{permissions: ["user:create", "role:assign", "permission:manage"]},
+          permission: "user:create"
         }
       )
 
@@ -213,7 +219,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
   end
 
   defp missing_user_id do
-    id = (Repo.aggregate(SysUser, :max, :user_id) || 0) + 1_000_000
+    id = Identity.v7()
     assert is_nil(Repo.get(SysUser, id))
     id
   end

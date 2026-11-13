@@ -464,7 +464,7 @@ defmodule KeystonePhoenix.User do
     end)
   end
 
-  defp normalize_relation_value(field, value) when field in [:dept_id, :post_id, :role_id] do
+  defp normalize_relation_value(field, value) when field in [:dept_id, :role_id] do
     case value do
       nil ->
         nil
@@ -479,6 +479,28 @@ defmodule KeystonePhoenix.User do
         case Params.parse_uuid(value) do
           {:ok, uuid} -> uuid
           :error -> value
+        end
+
+      value ->
+        value
+    end
+  end
+
+  defp normalize_relation_value(:post_id, value) do
+    case value do
+      nil ->
+        nil
+
+      "" ->
+        nil
+
+      "0" ->
+        nil
+
+      value when is_binary(value) ->
+        case Params.parse_positive_integer(value) do
+          {:ok, id} when id > 0 -> id
+          _ -> value
         end
 
       value ->
