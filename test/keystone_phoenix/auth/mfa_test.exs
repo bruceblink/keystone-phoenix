@@ -4,7 +4,7 @@ defmodule KeystonePhoenix.Auth.MfaTest do
   import Ecto.Query
 
   alias KeystonePhoenix.Auth.Mfa
-  alias KeystonePhoenix.Auth.Mfa.{Challenge, RecoveryCode, Totp}
+  alias KeystonePhoenix.Auth.Mfa.{Challenge, RecoveryCode, SecretCipher, Totp}
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.User.SysUser
@@ -167,6 +167,20 @@ defmodule KeystonePhoenix.Auth.MfaTest do
     assert RecoveryCode.matches?(code, hash)
     refute RecoveryCode.matches?(code, hash, "another-pepper-that-is-long")
     refute RecoveryCode.matches?("0000", hash)
+  end
+
+  test "encrypts TOTP secrets with authenticated user and factor context" do
+    user_id = Identity.v7()
+    factor_id = Identity.v7()
+    encrypted = SecretCipher.encrypt(user_id, factor_id, "JBSWY3DPEHPK3PXP")
+
+    assert SecretCipher.decrypt(user_id, factor_id, encrypted) == "JBSWY3DPEHPK3PXP"
+
+    assert_raise ArgumentError, fn ->
+      SecretCipher.decrypt(Identity.v7(), factor_id, encrypted)
+    end
+
+    assert_raise ArgumentError, fn -> SecretCipher.decrypt(user_id, Identity.v7(), encrypted) end
   end
 
   defp create_user do

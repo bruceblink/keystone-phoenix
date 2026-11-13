@@ -37,15 +37,18 @@ defmodule KeystonePhoenix.Auth.Mfa.SecretCipher do
 
     {encrypted, tag} = :erlang.split_binary(ciphertext, byte_size(ciphertext) - @tag_bytes)
 
-    :crypto.crypto_one_time_aead(
-      :aes_256_gcm,
-      key,
-      nonce,
-      encrypted,
-      aad(user_id, factor_id, key_version),
-      tag,
-      false
-    )
+    case :crypto.crypto_one_time_aead(
+           :aes_256_gcm,
+           key,
+           nonce,
+           encrypted,
+           aad(user_id, factor_id, key_version),
+           tag,
+           false
+         ) do
+      plaintext when is_binary(plaintext) -> plaintext
+      _ -> raise ArgumentError, "MFA secret cannot be decrypted"
+    end
   rescue
     _error -> raise ArgumentError, "MFA secret cannot be decrypted"
   end
