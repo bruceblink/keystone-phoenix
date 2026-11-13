@@ -69,6 +69,7 @@ defmodule KeystonePhoenix.Auth.Session do
            :ok <- persist_rotation(session, jti, tokens, now) do
         Map.put(tokens, :current_user, KeystonePhoenix.Auth.current_login_user(user))
       else
+        {:reuse, reason} -> {:error, reason}
         {:error, reason} -> Repo.rollback(reason)
         _ -> Repo.rollback(:invalid_refresh_token)
       end
@@ -262,10 +263,10 @@ defmodule KeystonePhoenix.Auth.Session do
 
   def revoke_token(_target), do: {:error, :not_found}
 
-  defp current_session(user_id, jti, session_id) do
+  defp current_session(user_id, _jti, session_id) do
     query =
       from(session in AuthSession,
-        where: session.user_id == ^user_id and session.jti == ^jti and session.id == ^session_id,
+        where: session.user_id == ^user_id and session.id == ^session_id,
         lock: "FOR UPDATE"
       )
 
@@ -286,46 +287,13 @@ defmodule KeystonePhoenix.Auth.Session do
         {:error, :invalid_refresh_token}
 
       not is_nil(token.revoked_at) or not is_nil(token.reused_at) ->
-        mark_family_reused(session, now)
-
-        record_event(
-          jti,
-          session.user_id,
-          session.refresh_family_id,
-          "REUSE_DETECTED",
-          session.client_id,
-          nil
-        )
-
-        {:error, :invalid_refresh_token}
+        reuse_result(session, jti, now)
 
       token.expires_at <= now or token.idle_expires_at <= now ->
-        mark_family_reused(session, now)
-
-        record_event(
-          jti,
-          session.user_id,
-          session.refresh_family_id,
-          "REUSE_DETECTED",
-          session.client_id,
-          nil
-        )
-
-        {:error, :invalid_refresh_token}
+        reuse_result(session, jti, now)
 
       session.refresh_expires_at <= now or session.idle_expires_at <= now ->
-        mark_family_reused(session, now)
-
-        record_event(
-          jti,
-          session.user_id,
-          session.refresh_family_id,
-          "REUSE_DETECTED",
-          session.client_id,
-          nil
-        )
-
-        {:error, :invalid_refresh_token}
+        reuse_result(session, jti, now)
 
       true ->
         :ok
@@ -500,6 +468,21 @@ defmodule KeystonePhoenix.Auth.Session do
     revoke_family(session.refresh_family_id, now)
   end
 
+  defp reuse_result(session, jti, now) do
+    mark_family_reused(session, now)
+
+    record_event(
+      jti,
+      session.user_id,
+      session.refresh_family_id,
+      "REUSE_DETECTED",
+      session.client_id,
+      nil
+    )
+
+    {:reuse, :invalid_refresh_token}
+  end
+
   defp expire_user_sessions(user_id, now) do
     expired =
       Repo.all(
@@ -577,7 +560,9 @@ defmodule KeystonePhoenix.Auth.Session do
 
   defp occupy_result({:error, _reason}), do: {:error, :unavailable}
 
-  defp rotate_result({:ok, tokens}), do: {:ok, tokens}
+  defp rotate_result({:ok, tokens}) when is_map(tokens), do: {:ok, tokens}
+
+  defp rotate_result({:ok, {:error, reason}}), do: {:error, reason}
 
   defp rotate_result({:error, reason})
        when reason in [:invalid_refresh_token, :already_logged_in, :token_configuration],

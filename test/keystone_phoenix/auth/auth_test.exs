@@ -49,7 +49,7 @@ defmodule KeystonePhoenix.AuthTest do
     assert {:ok, first} = Auth.login_plaintext(user.username, "Strong!123")
     assert {:ok, rotated} = Auth.refresh(first.refresh_token)
     assert {:error, :invalid_refresh_token} = Auth.refresh(first.refresh_token)
-    assert {:ok, _current_user} = Auth.authenticate_access_token(rotated.token)
+    assert {:error, :invalid_token} = Auth.authenticate_access_token(rotated.token)
 
     assert :ok = Auth.logout(rotated.refresh_token)
     assert {:error, :invalid_refresh_token} = Auth.refresh(rotated.refresh_token)
