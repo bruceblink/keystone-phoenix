@@ -120,8 +120,11 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
           with_unboxed(fn ->
             User.reset_password(fixture.user_id, %{"password" => "Reset!456"},
               authorization: %{
-                principal: %{user_id: fixture.user_id},
-                permission: "system:user:resetPwd"
+                principal: %{
+                  user_id: fixture.user_id,
+                  permissions: ["permission:manage", "user:reset-password"]
+                },
+                permission: "user:reset-password"
               }
             )
           end)
@@ -188,8 +191,11 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
           with_unboxed(fn ->
             User.reset_password(fixture.user_id, %{"password" => "Reset!456"},
               authorization: %{
-                principal: %{user_id: fixture.user_id},
-                permission: "system:user:resetPwd"
+                principal: %{
+                  user_id: fixture.user_id,
+                  permissions: ["permission:manage", "user:reset-password"]
+                },
+                permission: "user:reset-password"
               }
             )
           end)
@@ -251,7 +257,7 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
     spawn_monitor(fn ->
       with_unboxed(fn ->
         Repo.transaction(fn ->
-          Repo.query!("SELECT pg_advisory_xact_lock($1)", [user_id])
+          Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [user_id])
           send(test_pid, {:user_lock_held, self()})
 
           receive do

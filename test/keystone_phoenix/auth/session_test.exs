@@ -2,12 +2,14 @@ defmodule KeystonePhoenix.Auth.SessionTest do
   use KeystonePhoenix.DataCase, async: false
 
   alias KeystonePhoenix.Auth.Session
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.User.SysUser
 
   setup do
     user =
       Repo.insert!(%SysUser{
+        user_id: Identity.v7(),
         username: "session_#{System.unique_integer([:positive])}",
         password: "password-hash",
         status: 1
@@ -28,11 +30,14 @@ defmodule KeystonePhoenix.Auth.SessionTest do
              Enum.filter(active_sessions, &(&1.user_id == user.user_id))
 
     assert user_id == user.user_id
-    assert {:ok, 1} = Session.count_active()
+    assert {:ok, active_sessions} = Session.list_active()
+
+    assert Enum.count(active_sessions, &(&1.user_id == user.user_id)) == 1
 
     assert :ok = Session.revoke_token(jti)
     refute Session.valid?(jti, user.user_id)
-    assert {:ok, 0} = Session.count_active()
+    assert {:ok, remaining_sessions} = Session.list_active()
+    refute Enum.any?(remaining_sessions, &(&1.user_id == user.user_id))
     assert {:error, :not_found} = Session.revoke_token(jti)
   end
 
