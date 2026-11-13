@@ -5,11 +5,26 @@ end
 alias KeystonePhoenix.Repo
 alias KeystonePhoenix.Authz.PermissionCatalog
 alias KeystonePhoenix.Authz.SysPermission
+alias KeystonePhoenix.Authz.SysRolePermission
+alias KeystonePhoenix.Department.SysDept
+alias KeystonePhoenix.Role.SysRole
+alias KeystonePhoenix.Role.SysRoleMenu
+alias KeystonePhoenix.User.SysUser
 alias KeystonePhoenix.Identity
 
 import Ecto.Query
 
 now = DateTime.utc_now()
+namespace = Identity.permission_namespace()
+root_dept_id = Identity.v5(namespace, "system:department:root")
+headquarters_dept_id = Identity.v5(namespace, "system:department:headquarters")
+engineering_dept_id = Identity.v5(namespace, "system:department:engineering")
+market_dept_id = Identity.v5(namespace, "system:department:market")
+admin_role_id = Identity.v5(namespace, "system:role:admin")
+common_role_id = Identity.v5(namespace, "system:role:common")
+admin_user_id = Identity.v5(namespace, "system:user:admin")
+tester_user_id = Identity.v5(namespace, "system:user:tester")
+operator_user_id = Identity.v5(namespace, "system:user:operator")
 
 dict_types = [
   %{
@@ -160,20 +175,46 @@ if Repo.aggregate(KeystonePhoenix.Config.SysConfig, :count, :config_id) == 0 do
 end
 
 dept_entries = [
-  %{dept_id: 1, parent_id: 0, ancestors: "0", dept_name: "Keystone科技", order_num: 0, status: 1},
-  %{dept_id: 2, parent_id: 1, ancestors: "0,1", dept_name: "深圳总公司", order_num: 1, status: 1},
-  %{dept_id: 4, parent_id: 2, ancestors: "0,1,2", dept_name: "研发部门", order_num: 1, status: 1},
-  %{dept_id: 5, parent_id: 2, ancestors: "0,1,2", dept_name: "市场部门", order_num: 2, status: 1}
+  %{
+    dept_id: root_dept_id,
+    parent_id: nil,
+    ancestors: "",
+    dept_name: "Keystone科技",
+    order_num: 0,
+    status: 1
+  },
+  %{
+    dept_id: headquarters_dept_id,
+    parent_id: root_dept_id,
+    ancestors: root_dept_id,
+    dept_name: "深圳总公司",
+    order_num: 1,
+    status: 1
+  },
+  %{
+    dept_id: root_dept_id,
+    parent_id: headquarters_dept_id,
+    ancestors: Enum.join([root_dept_id, headquarters_dept_id], ","),
+    dept_name: "研发部门",
+    order_num: 1,
+    status: 1
+  },
+  %{
+    dept_id: market_dept_id,
+    parent_id: headquarters_dept_id,
+    ancestors: Enum.join([root_dept_id, headquarters_dept_id], ","),
+    dept_name: "市场部门",
+    order_num: 2,
+    status: 1
+  }
 ]
 
-if Repo.aggregate(KeystonePhoenix.Department.SysDept, :count, :dept_id) == 0 do
-  Repo.insert_all(
-    "sys_dept",
-    Enum.map(dept_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now}))
-  )
-
-  Repo.query!("SELECT setval('sys_dept_dept_id_seq', (SELECT MAX(dept_id) FROM sys_dept))")
-end
+Repo.insert_all(
+  SysDept,
+  Enum.map(dept_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now})),
+  on_conflict: :nothing,
+  conflict_target: :dept_id
+)
 
 post_entries = [
   %{post_id: 1, post_code: "ceo", post_name: "董事长", post_sort: 1, status: 1, remark: ""},
@@ -186,13 +227,11 @@ if Repo.aggregate(KeystonePhoenix.Post.SysPost, :count, :post_id) == 0 do
     "sys_post",
     Enum.map(post_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now}))
   )
-
-  Repo.query!("SELECT setval('sys_post_post_id_seq', (SELECT MAX(post_id) FROM sys_post))")
 end
 
 role_entries = [
   %{
-    role_id: 1,
+    role_id: admin_role_id,
     role_name: "超级管理员",
     role_key: "admin",
     role_sort: 1,
@@ -202,7 +241,7 @@ role_entries = [
     remark: "超级管理员"
   },
   %{
-    role_id: 2,
+    role_id: common_role_id,
     role_name: "普通角色",
     role_key: "common",
     role_sort: 3,
@@ -213,14 +252,12 @@ role_entries = [
   }
 ]
 
-if Repo.aggregate(KeystonePhoenix.Role.SysRole, :count, :role_id) == 0 do
-  Repo.insert_all(
-    "sys_role",
-    Enum.map(role_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now}))
-  )
-
-  Repo.query!("SELECT setval('sys_role_role_id_seq', (SELECT MAX(role_id) FROM sys_role))")
-end
+Repo.insert_all(
+  SysRole,
+  Enum.map(role_entries, &Map.merge(&1, %{deleted: false, create_time: now, update_time: now})),
+  on_conflict: :nothing,
+  conflict_target: :role_id
+)
 
 menu_entries = [
   %{
@@ -300,15 +337,12 @@ if Repo.aggregate(KeystonePhoenix.Menu.SysMenu, :count, :menu_id) == 0 do
       |> Map.merge(%{deleted: false, create_time: now, update_time: now})
     end)
   )
-
-  Repo.query!("SELECT setval('sys_menu_menu_id_seq', (SELECT MAX(menu_id) FROM sys_menu))")
 end
 
-role_menu_entries = Enum.map(Enum.map(menu_entries, & &1.menu_id), &%{role_id: 2, menu_id: &1})
+role_menu_entries =
+  Enum.map(Enum.map(menu_entries, & &1.menu_id), &%{role_id: common_role_id, menu_id: &1})
 
-if Repo.aggregate(KeystonePhoenix.Role.SysRoleMenu, :count, :role_id) == 0 do
-  Repo.insert_all("sys_role_menu", role_menu_entries)
-end
+Repo.insert_all(SysRoleMenu, role_menu_entries, on_conflict: :nothing)
 
 permission_entries =
   PermissionCatalog.entries()
@@ -329,28 +363,27 @@ permission_ids =
   Repo.all(
     from permission in SysPermission, select: {permission.permission, permission.permission_id}
   )
-  |> Enum.map(fn {permission, permission_id} -> {permission, Ecto.UUID.dump!(permission_id)} end)
   |> Map.new()
 
 menu_permission_entries =
   Enum.flat_map(menu_entries, fn entry ->
     case Map.get(permission_ids, Map.get(entry, :permission, "")) do
       nil -> []
-      permission_id -> [%{menu_id: entry.menu_id, permission_id: permission_id}]
+      permission_id -> [%{menu_id: entry.menu_id, permission_id: Ecto.UUID.dump!(permission_id)}]
     end
   end)
 
 Repo.insert_all("sys_menu_permission", menu_permission_entries, on_conflict: :nothing)
 
 Repo.insert_all(
-  "sys_role_permission",
-  Enum.map(menu_permission_entries, &%{role_id: 2, permission_id: &1.permission_id}),
+  SysRolePermission,
+  Enum.map(Map.values(permission_ids), &%{role_id: common_role_id, permission_id: &1}),
   on_conflict: :nothing
 )
 
 Repo.insert_all(
-  "sys_role_permission",
-  Enum.map(Map.values(permission_ids), &%{role_id: 1, permission_id: &1}),
+  SysRolePermission,
+  Enum.map(Map.values(permission_ids), &%{role_id: admin_role_id, permission_id: &1}),
   on_conflict: :nothing
 )
 
@@ -381,18 +414,14 @@ notice_entries = [
 
 if Repo.aggregate(KeystonePhoenix.Notice.SysNotice, :count, :notice_id) == 0 do
   Repo.insert_all("sys_notice", notice_entries)
-
-  Repo.query!(
-    "SELECT setval('sys_notice_notice_id_seq', (SELECT MAX(notice_id) FROM sys_notice))"
-  )
 end
 
 user_entries = [
   %{
-    user_id: 1,
+    user_id: admin_user_id,
     post_id: 1,
-    role_id: 1,
-    dept_id: 4,
+    role_id: admin_role_id,
+    dept_id: engineering_dept_id,
     username: "admin",
     nickname: "valarchie1",
     user_type: 0,
@@ -404,17 +433,16 @@ user_entries = [
     status: 1,
     login_ip: "127.0.0.1",
     login_date: now,
-    is_admin: true,
     remark: "管理员",
     deleted: false,
     create_time: now,
     update_time: now
   },
   %{
-    user_id: 2,
+    user_id: tester_user_id,
     post_id: 2,
-    role_id: 2,
-    dept_id: 5,
+    role_id: common_role_id,
+    dept_id: market_dept_id,
     username: "ag1",
     nickname: "valarchie2",
     user_type: 0,
@@ -426,18 +454,17 @@ user_entries = [
     status: 1,
     login_ip: "127.0.0.1",
     login_date: now,
-    is_admin: false,
     remark: "测试员1",
     deleted: false,
     create_time: now,
     update_time: now
   },
   %{
-    user_id: 3,
+    user_id: operator_user_id,
     post_id: 2,
     # 未分配角色使用 NULL，符合可选角色外键约束。
     role_id: nil,
-    dept_id: 5,
+    dept_id: market_dept_id,
     username: "ag2",
     nickname: "valarchie3",
     user_type: 0,
@@ -449,7 +476,6 @@ user_entries = [
     status: 1,
     login_ip: "127.0.0.1",
     login_date: now,
-    is_admin: false,
     remark: "测试员2",
     deleted: false,
     create_time: now,
@@ -457,7 +483,4 @@ user_entries = [
   }
 ]
 
-if Repo.aggregate(KeystonePhoenix.User.SysUser, :count, :user_id) == 0 do
-  Repo.insert_all("sys_user", user_entries)
-  Repo.query!("SELECT setval('sys_user_user_id_seq', (SELECT MAX(user_id) FROM sys_user))")
-end
+Repo.insert_all(SysUser, user_entries, on_conflict: :nothing, conflict_target: :user_id)

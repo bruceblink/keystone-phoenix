@@ -1,6 +1,8 @@
 defmodule KeystonePhoenix.Repo.Migrations.RebuildCoreIdentityIdsAsUuid do
   use Ecto.Migration
 
+  alias KeystonePhoenix.Identity
+
   @moduledoc """
   一次性重建核心身份表的主键和直接关系。
 
@@ -20,6 +22,8 @@ defmodule KeystonePhoenix.Repo.Migrations.RebuildCoreIdentityIdsAsUuid do
       alter_core_columns()
       create_identity_foreign_keys()
     end
+
+    ensure_bootstrap_records()
   end
 
   def down do
@@ -123,5 +127,45 @@ defmodule KeystonePhoenix.Repo.Migrations.RebuildCoreIdentityIdsAsUuid do
     execute(
       "ALTER TABLE sys_operation_log ADD CONSTRAINT sys_operation_log_dept_id_fkey FOREIGN KEY (dept_id) REFERENCES sys_dept(dept_id) ON DELETE SET NULL"
     )
+  end
+
+  defp ensure_bootstrap_records do
+    root_dept_id = Identity.v5(Identity.permission_namespace(), "system:department:root")
+    admin_role_id = Identity.v5(Identity.permission_namespace(), "system:role:admin")
+    admin_user_id = Identity.v5(Identity.permission_namespace(), "system:user:admin")
+
+    # 清空旧自增身份后，固定 UUIDv5 保证最小启动记录可重复创建。
+    execute("""
+    INSERT INTO sys_dept
+      (dept_id, parent_id, ancestors, dept_name, order_num, status, deleted, create_time, update_time)
+    VALUES ('#{root_dept_id}'::uuid, NULL, '', 'Keystone科技', 0, 1, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT (dept_id) DO NOTHING
+    """)
+
+    execute("""
+    INSERT INTO sys_role
+      (role_id, role_name, role_key, role_sort, data_scope, dept_id_set, status, remark, deleted, create_time, update_time)
+    VALUES ('#{admin_role_id}'::uuid, '超级管理员', 'admin', 1, 1, '', 1, '系统初始化管理员角色', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT (role_id) DO NOTHING
+    """)
+
+    execute("""
+    INSERT INTO sys_user
+      (user_id, post_id, role_id, dept_id, username, nickname, user_type, email, phone_number,
+       sex, avatar, password, status, login_ip, is_admin, remark, deleted, create_time, update_time)
+    VALUES ('#{admin_user_id}'::uuid, NULL, '#{admin_role_id}'::uuid, '#{root_dept_id}'::uuid,
+            'admin', '系统管理员', 0, '', '', 0, '',
+            '$2b$12$i2O9Z9n1EJlcgy/rhwWHXudPrdLqOcFKMQ/yMq3WcF2X4c7LxH8OC',
+            1, '', false, '系统初始化管理员账号', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT (user_id) DO NOTHING
+    """)
+
+    execute("""
+    INSERT INTO sys_role_permission (role_id, permission_id)
+    SELECT '#{admin_role_id}'::uuid, permission_id
+    FROM sys_permission
+    WHERE status = 1 AND deprecated = false
+    ON CONFLICT (role_id, permission_id) DO NOTHING
+    """)
   end
 end

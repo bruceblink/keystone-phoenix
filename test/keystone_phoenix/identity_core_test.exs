@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.IdentityCoreTest do
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Params
+  alias KeystonePhoenix.Authz.SysRolePermission
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
 
@@ -31,5 +32,26 @@ defmodule KeystonePhoenix.IdentityCoreTest do
     assert Identity.canonical?(role_id)
     assert Identity.canonical?(dept_id)
     assert Ecto.Changeset.get_field(dept, :parent_id) == nil
+  end
+
+  test "uuid migration leaves the minimum bootstrap authorization records" do
+    namespace = Identity.permission_namespace()
+    root_dept_id = Identity.v5(namespace, "system:department:root")
+    admin_role_id = Identity.v5(namespace, "system:role:admin")
+    admin_user_id = Identity.v5(namespace, "system:user:admin")
+    permission_manage_id = Identity.permission_id("permission:manage")
+
+    assert %SysDept{parent_id: nil} = Repo.get(SysDept, root_dept_id)
+    assert %SysRole{role_key: "admin"} = Repo.get(SysRole, admin_role_id)
+
+    assert %SysUser{role_id: ^admin_role_id, dept_id: ^root_dept_id} =
+             Repo.get(SysUser, admin_user_id)
+
+    assert Repo.exists?(
+             from binding in SysRolePermission,
+               where:
+                 binding.role_id == ^admin_role_id and
+                   binding.permission_id == ^permission_manage_id
+           )
   end
 end
