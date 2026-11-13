@@ -335,4 +335,4 @@ GitHub Test 工作流 `42962608929` 已通过。发布工作流 `42962608932` �
 
 当前主线已包含规范权限目录、系统管理员角色权限和菜单迁移，以及授权审计上下文持久化。审计记录可安全保存主体、会话、租户、资源、范围、请求号、结果和原因，不记录密码、令牌或验证码答案。
 
-本地 Docker 使用代理 CA 保持 TLS 校验，执行严格编译和默认测试，结果为 192 项通过、20 项排除。提交 `dfb7407` 修正 canonical 权限集成夹具后，`mix test --include integration` 通过 212 项；`main` 与 `origin/main` 已同步。本次未监测 GitHub CI，也未创建新版本标签。
+本地 Docker 使用代理 CA 保持 TLS 校验，执行严格编译和默认测试，结果为 192 项通过、20 项排除。提交 `dfb7407` 修正 canonical 权限集成夹具后，`mix test --include integration` 通过 212 项；`main` 与 `origin/main` 已同步。生产镜像 `keystone-phoenix:acceptance-20261113`（`sha256:2b12f980e316f9d19c0ca47c3b6445879235cf7c4bfcc92d200640dcbc4de42d`）已通过 release smoke，包含迁移、重复迁移、备份恢复、非 root、健康检查、RSA 登录、refresh token、logout 和文件上传下载链路。本次未监测 GitHub CI，也未创建新版本标签。
