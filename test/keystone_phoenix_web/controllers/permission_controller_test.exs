@@ -2,7 +2,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
   alias KeystonePhoenix.Auth
-  alias KeystonePhoenix.Authz.{SysMenuPermission, SysPermission, SysRolePermission}
+  alias KeystonePhoenix.Authz.{PolicyCache, SysMenuPermission, SysPermission, SysRolePermission}
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Repo
@@ -185,7 +185,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
       "menuName" => unique("delegated_menu"),
       "menuType" => 0,
       "parentId" => 0,
-      "permission" => unique("system:delegated"),
+      "permission" => "system:user:query",
       "status" => 1
     }
 
@@ -303,6 +303,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     Repo.insert!(%SysMenuPermission{menu_id: menu.menu_id, permission_id: entry.permission_id})
     Repo.insert!(%SysRolePermission{role_id: role_id, permission_id: entry.permission_id})
     Repo.insert!(%SysRoleMenu{role_id: role_id, menu_id: menu.menu_id})
+    PolicyCache.invalidate()
     Map.put(menu, :permission, permission)
   end
 
