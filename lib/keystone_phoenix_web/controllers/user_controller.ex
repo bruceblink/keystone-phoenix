@@ -4,16 +4,16 @@ defmodule KeystonePhoenixWeb.UserController do
   plug KeystonePhoenixWeb.Plugs.Authenticate,
        [
          permissions: %{
-           list: "system:user:list",
-           show: "system:user:query",
-           create: "system:user:add",
-           update: "system:user:edit",
-           delete: "system:user:remove",
-           reset_password: "system:user:resetPwd",
-           change_status: "system:user:edit",
-           export: "system:user:export",
-           import: "system:user:import",
-           template: "system:user:import"
+           list: "user:read",
+           show: "user:read",
+           create: "user:create",
+           update: "user:update",
+           delete: "user:delete",
+           reset_password: "user:reset-password",
+           change_status: "user:update",
+           export: "user:export",
+           import: "user:import",
+           template: "user:import"
          },
          data_scope: %{
            show: {:user, "user_id"},
@@ -107,7 +107,7 @@ defmodule KeystonePhoenixWeb.UserController do
       case User.create_user(params,
              authorization: %{
                principal: conn.assigns.current_user,
-               permission: "system:user:add"
+               permission: "user:create"
              }
            ) do
         {:ok, _user} -> conn |> put_status(:created) |> json(ApiResponse.ok())
@@ -124,7 +124,7 @@ defmodule KeystonePhoenixWeb.UserController do
       case User.update_user(user_id, params,
              authorization: %{
                principal: conn.assigns.current_user,
-               permission: "system:user:edit"
+               permission: "user:update"
              }
            ) do
         {:ok, _user} -> json(conn, ApiResponse.ok())
@@ -141,7 +141,7 @@ defmodule KeystonePhoenixWeb.UserController do
     case User.delete_users(String.split(user_ids, ","),
            authorization: %{
              principal: conn.assigns.current_user,
-             permission: "system:user:remove"
+             permission: "user:delete"
            }
          ) do
       :ok -> json(conn, ApiResponse.ok())
@@ -157,7 +157,7 @@ defmodule KeystonePhoenixWeb.UserController do
     case User.reset_password(user_id, params,
            authorization: %{
              principal: conn.assigns.current_user,
-             permission: "system:user:resetPwd"
+             permission: "user:reset-password"
            }
          ) do
       {:ok, _user} -> json(conn, ApiResponse.ok())
@@ -172,7 +172,7 @@ defmodule KeystonePhoenixWeb.UserController do
     case User.change_status(user_id, status,
            authorization: %{
              principal: conn.assigns.current_user,
-             permission: "system:user:edit"
+             permission: "user:update"
            }
          ) do
       {:ok, _user} -> json(conn, ApiResponse.ok())
@@ -285,7 +285,7 @@ defmodule KeystonePhoenixWeb.UserController do
             case User.create_user(record,
                    authorization: %{
                      principal: actor,
-                     permission: "system:user:import"
+                     permission: "user:import"
                    }
                  ) do
               {:ok, _user} -> {success + 1, failed}

@@ -10,9 +10,8 @@ defmodule KeystonePhoenix.AuthzTest do
         "userId" => 42,
         "roleId" => 7,
         "deptId" => 3,
-        "isAdmin" => 0,
         "sessionId" => "session-1",
-        "permissions" => ["system:user:list"]
+        "permissions" => ["user:read"]
       })
 
     assert principal.subject_id == 42
@@ -29,7 +28,6 @@ defmodule KeystonePhoenix.AuthzTest do
         "userId" => 42,
         "roleId" => 7,
         "deptId" => 3,
-        "isAdmin" => 1,
         user_id: nil,
         role_id: nil,
         dept_id: nil,
@@ -39,16 +37,17 @@ defmodule KeystonePhoenix.AuthzTest do
     assert principal.subject_id == 42
     assert principal.roles == [7]
     assert principal.department_id == 3
-    assert principal.is_admin
+    refute principal.is_admin
   end
 
-  test "checks exact permission strings and administrator compatibility" do
-    principal = Principal.from_user(%{user_id: 1, permissions: ["system:user:list"]})
+  test "checks exact catalog permissions without an administrator bypass" do
+    principal =
+      Principal.from_user(%{user_id: 1, permissions: ["user:read", "permission:manage"]})
 
-    assert Authz.allowed?(principal, "system:user:list")
-    refute Authz.allowed?(principal, "system:user:edit")
-    assert Authz.allowed?(%{is_admin: true}, "system:anything")
-    assert Authz.allowed?(%{"isAdmin" => "1"}, "system:anything")
+    assert Authz.allowed?(principal, "user:read")
+    refute Authz.allowed?(principal, "user:update")
+    assert Authz.admin?(principal)
+    refute Authz.allowed?(%{is_admin: true}, "user:update")
   end
 
   test "defaults to deny for missing or malformed permission input" do
@@ -57,30 +56,30 @@ defmodule KeystonePhoenix.AuthzTest do
     assert {:error, :permission_denied} = Authz.authorize(%{}, "")
 
     assert {:error, :data_scope_denied} =
-             Authz.authorize(%{permissions: ["system:user:edit"]}, "system:user:edit", 1, %{
+             Authz.authorize(%{permissions: ["user:update"]}, "user:update", 1, %{
                scope: :unknown
              })
   end
 
   test "returns stable authorization errors" do
-    actor = %{user_id: 1, permissions: ["system:user:edit"]}
+    actor = %{user_id: 1, permissions: ["user:update"]}
 
-    assert :ok = Authz.authorize(actor, "system:user:edit")
-    assert {:error, :permission_denied} = Authz.authorize(actor, "system:user:remove")
+    assert :ok = Authz.authorize(actor, "user:update")
+    assert {:error, :permission_denied} = Authz.authorize(actor, "user:delete")
 
     assert {:error, :data_scope_denied} =
-             Authz.authorize(actor, "system:user:edit", 9, %{scope: :users})
+             Authz.authorize(actor, "user:update", 9, %{scope: :users})
   end
 
   test "none scope is always allowed after the permission check" do
-    actor = %{permissions: ["system:job:run"]}
-    assert :ok = Authz.authorize(actor, "system:job:run", nil, %{scope: :none})
+    actor = %{permissions: ["job:run"]}
+    assert :ok = Authz.authorize(actor, "job:run", nil, %{scope: :none})
   end
 
   test "self scope is limited to the principal subject" do
     assert Authz.scope_allowed?(%{user_id: 42}, :self, 42)
     refute Authz.scope_allowed?(%{user_id: 42}, :self, 43)
-    assert Authz.scope_allowed?(%{is_admin: true}, :self, 43)
+    assert Authz.scope_allowed?(%{permissions: ["permission:manage"]}, :self, 43)
   end
 
   test "authorization decisions emit sanitized telemetry" do
@@ -100,9 +99,9 @@ defmodule KeystonePhoenix.AuthzTest do
     on_exit(fn -> :telemetry.detach(handler) end)
 
     assert {:error, :permission_denied} =
-             Authz.authorize(%{user_id: 9, permissions: []}, "system:user:edit")
+             Authz.authorize(%{user_id: 9, permissions: []}, "user:update")
 
     assert_receive {:authz_decision, %{count: 1},
-                    %{outcome: :permission_denied, permission: "system:user:edit", subject_id: 9}}
+                    %{outcome: :permission_denied, permission: "user:update", subject_id: 9}}
   end
 end

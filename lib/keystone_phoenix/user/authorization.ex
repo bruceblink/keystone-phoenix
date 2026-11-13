@@ -6,7 +6,7 @@ defmodule KeystonePhoenix.User.Authorization do
   alias KeystonePhoenix.Params
 
   def authorize_create(attrs, options) do
-    with {:ok, principal, permission} <- authorization_options(options, "system:user:add"),
+    with {:ok, principal, permission} <- authorization_options(options, "user:create"),
          :ok <- authorize_permission(principal, permission),
          :ok <- authorize_scope(principal, :dept, attr_value(attrs, "deptId", :dept_id)),
          true <- Authz.role_assignment_allowed?(principal, attr_value(attrs, "roleId", :role_id)) do
@@ -18,7 +18,7 @@ defmodule KeystonePhoenix.User.Authorization do
   end
 
   def authorize_update(id, attrs, options) do
-    with {:ok, principal, permission} <- authorization_options(options, "system:user:edit"),
+    with {:ok, principal, permission} <- authorization_options(options, "user:update"),
          :ok <- authorize_permission(principal, permission),
          :ok <- authorize_scope(principal, :user_update, id, %{attrs: attrs}),
          true <- Authz.role_assignment_allowed?(principal, attr_value(attrs, "roleId", :role_id)) do
@@ -30,7 +30,7 @@ defmodule KeystonePhoenix.User.Authorization do
   end
 
   def authorize_delete(ids, options) do
-    with {:ok, principal, permission} <- authorization_options(options, "system:user:remove"),
+    with {:ok, principal, permission} <- authorization_options(options, "user:delete"),
          :ok <- authorize_permission(principal, permission),
          :ok <- authorize_scope(principal, :users, ids) do
       :ok

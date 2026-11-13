@@ -190,7 +190,7 @@ defmodule KeystonePhoenix.User do
   def reset_password(id, attrs, options)
 
   def reset_password(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize_target(id, options, "system:user:resetPwd") do
+    with :ok <- Authorization.authorize_target(id, options, "user:reset-password") do
       do_reset_password(id, attrs, Authorization.actor_id(options))
     end
   end
@@ -406,7 +406,7 @@ defmodule KeystonePhoenix.User do
           Repo.rollback(:not_found)
 
         {:ok, user} ->
-          if user.user_id == actor_id or user.is_admin do
+          if user.user_id == actor_id or protected_role_user?(user) do
             Repo.rollback(:protected_user)
           else
             changeset = Ecto.Changeset.change(user, deleted: true)
@@ -424,6 +424,16 @@ defmodule KeystonePhoenix.User do
       end
     end)
   end
+
+  # 管理员账号通过系统角色保护；用户表的旧 is_admin 字段不参与授权或保护判断。
+  defp protected_role_user?(%{role_id: role_id}) do
+    case Role.get_role(role_id) do
+      {:ok, %{role_key: "admin"}} -> true
+      _ -> false
+    end
+  end
+
+  defp protected_role_user?(_user), do: false
 
   defp revoke_if_disabled(%{status: 1}, %{status: status, user_id: user_id}) when status != 1 do
     Session.revoke_account(user_id)

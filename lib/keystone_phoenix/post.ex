@@ -63,7 +63,7 @@ defmodule KeystonePhoenix.Post do
   def create_post(attrs, options)
 
   def create_post(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize(options, "system:post:add") do
+    with :ok <- Authorization.authorize(options, "post:create") do
       do_create_post(attrs, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
@@ -81,7 +81,7 @@ defmodule KeystonePhoenix.Post do
   def update_post(id, attrs, options)
 
   def update_post(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize(options, "system:post:edit") do
+    with :ok <- Authorization.authorize(options, "post:update") do
       do_update_post(id, attrs, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
@@ -100,7 +100,7 @@ defmodule KeystonePhoenix.Post do
   def delete_posts(ids, options)
 
   def delete_posts(ids, options) when is_list(options) do
-    with :ok <- Authorization.authorize(options, "system:post:remove") do
+    with :ok <- Authorization.authorize(options, "post:delete") do
       do_delete_posts(ids, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end

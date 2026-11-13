@@ -10,6 +10,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Captcha
   alias KeystonePhoenix.Auth.LoginLimiter
+  alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.Live.AdminPages.Navigation
@@ -66,14 +67,14 @@ defmodule KeystonePhoenixWeb.LoginLive do
         current_user = Map.get(tokens.current_user, "userInfo", tokens.current_user)
         permissions = Map.get(tokens.current_user, "permissions", [])
 
-        is_admin = current_user["isAdmin"] == 1
+        is_admin = Authz.admin?(Map.put(current_user, :permissions, permissions))
 
         dashboard =
           if is_admin,
             do: AdminSupport.load_dashboard(),
             else: AdminSupport.load_dashboard_for_permissions(current_user, permissions)
 
-        panel_access = AdminSupport.panel_access(permissions, is_admin)
+        panel_access = AdminSupport.panel_access(permissions)
 
         {:noreply,
          assign(socket,
@@ -369,7 +370,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                 <div class="topbar dashboard-topbar">
                   <div>
                     <p class="eyebrow">Keystone Phoenix · 管理平台</p>
-                    <h2><%= if @current_user["isAdmin"] == 1, do: "管理概览", else: "个人中心" %></h2>
+                    <h2><%= if @read_only, do: "个人中心", else: "管理概览" %></h2>
                   </div>
                   <div class="user">
                     <span class="user-avatar" aria-hidden="true">KP</span>
@@ -380,7 +381,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <button type="button" class="secondary" phx-click="logout" phx-disable-with="退出中…">退出</button>
                   </div>
                 </div>
-                <%= if @current_user["isAdmin"] == 1 or Enum.any?(Map.values(@panel_access)) do %>
+                <%= if Enum.any?(Map.values(@panel_access)) do %>
                   <nav class="module-nav" aria-label="管理模块">
                     <span class="nav-section-title">工作台</span>
                     <button data-icon="⌂" type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "overview", do: "page"} phx-value-panel="overview">概览</button>

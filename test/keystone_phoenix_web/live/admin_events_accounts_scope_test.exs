@@ -59,7 +59,7 @@ defmodule KeystonePhoenixWeb.AdminEventsAccountsScopeTest do
           "deptId" => actor_dept.dept_id,
           "isAdmin" => 0
         },
-        permissions: ["system:user:edit"]
+        permissions: ["user:update"]
       }
     }
 

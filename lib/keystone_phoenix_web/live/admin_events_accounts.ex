@@ -25,7 +25,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("new-user", _params, socket) do
-    if Support.permission_socket?(socket, "system:user:add") do
+    if Support.permission_socket?(socket, "user:create") do
       {:noreply,
        assign(socket,
          user_form: Support.empty_user_form(),
@@ -38,7 +38,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("edit-user", %{"user-id" => user_id}, socket) do
-    if Support.permission_socket?(socket, "system:user:edit") do
+    if Support.permission_socket?(socket, "user:update") do
       case Enum.find(socket.assigns.user_rows, &(to_string(&1["userId"]) == user_id)) do
         nil ->
           {:noreply, assign(socket, user_feedback: Feedback.error("找不到指定用户"))}
@@ -57,8 +57,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("save-user", params, socket) do
-    if Support.permission_socket?(socket, "system:user:add") or
-         Support.permission_socket?(socket, "system:user:edit") do
+    if Support.permission_socket?(socket, "user:create") or
+         Support.permission_socket?(socket, "user:update") do
       user_id = String.trim(params["userId"] || "")
       params = if user_id == "", do: params, else: Map.delete(params, "password")
 
@@ -71,7 +71,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
                 params["deptId"]
               ) ->
             User.create_user(params,
-              authorization: authorization(socket, "system:user:add")
+              authorization: authorization(socket, "user:create")
             )
 
           user_id != "" and
@@ -81,9 +81,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
                 user_id,
                 %{attrs: params}
               ) ->
-            User.update_user(user_id, params,
-              authorization: authorization(socket, "system:user:edit")
-            )
+            User.update_user(user_id, params, authorization: authorization(socket, "user:update"))
 
           true ->
             {:error, :data_scope_denied}
@@ -112,12 +110,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("toggle-user-status", %{"user-id" => user_id, "status" => status}, socket) do
-    if Support.permission_socket?(socket, "system:user:edit") do
+    if Support.permission_socket?(socket, "user:update") do
       result =
         if Authz.scope_allowed?(socket.assigns.current_user, :user, user_id) do
-          User.change_status(user_id, status,
-            authorization: authorization(socket, "system:user:edit")
-          )
+          User.change_status(user_id, status, authorization: authorization(socket, "user:update"))
         else
           {:error, :data_scope_denied}
         end
@@ -146,11 +142,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("delete-user", %{"user-id" => user_id}, socket) do
-    if Support.permission_socket?(socket, "system:user:remove") do
+    if Support.permission_socket?(socket, "user:delete") do
       case if(Authz.scope_allowed?(socket.assigns.current_user, :users, [user_id]),
              do:
                User.delete_users([user_id],
-                 authorization: authorization(socket, "system:user:remove")
+                 authorization: authorization(socket, "user:delete")
                ),
              else: {:error, :data_scope_denied}
            ) do
@@ -176,14 +172,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("reset-user-password", params, socket) do
-    if Support.permission_socket?(socket, "system:user:resetPwd") do
+    if Support.permission_socket?(socket, "user:reset-password") do
       user_id = params["userId"] || params["user-id"]
       password = params["password"] || ""
 
       result =
         if Authz.scope_allowed?(socket.assigns.current_user, :user, user_id) do
           User.reset_password(user_id, %{"password" => password},
-            authorization: authorization(socket, "system:user:resetPwd")
+            authorization: authorization(socket, "user:reset-password")
           )
         else
           {:error, :data_scope_denied}

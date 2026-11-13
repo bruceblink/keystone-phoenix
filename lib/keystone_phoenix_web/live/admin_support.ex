@@ -22,18 +22,18 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenixWeb.Live.Authentication
 
   @panel_permissions %{
-    "depts" => ["system:dept:list"],
-    "posts" => ["system:post:list"],
-    "roles" => ["system:role:list"],
-    "menus" => ["system:menu:list"],
-    "users" => ["system:user:list"],
-    "configs" => ["system:config:list"],
-    "dicts" => ["system:dict:list"],
-    "notices" => ["system:notice:list"],
-    "logs" => ["monitor:logininfor:list", "monitor:operlog:list"],
-    "jobs" => ["system:job:list"],
-    "job-logs" => ["system:job:list"],
-    "monitor" => ["monitor:cache:list", "monitor:server:list", "monitor:online:list"]
+    "depts" => ["department:read"],
+    "posts" => ["post:read"],
+    "roles" => ["role:read"],
+    "menus" => ["menu:read"],
+    "users" => ["user:read"],
+    "configs" => ["config:read"],
+    "dicts" => ["dictionary:read"],
+    "notices" => ["notice:read"],
+    "logs" => ["login-log:read", "operation-log:read"],
+    "jobs" => ["job:read"],
+    "job-logs" => ["job:read"],
+    "monitor" => ["cache:refresh", "server:read", "online-session:read"]
   }
 
   def load_dashboard do
@@ -111,9 +111,9 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   @doc "Returns panel visibility for a permission list."
-  def panel_access(permissions, is_admin \\ false) do
+  def panel_access(permissions) do
     Enum.into(@panel_permissions, %{}, fn {panel, required} ->
-      {panel, is_admin or Enum.any?(required, &(&1 in List.wrap(permissions)))}
+      {panel, Enum.any?(required, &(&1 in List.wrap(permissions)))}
     end)
     |> Map.put("overview", true)
     |> Map.put("profile", true)
@@ -151,7 +151,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def dict_type_allowed?(socket, dict_type) when is_binary(dict_type) do
     admin_socket?(socket) or
-      ("system:dict:list" in List.wrap(socket.assigns[:permissions]) and
+      ("dictionary:read" in List.wrap(socket.assigns[:permissions]) and
          Enum.any?(socket.assigns[:dict_type_rows] || [], &(&1["dictType"] == dict_type)))
   end
 
@@ -188,12 +188,12 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
     %{
       login_log_rows:
-        if("monitor:logininfor:list" in permissions,
+        if("login-log:read" in permissions,
           do: load_all(&Log.list_login_logs/1),
           else: []
         ),
       operation_log_rows:
-        if("monitor:operlog:list" in permissions,
+        if("operation-log:read" in permissions,
           do: load_all(&Log.list_operation_logs/1),
           else: []
         )
@@ -279,7 +279,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def monitor_access?(socket) do
     admin_socket?(socket) or
       Enum.any?(
-        ["monitor:cache:list", "monitor:server:list", "monitor:online:list"],
+        ["cache:refresh", "server:read", "online-session:read"],
         &permission_socket?(socket, &1)
       )
   end

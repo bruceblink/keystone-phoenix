@@ -38,7 +38,7 @@ defmodule KeystonePhoenix.Log do
   end
 
   def delete_login_logs(ids, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "monitor:logininfor:remove") do
+    with :ok <- Command.authorize(options, "login-log:delete") do
       soft_delete(SysLoginInfo, :info_id, ids)
     end
   end
@@ -46,7 +46,7 @@ defmodule KeystonePhoenix.Log do
   def delete_login_logs(_ids, _options), do: {:error, :authorization_required}
 
   def delete_operation_logs(ids, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "monitor:operlog:remove") do
+    with :ok <- Command.authorize(options, "operation-log:delete") do
       soft_delete(SysOperationLog, :operation_id, ids)
     end
   end

@@ -3,12 +3,12 @@ defmodule KeystonePhoenixWeb.DepartmentController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
-      list: "system:dept:list",
-      show: "system:dept:query",
-      dropdown: "system:dept:list",
-      create: "system:dept:add",
-      update: "system:dept:edit",
-      delete: "system:dept:remove"
+      list: "department:read",
+      show: "department:read",
+      dropdown: "department:read",
+      create: "department:create",
+      update: "department:update",
+      delete: "department:delete"
     },
     data_scope: %{update: {:dept, "dept_id"}, delete: {:dept, "dept_id"}}
 

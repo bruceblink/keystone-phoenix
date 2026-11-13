@@ -14,7 +14,7 @@ defmodule KeystonePhoenix.Upload do
   @spec store_file(Plug.Upload.t(), pos_integer() | nil, keyword()) ::
           {:ok, map()} | {:error, atom()}
   def store_file(%Plug.Upload{} = upload, owner_id, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "system:file:upload") do
+    with :ok <- Command.authorize(options, "file:write") do
       do_store_file(upload, owner_id)
     end
   end
@@ -50,7 +50,7 @@ defmodule KeystonePhoenix.Upload do
           {:ok, list(map())} | {:error, atom()}
   def store_files(uploads, owner_id, options)
       when is_list(uploads) and is_list(options) do
-    with :ok <- Command.authorize(options, "system:file:upload"),
+    with :ok <- Command.authorize(options, "file:write"),
          :ok <- validate_batch(uploads) do
       Enum.reduce_while(uploads, {:ok, []}, fn upload, {:ok, stored} ->
         case do_store_file(upload, owner_id) do

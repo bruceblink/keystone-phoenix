@@ -71,7 +71,7 @@ defmodule KeystonePhoenix.Config do
   def create_config(attrs, options)
 
   def create_config(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize(options, "system:config:add") do
+    with :ok <- Authorization.authorize(options, "config:create") do
       do_create_config(attrs, Authorization.actor_id(options))
     end
   end
@@ -97,7 +97,7 @@ defmodule KeystonePhoenix.Config do
   def update_config(id, attrs, options)
 
   def update_config(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize(options, "system:config:edit") do
+    with :ok <- Authorization.authorize(options, "config:update") do
       do_update_config(id, attrs, Authorization.actor_id(options))
     end
   end
@@ -126,7 +126,7 @@ defmodule KeystonePhoenix.Config do
   end
 
   def refresh_cache(options) when is_list(options) do
-    with :ok <- Authorization.authorize(options, "system:config:refresh") do
+    with :ok <- Authorization.authorize(options, "config:refresh") do
       do_refresh_cache()
     end
   end

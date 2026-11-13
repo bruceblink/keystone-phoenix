@@ -57,7 +57,7 @@ defmodule KeystonePhoenix.Monitor do
 
   @doc "Revokes one online refresh session after authorization."
   def logout_online_user(token_id, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "monitor:online:forceLogout") do
+    with :ok <- Command.authorize(options, "online-session:revoke") do
       Session.revoke_token(token_id)
     end
   end

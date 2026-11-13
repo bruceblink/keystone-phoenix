@@ -3,18 +3,18 @@ defmodule KeystonePhoenixWeb.DictionaryController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
-      list_types: "system:dict:list",
-      list_data: "system:dict:list",
-      list_data_by_type: "system:dict:list",
-      show_type: "system:dict:query",
-      show_data: "system:dict:query",
-      create_type: "system:dict:add",
-      update_type: "system:dict:edit",
-      delete_type: "system:dict:remove",
-      create_data: "system:dict:add",
-      update_data: "system:dict:edit",
-      delete_data: "system:dict:remove",
-      refresh_cache: "system:dict:refresh"
+      list_types: "dictionary:read",
+      list_data: "dictionary:read",
+      list_data_by_type: "dictionary:read",
+      show_type: "dictionary:read",
+      show_data: "dictionary:read",
+      create_type: "dictionary:create",
+      update_type: "dictionary:update",
+      delete_type: "dictionary:delete",
+      create_data: "dictionary:create",
+      update_data: "dictionary:update",
+      delete_data: "dictionary:delete",
+      refresh_cache: "dictionary:refresh"
     }
 
   alias KeystonePhoenix.Dictionary

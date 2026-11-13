@@ -66,7 +66,7 @@ defmodule KeystonePhoenix.Dictionary do
   def create_dict_type(attrs, options)
 
   def create_dict_type(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "system:dict:add") do
+    with :ok <- Command.authorize(options, "dictionary:create") do
       do_create_dict_type(attrs, Command.actor_id(options))
     end
   end
@@ -83,7 +83,7 @@ defmodule KeystonePhoenix.Dictionary do
   def update_dict_type(id, attrs, options)
 
   def update_dict_type(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "system:dict:edit") do
+    with :ok <- Command.authorize(options, "dictionary:update") do
       do_update_dict_type(id, attrs, Command.actor_id(options))
     end
   end
@@ -134,7 +134,7 @@ defmodule KeystonePhoenix.Dictionary do
   def delete_dict_type(id, options)
 
   def delete_dict_type(id, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "system:dict:remove") do
+    with :ok <- Command.authorize(options, "dictionary:delete") do
       do_delete_dict_type(id)
     end
   end
@@ -168,7 +168,7 @@ defmodule KeystonePhoenix.Dictionary do
   def create_dict_data(attrs, options)
 
   def create_dict_data(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "system:dict:add") do
+    with :ok <- Command.authorize(options, "dictionary:create") do
       do_create_dict_data(attrs, Command.actor_id(options))
     end
   end
@@ -198,7 +198,7 @@ defmodule KeystonePhoenix.Dictionary do
   def update_dict_data(id, attrs, options)
 
   def update_dict_data(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "system:dict:edit") do
+    with :ok <- Command.authorize(options, "dictionary:update") do
       do_update_dict_data(id, attrs, Command.actor_id(options))
     end
   end
@@ -231,7 +231,7 @@ defmodule KeystonePhoenix.Dictionary do
   def delete_dict_data(id, options)
 
   def delete_dict_data(id, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "system:dict:remove") do
+    with :ok <- Command.authorize(options, "dictionary:delete") do
       do_delete_dict_data(id)
     end
   end
@@ -306,7 +306,7 @@ defmodule KeystonePhoenix.Dictionary do
 
   @doc "Clears all cached dictionary data values."
   def refresh_cache(options) when is_list(options) do
-    with :ok <- Command.authorize(options, "system:dict:refresh") do
+    with :ok <- Command.authorize(options, "dictionary:refresh") do
       do_refresh_cache()
     end
   end

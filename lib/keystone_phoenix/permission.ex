@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Permission do
   import Ecto.Query
 
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Authz.PermissionCatalog
   alias KeystonePhoenix.Authz.SysPermission
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
@@ -11,14 +12,11 @@ defmodule KeystonePhoenix.Permission do
 
   @doc "Checks whether a user has an exact menu permission."
   @spec allowed?(map(), String.t()) :: boolean()
-  def allowed?(%{is_admin: true}, _permission), do: true
-  def allowed?(%{"isAdmin" => 1}, _permission), do: true
-
   def allowed?(user, permission) when is_map(user) and is_binary(permission) do
     role_id = user_value(user, :role_id, "roleId")
     permission = String.trim(permission)
 
-    if positive_integer?(role_id) and permission != "" do
+    if positive_integer?(role_id) and PermissionCatalog.registered?(permission) do
       Repo.exists?(
         from role_permission in "sys_role_permission",
           join: permission_entry in SysPermission,
@@ -42,14 +40,11 @@ defmodule KeystonePhoenix.Permission do
   @doc "Returns a policy decision without collapsing storage failures into denial."
   @spec allowed_decision?(map(), String.t()) ::
           :allow | :deny | {:error, :authorization_unavailable}
-  def allowed_decision?(%{is_admin: true}, _permission), do: :allow
-  def allowed_decision?(%{"isAdmin" => 1}, _permission), do: :allow
-
   def allowed_decision?(user, permission) when is_map(user) and is_binary(permission) do
     role_id = user_value(user, :role_id, "roleId")
     permission = String.trim(permission)
 
-    if positive_integer?(role_id) and permission != "" do
+    if positive_integer?(role_id) and PermissionCatalog.registered?(permission) do
       if Repo.exists?(
            from role_permission in "sys_role_permission",
              join: permission_entry in SysPermission,
@@ -82,7 +77,7 @@ defmodule KeystonePhoenix.Permission do
         :menu_ids,
         :data_scope,
         :dept_id_set
-      ]) or allowed?(user, "system:role:permission")
+      ]) or allowed?(user, "role:manage")
   end
 
   def role_metadata_allowed?(_user, _attrs), do: false
@@ -91,7 +86,7 @@ defmodule KeystonePhoenix.Permission do
   def menu_metadata_allowed?(user, attrs) when is_map(attrs) do
     admin?(user) or
       not has_any_key?(attrs, ["permission", :permission]) or
-      allowed?(user, "system:menu:permission")
+      allowed?(user, "menu:manage")
   end
 
   def menu_metadata_allowed?(_user, _attrs), do: false
@@ -100,15 +95,17 @@ defmodule KeystonePhoenix.Permission do
 
   @doc "Returns whether the authenticated user is an administrator."
   @spec admin?(map()) :: boolean()
-  def admin?(%{is_admin: true}), do: true
-  def admin?(%{"isAdmin" => 1}), do: true
-  def admin?(_user), do: false
+  def admin?(%{permissions: permissions}) when is_list(permissions),
+    do: "permission:manage" in permissions
+
+  def admin?(user), do: allowed?(user, "permission:manage")
 
   @doc "Adds the current role's user data scope before counting or pagination."
-  def scope_users(query, %{is_admin: true}), do: query
-  def scope_users(query, %{"isAdmin" => 1}), do: query
-
   def scope_users(query, user) do
+    if admin?(user), do: query, else: scoped_users_query(query, user)
+  end
+
+  defp scoped_users_query(query, user) do
     role_id = user_value(user, :role_id, "roleId")
 
     with true <- positive_integer?(role_id),
@@ -174,9 +171,8 @@ defmodule KeystonePhoenix.Permission do
   @spec role_assignment_allowed?(map(), term()) :: boolean()
   def role_assignment_allowed?(actor, role_id) do
     cond do
-      admin?(actor) -> true
       is_nil(parse_positive_integer(role_id)) -> true
-      true -> false
+      true -> allowed?(actor, "role:assign")
     end
   end
 
@@ -229,10 +225,6 @@ defmodule KeystonePhoenix.Permission do
   end
 
   defp scope_user_query(query, _role, _user), do: where(query, false)
-
-  defp check_scope(%{is_admin: true}, _target_dept_id, _target_user_id), do: true
-
-  defp check_scope(%{"isAdmin" => 1}, _target_dept_id, _target_user_id), do: true
 
   defp check_scope(user, target_dept_id, target_user_id) do
     role_id = user_value(user, :role_id, "roleId")

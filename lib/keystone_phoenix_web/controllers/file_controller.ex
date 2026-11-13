@@ -3,9 +3,9 @@ defmodule KeystonePhoenixWeb.FileController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
-      upload: "system:file:upload",
-      uploads: "system:file:upload",
-      download: "system:file:download"
+      upload: "file:write",
+      uploads: "file:write",
+      download: "file:read"
     }
 
   alias KeystonePhoenix.Upload

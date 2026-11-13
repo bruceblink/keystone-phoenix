@@ -25,7 +25,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("new-dept", _params, socket) do
-    if Support.permission_socket?(socket, "system:dept:add") do
+    if Support.permission_socket?(socket, "department:create") do
       {:noreply,
        assign(socket,
          dept_form: Support.empty_dept_form(),
@@ -38,7 +38,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("edit-dept", %{"dept-id" => dept_id}, socket) do
-    if Support.permission_socket?(socket, "system:dept:edit") do
+    if Support.permission_socket?(socket, "department:update") do
       case Enum.find(socket.assigns.dept_rows, &(to_string(&1["deptId"]) == dept_id)) do
         nil ->
           {:noreply, assign(socket, dept_feedback: Feedback.error("找不到指定部门"))}
@@ -57,14 +57,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("save-dept", params, socket) do
-    if Support.permission_socket?(socket, "system:dept:add") or
-         Support.permission_socket?(socket, "system:dept:edit") do
+    if Support.permission_socket?(socket, "department:create") or
+         Support.permission_socket?(socket, "department:update") do
       dept_id = String.trim(params["deptId"] || "")
 
       result =
         if dept_id == "",
-          do: Department.create_dept(params, authorization(socket, "system:dept:add")),
-          else: Department.update_dept(dept_id, params, authorization(socket, "system:dept:edit"))
+          do: Department.create_dept(params, authorization(socket, "department:create")),
+          else:
+            Department.update_dept(dept_id, params, authorization(socket, "department:update"))
 
       case result do
         {:ok, _dept} ->
@@ -85,11 +86,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("toggle-dept-status", %{"dept-id" => dept_id, "status" => status}, socket) do
-    if Support.permission_socket?(socket, "system:dept:edit") do
+    if Support.permission_socket?(socket, "department:update") do
       case Department.update_dept(
              dept_id,
              %{"status" => status},
-             authorization(socket, "system:dept:edit")
+             authorization(socket, "department:update")
            ) do
         {:ok, _dept} ->
           {:noreply, assign(socket, dept_rows: Support.load_depts(), dept_feedback: "部门状态已更新")}
@@ -103,8 +104,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("delete-dept", %{"dept-id" => dept_id}, socket) do
-    if Support.permission_socket?(socket, "system:dept:remove") do
-      case Department.delete_dept(dept_id, authorization(socket, "system:dept:remove")) do
+    if Support.permission_socket?(socket, "department:delete") do
+      case Department.delete_dept(dept_id, authorization(socket, "department:delete")) do
         :ok ->
           {:noreply,
            assign(socket,
@@ -137,7 +138,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("new-post", _params, socket) do
-    if Support.permission_socket?(socket, "system:post:add") do
+    if Support.permission_socket?(socket, "post:create") do
       {:noreply,
        assign(socket,
          post_form: Support.empty_post_form(),
@@ -150,7 +151,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("edit-post", %{"post-id" => post_id}, socket) do
-    if Support.permission_socket?(socket, "system:post:edit") do
+    if Support.permission_socket?(socket, "post:update") do
       case Enum.find(socket.assigns.post_rows, &(to_string(&1["postId"]) == post_id)) do
         nil ->
           {:noreply, assign(socket, post_feedback: Feedback.error("找不到指定岗位"))}
@@ -169,14 +170,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("save-post", params, socket) do
-    if Support.permission_socket?(socket, "system:post:add") or
-         Support.permission_socket?(socket, "system:post:edit") do
+    if Support.permission_socket?(socket, "post:create") or
+         Support.permission_socket?(socket, "post:update") do
       post_id = String.trim(params["postId"] || "")
 
       result =
         if post_id == "",
-          do: Post.create_post(params, authorization(socket, "system:post:add")),
-          else: Post.update_post(post_id, params, authorization(socket, "system:post:edit"))
+          do: Post.create_post(params, authorization(socket, "post:create")),
+          else: Post.update_post(post_id, params, authorization(socket, "post:update"))
 
       case result do
         {:ok, _post} ->
@@ -197,11 +198,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("toggle-post-status", %{"post-id" => post_id, "status" => status}, socket) do
-    if Support.permission_socket?(socket, "system:post:edit") do
+    if Support.permission_socket?(socket, "post:update") do
       case Post.update_post(
              post_id,
              %{"status" => status},
-             authorization(socket, "system:post:edit")
+             authorization(socket, "post:update")
            ) do
         {:ok, _post} ->
           {:noreply, assign(socket, post_rows: Support.load_posts(), post_feedback: "岗位状态已更新")}
@@ -215,8 +216,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("delete-post", %{"post-id" => post_id}, socket) do
-    if Support.permission_socket?(socket, "system:post:remove") do
-      case Post.delete_posts([post_id], authorization(socket, "system:post:remove")) do
+    if Support.permission_socket?(socket, "post:delete") do
+      case Post.delete_posts([post_id], authorization(socket, "post:delete")) do
         :ok ->
           {:noreply,
            assign(socket,
@@ -254,7 +255,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("new-role", _params, socket) do
-    if Support.permission_socket?(socket, "system:role:add") do
+    if Support.permission_socket?(socket, "role:create") do
       {:noreply,
        assign(socket,
          role_form: Support.empty_role_form(),
@@ -267,7 +268,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("edit-role", %{"role-id" => role_id}, socket) do
-    if Support.permission_socket?(socket, "system:role:edit") do
+    if Support.permission_socket?(socket, "role:update") do
       case Enum.find(socket.assigns.role_rows, &(to_string(&1["roleId"]) == role_id)) do
         nil ->
           {:noreply, assign(socket, role_feedback: Feedback.error("找不到指定角色"))}
@@ -283,16 +284,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("save-role", params, socket) do
-    if (Support.permission_socket?(socket, "system:role:add") or
-          Support.permission_socket?(socket, "system:role:edit")) and
+    if (Support.permission_socket?(socket, "role:create") or
+          Support.permission_socket?(socket, "role:update")) and
          Authz.role_metadata_allowed?(socket.assigns.current_user, params) do
       role_id = String.trim(params["roleId"] || "")
       params = Map.update(params, "menuIds", "", &String.trim/1)
 
       result =
         if role_id == "",
-          do: Role.create_role(params, authorization(socket, "system:role:add")),
-          else: Role.update_role(role_id, params, authorization(socket, "system:role:edit"))
+          do: Role.create_role(params, authorization(socket, "role:create")),
+          else: Role.update_role(role_id, params, authorization(socket, "role:update"))
 
       case result do
         {:ok, _role} ->
@@ -315,8 +316,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("toggle-role-status", %{"role-id" => role_id, "status" => status}, socket) do
-    if Support.permission_socket?(socket, "system:role:edit") do
-      case Role.change_status(role_id, status, authorization(socket, "system:role:edit")) do
+    if Support.permission_socket?(socket, "role:update") do
+      case Role.change_status(role_id, status, authorization(socket, "role:update")) do
         {:ok, _role} ->
           socket = assign(socket, role_rows: Support.load_roles(), role_feedback: "角色状态已更新")
           {:noreply, clear_role_selection(socket)}
@@ -330,8 +331,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("delete-role", %{"role-id" => role_id}, socket) do
-    if Support.permission_socket?(socket, "system:role:remove") do
-      case Role.delete_role(role_id, authorization(socket, "system:role:remove")) do
+    if Support.permission_socket?(socket, "role:delete") do
+      case Role.delete_role(role_id, authorization(socket, "role:delete")) do
         {:ok, _} ->
           {:noreply,
            assign(socket,
@@ -369,7 +370,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("select-role", %{"role-id" => role_id}, socket) do
-    if Support.permission_socket?(socket, "system:role:list") do
+    if Support.permission_socket?(socket, "role:read") do
       case Enum.find(socket.assigns.role_rows, &(to_string(&1["roleId"]) == role_id)) do
         nil ->
           {:noreply, assign(socket, role_user_feedback: Feedback.error("找不到指定角色"))}
@@ -397,13 +398,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("assign-role-user", %{"user-id" => user_id}, socket) do
     update_role_user_assignment(socket, fn role_id ->
-      Role.assign_users(role_id, [user_id], authorization(socket, "system:role:edit"))
+      Role.assign_users(role_id, [user_id], authorization(socket, "role:update"))
     end)
   end
 
   def handle_event("unassign-role-user", %{"user-id" => user_id}, socket) do
     update_role_user_assignment(socket, fn _role_id ->
-      Role.unassign_users([user_id], authorization(socket, "system:role:edit"))
+      Role.unassign_users([user_id], authorization(socket, "role:update"))
     end)
   end
 
@@ -422,7 +423,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("new-menu", _params, socket) do
-    if Support.permission_socket?(socket, "system:menu:add") do
+    if Support.permission_socket?(socket, "menu:create") do
       {:noreply,
        assign(socket,
          menu_form: Support.empty_menu_form(),
@@ -435,7 +436,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("edit-menu", %{"menu-id" => menu_id}, socket) do
-    if Support.permission_socket?(socket, "system:menu:edit") do
+    if Support.permission_socket?(socket, "menu:update") do
       case Enum.find(socket.assigns.menu_rows, &(to_string(&1["menuId"]) == menu_id)) do
         nil ->
           {:noreply, assign(socket, menu_feedback: Feedback.error("找不到指定菜单"))}
@@ -455,15 +456,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("save-menu", params, socket) do
-    if (Support.permission_socket?(socket, "system:menu:add") or
-          Support.permission_socket?(socket, "system:menu:edit")) and
+    if (Support.permission_socket?(socket, "menu:create") or
+          Support.permission_socket?(socket, "menu:update")) and
          Authz.menu_metadata_allowed?(socket.assigns.current_user, params) do
       menu_id = String.trim(params["menuId"] || "")
 
       result =
         if menu_id == "",
-          do: Menu.create_menu(params, authorization(socket, "system:menu:add")),
-          else: Menu.update_menu(menu_id, params, authorization(socket, "system:menu:edit"))
+          do: Menu.create_menu(params, authorization(socket, "menu:create")),
+          else: Menu.update_menu(menu_id, params, authorization(socket, "menu:update"))
 
       case result do
         {:ok, _menu} ->
@@ -484,11 +485,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("toggle-menu-status", %{"menu-id" => menu_id, "status" => status}, socket) do
-    if Support.permission_socket?(socket, "system:menu:edit") do
+    if Support.permission_socket?(socket, "menu:update") do
       case Menu.update_menu(
              menu_id,
              %{"status" => status},
-             authorization(socket, "system:menu:edit")
+             authorization(socket, "menu:update")
            ) do
         {:ok, _menu} ->
           {:noreply, assign(socket, menu_rows: Support.load_menus(), menu_feedback: "菜单状态已更新")}
@@ -502,8 +503,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("delete-menu", %{"menu-id" => menu_id}, socket) do
-    if Support.permission_socket?(socket, "system:menu:remove") do
-      case Menu.delete_menu(menu_id, authorization(socket, "system:menu:remove")) do
+    if Support.permission_socket?(socket, "menu:delete") do
+      case Menu.delete_menu(menu_id, authorization(socket, "menu:delete")) do
         :ok ->
           {:noreply,
            assign(socket,
@@ -522,7 +523,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   defp update_role_user_assignment(socket, operation) do
-    if Support.permission_socket?(socket, "system:role:edit") and
+    if Support.permission_socket?(socket, "role:update") and
          socket.assigns.selected_role_id != "" do
       role_id = socket.assigns.selected_role_id
 

@@ -48,7 +48,7 @@ defmodule KeystonePhoenix.Job do
   def create_job(attrs, options)
 
   def create_job(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize(options, "system:job:add") do
+    with :ok <- Authorization.authorize(options, "job:create") do
       do_create_job(attrs, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
@@ -72,7 +72,7 @@ defmodule KeystonePhoenix.Job do
   def update_job(id, attrs, options)
 
   def update_job(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize(options, "system:job:edit") do
+    with :ok <- Authorization.authorize(options, "job:update") do
       do_update_job(id, attrs, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
@@ -109,7 +109,7 @@ defmodule KeystonePhoenix.Job do
   def update_job_status(id, status, options)
 
   def update_job_status(id, status, options) when is_list(options) do
-    with :ok <- Authorization.authorize(options, "system:job:changeStatus") do
+    with :ok <- Authorization.authorize(options, "job:update-status") do
       do_update_job_status(id, status, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
@@ -130,7 +130,7 @@ defmodule KeystonePhoenix.Job do
   def delete_jobs(ids, options)
 
   def delete_jobs(ids, options) when is_list(options) do
-    with :ok <- Authorization.authorize(options, "system:job:remove") do
+    with :ok <- Authorization.authorize(options, "job:delete") do
       do_delete_jobs(ids)
     end
   end
@@ -152,7 +152,7 @@ defmodule KeystonePhoenix.Job do
   def run_job(id, options)
 
   def run_job(id, options) when is_list(options) do
-    with :ok <- Authorization.authorize(options, "system:job:run") do
+    with :ok <- Authorization.authorize(options, "job:run") do
       do_run_job(id)
     end
   end
@@ -214,7 +214,7 @@ defmodule KeystonePhoenix.Job do
   def cancel_job(id, options)
 
   def cancel_job(id, options) when is_list(options) do
-    with :ok <- Authorization.authorize(options, "system:job:run") do
+    with :ok <- Authorization.authorize(options, "job:run") do
       do_cancel_job(id)
     end
   end

@@ -3,12 +3,12 @@ defmodule KeystonePhoenixWeb.PostController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
-      list: "system:post:list",
-      export: "system:post:export",
-      show: "system:post:query",
-      create: "system:post:add",
-      update: "system:post:edit",
-      delete: "system:post:remove"
+      list: "post:read",
+      export: "post:export",
+      show: "post:read",
+      create: "post:create",
+      update: "post:update",
+      delete: "post:delete"
     }
 
   alias KeystonePhoenix.Excel

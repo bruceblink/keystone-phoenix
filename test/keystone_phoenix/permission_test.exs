@@ -3,13 +3,14 @@ defmodule KeystonePhoenix.PermissionTest do
 
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
 
-  test "checks exact role menu permissions and admin bypass" do
+  test "checks exact role menu permissions without an admin bypass" do
     role = insert_role(%{role_key: unique("permission_role")})
 
     menu =
@@ -18,18 +19,18 @@ defmodule KeystonePhoenix.PermissionTest do
         menu_name: "用户列表",
         menu_type: 0,
         parent_id: 0,
-        permission: "system:user:list",
+        permission: "user:read",
         status: 1
       })
       |> Repo.insert!()
 
     Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: menu.menu_id})
-    insert_permission(role.role_id, "system:user:list")
-    user = %{user_id: 10, role_id: role.role_id, is_admin: false}
+    insert_permission(role.role_id, "user:read")
+    user = %{user_id: 10, role_id: role.role_id}
 
-    assert Permission.allowed?(user, "system:user:list")
-    refute Permission.allowed?(user, "system:user:remove")
-    assert Permission.allowed?(%{is_admin: true}, "anything")
+    assert Permission.allowed?(user, "user:read")
+    refute Permission.allowed?(user, "user:delete")
+    refute Permission.allowed?(%{is_admin: true}, "user:update")
   end
 
   test "enforces custom and department-tree data scopes" do
@@ -37,7 +38,7 @@ defmodule KeystonePhoenix.PermissionTest do
     child = insert_dept(101, parent.dept_id, "0,100")
     other = insert_dept(102, 0, "0")
     role = insert_role(%{data_scope: 4, role_key: unique("tree_role")})
-    user = %{user_id: 20, role_id: role.role_id, dept_id: parent.dept_id, is_admin: false}
+    user = %{user_id: 20, role_id: role.role_id, dept_id: parent.dept_id}
 
     assert Permission.data_scope_allowed?(user, :dept, child.dept_id)
     refute Permission.data_scope_allowed?(user, :dept, other.dept_id)
@@ -62,7 +63,7 @@ defmodule KeystonePhoenix.PermissionTest do
         menu_name: "角色菜单",
         menu_type: 0,
         parent_id: 0,
-        permission: "system:role:list",
+        permission: "role:read",
         status: 1
       })
       |> Repo.insert!()
@@ -79,8 +80,8 @@ defmodule KeystonePhoenix.PermissionTest do
                  "menuIds" => Integer.to_string(menu.menu_id)
                },
                authorization: %{
-                 principal: %{is_admin: true},
-                 permission: "system:role:edit"
+                 principal: %{permissions: ["role:update", "permission:manage"]},
+                 permission: "role:update"
                }
              )
 
@@ -89,7 +90,7 @@ defmodule KeystonePhoenix.PermissionTest do
 
   test "protects role permission metadata behind an explicit permission" do
     role = insert_role(%{role_key: unique("metadata_role")})
-    user = %{user_id: 11, role_id: role.role_id, is_admin: false}
+    user = %{user_id: 11, role_id: role.role_id}
 
     refute Permission.role_metadata_allowed?(user, %{"menuIds" => "1"})
     refute Permission.role_metadata_allowed?(user, %{"dataScope" => 1})
@@ -101,21 +102,21 @@ defmodule KeystonePhoenix.PermissionTest do
         menu_name: "角色权限配置",
         menu_type: 0,
         parent_id: 0,
-        permission: "system:role:permission",
+        permission: "role:manage",
         status: 1
       })
       |> Repo.insert!()
 
     Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: permission_menu.menu_id})
-    insert_permission(role.role_id, "system:role:permission")
+    insert_permission(role.role_id, "role:manage")
     assert Permission.role_metadata_allowed?(user, %{"menuIds" => "1"})
   end
 
   test "protects menu permission metadata behind an explicit permission" do
     role = insert_role(%{role_key: unique("menu_metadata_role")})
-    user = %{user_id: 12, role_id: role.role_id, is_admin: false}
+    user = %{user_id: 12, role_id: role.role_id}
 
-    refute Permission.menu_metadata_allowed?(user, %{"permission" => "system:admin"})
+    refute Permission.menu_metadata_allowed?(user, %{"permission" => "user:read"})
     assert Permission.menu_metadata_allowed?(user, %{"menuName" => "普通菜单"})
   end
 
@@ -155,9 +156,10 @@ defmodule KeystonePhoenix.PermissionTest do
     entry =
       Repo.get_by(SysPermission, permission: permission) ||
         Repo.insert!(%SysPermission{
+          permission_id: Identity.permission_id(permission),
           permission: permission,
-          resource: "system",
-          domain: permission |> String.split(":") |> Enum.at(1),
+          resource: permission |> String.split(":") |> Enum.at(0),
+          domain: "default",
           action: permission |> String.split(":") |> List.last(),
           status: 1,
           deprecated: false

@@ -85,6 +85,12 @@ defmodule KeystonePhoenix.Authz.PermissionCatalog do
   @doc "返回新系统登记的全部权限。"
   def permissions, do: @permissions
 
+  @doc "检查权限是否已登记在新系统权限目录中。"
+  def registered?(permission) when is_binary(permission),
+    do: normalize(permission) in @permissions
+
+  def registered?(_permission), do: false
+
   @doc "返回全部权限的稳定元数据。"
   def entries, do: Enum.map(@permissions, &metadata!/1)
 

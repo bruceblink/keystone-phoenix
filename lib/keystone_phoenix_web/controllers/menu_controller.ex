@@ -3,12 +3,12 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
-      list: "system:menu:list",
-      show: "system:menu:query",
-      dropdown: "system:menu:list",
-      create: "system:menu:add",
-      update: "system:menu:edit",
-      delete: "system:menu:remove"
+      list: "menu:read",
+      show: "menu:read",
+      dropdown: "menu:read",
+      create: "menu:create",
+      update: "menu:update",
+      delete: "menu:delete"
     }
 
   alias KeystonePhoenix.Menu
@@ -39,7 +39,7 @@ defmodule KeystonePhoenixWeb.MenuController do
       case Menu.create_menu(params,
              authorization: %{
                principal: conn.assigns.current_user,
-               permission: "system:menu:add"
+               permission: "menu:create"
              }
            ) do
         {:ok, _menu} -> conn |> put_status(:created) |> json(ApiResponse.ok())
@@ -56,7 +56,7 @@ defmodule KeystonePhoenixWeb.MenuController do
       case Menu.update_menu(menu_id, params,
              authorization: %{
                principal: conn.assigns.current_user,
-               permission: "system:menu:edit"
+               permission: "menu:update"
              }
            ) do
         {:ok, _menu} -> json(conn, ApiResponse.ok())
@@ -72,7 +72,7 @@ defmodule KeystonePhoenixWeb.MenuController do
     case Menu.delete_menu(menu_id,
            authorization: %{
              principal: conn.assigns.current_user,
-             permission: "system:menu:remove"
+             permission: "menu:delete"
            }
          ) do
       :ok -> json(conn, ApiResponse.ok())

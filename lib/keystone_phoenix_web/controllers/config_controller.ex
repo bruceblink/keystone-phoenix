@@ -3,11 +3,11 @@ defmodule KeystonePhoenixWeb.ConfigController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
-      list: "system:config:list",
-      show: "system:config:query",
-      create: "system:config:add",
-      update: "system:config:edit",
-      refresh_cache: "system:config:refresh"
+      list: "config:read",
+      show: "config:read",
+      create: "config:create",
+      update: "config:update",
+      refresh_cache: "config:refresh"
     }
 
   alias KeystonePhoenix.Config

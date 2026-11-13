@@ -12,6 +12,7 @@ defmodule KeystonePhoenix.Authz do
 
   alias KeystonePhoenix.Authz.PolicyStore
   alias KeystonePhoenix.Authz.Principal
+  alias KeystonePhoenix.Authz.PermissionCatalog
   alias KeystonePhoenix.Log
 
   @type denial ::
@@ -27,10 +28,14 @@ defmodule KeystonePhoenix.Authz do
     subject = Principal.from_user(principal)
 
     cond do
-      Principal.admin?(subject) -> true
-      permission == "" -> false
-      is_list(subject.permissions) -> permission in subject.permissions
-      true -> PolicyStore.allowed?(Principal.to_user(subject), permission)
+      permission == "" ->
+        false
+
+      is_list(subject.permissions) ->
+        PermissionCatalog.registered?(permission) and permission in subject.permissions
+
+      true ->
+        PolicyStore.allowed?(Principal.to_user(subject), permission)
     end
   rescue
     _error -> false
@@ -38,8 +43,8 @@ defmodule KeystonePhoenix.Authz do
 
   def allowed?(_principal, _permission, _context), do: false
 
-  @doc "Returns whether an actor has administrator status."
-  def admin?(principal), do: Principal.admin?(Principal.from_user(principal))
+  @doc "Returns whether a principal has the catalog permission used for administration."
+  def admin?(principal), do: allowed?(principal, "permission:manage")
 
   @doc "Applies the actor's data scope to an Ecto query."
   def scope_query(query, principal) do

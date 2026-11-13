@@ -59,7 +59,7 @@ defmodule KeystonePhoenix.Menu do
   def create_menu(attrs, options)
 
   def create_menu(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "system:menu:add") do
+    with :ok <- Command.authorize(options, "menu:create") do
       do_create_menu(attrs, Command.actor_id(options))
     end
   end
@@ -90,7 +90,7 @@ defmodule KeystonePhoenix.Menu do
   def update_menu(id, attrs, options)
 
   def update_menu(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "system:menu:edit") do
+    with :ok <- Command.authorize(options, "menu:update") do
       do_update_menu(id, attrs, Command.actor_id(options))
     end
   end
@@ -122,7 +122,7 @@ defmodule KeystonePhoenix.Menu do
   end
 
   def delete_menu(id, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "system:menu:remove") do
+    with :ok <- Command.authorize(options, "menu:delete") do
       do_delete_menu(id, Command.actor_id(options))
     end
   end
@@ -154,22 +154,8 @@ defmodule KeystonePhoenix.Menu do
     end
   end
 
-  def menus_for_user(%{is_admin: true, role_id: role_id} = user)
-      when is_integer(role_id) and role_id > 0 do
-    user
-    |> Map.delete(:is_admin)
-    |> menus_for_user()
-  end
-
-  def menus_for_user(%{"isAdmin" => 1, "roleId" => role_id} = user)
-      when is_integer(role_id) and role_id > 0 do
-    user
-    |> Map.delete("isAdmin")
-    |> menus_for_user()
-  end
-
-  def menus_for_user(%{is_admin: true}), do: list_menus(%{"status" => 1})
   def menus_for_user(%{role_id: nil}), do: []
+  def menus_for_user(%{"roleId" => nil}), do: []
 
   def menus_for_user(user) do
     from(m in SysMenu,
@@ -189,24 +175,6 @@ defmodule KeystonePhoenix.Menu do
 
   @doc "Returns the button and route permission strings for an authenticated user."
   @spec permissions_for_user(map()) :: [String.t()]
-  def permissions_for_user(%{is_admin: true, role_id: role_id} = user)
-      when is_integer(role_id) and role_id > 0 do
-    user
-    |> Map.delete(:is_admin)
-    |> permissions_for_user()
-  end
-
-  def permissions_for_user(%{"isAdmin" => 1, "roleId" => role_id} = user)
-      when is_integer(role_id) and role_id > 0 do
-    user
-    |> Map.delete("isAdmin")
-    |> permissions_for_user()
-  end
-
-  def permissions_for_user(%{is_admin: true}), do: ["*:*:*"]
-
-  def permissions_for_user(%{"isAdmin" => 1}), do: ["*:*:*"]
-
   def permissions_for_user(%{role_id: nil}), do: []
   def permissions_for_user(%{"roleId" => nil}), do: []
 

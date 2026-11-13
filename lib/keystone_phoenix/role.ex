@@ -68,7 +68,7 @@ defmodule KeystonePhoenix.Role do
   def create_role(attrs, options)
 
   def create_role(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize_write(options, "system:role:add", attrs) do
+    with :ok <- Authorization.authorize_write(options, "role:create", attrs) do
       do_create_role(attrs, Authorization.actor_id(options))
     end
   end
@@ -97,7 +97,7 @@ defmodule KeystonePhoenix.Role do
   def update_role(id, attrs, options)
 
   def update_role(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize_write(options, "system:role:edit", attrs) do
+    with :ok <- Authorization.authorize_write(options, "role:update", attrs) do
       do_update_role(id, attrs, Authorization.actor_id(options))
     end
   end
@@ -128,7 +128,7 @@ defmodule KeystonePhoenix.Role do
   def delete_role(id, options)
 
   def delete_role(id, options) when is_list(options) do
-    with :ok <- Authorization.authorize_write(options, "system:role:remove") do
+    with :ok <- Authorization.authorize_write(options, "role:delete") do
       do_delete_role(id, Authorization.actor_id(options))
     end
   end
@@ -172,7 +172,7 @@ defmodule KeystonePhoenix.Role do
   def update_data_scope(id, attrs, options)
 
   def update_data_scope(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize_write(options, "system:role:permission", attrs) do
+    with :ok <- Authorization.authorize_write(options, "role:manage", attrs) do
       do_update_data_scope(id, attrs, Authorization.actor_id(options))
     end
   end
@@ -243,7 +243,7 @@ defmodule KeystonePhoenix.Role do
   def assign_users(role_id, user_ids, options)
 
   def assign_users(role_id, user_ids, options) when is_list(options) do
-    with :ok <- Authorization.authorize_assignment(options, "system:role:edit"),
+    with :ok <- Authorization.authorize_assignment(options, "role:assign"),
          {:ok, principal} <- Authorization.principal(options) do
       do_assign_users(role_id, user_ids, principal)
     end
@@ -251,9 +251,8 @@ defmodule KeystonePhoenix.Role do
 
   def assign_users(_role_id, _user_ids, _options), do: {:error, :authorization_required}
 
-  defp do_assign_users(role_id, user_ids, actor) do
-    with :ok <- assignment_allowed?(actor),
-         {:ok, role} <- get_role(role_id),
+  defp do_assign_users(role_id, user_ids, _actor) do
+    with {:ok, role} <- get_role(role_id),
          true <- role.status == 1,
          {:ok, user_ids} <- normalize_user_ids(user_ids) do
       update_user_assignments(user_ids, role.role_id)
@@ -269,7 +268,7 @@ defmodule KeystonePhoenix.Role do
   def unassign_users(user_ids, options)
 
   def unassign_users(user_ids, options) when is_list(options) do
-    with :ok <- Authorization.authorize_assignment(options, "system:role:edit"),
+    with :ok <- Authorization.authorize_assignment(options, "role:assign"),
          {:ok, principal} <- Authorization.principal(options) do
       do_unassign_users(user_ids, principal)
     end
@@ -277,9 +276,8 @@ defmodule KeystonePhoenix.Role do
 
   def unassign_users(_user_ids, _options), do: {:error, :authorization_required}
 
-  defp do_unassign_users(user_ids, actor) do
-    with :ok <- assignment_allowed?(actor),
-         {:ok, user_ids} <- normalize_user_ids(user_ids) do
+  defp do_unassign_users(user_ids, _actor) do
+    with {:ok, user_ids} <- normalize_user_ids(user_ids) do
       update_user_assignments(user_ids, nil)
     end
   end
@@ -344,7 +342,7 @@ defmodule KeystonePhoenix.Role do
         :unallocated -> where(query, [user], is_nil(user.role_id) or user.role_id != ^role_id)
       end
 
-    query = Authz.scope_query(query, actor || %{is_admin: true})
+    query = Authz.scope_query(query, actor || %{})
 
     query =
       query
@@ -353,11 +351,6 @@ defmodule KeystonePhoenix.Role do
 
     Pagination.page(query, params, :user_id, &User.user_maps/1)
   end
-
-  defp assignment_allowed?(nil), do: :ok
-
-  defp assignment_allowed?(actor),
-    do: if(Authz.admin?(actor), do: :ok, else: {:error, :forbidden})
 
   defp normalize_user_ids(user_ids) when is_list(user_ids) do
     normalized = Enum.map(user_ids, &parse_positive_integer/1)

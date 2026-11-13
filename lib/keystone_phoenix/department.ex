@@ -93,7 +93,7 @@ defmodule KeystonePhoenix.Department do
   def update_dept(id, attrs, options)
 
   def update_dept(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize_target(options, "system:dept:edit", id) do
+    with :ok <- Authorization.authorize_target(options, "department:update", id) do
       do_update_dept(id, attrs, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
@@ -120,7 +120,7 @@ defmodule KeystonePhoenix.Department do
   def delete_dept(id, options)
 
   def delete_dept(id, options) when is_list(options) do
-    with :ok <- Authorization.authorize_target(options, "system:dept:remove", id) do
+    with :ok <- Authorization.authorize_target(options, "department:delete", id) do
       do_delete_dept(id, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end

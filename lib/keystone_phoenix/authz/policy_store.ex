@@ -9,6 +9,7 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   import Ecto.Query
 
   alias KeystonePhoenix.Authz.SysPermission
+  alias KeystonePhoenix.Authz.PermissionCatalog
   alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Authz.Principal
   alias KeystonePhoenix.Authz.PolicyCache
@@ -29,8 +30,8 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   @doc "Returns an exact permission decision while preserving storage failures."
   def allowed_decision?(principal, permission) do
     cond do
-      admin?(principal) ->
-        :allow
+      is_binary(permission) and not PermissionCatalog.registered?(permission) ->
+        :deny
 
       is_list(permission_snapshot(principal)) and is_binary(permission) ->
         if String.trim(permission) in permission_snapshot(principal), do: :allow, else: :deny
@@ -66,7 +67,7 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   def scope_allowed?(principal, :self, target) do
     subject = Principal.from_user(principal)
 
-    if Principal.admin?(subject) do
+    if Permission.admin?(subject) do
       true
     else
       with {:ok, subject_id} <- Params.parse_positive_integer(subject.subject_id),
@@ -93,22 +94,20 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
           :data_scope,
           :dept_id_set
         ]) or
-        allowed?(principal, "system:role:permission")
+        allowed?(principal, "role:manage")
 
   @doc "Checks whether a menu write may change permission metadata."
   def menu_metadata_allowed?(principal, attrs),
     do:
       admin?(principal) or
         not has_any_key?(attrs, ["permission", "permissionKey", :permission, :permission_key]) or
-        allowed?(principal, "system:menu:permission")
+        allowed?(principal, "menu:manage")
 
   @doc "Checks whether an actor may assign the requested role."
   def role_assignment_allowed?(principal, role_id),
     do: Permission.role_assignment_allowed?(principal, role_id)
 
-  defp admin?(%{is_admin: true}), do: true
-  defp admin?(%{"isAdmin" => value}), do: value in [true, 1, "1"]
-  defp admin?(_principal), do: false
+  defp admin?(principal), do: Permission.admin?(principal)
 
   defp permission_snapshot(principal) when is_map(principal),
     do: Map.get(principal, :permissions, Map.get(principal, "permissions"))

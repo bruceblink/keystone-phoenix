@@ -28,7 +28,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
   end
 
   defp load_server(admin?, permissions) do
-    if admin? or "monitor:server:list" in permissions do
+    if admin? or "server:read" in permissions do
       case Monitor.server_info() do
         {:ok, info} -> {info, nil}
         {:error, :unavailable} -> {%{}, "主机监控数据暂不可用"}
@@ -39,7 +39,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
   end
 
   defp load_cache(admin?, permissions) do
-    if admin? or "monitor:cache:list" in permissions do
+    if admin? or "cache:refresh" in permissions do
       case Monitor.cache_info() do
         {:ok, info} -> {info, nil}
         _ -> {%{}, "ETS 缓存数据暂不可用"}
@@ -50,7 +50,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
   end
 
   defp load_online_users(admin?, permissions, page_num, page_size) do
-    if admin? or "monitor:online:list" in permissions do
+    if admin? or "online-session:read" in permissions do
       case Monitor.online_users(%{"pageNum" => page_num, "pageSize" => page_size}) do
         {:ok, %{rows: rows, total: total}} -> {rows, total, nil}
         _ -> {[], 0, "在线会话数据暂不可用"}
@@ -61,7 +61,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
   end
 
   defp load_network_status(admin?, permissions) do
-    if admin? or "monitor:server:list" in permissions,
+    if admin? or "server:read" in permissions,
       do: Monitor.network_status(),
       else: %{}
   end

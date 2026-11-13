@@ -2,7 +2,15 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
   use KeystonePhoenix.DataCase, async: false
 
   alias KeystonePhoenix.Department.SysDept
-  alias KeystonePhoenix.Authz.{SysMenuPermission, SysPermission, SysRolePermission}
+
+  alias KeystonePhoenix.Authz.{
+    PermissionCatalog,
+    SysMenuPermission,
+    SysPermission,
+    SysRolePermission
+  }
+
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
@@ -17,14 +25,14 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
       role_id: actor.role_id,
       dept_id: actor.dept_id,
       is_admin: false,
-      permissions: ["system:user:edit"]
+      permissions: ["user:update"]
     }
 
     assert {:error, :data_scope_denied} =
              User.update_user(
                target.user_id,
                %{"nickname" => "不应保存"},
-               authorization: %{principal: principal, permission: "system:user:edit"}
+               authorization: %{principal: principal, permission: "user:update"}
              )
 
     assert Repo.get!(SysUser, target.user_id).nickname == "范围外用户"
@@ -45,7 +53,7 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
              User.update_user(
                target.user_id,
                %{"nickname" => "不应保存"},
-               authorization: %{principal: principal, permission: "system:user:edit"}
+               authorization: %{principal: principal, permission: "user:update"}
              )
   end
 
@@ -86,15 +94,18 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
       |> Repo.insert!()
 
     permission_entry =
-      Repo.get_by(SysPermission, permission: "system:user:edit") ||
+      Repo.get_by(SysPermission, permission: "user:update") ||
         Repo.insert!(%SysPermission{
-          permission: "system:user:edit",
-          resource: "system",
-          domain: "user",
-          action: "edit",
+          permission_id: Identity.permission_id("user:update"),
+          permission: "user:update",
+          resource: "user",
+          domain: "default",
+          action: "update",
           status: 1,
           deprecated: false
         })
+
+    assert PermissionCatalog.registered?(permission_entry.permission)
 
     Repo.insert!(%SysMenuPermission{
       menu_id: menu.menu_id,

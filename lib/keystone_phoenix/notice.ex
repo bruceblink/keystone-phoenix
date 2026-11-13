@@ -50,7 +50,7 @@ defmodule KeystonePhoenix.Notice do
   def create_notice(attrs, options)
 
   def create_notice(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "system:notice:add") do
+    with :ok <- Command.authorize(options, "notice:create") do
       do_create_notice(attrs, Command.actor_id(options))
     end
   end
@@ -65,7 +65,7 @@ defmodule KeystonePhoenix.Notice do
   def update_notice(id, attrs, options)
 
   def update_notice(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "system:notice:edit") do
+    with :ok <- Command.authorize(options, "notice:update") do
       do_update_notice(id, attrs, Command.actor_id(options))
     end
   end
@@ -82,7 +82,7 @@ defmodule KeystonePhoenix.Notice do
   def delete_notices(ids, options)
 
   def delete_notices(ids, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "system:notice:remove") do
+    with :ok <- Command.authorize(options, "notice:delete") do
       do_delete_notices(ids)
     end
   end

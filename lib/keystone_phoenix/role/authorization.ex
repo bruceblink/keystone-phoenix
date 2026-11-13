@@ -16,8 +16,7 @@ defmodule KeystonePhoenix.Role.Authorization do
 
   def authorize_assignment(options, permission) do
     with {:ok, principal} <- principal(options),
-         true <- Authz.allowed?(principal, permission),
-         true <- Authz.admin?(principal) do
+         true <- Authz.allowed?(principal, permission) do
       :ok
     else
       false -> {:error, :forbidden}

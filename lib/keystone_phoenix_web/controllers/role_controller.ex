@@ -3,18 +3,18 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
-      list: "system:role:list",
-      export: "system:role:export",
-      show: "system:role:query",
-      create: "system:role:add",
-      update: "system:role:edit",
-      delete: "system:role:remove",
-      change_status: "system:role:edit",
-      data_scope: "system:role:permission",
-      allocated_users: "system:role:list",
-      unallocated_users: "system:role:list",
-      assign_users: "system:role:edit",
-      unassign_users: "system:role:edit"
+      list: "role:read",
+      export: "role:export",
+      show: "role:read",
+      create: "role:create",
+      update: "role:update",
+      delete: "role:delete",
+      change_status: "role:update",
+      data_scope: "role:manage",
+      allocated_users: "role:read",
+      unallocated_users: "role:read",
+      assign_users: "role:update",
+      unassign_users: "role:update"
     }
 
   alias KeystonePhoenix.Excel
@@ -70,7 +70,7 @@ defmodule KeystonePhoenixWeb.RoleController do
       case Role.create_role(params,
              authorization: %{
                principal: conn.assigns.current_user,
-               permission: "system:role:add"
+               permission: "role:create"
              }
            ) do
         {:ok, _role} -> conn |> put_status(:created) |> json(ApiResponse.ok())
@@ -89,7 +89,7 @@ defmodule KeystonePhoenixWeb.RoleController do
              params,
              authorization: %{
                principal: conn.assigns.current_user,
-               permission: "system:role:edit"
+               permission: "role:update"
              }
            ) do
         {:ok, _role} -> json(conn, ApiResponse.ok())
@@ -106,7 +106,7 @@ defmodule KeystonePhoenixWeb.RoleController do
     case Role.delete_role(role_id,
            authorization: %{
              principal: conn.assigns.current_user,
-             permission: "system:role:remove"
+             permission: "role:delete"
            }
          ) do
       {:ok, _} -> json(conn, ApiResponse.ok())
@@ -122,7 +122,7 @@ defmodule KeystonePhoenixWeb.RoleController do
            params["status"] || params[:status],
            authorization: %{
              principal: conn.assigns.current_user,
-             permission: "system:role:edit"
+             permission: "role:update"
            }
          ) do
       {:ok, _role} -> json(conn, ApiResponse.ok())
@@ -136,7 +136,7 @@ defmodule KeystonePhoenixWeb.RoleController do
     case Role.update_data_scope(role_id, params,
            authorization: %{
              principal: conn.assigns.current_user,
-             permission: "system:role:permission"
+             permission: "role:manage"
            }
          ) do
       {:ok, _role} -> json(conn, ApiResponse.ok())
@@ -166,7 +166,7 @@ defmodule KeystonePhoenixWeb.RoleController do
     case Role.assign_users(role_id, user_ids,
            authorization: %{
              principal: conn.assigns.current_user,
-             permission: "system:role:edit"
+             permission: "role:update"
            }
          ) do
       :ok -> json(conn, ApiResponse.ok())
@@ -181,7 +181,7 @@ defmodule KeystonePhoenixWeb.RoleController do
     case Role.unassign_users(user_ids,
            authorization: %{
              principal: conn.assigns.current_user,
-             permission: "system:role:edit"
+             permission: "role:update"
            }
          ) do
       :ok -> json(conn, ApiResponse.ok())

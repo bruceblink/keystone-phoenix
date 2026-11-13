@@ -3,12 +3,12 @@ defmodule KeystonePhoenixWeb.NoticeController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
-      list: "system:notice:list",
-      list_slave: "system:notice:list",
-      show: "system:notice:query",
-      create: "system:notice:add",
-      update: "system:notice:edit",
-      delete: "system:notice:remove"
+      list: "notice:read",
+      list_slave: "notice:read",
+      show: "notice:read",
+      create: "notice:create",
+      update: "notice:update",
+      delete: "notice:delete"
     }
 
   plug KeystonePhoenixWeb.Plugs.NoRepeat, [interval: 60] when action in [:create]

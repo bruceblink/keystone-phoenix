@@ -2,10 +2,9 @@ defmodule KeystonePhoenix.Authz.Principal do
   @moduledoc """
   Normalized authorization subject used by `KeystonePhoenix.Authz`.
 
-  The application still receives both API shaped maps (`userId`, `isAdmin`) and
-  domain shaped maps (`:user_id`, `:is_admin`).  The principal keeps the
-  normalized values while retaining the original map for compatibility with
-  the existing policy implementation.
+  The principal keeps normalized identity, role and permission values. The
+  legacy `is_admin` field is retained only as an inert transport field until
+  the user schema migration removes it; authorization never reads it.
   """
 
   @enforce_keys []
@@ -37,7 +36,7 @@ defmodule KeystonePhoenix.Authz.Principal do
     %__MODULE__{
       subject_id: value(user, :user_id, "userId"),
       roles: roles(user),
-      is_admin: admin?(user),
+      is_admin: false,
       tenant_id: value(user, :tenant_id, "tenantId"),
       department_id: value(user, :dept_id, "deptId"),
       session_id: value(user, :session_id, "sessionId"),
@@ -67,8 +66,10 @@ defmodule KeystonePhoenix.Authz.Principal do
   def to_user(_user), do: %{}
 
   @doc "Returns whether a principal has administrator status."
-  def admin?(%__MODULE__{is_admin: value}), do: value == true
-  def admin?(user) when is_map(user), do: admin_value(user)
+  def admin?(%__MODULE__{permissions: permissions}) when is_list(permissions),
+    do: "permission:manage" in permissions
+
+  def admin?(user) when is_map(user), do: "permission:manage" in List.wrap(permissions(user))
   def admin?(_user), do: false
 
   defp roles(user) do
@@ -80,10 +81,6 @@ defmodule KeystonePhoenix.Authz.Principal do
 
   defp permissions(user) do
     value(user, :permissions, "permissions")
-  end
-
-  defp admin_value(user) do
-    value(user, :is_admin, "isAdmin") in [true, 1, "1"]
   end
 
   defp value(user, atom_key, string_key) do

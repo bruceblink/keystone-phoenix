@@ -3,16 +3,16 @@ defmodule KeystonePhoenixWeb.JobController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
-      list: "system:job:list",
-      invoke_targets: "system:job:list",
-      logs: "system:job:list",
-      show: "system:job:query",
-      create: "system:job:add",
-      update: "system:job:edit",
-      change_status: "system:job:changeStatus",
-      run: "system:job:run",
-      cancel: "system:job:run",
-      delete: "system:job:remove"
+      list: "job:read",
+      invoke_targets: "job:read",
+      logs: "job:read",
+      show: "job:read",
+      create: "job:create",
+      update: "job:update",
+      change_status: "job:update-status",
+      run: "job:run",
+      cancel: "job:run",
+      delete: "job:delete"
     }
 
   alias KeystonePhoenix.Job

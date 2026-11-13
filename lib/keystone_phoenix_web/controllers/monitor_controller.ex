@@ -3,11 +3,11 @@ defmodule KeystonePhoenixWeb.MonitorController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
-      cache_info: "monitor:cache:list",
-      server_info: "monitor:server:list",
-      online_users: "monitor:online:list",
-      logout_online_user: "monitor:online:forceLogout",
-      network_status_stream: "monitor:server:list"
+      cache_info: "cache:refresh",
+      server_info: "server:read",
+      online_users: "online-session:read",
+      logout_online_user: "online-session:revoke",
+      network_status_stream: "server:read"
     }
 
   alias KeystonePhoenix.Monitor

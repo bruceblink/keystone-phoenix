@@ -4,7 +4,7 @@ defmodule KeystonePhoenix.Department.Authorization do
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Authz.Command
 
-  def authorize_create(options), do: Command.authorize(options, "system:dept:add")
+  def authorize_create(options), do: Command.authorize(options, "department:create")
 
   def authorize_target(options, permission, id) do
     with :ok <- Command.authorize(options, permission),
