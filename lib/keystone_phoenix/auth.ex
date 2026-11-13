@@ -170,9 +170,15 @@ defmodule KeystonePhoenix.Auth do
 
   defp parse_user_id(_value), do: {:error, :invalid_token}
 
+  defp role_permissions(%{is_admin: true, role_id: role_id} = user)
+       when is_integer(role_id) and role_id > 0,
+       do: role_permissions_for_role(user)
+
   defp role_permissions(%{is_admin: true}), do: {"admin", ["*:*:*"]}
 
-  defp role_permissions(user) do
+  defp role_permissions(user), do: role_permissions_for_role(user)
+
+  defp role_permissions_for_role(user) do
     role_key =
       case user.role_id do
         nil ->

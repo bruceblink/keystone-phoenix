@@ -154,6 +154,20 @@ defmodule KeystonePhoenix.Menu do
     end
   end
 
+  def menus_for_user(%{is_admin: true, role_id: role_id} = user)
+      when is_integer(role_id) and role_id > 0 do
+    user
+    |> Map.delete(:is_admin)
+    |> menus_for_user()
+  end
+
+  def menus_for_user(%{"isAdmin" => 1, "roleId" => role_id} = user)
+      when is_integer(role_id) and role_id > 0 do
+    user
+    |> Map.delete("isAdmin")
+    |> menus_for_user()
+  end
+
   def menus_for_user(%{is_admin: true}), do: list_menus(%{"status" => 1})
   def menus_for_user(%{role_id: nil}), do: []
 
@@ -175,6 +189,20 @@ defmodule KeystonePhoenix.Menu do
 
   @doc "Returns the button and route permission strings for an authenticated user."
   @spec permissions_for_user(map()) :: [String.t()]
+  def permissions_for_user(%{is_admin: true, role_id: role_id} = user)
+      when is_integer(role_id) and role_id > 0 do
+    user
+    |> Map.delete(:is_admin)
+    |> permissions_for_user()
+  end
+
+  def permissions_for_user(%{"isAdmin" => 1, "roleId" => role_id} = user)
+      when is_integer(role_id) and role_id > 0 do
+    user
+    |> Map.delete("isAdmin")
+    |> permissions_for_user()
+  end
+
   def permissions_for_user(%{is_admin: true}), do: ["*:*:*"]
 
   def permissions_for_user(%{"isAdmin" => 1}), do: ["*:*:*"]
