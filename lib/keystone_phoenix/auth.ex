@@ -113,9 +113,10 @@ defmodule KeystonePhoenix.Auth do
     with {:ok, claims} <- Token.verify(token, Token.access_type()),
          {:ok, user_id} <- parse_user_id(claims["sub"]),
          session_id when is_binary(session_id) <- claims["sid"],
+         permission_version when is_integer(permission_version) <- claims["permission_version"],
          true <- Session.active?(user_id, session_id),
          {:ok, user} <- User.get_user(user_id),
-         true <- user.status == 1 do
+         true <- user.status == 1 and user.permission_version == permission_version do
       {:ok, user}
     else
       _ -> {:error, :invalid_token}

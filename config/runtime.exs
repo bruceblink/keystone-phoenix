@@ -116,10 +116,14 @@ if config_env() == :prod do
       """
 
   jwt_public_key = System.get_env("JWT_PUBLIC_KEY")
+  jwt_audience = System.get_env("JWT_AUDIENCE", "keystone-api")
+  jwt_key_id = System.get_env("JWT_KEY_ID", "keystone")
 
   config :keystone_phoenix,
     jwt_private_key: jwt_private_key,
-    jwt_public_key: jwt_public_key
+    jwt_public_key: jwt_public_key,
+    jwt_audience: jwt_audience,
+    jwt_key_id: jwt_key_id
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you

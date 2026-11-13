@@ -28,6 +28,7 @@ defmodule KeystonePhoenix.User.SysUser do
     field :updater_id, :binary_id
     field :remark, :string
     field :deleted, :boolean, default: false
+    field :permission_version, :integer, default: 1
 
     timestamps(inserted_at: :create_time, updated_at: :update_time, type: :utc_datetime_usec)
   end

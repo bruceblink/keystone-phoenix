@@ -23,8 +23,10 @@ config :keystone_phoenix,
   captcha_type: "math",
   file_base_dir: "uploads",
   jwt_issuer: "keystone",
-  jwt_access_ttl: 1800,
-  jwt_refresh_ttl: 604_800,
+  jwt_access_ttl: 300,
+  jwt_refresh_ttl: 1_209_600,
+  jwt_audience: "keystone-api",
+  jwt_key_id: "keystone",
   jwt_private_key: nil,
   jwt_public_key: nil
 

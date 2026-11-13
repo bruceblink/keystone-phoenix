@@ -119,6 +119,7 @@ defmodule KeystonePhoenix.Role do
           end
 
         if is_list(menu_ids), do: replace_menu_ids(updated.role_id, menu_ids)
+        bump_role_user_permission_versions(updated.role_id)
         updated
       end)
       |> invalidate_policy_cache()
@@ -316,7 +317,11 @@ defmodule KeystonePhoenix.Role do
       Repo.transaction(fn ->
         Repo.update_all(
           from(u in SysUser, where: u.deleted == false and u.user_id in ^user_ids),
-          set: [role_id: role_id, update_time: DateTime.utc_now()]
+          set: [
+            role_id: role_id,
+            update_time: DateTime.utc_now()
+          ],
+          inc: [permission_version: 1]
         )
         |> update_result(user_ids)
       end)
@@ -325,6 +330,16 @@ defmodule KeystonePhoenix.Role do
       {:ok, :ok} -> :ok
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  # 角色权限、状态或数据范围变化后，旧角色成员的访问令牌必须立即失效。
+  defp bump_role_user_permission_versions(role_id) do
+    Repo.update_all(
+      from(u in SysUser, where: u.deleted == false and u.role_id == ^role_id),
+      inc: [permission_version: 1]
+    )
+
+    :ok
   end
 
   defp update_result({count, _}, ids) when count == length(ids), do: :ok

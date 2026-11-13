@@ -13,24 +13,27 @@ defmodule KeystonePhoenix.Auth.Token do
   def refresh_type, do: @refresh_type
 
   @spec access_ttl() :: pos_integer()
-  def access_ttl, do: Application.get_env(:keystone_phoenix, :jwt_access_ttl, 1800)
+  def access_ttl, do: Application.get_env(:keystone_phoenix, :jwt_access_ttl, 300)
 
   @spec refresh_ttl() :: pos_integer()
-  def refresh_ttl, do: Application.get_env(:keystone_phoenix, :jwt_refresh_ttl, 604_800)
+  def refresh_ttl, do: Application.get_env(:keystone_phoenix, :jwt_refresh_ttl, 1_209_600)
 
   @spec issue(map(), String.t(), String.t() | nil) :: {:ok, map()} | {:error, term()}
   def issue(user, token_type, session_id \\ nil)
       when token_type in [@access_type, @refresh_type] do
     now = System.system_time(:second)
     ttl = if token_type == @access_type, do: access_ttl(), else: refresh_ttl()
-    jti = Ecto.UUID.generate()
+    jti = KeystonePhoenix.Identity.v7()
+    permission_version = Map.get(user, :permission_version, 1)
 
     claims = %{
       "iss" => Application.get_env(:keystone_phoenix, :jwt_issuer, "keystone"),
+      "aud" => Application.get_env(:keystone_phoenix, :jwt_audience, "keystone-api"),
       "sub" => to_string(user.user_id),
       "username" => user.username,
       "type" => token_type,
       "jti" => jti,
+      "permission_version" => permission_version,
       "iat" => now,
       "exp" => now + ttl
     }
@@ -39,7 +42,14 @@ defmodule KeystonePhoenix.Auth.Token do
 
     token =
       private_jwk()
-      |> JOSE.JWT.sign(%{"alg" => "RS256", "typ" => "JWT"}, claims)
+      |> JOSE.JWT.sign(
+        %{
+          "alg" => "RS256",
+          "typ" => "JWT",
+          "kid" => Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone")
+        },
+        claims
+      )
       |> JOSE.JWS.compact()
       |> elem(1)
 
@@ -54,7 +64,7 @@ defmodule KeystonePhoenix.Auth.Token do
       {true, jwt, _jws} ->
         {_modules, claims} = JOSE.JWT.to_map(jwt)
 
-        if valid_claims?(claims, expected_type) do
+        if valid_header?(token) and valid_claims?(claims, expected_type) do
           {:ok, claims}
         else
           {:error, :invalid_token}
@@ -103,13 +113,35 @@ defmodule KeystonePhoenix.Auth.Token do
     now = System.system_time(:second)
 
     claims["iss"] == Application.get_env(:keystone_phoenix, :jwt_issuer, "keystone") and
+      audience_matches?(claims["aud"]) and
       claims["type"] == expected_type and
       is_binary(claims["sub"]) and
       is_binary(claims["jti"]) and
+      is_integer(claims["permission_version"]) and
       is_integer(claims["exp"]) and
       claims["exp"] > now and
       is_integer(claims["iat"]) and
-      claims["iat"] <= now + 5
+      claims["iat"] <= now + 5 and
+      (expected_type == @refresh_type or is_binary(claims["sid"]))
+  end
+
+  defp audience_matches?(audience) when is_binary(audience),
+    do: audience == Application.get_env(:keystone_phoenix, :jwt_audience, "keystone-api")
+
+  defp audience_matches?(audience) when is_list(audience),
+    do: Application.get_env(:keystone_phoenix, :jwt_audience, "keystone-api") in audience
+
+  defp audience_matches?(_audience), do: false
+
+  defp valid_header?(token) do
+    with [encoded_header | _] <- String.split(token, "."),
+         {:ok, header} <- Base.url_decode64(encoded_header, padding: false),
+         {:ok, decoded} <- Jason.decode(header) do
+      decoded["alg"] == "RS256" and decoded["typ"] == "JWT" and
+        decoded["kid"] == Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone")
+    else
+      _ -> false
+    end
   end
 
   defp private_jwk do

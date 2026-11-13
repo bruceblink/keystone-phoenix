@@ -69,4 +69,23 @@ defmodule KeystonePhoenix.AuthTest do
     assert tokens.current_user["roleKey"] == ""
     assert tokens.current_user["permissions"] == []
   end
+
+  test "increments permission version when user authorization state changes", %{user: user} do
+    assert user.permission_version == 1
+
+    assert {:ok, updated} =
+             KeystonePhoenix.User.update_user(
+               user.user_id,
+               %{"status" => 0},
+               authorization: %{
+                 principal: %{
+                   user_id: user.user_id,
+                   permissions: ["permission:manage", "user:update"]
+                 },
+                 permission: "user:update"
+               }
+             )
+
+    assert updated.permission_version == 2
+  end
 end

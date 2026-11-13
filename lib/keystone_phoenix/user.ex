@@ -149,6 +149,7 @@ defmodule KeystonePhoenix.User do
 
   defp update_user_record(user, attrs, actor_id) do
     changeset = SysUser.update_changeset(user, attrs) |> Audit.put_actor(:updater_id, actor_id)
+    changeset = bump_permission_version(changeset, user)
 
     case Repo.update(changeset) do
       {:ok, updated} = result ->
@@ -157,6 +158,15 @@ defmodule KeystonePhoenix.User do
 
       error ->
         error
+    end
+  end
+
+  # 角色或启用状态变化会改变访问令牌的授权结果，必须递增主体版本。
+  defp bump_permission_version(changeset, user) do
+    if Map.has_key?(changeset.changes, :role_id) or Map.has_key?(changeset.changes, :status) do
+      Ecto.Changeset.put_change(changeset, :permission_version, user.permission_version + 1)
+    else
+      changeset
     end
   end
 
