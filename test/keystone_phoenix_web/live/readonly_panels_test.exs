@@ -3,7 +3,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
 
   import Phoenix.LiveViewTest
 
-  alias KeystonePhoenix.Config
+  alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Config.SysConfig
   alias KeystonePhoenix.Dictionary.DictData
@@ -14,14 +14,15 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.User.SysUser
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Identity
 
   @password "Strong!123"
   @captcha_config_key "sys.account.captchaOnOff"
 
   setup do
     ensure_captcha_disabled()
-    Config.refresh_cache(authorization: %{principal: %{}})
-    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{}}) end)
+    clear_config_cache()
+    on_exit(&clear_config_cache/0)
     :ok
   end
 
@@ -45,7 +46,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     role =
       insert_role(%{
         data_scope: 3,
-        permission: "system:user:list"
+        permission: "user:read"
       })
 
     actor = create_user(%{role_id: role.role_id, dept_id: parent.dept_id})
@@ -100,7 +101,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
   end
 
   test "a read-only user cannot submit a management write", %{conn: conn} do
-    role = insert_role(%{permission: "system:user:list"})
+    role = insert_role(%{permission: "user:read"})
     user = create_user(%{role_id: role.role_id})
     target = create_user()
     {:ok, view, _html} = login_view(conn, user)
@@ -119,8 +120,8 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
   end
 
   test "login and operation log refresh permissions stay separate", %{conn: conn} do
-    login_role = insert_role(%{permission: "monitor:logininfor:list"})
-    operation_role = insert_role(%{permission: "monitor:operlog:list"})
+    login_role = insert_role(%{permission: "login-log:read"})
+    operation_role = insert_role(%{permission: "operation-log:read"})
     login_user = create_user(%{role_id: login_role.role_id})
     operation_user = create_user(%{role_id: operation_role.role_id})
 
@@ -153,7 +154,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
 
   test "a dictionary reader can select data, while an unprivileged user cannot", %{conn: conn} do
     insert_dict_fixture()
-    role = insert_role(%{permission: "system:dict:list"})
+    role = insert_role(%{permission: "dictionary:read"})
     reader = create_user(%{role_id: role.role_id})
     {:ok, reader_view, _html} = login_view(conn, reader)
 
@@ -171,9 +172,9 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
   end
 
   test "monitor permissions load only their own metric", %{conn: conn} do
-    server_user = create_monitor_user("monitor:server:list")
-    cache_user = create_monitor_user("monitor:cache:list")
-    online_user = create_monitor_user("monitor:online:list")
+    server_user = create_monitor_user("server:read")
+    cache_user = create_monitor_user("cache:refresh")
+    online_user = create_monitor_user("online-session:read")
 
     {:ok, server_view, _html} = login_view(conn, server_user)
     render_click(server_view, "show-panel", %{"panel" => "monitor"})
@@ -224,14 +225,14 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
         atom_to_string_keys(attrs)
       )
 
-    %SysUser{}
+    %SysUser{user_id: Identity.v7()}
     |> SysUser.create_changeset(attrs)
     |> Repo.insert!()
   end
 
   defp insert_role(%{permission: permission} = attrs) do
     role =
-      %SysRole{}
+      %SysRole{role_id: Identity.v7()}
       |> SysRole.changeset(%{
         role_name: unique("只读角色"),
         role_key: unique("readonly_role"),
@@ -243,11 +244,11 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
       |> Repo.insert!()
 
     menu =
-      %SysMenu{}
+      %SysMenu{menu_id: Identity.v7()}
       |> SysMenu.changeset(%{
         menu_name: unique("只读权限"),
         menu_type: 0,
-        parent_id: 0,
+        parent_id: nil,
         is_button: true,
         permission: permission,
         status: 1
@@ -259,9 +260,10 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     permission_entry =
       Repo.get_by(SysPermission, permission: permission) ||
         Repo.insert!(%SysPermission{
+          permission_id: Identity.permission_id(permission),
           permission: permission,
-          resource: "system",
-          domain: permission |> String.split(":") |> Enum.at(1),
+          resource: permission |> String.split(":") |> Enum.at(0),
+          domain: "default",
           action: permission |> String.split(":") |> List.last(),
           status: 1,
           deprecated: false
@@ -281,10 +283,12 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
   end
 
   defp insert_dept(name) do
-    %SysDept{}
-    |> SysDept.changeset(%{dept_name: "#{name} #{unique("dept")}", ancestors: "0", status: 1})
+    %SysDept{dept_id: Identity.v7()}
+    |> SysDept.changeset(%{dept_name: "#{name} #{unique("dept")}", ancestors: "", status: 1})
     |> Repo.insert!()
   end
+
+  defp clear_config_cache, do: Cache.delete_prefix("keystone:system:config:")
 
   defp insert_dict_fixture do
     dict_type =
