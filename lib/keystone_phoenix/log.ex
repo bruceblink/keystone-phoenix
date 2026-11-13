@@ -138,8 +138,8 @@ defmodule KeystonePhoenix.Log do
   def create_operation_log(_attrs, _user, _request_url, _request_method),
     do: {:error, :invalid_log}
 
-  @doc "Persists a sanitized authorization decision in the existing operation log."
-  def record_authorization_decision(principal, permission, decision) do
+  @doc "Persists a sanitized authorization decision and safe request context."
+  def record_authorization_decision(principal, permission, decision, context \\ %{}) do
     subject = Principal.from_user(principal)
     outcome = authorization_outcome(decision)
 
@@ -148,11 +148,7 @@ defmodule KeystonePhoenix.Log do
       "requestMethod" => 0,
       "requestModule" => "KeystonePhoenix.Authz",
       "calledMethod" => normalize_permission(permission),
-      "operationParam" =>
-        Jason.encode!(%{
-          "subjectId" => subject.subject_id,
-          "outcome" => outcome
-        }),
+      "operationParam" => Jason.encode!(authorization_audit_payload(subject, outcome, context)),
       "operationResult" => outcome,
       "status" => if(outcome == "allow", do: 1, else: 0)
     }
@@ -163,6 +159,34 @@ defmodule KeystonePhoenix.Log do
   rescue
     _error -> :ok
   end
+
+  defp authorization_audit_payload(subject, outcome, context) when is_map(context) do
+    %{
+      "subjectId" => subject.subject_id,
+      "sessionId" => context_value(context, :session_id),
+      "tenantId" => context_value(context, :tenant_id) || subject.tenant_id,
+      "resourceId" => sanitize_audit_value(context_value(context, :resource_id)),
+      "scope" => sanitize_audit_value(context_value(context, :scope)),
+      "requestId" => sanitize_audit_value(context_value(context, :request_id)),
+      "outcome" => outcome,
+      "reason" => outcome
+    }
+    |> Enum.reject(fn {_key, value} -> is_nil(value) end)
+    |> Map.new()
+  end
+
+  defp authorization_audit_payload(subject, outcome, _context),
+    do: %{"subjectId" => subject.subject_id, "outcome" => outcome, "reason" => outcome}
+
+  defp context_value(context, key) do
+    Map.get(context, key, Map.get(context, to_string(key)))
+  end
+
+  defp sanitize_audit_value(nil), do: nil
+  defp sanitize_audit_value(value) when is_binary(value), do: String.slice(value, 0, 256)
+  defp sanitize_audit_value(value) when is_integer(value) or is_float(value), do: value
+  defp sanitize_audit_value(value) when is_atom(value), do: Atom.to_string(value)
+  defp sanitize_audit_value(value), do: String.slice(inspect(value), 0, 256)
 
   def login_info_to_map(log) do
     %{

@@ -103,12 +103,12 @@ defmodule KeystonePhoenix.Authz do
           error
       end
 
-    emit_decision(subject, permission, decision)
+    emit_decision(subject, permission, decision, context)
     decision
   rescue
     _error ->
       decision = {:error, :authorization_unavailable}
-      emit_decision(principal, permission, decision)
+      emit_decision(principal, permission, decision, context)
       decision
   end
 
@@ -179,7 +179,7 @@ defmodule KeystonePhoenix.Authz do
     Map.get(context, atom_key, Map.get(context, string_key, default))
   end
 
-  defp emit_decision(principal, permission, decision) do
+  defp emit_decision(principal, permission, decision, context) do
     subject = Principal.from_user(principal)
 
     :telemetry.execute(
@@ -192,7 +192,7 @@ defmodule KeystonePhoenix.Authz do
       }
     )
 
-    _ = Log.record_authorization_decision(subject, permission, decision)
+    _ = Log.record_authorization_decision(subject, permission, decision, context)
   rescue
     _error -> :ok
   end

@@ -15,6 +15,7 @@ defmodule KeystonePhoenix.Authz.SysPermission do
     field :risk, :string, default: "low"
     field :deprecated, :boolean, default: false
     field :status, :integer, default: 1
+    field :version, :integer, default: 1
 
     timestamps(inserted_at: :create_time, updated_at: :update_time, type: :utc_datetime_usec)
   end
