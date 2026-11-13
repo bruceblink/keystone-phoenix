@@ -34,9 +34,9 @@ defmodule KeystonePhoenix.Dictionary do
     {"remark", :remark}
   ]
 
-  @spec get_dict_type(integer() | String.t()) :: {:ok, DictType.t()} | {:error, :not_found}
+  @spec get_dict_type(String.t()) :: {:ok, DictType.t()} | {:error, :not_found}
   def get_dict_type(id) do
-    case Params.parse_positive_integer(id) do
+    case Params.parse_uuid(id) do
       {:ok, id} ->
         case Repo.get_by(DictType, dict_id: id, deleted: false) do
           nil -> {:error, :not_found}
@@ -48,9 +48,9 @@ defmodule KeystonePhoenix.Dictionary do
     end
   end
 
-  @spec get_dict_data(integer() | String.t()) :: {:ok, DictData.t()} | {:error, :not_found}
+  @spec get_dict_data(String.t()) :: {:ok, DictData.t()} | {:error, :not_found}
   def get_dict_data(id) do
-    case Params.parse_positive_integer(id) do
+    case Params.parse_uuid(id) do
       {:ok, id} ->
         case Repo.get_by(DictData, dict_code: id, deleted: false) do
           nil -> {:error, :not_found}

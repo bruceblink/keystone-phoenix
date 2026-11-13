@@ -35,7 +35,7 @@ defmodule KeystonePhoenix.Notice do
   end
 
   def get_notice(id) do
-    case Params.parse_positive_integer(id) do
+    case Params.parse_uuid(id) do
       {:ok, id} ->
         case Repo.get_by(SysNotice, notice_id: id, deleted: false) do
           nil -> {:error, :not_found}
@@ -90,7 +90,7 @@ defmodule KeystonePhoenix.Notice do
   def delete_notices(_ids, _options), do: {:error, :authorization_required}
 
   defp do_delete_notices(ids) when is_list(ids) do
-    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
+    ids = ids |> Enum.map(&parse_uuid/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}
@@ -135,7 +135,7 @@ defmodule KeystonePhoenix.Notice do
   defp creator_names(notices) do
     notices
     |> Enum.map(& &1.creator_id)
-    |> Enum.filter(&(is_integer(&1) and &1 > 0))
+    |> Enum.filter(&is_binary/1)
     |> Enum.uniq()
     |> User.list_users_by_ids()
     |> Map.new(&{&1.user_id, &1.username})
@@ -159,16 +159,12 @@ defmodule KeystonePhoenix.Notice do
     end
   end
 
-  defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
-
-  defp parse_positive_integer(value) when is_binary(value) do
-    case Integer.parse(String.trim(value)) do
-      {number, ""} when number > 0 -> number
-      _ -> nil
+  defp parse_uuid(value) do
+    case Params.parse_uuid(value) do
+      {:ok, uuid} -> uuid
+      :error -> nil
     end
   end
-
-  defp parse_positive_integer(_value), do: nil
 
   defp format_datetime(nil), do: nil
 

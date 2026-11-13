@@ -41,9 +41,9 @@ defmodule KeystonePhoenix.Config do
     page_query(query, params)
   end
 
-  @spec get_config(integer() | String.t()) :: {:ok, SysConfig.t()} | {:error, :not_found}
+  @spec get_config(String.t()) :: {:ok, SysConfig.t()} | {:error, :not_found}
   def get_config(id) do
-    case Params.parse_positive_integer(id) do
+    case Params.parse_uuid(id) do
       {:ok, id} ->
         case Repo.get_by(SysConfig, config_id: id, deleted: false) do
           nil -> {:error, :not_found}

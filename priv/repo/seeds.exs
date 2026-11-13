@@ -7,8 +7,11 @@ alias KeystonePhoenix.Authz.PermissionCatalog
 alias KeystonePhoenix.Authz.SysPermission
 alias KeystonePhoenix.Authz.SysRolePermission
 alias KeystonePhoenix.Authz.SysMenuPermission
+alias KeystonePhoenix.Config.SysConfig
 alias KeystonePhoenix.Department.SysDept
+alias KeystonePhoenix.Dictionary.{DictData, DictType}
 alias KeystonePhoenix.Menu.SysMenu
+alias KeystonePhoenix.Notice.SysNotice
 alias KeystonePhoenix.Post.SysPost
 alias KeystonePhoenix.Role.SysRole
 alias KeystonePhoenix.Role.SysRoleMenu
@@ -36,9 +39,23 @@ menu_user_id = Identity.v5(namespace, "system:menu:users")
 menu_role_id = Identity.v5(namespace, "system:menu:roles")
 menu_dept_id = Identity.v5(namespace, "system:menu:departments")
 menu_post_id = Identity.v5(namespace, "system:menu:posts")
+dict_yes_type_id = Identity.v5(namespace, "system:dictionary:common.yesOrNo")
+dict_status_type_id = Identity.v5(namespace, "system:dictionary:common.status")
+dict_yes_id = Identity.v5(namespace, "system:dictionary:common.yesOrNo:yes")
+dict_no_id = Identity.v5(namespace, "system:dictionary:common.yesOrNo:no")
+dict_enabled_id = Identity.v5(namespace, "system:dictionary:common.status:enabled")
+dict_disabled_id = Identity.v5(namespace, "system:dictionary:common.status:disabled")
+config_skin_id = Identity.v5(namespace, "system:config:sys.index.skinName")
+config_password_id = Identity.v5(namespace, "system:config:sys.user.initPassword")
+config_theme_id = Identity.v5(namespace, "system:config:sys.index.sideTheme")
+config_captcha_id = Identity.v5(namespace, "system:config:sys.account.captchaOnOff")
+config_register_id = Identity.v5(namespace, "system:config:sys.account.registerUser")
+notice_dev_id = Identity.v5(namespace, "system:notice:development")
+notice_maintenance_id = Identity.v5(namespace, "system:notice:maintenance")
 
 dict_types = [
   %{
+    dict_id: dict_yes_type_id,
     dict_name: "系统是否",
     dict_type: "common.yesOrNo",
     status: 1,
@@ -48,6 +65,7 @@ dict_types = [
     update_time: now
   },
   %{
+    dict_id: dict_status_type_id,
     dict_name: "通用状态",
     dict_type: "common.status",
     status: 1,
@@ -58,13 +76,14 @@ dict_types = [
   }
 ]
 
-Repo.insert_all("sys_dict_type", dict_types,
+Repo.insert_all(DictType, dict_types,
   on_conflict: :nothing,
   conflict_target: :dict_type
 )
 
 dict_data = [
   %{
+    dict_code: dict_yes_id,
     dict_type: "common.yesOrNo",
     dict_label: "是",
     dict_value: 1,
@@ -78,6 +97,7 @@ dict_data = [
     update_time: now
   },
   %{
+    dict_code: dict_no_id,
     dict_type: "common.yesOrNo",
     dict_label: "否",
     dict_value: 0,
@@ -91,6 +111,7 @@ dict_data = [
     update_time: now
   },
   %{
+    dict_code: dict_enabled_id,
     dict_type: "common.status",
     dict_label: "正常",
     dict_value: 1,
@@ -104,6 +125,7 @@ dict_data = [
     update_time: now
   },
   %{
+    dict_code: dict_disabled_id,
     dict_type: "common.status",
     dict_label: "停用",
     dict_value: 0,
@@ -118,12 +140,11 @@ dict_data = [
   }
 ]
 
-if Repo.aggregate(KeystonePhoenix.Dictionary.DictData, :count, :dict_code) == 0 do
-  Repo.insert_all("sys_dict_data", dict_data)
-end
+Repo.insert_all(DictData, dict_data, on_conflict: :nothing, conflict_target: :dict_code)
 
 config_entries = [
   %{
+    config_id: config_skin_id,
     config_name: "主框架页-默认皮肤样式名称",
     config_key: "sys.index.skinName",
     config_options:
@@ -136,6 +157,7 @@ config_entries = [
     update_time: now
   },
   %{
+    config_id: config_password_id,
     config_name: "用户管理-账号初始密码",
     config_key: "sys.user.initPassword",
     config_options: "",
@@ -147,6 +169,7 @@ config_entries = [
     update_time: now
   },
   %{
+    config_id: config_theme_id,
     config_name: "主框架页-侧边栏主题",
     config_key: "sys.index.sideTheme",
     config_options: Jason.encode!(["theme-dark", "theme-light"]),
@@ -158,6 +181,7 @@ config_entries = [
     update_time: now
   },
   %{
+    config_id: config_captcha_id,
     config_name: "账号自助-验证码开关",
     config_key: "sys.account.captchaOnOff",
     config_options: Jason.encode!(["true", "false"]),
@@ -169,6 +193,7 @@ config_entries = [
     update_time: now
   },
   %{
+    config_id: config_register_id,
     config_name: "账号自助-是否开启用户注册功能",
     config_key: "sys.account.registerUser",
     config_options: Jason.encode!(["true", "false"]),
@@ -181,9 +206,7 @@ config_entries = [
   }
 ]
 
-if Repo.aggregate(KeystonePhoenix.Config.SysConfig, :count, :config_id) == 0 do
-  Repo.insert_all("sys_config", config_entries)
-end
+Repo.insert_all(SysConfig, config_entries, on_conflict: :nothing, conflict_target: :config_key)
 
 dept_entries = [
   %{
@@ -429,7 +452,7 @@ Repo.insert_all(
 
 notice_entries = [
   %{
-    notice_id: 1,
+    notice_id: notice_dev_id,
     notice_title: "Keystone Phoenix 开发环境",
     notice_type: 2,
     notice_content: "这是本地开发环境公告。",
@@ -440,7 +463,7 @@ notice_entries = [
     update_time: now
   },
   %{
-    notice_id: 2,
+    notice_id: notice_maintenance_id,
     notice_title: "系统维护通知",
     notice_type: 1,
     notice_content: "请在维护窗口前保存工作。",
@@ -452,9 +475,7 @@ notice_entries = [
   }
 ]
 
-if Repo.aggregate(KeystonePhoenix.Notice.SysNotice, :count, :notice_id) == 0 do
-  Repo.insert_all("sys_notice", notice_entries)
-end
+Repo.insert_all(SysNotice, notice_entries, on_conflict: :nothing, conflict_target: :notice_id)
 
 user_entries = [
   %{

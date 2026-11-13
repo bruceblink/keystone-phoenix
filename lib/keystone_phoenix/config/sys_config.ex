@@ -4,8 +4,8 @@ defmodule KeystonePhoenix.Config.SysConfig do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @primary_key {:config_id, :id, autogenerate: true}
-  @foreign_key_type :id
+  @primary_key {:config_id, :binary_id, autogenerate: false}
+  @foreign_key_type :binary_id
 
   schema "sys_config" do
     field :config_name, :string
@@ -13,8 +13,8 @@ defmodule KeystonePhoenix.Config.SysConfig do
     field :config_options, :string, default: ""
     field :config_value, :string
     field :is_allow_change, :boolean, default: true
-    field :creator_id, :integer
-    field :updater_id, :integer
+    field :creator_id, :binary_id
+    field :updater_id, :binary_id
     field :remark, :string
     field :deleted, :boolean, default: false
 
@@ -31,6 +31,7 @@ defmodule KeystonePhoenix.Config.SysConfig do
       :is_allow_change,
       :remark
     ])
+    |> put_new_id()
     |> validate_required([:config_name, :config_key, :config_value, :is_allow_change])
     |> validate_length(:config_name, max: 128)
     |> validate_length(:config_key, max: 128)
@@ -39,6 +40,13 @@ defmodule KeystonePhoenix.Config.SysConfig do
     |> validate_length(:remark, max: 128)
     |> validate_config_value()
     |> unique_constraint(:config_key, name: :sys_config_config_key_unique_index)
+  end
+
+  # 新配置 ID 使用 UUIDv7，避免由数据库自增序列生成身份。
+  defp put_new_id(changeset) do
+    if get_field(changeset, :config_id),
+      do: changeset,
+      else: put_change(changeset, :config_id, KeystonePhoenix.Identity.v7())
   end
 
   defp validate_config_value(changeset) do
