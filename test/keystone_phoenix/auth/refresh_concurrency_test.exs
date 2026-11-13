@@ -66,11 +66,13 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
     assert original_session_active
     assert Enum.sort(results) == [:ok, {:error, :invalid_refresh_token}]
 
-    assert {:ok, winning_refresh_token} =
+    assert {:ok, winning_tokens} =
              Enum.find_value(raw_results, fn
-               {:ok, tokens} -> {:ok, tokens.refresh_token}
+               {:ok, tokens} -> {:ok, tokens}
                _ -> nil
              end)
+
+    winning_refresh_token = winning_tokens.refresh_token
 
     assert {:ok, claims} =
              KeystonePhoenix.Auth.Token.verify(
@@ -78,8 +80,9 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
                KeystonePhoenix.Auth.Token.refresh_type()
              )
 
-    assert true =
-             with_unboxed(fn -> Auth.Session.active?(fixture.user_id, claims["jti"]) end)
+    # 并发请求中的旧令牌会被视为重用，整个刷新族必须撤销。
+    refute with_unboxed(fn -> Auth.Session.active?(fixture.user_id, claims["jti"]) end)
+    assert {:error, :invalid_token} = Auth.authenticate_access_token(winning_tokens.token)
   end
 
   test "password reset cannot leave a session created by an overlapping refresh" do
