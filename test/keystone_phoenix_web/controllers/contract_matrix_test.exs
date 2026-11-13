@@ -3,15 +3,16 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
 
   @tag :integration
   test "health endpoints expose liveness and dependency readiness", %{conn: conn} do
-    assert %{"code" => 0, "data" => "is alive"} =
+    assert %{"success" => true, "data" => "is alive"} =
              conn |> get("/health") |> json_response(200)
 
     assert %{
-             "code" => 0,
+             "success" => true,
              "data" => %{
                "status" => "READY",
                "database" => "UP",
@@ -39,7 +40,7 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
         end
 
       assert response.status == 401, "expected #{path} to require authentication"
-      assert json_response(response, 401)["code"] == 40101
+      assert get_in(json_response(response, 401), ["error", "code"]) == "session_revoked"
     end
   end
 
@@ -49,20 +50,26 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
     authorized = fn -> put_req_header(build_conn(), "authorization", "Bearer #{tokens.token}") end
 
-    assert json_response(get(authorized.(), "/system/config/abc"), 404)["code"] == 10001
-    assert json_response(get(authorized.(), "/system/jobs/abc"), 404)["code"] == 10001
+    assert get_in(json_response(get(authorized.(), "/system/config/abc"), 404), ["error", "code"]) ==
+             "validation_failed"
 
-    assert json_response(post(authorized.(), "/file/upload", %{}), 422)["code"] ==
-             40001
+    assert get_in(json_response(get(authorized.(), "/system/jobs/abc"), 404), ["error", "code"]) ==
+             "validation_failed"
 
-    assert %{"code" => 0} = json_response(get(authorized.(), "/monitor/serverInfo"), 200)
+    assert get_in(json_response(post(authorized.(), "/file/upload", %{}), 422), ["error", "code"]) ==
+             "validation_failed"
+
+    assert %{"success" => true} = json_response(get(authorized.(), "/monitor/serverInfo"), 200)
   end
 
   defp insert_admin do
+    admin_role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+
     %SysUser{}
     |> SysUser.create_changeset(%{
       username: "contract_admin_#{System.unique_integer([:positive])}",
       password: "Strong!123",
+      role_id: admin_role.role_id,
       status: 1
     })
     |> Repo.insert!()

@@ -86,12 +86,14 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
 
   def scope_allowed?(principal, kind, target) do
     subject = Principal.from_user(principal)
+    user = Principal.to_user(subject)
 
     # 旧策略读取 role_id；先还原规范主体保存的原始用户字段，确保管理员范围正确放行。
-    if Permission.admin?(Principal.to_user(subject)) do
+    if Permission.admin?(user) do
       true
     else
-      scope_allowed_without_admin?(subject, kind, target)
+      # 数据范围策略同样读取 role_id、dept_id 和 user_id，必须使用领域用户字段。
+      scope_allowed_without_admin?(user, kind, target)
     end
   end
 

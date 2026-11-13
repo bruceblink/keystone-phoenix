@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Authz.{PolicyCache, SysMenuPermission, SysPermission, SysRolePermission}
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Repo
@@ -14,19 +15,18 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   @tag :integration
   test "allows a role permission and rejects a missing permission", %{conn: conn} do
     role = insert_role()
-    menu = insert_menu(role.role_id, "system:post:list")
-    insert_menu(role.role_id, "system:post:query")
-    insert_menu(role.role_id, "system:post:edit")
-    assert menu.permission == "system:post:list"
+    menu = insert_menu(role.role_id, "post:read")
+    insert_menu(role.role_id, "post:update")
+    assert menu.permission == "post:read"
     user = insert_user(role.role_id)
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
 
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
-    assert %{"code" => 0} = json_response(get(authorized_conn, "/system/post/list"), 200)
+    assert %{"success" => true} = json_response(get(authorized_conn, "/system/post/list"), 200)
 
     forbidden_conn = put_req_header(build_conn(), "authorization", "Bearer #{tokens.token}")
     response = post(forbidden_conn, "/system/post", %{"postCode" => "x", "postName" => "x"})
-    assert json_response(response, 403)["code"] == 40302
+    assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
 
     post_record =
       %SysPost{}
@@ -40,7 +40,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
 
     update_conn = put_req_header(build_conn(), "authorization", "Bearer #{tokens.token}")
 
-    assert %{"code" => 0} =
+    assert %{"success" => true} =
              json_response(
                put(update_conn, "/system/post", %{
                  "postId" => post_record.post_id,
@@ -53,25 +53,26 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
              )
 
     logout_conn = put_req_header(build_conn(), "authorization", "Bearer #{tokens.token}")
-    assert %{"code" => 0} = json_response(post(logout_conn, "/logout", %{}), 200)
+    assert %{"success" => true} = json_response(post(logout_conn, "/logout", %{}), 200)
     assert {:error, :invalid_token} = Auth.authenticate_access_token(tokens.token)
   end
 
   @tag :integration
   test "role details include the frontend selection lists", %{conn: conn} do
     role = insert_role()
-    role = Repo.update!(Ecto.Changeset.change(role, dept_id_set: "11,12"))
-    menu = insert_menu(role.role_id, "system:role:query")
+    dept_ids = [Identity.v7(), Identity.v7()]
+    role = Repo.update!(Ecto.Changeset.change(role, dept_id_set: Enum.join(dept_ids, ",")))
+    menu = insert_menu(role.role_id, "role:read")
     user = insert_user(role.role_id)
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
 
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
 
     response = get(authorized_conn, "/system/role/#{role.role_id}")
-    assert %{"code" => 0, "data" => data} = json_response(response, 200)
+    assert %{"success" => true, "data" => data} = json_response(response, 200)
     assert data["menuIds"] == [menu.menu_id]
     assert data["selectedMenuList"] == [menu.menu_id]
-    assert data["selectedDeptList"] == [11, 12]
+    assert data["selectedDeptList"] == dept_ids
   end
 
   @tag :integration
@@ -85,20 +86,20 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
       |> put_req_header("authorization", "Bearer #{tokens.token}")
       |> get("/system/users/excelTemplate")
 
-    assert json_response(response, 403)["code"] == 40302
+    assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
   end
 
   @tag :integration
   test "metadata write endpoints honor explicit permissions", %{conn: conn} do
     role = insert_role()
-    insert_menu(role.role_id, "system:role:add")
-    insert_menu(role.role_id, "system:menu:add")
-    insert_menu(role.role_id, "system:dept:add")
+    insert_menu(role.role_id, "role:create")
+    insert_menu(role.role_id, "menu:create")
+    insert_menu(role.role_id, "department:create")
     user = insert_user(role.role_id)
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
 
-    assert %{"code" => 0} =
+    assert %{"success" => true} =
              json_response(
                post(authorized_conn, "/system/role", %{
                  "roleName" => unique("role"),
@@ -109,22 +110,22 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
                201
              )
 
-    assert %{"code" => 0} =
+    assert %{"success" => true} =
              json_response(
                post(authorized_conn, "/system/menus", %{
                  "menuName" => unique("menu"),
                  "menuType" => 1,
-                 "parentId" => 0,
+                 "parentId" => "",
                  "status" => 1
                }),
                201
              )
 
-    assert %{"code" => 0} =
+    assert %{"success" => true} =
              json_response(
                post(authorized_conn, "/system/dept", %{
                  "deptName" => unique("dept"),
-                 "parentId" => 0,
+                 "parentId" => "",
                  "orderNum" => 1,
                  "status" => 1
                }),
@@ -136,7 +137,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   test "role permission metadata needs a separate delegated permission", %{conn: conn} do
     role = insert_role()
     target_role = insert_role()
-    menu = insert_menu(role.role_id, "system:role:edit")
+    menu = insert_menu(role.role_id, "role:update")
     user = insert_user(role.role_id)
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
@@ -151,13 +152,14 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
                "menuIds" => to_string(menu.menu_id)
              }),
              403
-           )["code"] == 40302
+           )
+           |> get_in(["error", "code"]) == "permission_denied"
 
-    insert_menu(role.role_id, "system:role:permission")
+    insert_menu(role.role_id, "role:manage")
     {:ok, refreshed} = Auth.login_plaintext(user.username, "Strong!123", true)
     refreshed_conn = put_req_header(build_conn(), "authorization", "Bearer #{refreshed.token}")
 
-    assert %{"code" => 0} =
+    assert %{"success" => true} =
              json_response(
                put(refreshed_conn, "/system/role", %{
                  "roleId" => target_role.role_id,
@@ -176,7 +178,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   @tag :integration
   test "menu permission metadata needs a separate delegated permission", %{conn: conn} do
     role = insert_role()
-    insert_menu(role.role_id, "system:menu:add")
+    insert_menu(role.role_id, "menu:create")
     user = insert_user(role.role_id)
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
@@ -184,18 +186,23 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     params = %{
       "menuName" => unique("delegated_menu"),
       "menuType" => 0,
-      "parentId" => 0,
-      "permission" => "system:user:query",
+      "parentId" => "",
+      "permission" => "user:read",
       "status" => 1
     }
 
-    assert json_response(post(authorized_conn, "/system/menus", params), 403)["code"] == 40302
+    assert get_in(json_response(post(authorized_conn, "/system/menus", params), 403), [
+             "error",
+             "code"
+           ]) ==
+             "permission_denied"
 
-    insert_menu(role.role_id, "system:menu:permission")
+    insert_menu(role.role_id, "menu:manage")
     {:ok, refreshed} = Auth.login_plaintext(user.username, "Strong!123", true)
     refreshed_conn = put_req_header(build_conn(), "authorization", "Bearer #{refreshed.token}")
 
-    assert %{"code" => 0} = json_response(post(refreshed_conn, "/system/menus", params), 201)
+    assert %{"success" => true} =
+             json_response(post(refreshed_conn, "/system/menus", params), 201)
   end
 
   @tag :integration
@@ -207,46 +214,63 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
 
-    assert json_response(get(authorized_conn, "/system/depts/dropdown"), 403)["code"] == 40302
-    assert json_response(get(authorized_conn, "/system/menus/dropdown"), 403)["code"] == 40302
-
-    assert json_response(get(authorized_conn, "/system/dict/data/type/common.status"), 403)[
+    assert get_in(json_response(get(authorized_conn, "/system/depts/dropdown"), 403), [
+             "error",
              "code"
-           ] == 40302
+           ]) ==
+             "permission_denied"
+
+    assert get_in(json_response(get(authorized_conn, "/system/menus/dropdown"), 403), [
+             "error",
+             "code"
+           ]) ==
+             "permission_denied"
+
+    assert get_in(
+             json_response(get(authorized_conn, "/system/dict/data/type/common.status"), 403),
+             ["error", "code"]
+           ) == "permission_denied"
   end
 
   @tag :integration
   test "dropdown and typed dictionary endpoints honor their list permissions", %{conn: conn} do
     role = insert_role()
-    insert_menu(role.role_id, "system:dept:list")
-    insert_menu(role.role_id, "system:menu:list")
-    insert_menu(role.role_id, "system:dict:list")
+    insert_menu(role.role_id, "department:read")
+    insert_menu(role.role_id, "menu:read")
+    insert_menu(role.role_id, "dictionary:read")
     user = insert_user(role.role_id)
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
 
-    assert %{"code" => 0} = json_response(get(authorized_conn, "/system/depts/dropdown"), 200)
-    assert %{"code" => 0} = json_response(get(authorized_conn, "/system/menus/dropdown"), 200)
+    assert %{"success" => true} =
+             json_response(get(authorized_conn, "/system/depts/dropdown"), 200)
 
-    assert %{"code" => 0} =
+    assert %{"success" => true} =
+             json_response(get(authorized_conn, "/system/menus/dropdown"), 200)
+
+    assert %{"success" => true} =
              json_response(get(authorized_conn, "/system/dict/data/type/common.status"), 200)
   end
 
   @tag :integration
   test "dictionary cache refresh requires its explicit permission", %{conn: conn} do
     role = insert_role()
-    insert_menu(role.role_id, "system:dict:remove")
+    insert_menu(role.role_id, "dictionary:read")
     user = insert_user(role.role_id)
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
 
-    assert json_response(delete(authorized_conn, "/system/dict/cache"), 403)["code"] == 40302
+    assert get_in(json_response(delete(authorized_conn, "/system/dict/cache"), 403), [
+             "error",
+             "code"
+           ]) ==
+             "permission_denied"
 
-    insert_menu(role.role_id, "system:dict:refresh")
+    insert_menu(role.role_id, "dictionary:refresh")
     {:ok, refreshed} = Auth.login_plaintext(user.username, "Strong!123", true)
     refreshed_conn = put_req_header(build_conn(), "authorization", "Bearer #{refreshed.token}")
 
-    assert %{"code" => 0} = json_response(delete(refreshed_conn, "/system/dict/cache"), 200)
+    assert %{"success" => true} = json_response(delete(refreshed_conn, "/system/dict/cache"), 200)
   end
 
   @tag :integration
@@ -260,10 +284,10 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
       |> put_req_header("authorization", "Bearer #{tokens.token}")
       |> Map.update!(:private, &Map.put(&1, :phoenix_action, :unmapped_action))
 
-    response = Authenticate.call(conn, permissions: %{list: "system:post:list"})
+    response = Authenticate.call(conn, permissions: %{list: "post:read"})
 
     assert response.halted
-    assert json_response(response, 403)["code"] == 40302
+    assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
   end
 
   defp insert_role do
@@ -284,7 +308,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
       |> SysMenu.changeset(%{
         menu_name: permission,
         menu_type: 0,
-        parent_id: 0,
+        parent_id: nil,
         status: 1
       })
       |> Repo.insert!()

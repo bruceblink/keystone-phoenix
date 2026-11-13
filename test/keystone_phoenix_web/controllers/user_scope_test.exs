@@ -144,7 +144,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert json_response(
              get(authorized(tokens.token), "/system/users/#{hd(ctx.outside_ids)}"),
              403
-           )["code"] == 40303
+           )["error"]["code"] == "data_scope_denied"
 
     response = get(authorized(tokens.token), "/system/users/excel")
     assert response.status == 200
@@ -165,7 +165,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         "nickname" => "不应写入"
       })
 
-    assert json_response(response, 403)["code"] == 40303
+    assert get_in(json_response(response, 403), ["error", "code"]) == "data_scope_denied"
     assert Repo.get!(SysUser, ctx.oldest.user_id).dept_id == ctx.parent.dept_id
     refute Repo.get!(SysUser, ctx.oldest.user_id).nickname == "不应写入"
 
@@ -174,14 +174,14 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         "deptId" => ctx.parent.dept_id
       })
 
-    assert json_response(response, 403)["code"] == 40303
+    assert get_in(json_response(response, 403), ["error", "code"]) == "data_scope_denied"
 
     response =
       put(authorized(tokens.token), "/system/users/#{ctx.oldest.user_id}", %{
         "deptId" => ctx.child.dept_id
       })
 
-    assert json_response(response, 200)["code"] == 0
+    assert json_response(response, 200)["success"] == true
     assert Repo.get!(SysUser, ctx.oldest.user_id).dept_id == ctx.child.dept_id
 
     denied_name = unique("denied_create")
@@ -193,7 +193,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         "deptId" => ctx.outside.dept_id
       })
 
-    assert json_response(response, 403)["code"] == 40303
+    assert get_in(json_response(response, 403), ["error", "code"]) == "data_scope_denied"
     assert {:error, :not_found} = User.get_user_by_username(denied_name)
 
     allowed_name = unique("allowed_create")
@@ -205,7 +205,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         "deptId" => ctx.child.dept_id
       })
 
-    assert json_response(response, 201)["code"] == 0
+    assert json_response(response, 201)["success"] == true
     assert {:ok, created} = User.get_user_by_username(allowed_name)
     assert created.dept_id == ctx.child.dept_id
   end
@@ -224,14 +224,14 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         "deptId" => ctx.actor.dept_id
       })
 
-    assert json_response(response, 200)["code"] == 0
+    assert json_response(response, 200)["success"] == true
 
     response =
       put(authorized(tokens.token), "/system/users/#{ctx.actor.user_id}", %{
         "deptId" => ctx.child.dept_id
       })
 
-    assert json_response(response, 403)["code"] == 40303
+    assert get_in(json_response(response, 403), ["error", "code"]) == "data_scope_denied"
     assert Repo.get!(SysUser, ctx.actor.user_id).dept_id == ctx.actor.dept_id
   end
 
@@ -258,7 +258,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         "roleId" => elevated_role.role_id
       })
 
-    assert json_response(response, 403)["code"] == 40301
+    assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
 
     response =
       put(authorized(tokens.token), "/system/users/#{ctx.actor.user_id}", %{
@@ -267,7 +267,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         "roleId" => elevated_role.role_id
       })
 
-    assert json_response(response, 403)["code"] == 40301
+    assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
     assert Repo.get!(SysUser, ctx.actor.user_id).role_id == ctx.role.role_id
   end
 

@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
   alias KeystonePhoenix.Authz.{SysMenuPermission, SysPermission, SysRolePermission}
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Dictionary.{DictData, DictType}
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Notice.SysNotice
   alias KeystonePhoenix.Post.SysPost
@@ -17,31 +18,33 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     fixtures = fixtures()
     conn = put_req_header(conn, "authorization", "Bearer #{fixtures.token}")
 
-    assert %{"code" => 0, "data" => menus} = json_response(get(conn, "/system/menus"), 200)
+    assert %{"success" => true, "data" => menus} = json_response(get(conn, "/system/menus"), 200)
     menu = Enum.find(menus, &(&1["id"] == fixtures.page_menu.menu_id))
     assert menu["menuId"] == fixtures.page_menu.menu_id
     assert menu["isButton"] == false
     assert menu["menuTypeStr"] == "页面"
     assert menu["statusStr"] == "正常"
 
-    assert %{"code" => 0, "data" => departments} = json_response(get(conn, "/system/depts"), 200)
+    assert %{"success" => true, "data" => departments} =
+             json_response(get(conn, "/system/depts"), 200)
+
     department = Enum.find(departments, &(&1["id"] == fixtures.department.dept_id))
     assert department["deptId"] == fixtures.department.dept_id
     assert department["statusStr"] == "正常"
 
-    assert %{"code" => 0, "data" => %{"rows" => posts}} =
+    assert %{"success" => true, "data" => %{"rows" => posts}} =
              json_response(get(conn, "/system/post/list?pageSize=50"), 200)
 
     post = Enum.find(posts, &(&1["postId"] == fixtures.post.post_id))
     assert post["statusStr"] == "正常"
 
-    assert %{"code" => 0, "data" => role} =
+    assert %{"success" => true, "data" => role} =
              json_response(get(conn, "/system/role/#{fixtures.role.role_id}"), 200)
 
     assert fixtures.page_menu.menu_id in role["selectedMenuList"]
     assert role["selectedDeptList"] == [fixtures.department.dept_id]
 
-    assert %{"code" => 0, "data" => %{"rows" => users}} =
+    assert %{"success" => true, "data" => %{"rows" => users}} =
              json_response(get(conn, "/system/users?userId=#{fixtures.user.user_id}"), 200)
 
     user = Enum.find(users, &(&1["userId"] == fixtures.user.user_id))
@@ -49,20 +52,20 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     assert user["postName"] == "契约岗位"
     assert user["roleName"] == "契约角色"
 
-    assert %{"code" => 0, "data" => profile} =
+    assert %{"success" => true, "data" => profile} =
              json_response(get(conn, "/system/user/profile"), 200)
 
     assert profile["user"]["userId"] == fixtures.user.user_id
     assert profile["roleName"] == "契约角色"
     assert profile["postName"] == "契约岗位"
 
-    assert %{"code" => 0, "data" => %{"rows" => dict_data}} =
+    assert %{"success" => true, "data" => %{"rows" => dict_data}} =
              json_response(get(conn, "/system/dict/data/list?dictType=contract.status"), 200)
 
     dict = Enum.find(dict_data, &(&1["dictCode"] == fixtures.dict_data.dict_code))
     assert dict["isDefault"] == 1
 
-    assert %{"code" => 0, "data" => %{"rows" => notices}} =
+    assert %{"success" => true, "data" => %{"rows" => notices}} =
              json_response(get(conn, "/system/notices?pageSize=10"), 200)
 
     notice = Enum.find(notices, &(&1["noticeId"] == fixtures.notice.notice_id))
@@ -71,12 +74,12 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
 
   defp fixtures do
     department =
-      %SysDept{dept_id: 601}
-      |> SysDept.changeset(%{dept_name: "契约部门", ancestors: "0", status: 1})
+      %SysDept{dept_id: Identity.v7()}
+      |> SysDept.changeset(%{dept_name: "契约部门", ancestors: "", status: 1})
       |> Repo.insert!()
 
     post =
-      %SysPost{post_id: 602}
+      %SysPost{post_id: Identity.v7()}
       |> SysPost.changeset(%{
         post_code: "contract_post",
         post_name: "契约岗位",
@@ -86,27 +89,27 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
       |> Repo.insert!()
 
     role =
-      %SysRole{role_id: 603}
+      %SysRole{role_id: Identity.v7()}
       |> SysRole.changeset(%{
         role_name: "契约角色",
         role_key: unique("contract_role"),
         role_sort: 1,
         data_scope: 1,
-        dept_id_set: Integer.to_string(department.dept_id),
+        dept_id_set: department.dept_id,
         status: 1
       })
       |> Repo.insert!()
 
-    page_menu = insert_permission(role.role_id, "system:menu:list", 1, false)
-    insert_permission(role.role_id, "system:role:query", 0, true)
-    insert_permission(role.role_id, "system:dept:list", 0, true)
-    insert_permission(role.role_id, "system:post:list", 0, true)
-    insert_permission(role.role_id, "system:user:list", 0, true)
-    insert_permission(role.role_id, "system:dict:list", 0, true)
-    insert_permission(role.role_id, "system:notice:list", 0, true)
+    page_menu = insert_permission(role.role_id, "menu:read", 1, false)
+    insert_permission(role.role_id, "role:read", 0, true)
+    insert_permission(role.role_id, "department:read", 0, true)
+    insert_permission(role.role_id, "post:read", 0, true)
+    insert_permission(role.role_id, "user:read", 0, true)
+    insert_permission(role.role_id, "dictionary:read", 0, true)
+    insert_permission(role.role_id, "notice:read", 0, true)
 
     user =
-      %SysUser{user_id: 604}
+      %SysUser{user_id: Identity.v7()}
       |> SysUser.create_changeset(%{
         username: unique("contract_user"),
         password: "Strong!123",
@@ -119,7 +122,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
       |> Repo.insert!()
 
     notice =
-      %SysNotice{notice_id: 607}
+      %SysNotice{notice_id: Identity.v7()}
       |> SysNotice.changeset(%{
         notice_title: "契约公告",
         notice_type: 1,
@@ -130,7 +133,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
       |> Repo.insert!()
 
     dict_type =
-      %DictType{dict_id: 605}
+      %DictType{dict_id: Identity.v7()}
       |> DictType.changeset(%{
         dict_name: "契约状态",
         dict_type: "contract.status",
@@ -139,7 +142,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
       |> Repo.insert!()
 
     dict_data =
-      %DictData{dict_code: 606}
+      %DictData{dict_code: Identity.v7()}
       |> DictData.changeset(%{
         dict_type: dict_type.dict_type,
         dict_label: "启用",
@@ -170,7 +173,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
       |> SysMenu.changeset(%{
         menu_name: permission,
         menu_type: menu_type,
-        parent_id: 0,
+        parent_id: nil,
         is_button: is_button,
         status: 1
       })

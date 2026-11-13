@@ -10,11 +10,13 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Log
   alias KeystonePhoenix.Notice
+  alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
 
   setup do
     username = "live_admin_#{System.unique_integer([:positive])}"
+    admin_role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
 
     {:ok, user} =
       %SysUser{}
@@ -22,6 +24,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
         "username" => username,
         "nickname" => "Live 管理员",
         "password" => "Strong!123",
+        "role_id" => admin_role.role_id,
         "status" => 1
       })
       |> Repo.insert()
