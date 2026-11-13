@@ -329,7 +329,7 @@ GitHub Test 工作流 `42962608929` 已通过。发布工作流 `42962608932` �
 
 当前代码基线为 `2817ca3`，远端 `v0.3.0` 标签已存在；前文旧基线、旧测试数字和“未发布/未验收”段落均为历史审查证据。当前发布状态以 [`../CHANGELOG.md`](../CHANGELOG.md)、[`04-deployment-runbook.md`](04-deployment-runbook.md) 和主线计划为准。
 
-本次本地复核默认测试为 164 项通过、20 项排除，集成测试为 184 项通过；格式、源码行数、dev/prod 严格编译和 `git diff --check` 通过。授权复核发现的 LiveView 用户数据范围缺口已由 `2817ca3` 修复，并由越界回归测试覆盖。现代授权设计见 [`07-authorization-architecture.md`](07-authorization-architecture.md)。
+本次本地复核默认测试为 164 项通过、20 项排除，集成测试为 184 项通过；格式、源码行数、dev/prod 严格编译和 `git diff --check` 通过。授权复核发现的 LiveView 用户数据范围缺口已由 `2817ca3` 修复，并由越界回归测试覆盖。现代授权设计见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。
 
 ## 2026-11-13 授权主线验收补充
 

@@ -1,5 +1,7 @@
 # Keystone Phoenix 开发计划
 
+鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
+
 更新日期：2026-11-12。当前代码基线为 `b0d3c29`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
 
 ## 目标与范围
@@ -361,6 +363,58 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 
 此前记录的发布工作流 `42962608932` 已完成并通过。其 GHCR 镜像 `ghcr.io/bruceblink/keystone-phoenix:main` 摘要为 `sha256:3656759d40477f944fb773ef91394bfb3a73492fc3bcc81bd4ec7070f3a2082b`；Cosign 签名、SBOM/provenance 和远端 release smoke 均通过。该摘要早于当前 `958dfb7` 管理后台状态徽标代码，仅保留作历史发布证据。当前只剩真实生产浏览器窗口验收，版本标签暂不创建。
 
+## 跨项目统一鉴权授权主线
+
+本节合并原跨项目计划。Phoenix 与 Keystone Native 分别实现，但必须遵守 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md) 的公共数据约定和安全边界。
+
+### 当前差异与处理顺序
+
+| 能力 | Phoenix | Native | 处理方式 |
+| --- | --- | --- | --- |
+| 密码登录、刷新和注销 | 已有兼容接口 | 已有现代接口 | 统一会话状态、令牌字段和错误分类 |
+| 权限格式 | 旧代码存在三段权限 | 两段权限 | 新代码只使用 `resource:action`，旧权限集中映射 |
+| API Key 与服务主体 | 待实现 | 已实现 | Phoenix 先补齐，Native 补运行验收 |
+| MFA、step-up、恢复码 | 待实现 | 已实现第一版 | Phoenix 对齐后执行并发验收 |
+| JWK Set 与 `kid` | 待实现 | 已实现部分 | 统一外部密钥配置和轮换规则 |
+| 管理界面 | LiveView | 当前无管理界面 | Native 只对齐后端接口，不复制 LiveView |
+
+### 阶段一：公共接口和 UUID 主键冻结
+
+- 固定 Principal、凭据类型、认证强度、权限版本和错误分类。
+- 固定权限目录和 Phoenix 旧权限到 `resource:action` 的映射。
+- 用户、角色、部门、菜单、权限、会话、令牌族、API Key、MFA 请求和安全事件统一使用 UUID。
+- 新业务实体使用 UUIDv7；权限目录和固定种子使用固定命名空间的 UUIDv5。
+- 外部接口使用规范小写连字符 UUID 字符串。Native 的 MySQL 使用 `BINARY(16)`；写入和按 ID 过滤使用参数侧 `UUID_TO_BIN(?, 0)`，文本结果使用 `BIN_TO_UUID(id, 0)`，不得在过滤列上调用 `BIN_TO_UUID`。Phoenix 的 PostgreSQL 使用原生 `uuid` 类型。
+- 删除整数主键、整数外键、整数路径参数和整数兼容转换。
+
+验收必须覆盖 UUIDv7 生成、固定 UUIDv5 测试向量、MySQL 二进制往返、索引可用性、非法 UUID、旧整数输入、空值和重复迁移。
+
+### 阶段二：收紧角色授权
+
+- 有角色的管理员必须从角色权限关系读取权限。
+- 无角色的历史管理员只保留明确的迁移期兼容回退。
+- HTTP、LiveView、领域命令和 Native REST 拦截器使用同一决策结果。
+- 缺少权限、范围越界、主体无效和策略存储不可用时默认拒绝。
+
+### 阶段三：Phoenix API Key
+
+增加服务主体、哈希存储、范围交集、签发、列表、轮换、撤销、过期、限流和安全事件。明文只返回一次，API Key 不得进入密码、MFA 或 API Key 管理路径。
+
+### 阶段四：Phoenix MFA 和 JWK
+
+增加 TOTP、一次性恢复码、短期认证请求、敏感写操作 step-up、JWK Set 和 `kid`。并发消费必须只有一个成功，密钥配置缺失必须在启动或就绪检查阶段失败。
+
+### 阶段五：资源范围矩阵
+
+为 user、role、department、post、menu、config、dictionary、notice、job、file、session 和 audit 建立 `list/detail/create/update/delete/export/batch/async` 矩阵。每个入口记录范围策略、事务边界、测试文件和运行验收状态。
+
+### 阶段六：接口差异收口与运行验收
+
+- 新接口使用 `/api/v1` 和 `{success,data,message}`；旧接口只保留兼容映射。
+- Native 需要记录作业取消和网络 SSE 的替代接口或实现计划。
+- 两项目分别完成迁移、重复迁移、刷新并发、API Key 并发、MFA 并发、故障回滚、备份恢复、真实 HTTP 和安全事件检查。
+- 静态编译不能替代数据库、HTTP 或浏览器运行证据。
+
 ## 历史计划合并说明
 
 原 `docs/06-follow-up-development-plan.md` 的审查结论、实施顺序、验收约束和收尾证据已并入本文的当前状态、执行顺序和 2026-11-11 基线记录。原文件保留在 `docs/archive/`，不再作为新的任务入口；后续开发只从本文件的“当前状态”和“后续执行顺序”继续。
@@ -409,6 +463,6 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 
 ### 2026-11-12 授权架构复核
 
-当前代码基线为 `b0d3c29`，远端 `v0.3.0` 标签已存在。现代授权设计基线见 [`07-authorization-architecture.md`](07-authorization-architecture.md)。当前模型继续采用 RBAC 角色绑定权限字符串，并由数据范围限制目标资源。
+当前代码基线为 `b0d3c29`，远端 `v0.3.0` 标签已存在。当前模型采用 RBAC 角色绑定权限字符串，并由数据范围限制目标资源；统一架构和入口规则见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。
 
 本轮复核发现并修复 `2817ca3`：LiveView 用户保存、状态切换、删除和密码重置事件现在同时检查具体权限字符串和目标数据范围，成功后按当前主体范围重新加载用户列表。`cca52dc`、`7ad47fa` 和 `121c196` 将 HTTP Plug、LiveView 权限入口、管理员识别和用户范围判断迁移到 `Authz`；`6d0ea8a` 新增统一决策入口；`9f83efe` 增加策略异常决策；`7e951cf`、`3055889`、`0fbb3e0`、`6df984c` 和 `b571fb5` 将角色、部门、岗位、配置、字典、公告和任务领域写入迁移到主体授权；`4fc73c9`、`4b99d31` 和 `d9a0413` 完成通用资源所有者隔离、批量清理和路径遍历保护；`aad3a96` 增加权限目录校验；`509f6c8`、`0df35a4`、`0a6d2d3` 和 `e977680` 完成规范化权限表、种子同步和新旧策略兼容读取；`1343efb` 增加版本化策略缓存；`bcf163a` 增加脱敏授权审计；`fb30482` 统一主体自身范围判断；`1c45bf4`、`31feb3f` 完成用户及资料写入收口；`631cd39` 增加授权决策 Telemetry；`b0d3c29` 修复旧菜单权限回退缓存污染。新增越界回归测试证明拥有 `system:user:edit` 权限字符串的非管理员角色不能修改其他部门用户，数据库保持不变；直接领域调用缺少权限、目标越界或资源所有者不匹配时也会在写入/读取前拒绝。当前默认测试为 192 项通过、20 项排除，集成测试为 20 项通过；格式、源码行数和 dev/prod 严格编译通过。
