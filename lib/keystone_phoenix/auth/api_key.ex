@@ -127,8 +127,11 @@ defmodule KeystonePhoenix.Auth.ApiKey do
   end
 
   defp authenticate_record(key, _value, ip_address) do
-    with %ServiceSubject{enabled: true} = subject <- Repo.get(ServiceSubject, key.subject_id),
-         %SysUser{status: 1, deleted: false} = user <- Repo.get(SysUser, key.user_id) do
+    with subject_id when is_binary(subject_id) <- key.subject_id,
+         %ServiceSubject{enabled: true} = subject <- Repo.get(ServiceSubject, subject_id),
+         %SysUser{status: 1, deleted: false} = user <- Repo.get(SysUser, key.user_id),
+         scopes when scopes != [] <-
+           intersect_permissions(split_scopes(key.scopes), Menu.permissions_for_user(user)) do
       touch_last_used(key, ip_address)
 
       {:ok,
@@ -138,7 +141,7 @@ defmodule KeystonePhoenix.Auth.ApiKey do
          user_id: user.user_id,
          username: user.username,
          credential_type: "API_KEY",
-         scopes: split_scopes(key.scopes)
+         scopes: scopes
        }}
     else
       _ -> {:error, :invalid_credential}
