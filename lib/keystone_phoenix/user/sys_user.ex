@@ -4,13 +4,13 @@ defmodule KeystonePhoenix.User.SysUser do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @primary_key {:user_id, :id, autogenerate: true}
-  @foreign_key_type :id
+  @primary_key {:user_id, :binary_id, autogenerate: false}
+  @foreign_key_type :binary_id
 
   schema "sys_user" do
-    field :post_id, :integer
-    field :role_id, :integer
-    field :dept_id, :integer
+    field :post_id, :binary_id
+    field :role_id, :binary_id
+    field :dept_id, :binary_id
     field :username, :string
     field :nickname, :string, default: ""
     field :user_type, :integer, default: 0
@@ -25,8 +25,8 @@ defmodule KeystonePhoenix.User.SysUser do
     field :is_admin, :boolean, default: false
     field :external_subject, :string
     field :external_user_id, :string
-    field :creator_id, :integer
-    field :updater_id, :integer
+    field :creator_id, :binary_id
+    field :updater_id, :binary_id
     field :remark, :string
     field :deleted, :boolean, default: false
 
@@ -53,11 +53,19 @@ defmodule KeystonePhoenix.User.SysUser do
   def create_changeset(user, attrs) do
     user
     |> cast(attrs, @user_fields ++ [:password])
+    |> put_new_id()
     |> validate_required([:username, :password])
     |> validate_user_fields()
     |> validate_password()
     |> update_change(:password, &Bcrypt.hash_pwd_salt/1)
     |> unique_constraint(:username, name: :sys_user_username_unique_index)
+  end
+
+  # 新用户 ID 在应用层生成 UUIDv7，数据库只保存 UUID 的 16 字节值。
+  defp put_new_id(changeset) do
+    if Ecto.Changeset.get_field(changeset, :user_id),
+      do: changeset,
+      else: Ecto.Changeset.put_change(changeset, :user_id, KeystonePhoenix.Identity.v7())
   end
 
   @doc "Validates fields accepted when an administrator updates a user."

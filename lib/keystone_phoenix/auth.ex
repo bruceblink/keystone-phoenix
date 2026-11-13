@@ -3,6 +3,7 @@ defmodule KeystonePhoenix.Auth do
 
   alias KeystonePhoenix.Auth.{Captcha, Session, Token}
   alias KeystonePhoenix.Menu
+  alias KeystonePhoenix.Params
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
 
@@ -162,9 +163,9 @@ defmodule KeystonePhoenix.Auth do
   end
 
   defp parse_user_id(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {user_id, ""} when user_id > 0 -> {:ok, user_id}
-      _ -> {:error, :invalid_token}
+    case Params.parse_uuid(value) do
+      {:ok, user_id} -> {:ok, user_id}
+      :error -> {:error, :invalid_token}
     end
   end
 

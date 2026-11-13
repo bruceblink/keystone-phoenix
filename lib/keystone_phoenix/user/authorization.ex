@@ -48,7 +48,7 @@ defmodule KeystonePhoenix.User.Authorization do
   @doc "Checks that a profile command targets the authenticated principal itself."
   def authorize_self(id, options) do
     with {:ok, principal} <- principal_from_options(options),
-         {:ok, target_id} <- Params.parse_positive_integer(id),
+         {:ok, target_id} <- Params.parse_uuid(id),
          %Principal{} = subject <- Principal.from_user(principal),
          true <- Authz.admin?(subject) or subject.subject_id == target_id do
       :ok

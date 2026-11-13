@@ -54,16 +54,16 @@ defmodule KeystonePhoenix.User do
         order_by: [desc: u.user_id]
 
     query
-    |> filter_integer(:user_id, params["userId"] || params[:user_id])
+    |> filter_uuid(:user_id, params["userId"] || params[:user_id])
     |> filter_contains(:username, params["username"] || params[:username])
     |> filter_contains(:phone_number, params["phoneNumber"] || params[:phone_number])
     |> filter_integer(:status, params["status"] || params[:status])
-    |> filter_integer(:dept_id, params["deptId"] || params[:dept_id])
+    |> filter_uuid(:dept_id, params["deptId"] || params[:dept_id])
   end
 
-  @spec get_user(integer() | String.t()) :: {:ok, SysUser.t()} | {:error, :not_found}
+  @spec get_user(String.t()) :: {:ok, SysUser.t()} | {:error, :not_found}
   def get_user(id) do
-    case Params.parse_positive_integer(id) do
+    case Params.parse_uuid(id) do
       {:ok, id} ->
         case Repo.get_by(SysUser, user_id: id, deleted: false) do
           nil -> {:error, :not_found}
@@ -78,7 +78,7 @@ defmodule KeystonePhoenix.User do
   @doc "Returns active users keyed by ID with one database query."
   @spec list_users_by_ids(list()) :: [SysUser.t()]
   def list_users_by_ids(ids) when is_list(ids) do
-    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+    ids = ids |> Enum.map(&parse_uuid/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
 
     if ids == [] do
       []
@@ -171,8 +171,8 @@ defmodule KeystonePhoenix.User do
   def delete_users(_ids, _options), do: {:error, :authorization_required}
 
   defp do_delete_users(ids, actor_id) when is_list(ids) do
-    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.uniq()
-    actor_id = parse_positive_integer(actor_id)
+    ids = ids |> Enum.map(&parse_uuid/1) |> Enum.uniq()
+    actor_id = parse_uuid(actor_id)
 
     if Enum.any?(ids, &is_nil/1) or is_nil(actor_id) or ids == [] do
       {:error, :invalid_ids}
@@ -198,7 +198,7 @@ defmodule KeystonePhoenix.User do
   def reset_password(_id, _attrs, _options), do: {:error, :authorization_required}
 
   defp do_reset_password(id, attrs, actor_id) when is_map(attrs) do
-    with {:ok, user_id} <- Params.parse_positive_integer(id) do
+    with {:ok, user_id} <- Params.parse_uuid(id) do
       Session.update_account_and_revoke(user_id, fn ->
         with {:ok, user} <- get_user(user_id) do
           user
@@ -291,7 +291,7 @@ defmodule KeystonePhoenix.User do
   def update_password(_id, _attrs, _options), do: {:error, :authorization_required}
 
   defp do_update_password(id, attrs, actor_id) when is_map(attrs) do
-    with {:ok, user_id} <- Params.parse_positive_integer(id),
+    with {:ok, user_id} <- Params.parse_uuid(id),
          {:ok, old_password, new_password} <- password_inputs(attrs) do
       Session.update_account_and_revoke(user_id, fn ->
         with {:ok, user} <- get_user(user_id),
@@ -313,7 +313,7 @@ defmodule KeystonePhoenix.User do
   end
 
   @doc "Updates an avatar URL supplied by the file service."
-  @spec update_avatar(integer() | String.t(), String.t(), keyword()) ::
+  @spec update_avatar(String.t(), String.t(), keyword()) ::
           {:ok, SysUser.t()} | {:error, term()}
   def update_avatar(id, avatar, options)
 
@@ -466,12 +466,19 @@ defmodule KeystonePhoenix.User do
 
   defp normalize_relation_value(field, value) when field in [:dept_id, :post_id, :role_id] do
     case value do
+      nil ->
+        nil
+
+      "" ->
+        nil
+
+      "0" ->
+        nil
+
       value when is_binary(value) ->
-        case Params.parse_integer(value) do
-          {:ok, id} when id > 0 -> id
-          {:ok, 0} -> nil
-          {:ok, _id} -> value
-          :error -> if String.trim(value) == "", do: nil, else: value
+        case Params.parse_uuid(value) do
+          {:ok, uuid} -> uuid
+          :error -> value
         end
 
       value ->
@@ -481,9 +488,9 @@ defmodule KeystonePhoenix.User do
 
   defp normalize_relation_value(_field, value), do: value
 
-  defp parse_positive_integer(value) do
-    case Params.parse_positive_integer(value) do
-      {:ok, integer} -> integer
+  defp parse_uuid(value) do
+    case Params.parse_uuid(value) do
+      {:ok, uuid} -> uuid
       :error -> nil
     end
   end
@@ -525,7 +532,7 @@ defmodule KeystonePhoenix.User do
   defp relation_ids(users, field) do
     users
     |> Enum.map(&Map.get(&1, field))
-    |> Enum.filter(&(is_integer(&1) and &1 > 0))
+    |> Enum.filter(&is_binary/1)
     |> Enum.uniq()
   end
 
@@ -545,6 +552,16 @@ defmodule KeystonePhoenix.User do
       end
     else
       query
+    end
+  end
+
+  defp filter_uuid(query, _field, nil), do: query
+  defp filter_uuid(query, _field, ""), do: query
+
+  defp filter_uuid(query, field, value) do
+    case Params.parse_uuid(value) do
+      {:ok, uuid} -> where(query, [record], field(record, ^field) == ^uuid)
+      :error -> query
     end
   end
 

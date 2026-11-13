@@ -39,7 +39,7 @@ defmodule KeystonePhoenix.Role do
   end
 
   def get_role(id) do
-    case Params.parse_positive_integer(id) do
+    case Params.parse_uuid(id) do
       {:ok, id} ->
         case Repo.get_by(SysRole, role_id: id, deleted: false) do
           nil -> {:error, :not_found}
@@ -53,7 +53,7 @@ defmodule KeystonePhoenix.Role do
 
   @doc "Returns active roles keyed by ID with one database query."
   def list_roles_by_ids(ids) when is_list(ids) do
-    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+    ids = ids |> Enum.map(&parse_uuid/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
 
     if ids == [] do
       []
@@ -206,7 +206,7 @@ defmodule KeystonePhoenix.Role do
 
   @doc "Lists users currently assigned to a role."
   def list_allocated_users(role_id, params \\ %{}, actor \\ nil) do
-    case parse_positive_integer(role_id) do
+    case parse_uuid(role_id) do
       nil -> %{total: 0, rows: []}
       role_id -> list_role_users(role_id, params, :allocated, actor)
     end
@@ -214,7 +214,7 @@ defmodule KeystonePhoenix.Role do
 
   @doc "Lists active users that are not assigned to a role."
   def list_unallocated_users(role_id, params \\ %{}, actor \\ nil) do
-    case parse_positive_integer(role_id) do
+    case parse_uuid(role_id) do
       nil -> %{total: 0, rows: []}
       role_id -> list_role_users(role_id, params, :unallocated, actor)
     end
@@ -222,7 +222,7 @@ defmodule KeystonePhoenix.Role do
 
   @doc "Returns active user counts keyed by role ID in one database query."
   def user_counts(role_ids) when is_list(role_ids) do
-    role_ids = Enum.filter(role_ids, &(is_integer(&1) and &1 > 0))
+    role_ids = Enum.filter(role_ids, &is_binary/1)
 
     if role_ids == [] do
       %{}
@@ -353,7 +353,7 @@ defmodule KeystonePhoenix.Role do
   end
 
   defp normalize_user_ids(user_ids) when is_list(user_ids) do
-    normalized = Enum.map(user_ids, &parse_positive_integer/1)
+    normalized = Enum.map(user_ids, &parse_uuid/1)
 
     if normalized == [] or Enum.any?(normalized, &is_nil/1),
       do: {:error, :invalid_ids},
@@ -405,15 +405,15 @@ defmodule KeystonePhoenix.Role do
 
   defp menu_ids_from(attrs) do
     cond do
-      Map.has_key?(attrs, "menuIds") -> normalize_ids(Map.get(attrs, "menuIds"))
-      Map.has_key?(attrs, :menu_ids) -> normalize_ids(Map.get(attrs, :menu_ids))
+      Map.has_key?(attrs, "menuIds") -> normalize_menu_ids(Map.get(attrs, "menuIds"))
+      Map.has_key?(attrs, :menu_ids) -> normalize_menu_ids(Map.get(attrs, :menu_ids))
       true -> nil
     end
   end
 
   defp normalize_ids(ids) when is_list(ids) do
     ids
-    |> Enum.map(&parse_positive_integer/1)
+    |> Enum.map(&parse_menu_id/1)
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
   end
@@ -426,27 +426,38 @@ defmodule KeystonePhoenix.Role do
 
   defp normalize_ids(_ids), do: []
 
+  defp normalize_menu_ids(ids), do: normalize_ids(ids)
+
   defp parse_id_set(ids) when is_binary(ids) do
     ids
     |> String.split(",", trim: true)
-    |> Enum.map(&parse_positive_integer/1)
+    |> Enum.map(&parse_uuid/1)
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
   end
 
-  defp parse_id_set(ids) when is_list(ids), do: normalize_ids(ids)
+  defp parse_id_set(ids) when is_list(ids),
+    do: Enum.map(ids, &parse_uuid/1) |> Enum.reject(&is_nil/1)
+
   defp parse_id_set(_ids), do: []
 
-  defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
-
-  defp parse_positive_integer(value) when is_binary(value) do
-    case Integer.parse(String.trim(value)) do
-      {number, ""} when number > 0 -> number
-      _ -> nil
+  defp parse_uuid(value) do
+    case Params.parse_uuid(value) do
+      {:ok, uuid} -> uuid
+      :error -> nil
     end
   end
 
-  defp parse_positive_integer(_value), do: nil
+  defp parse_menu_id(value) when is_integer(value) and value > 0, do: value
+
+  defp parse_menu_id(value) when is_binary(value) do
+    case Params.parse_positive_integer(value) do
+      {:ok, id} -> id
+      :error -> nil
+    end
+  end
+
+  defp parse_menu_id(_value), do: nil
 
   defp invalidate_policy_cache({:ok, _value} = result) do
     PolicyCache.invalidate()

@@ -10,7 +10,7 @@ defmodule KeystonePhoenix.Authz.PolicyCache do
 
   @doc "Caches a role permission decision while keeping storage errors uncached."
   def decision(role_id, permission, loader) when is_function(loader, 0) do
-    with {:ok, role_id} <- Params.parse_positive_integer(role_id),
+    with {:ok, role_id} <- Params.parse_uuid(role_id),
          true <- is_binary(permission) and permission != "" do
       key = key(role_id, permission)
 

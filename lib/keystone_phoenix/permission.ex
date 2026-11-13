@@ -16,7 +16,7 @@ defmodule KeystonePhoenix.Permission do
     role_id = user_value(user, :role_id, "roleId")
     permission = String.trim(permission)
 
-    if positive_integer?(role_id) and PermissionCatalog.registered?(permission) do
+    if uuid?(role_id) and PermissionCatalog.registered?(permission) do
       Repo.exists?(
         from role_permission in "sys_role_permission",
           join: permission_entry in SysPermission,
@@ -44,7 +44,7 @@ defmodule KeystonePhoenix.Permission do
     role_id = user_value(user, :role_id, "roleId")
     permission = String.trim(permission)
 
-    if positive_integer?(role_id) and PermissionCatalog.registered?(permission) do
+    if uuid?(role_id) and PermissionCatalog.registered?(permission) do
       if Repo.exists?(
            from role_permission in "sys_role_permission",
              join: permission_entry in SysPermission,
@@ -108,7 +108,7 @@ defmodule KeystonePhoenix.Permission do
   defp scoped_users_query(query, user) do
     role_id = user_value(user, :role_id, "roleId")
 
-    with true <- positive_integer?(role_id),
+    with true <- uuid?(role_id),
          %SysRole{status: 1} = role <- Repo.get_by(SysRole, role_id: role_id, deleted: false) do
       scope_user_query(query, role, user)
     else
@@ -118,7 +118,7 @@ defmodule KeystonePhoenix.Permission do
 
   @doc "Checks the existing user and a changed destination department at the write entrance."
   def user_update_allowed?(user, target_user_id, attrs) do
-    with target_id when is_integer(target_id) <- parse_positive_integer(target_user_id) do
+    with target_id when is_binary(target_id) <- parse_uuid(target_user_id) do
       case Repo.get_by(SysUser, user_id: target_id, deleted: false) do
         nil ->
           true
@@ -135,11 +135,11 @@ defmodule KeystonePhoenix.Permission do
   @doc "Checks a department or user target against the user's role data scope."
   @spec data_scope_allowed?(map(), :dept | :user, term()) :: boolean()
   def data_scope_allowed?(user, :dept, target_dept_id) do
-    check_scope(user, parse_positive_integer(target_dept_id), nil)
+    check_scope(user, parse_uuid(target_dept_id), nil)
   end
 
   def data_scope_allowed?(user, :user, target_user_id) do
-    target_user_id = parse_positive_integer(target_user_id)
+    target_user_id = parse_uuid(target_user_id)
 
     case target_user_id do
       nil ->
@@ -171,14 +171,14 @@ defmodule KeystonePhoenix.Permission do
   @spec role_assignment_allowed?(map(), term()) :: boolean()
   def role_assignment_allowed?(actor, role_id) do
     cond do
-      is_nil(parse_positive_integer(role_id)) -> true
+      is_nil(parse_uuid(role_id)) -> true
       true -> allowed?(actor, "role:assign")
     end
   end
 
   defp destination_allowed?(user, target, attrs) do
     if Map.has_key?(attrs, "deptId") or Map.has_key?(attrs, :dept_id) do
-      destination = parse_positive_integer(Map.get(attrs, "deptId", attrs[:dept_id]))
+      destination = parse_uuid(Map.get(attrs, "deptId", attrs[:dept_id]))
       destination == target.dept_id or check_scope(user, destination, nil)
     else
       true
@@ -205,7 +205,7 @@ defmodule KeystonePhoenix.Permission do
         where(query, false)
 
       dept_id ->
-        ancestor = Integer.to_string(dept_id)
+        ancestor = to_string(dept_id)
 
         departments =
           from dept in SysDept,
@@ -229,7 +229,7 @@ defmodule KeystonePhoenix.Permission do
   defp check_scope(user, target_dept_id, target_user_id) do
     role_id = user_value(user, :role_id, "roleId")
 
-    with true <- positive_integer?(role_id),
+    with true <- uuid?(role_id),
          %SysRole{} = role <- Repo.get_by(SysRole, role_id: role_id, deleted: false),
          true <- role.status == 1 do
       scope_matches?(role, user, target_dept_id, target_user_id)
@@ -258,10 +258,10 @@ defmodule KeystonePhoenix.Permission do
   defp scope_matches?(%{data_scope: 4}, user, target_dept_id, _target_user_id) do
     current_dept_id = user_value(user, :dept_id, "deptId")
 
-    with current when is_integer(current) <- parse_positive_integer(current_dept_id),
-         target when is_integer(target) <- target_dept_id,
+    with current when is_binary(current) <- parse_uuid(current_dept_id),
+         target when is_binary(target) <- parse_uuid(target_dept_id),
          %SysDept{ancestors: ancestors} <- Repo.get_by(SysDept, dept_id: target, deleted: false) do
-      current == target or Integer.to_string(current) in String.split(ancestors || "", ",")
+      current == target or current in String.split(ancestors || "", ",", trim: true)
     else
       _ -> false
     end
@@ -276,7 +276,7 @@ defmodule KeystonePhoenix.Permission do
   defp parse_id_set(value) when is_binary(value) do
     value
     |> String.split(",", trim: true)
-    |> Enum.map(&parse_positive_integer/1)
+    |> Enum.map(&parse_uuid/1)
     |> Enum.reject(&is_nil/1)
   end
 
@@ -286,16 +286,12 @@ defmodule KeystonePhoenix.Permission do
     Map.get(user, atom_key, Map.get(user, string_key))
   end
 
-  defp positive_integer?(value), do: not is_nil(parse_positive_integer(value))
+  defp uuid?(value), do: not is_nil(parse_uuid(value))
 
-  defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
-
-  defp parse_positive_integer(value) when is_binary(value) do
-    case Integer.parse(String.trim(value)) do
-      {integer, ""} when integer > 0 -> integer
-      _ -> nil
+  defp parse_uuid(value) do
+    case KeystonePhoenix.Params.parse_uuid(value) do
+      {:ok, uuid} -> uuid
+      :error -> nil
     end
   end
-
-  defp parse_positive_integer(_value), do: nil
 end

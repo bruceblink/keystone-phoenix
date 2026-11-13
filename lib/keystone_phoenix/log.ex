@@ -153,7 +153,7 @@ defmodule KeystonePhoenix.Log do
       "status" => if(outcome == "allow", do: 1, else: 0)
     }
 
-    user = %{user_id: positive_integer(subject.subject_id) || 0, username: "authz"}
+    user = %{user_id: canonical_uuid(subject.subject_id), username: "authz"}
     _ = create_operation_log(attrs, user, "/authz/decision", "AUTHZ")
     :ok
   rescue
@@ -187,6 +187,13 @@ defmodule KeystonePhoenix.Log do
   defp sanitize_audit_value(value) when is_integer(value) or is_float(value), do: value
   defp sanitize_audit_value(value) when is_atom(value), do: Atom.to_string(value)
   defp sanitize_audit_value(value), do: String.slice(inspect(value), 0, 256)
+
+  defp canonical_uuid(value) do
+    case KeystonePhoenix.Params.parse_uuid(value) do
+      {:ok, uuid} -> uuid
+      :error -> nil
+    end
+  end
 
   def login_info_to_map(log) do
     %{
@@ -289,17 +296,6 @@ defmodule KeystonePhoenix.Log do
     do: String.slice(String.trim(permission), 0, 128)
 
   defp normalize_permission(_permission), do: ""
-
-  defp positive_integer(value) when is_integer(value) and value > 0, do: value
-
-  defp positive_integer(value) when is_binary(value) do
-    case Integer.parse(String.trim(value)) do
-      {number, ""} when number > 0 -> number
-      _ -> nil
-    end
-  end
-
-  defp positive_integer(_value), do: nil
 
   defp request_method_label(1), do: "GET"
   defp request_method_label(2), do: "POST"

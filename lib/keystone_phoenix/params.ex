@@ -30,4 +30,12 @@ defmodule KeystonePhoenix.Params do
       _ -> :error
     end
   end
+
+  @doc "校验请求中的规范小写 UUID 字符串。"
+  @spec parse_uuid(term()) :: {:ok, String.t()} | :error
+  def parse_uuid(value) when is_binary(value) do
+    if KeystonePhoenix.Identity.canonical?(value), do: {:ok, value}, else: :error
+  end
+
+  def parse_uuid(_value), do: :error
 end

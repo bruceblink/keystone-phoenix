@@ -9,7 +9,7 @@ defmodule KeystonePhoenix.Auth.AuthSession do
 
   schema "auth_sessions" do
     field :jti, :string
-    field :user_id, :integer
+    field :user_id, :binary_id
     field :expires_at, :utc_datetime_usec
     field :active, :boolean, default: true
     field :revoked_at, :utc_datetime_usec

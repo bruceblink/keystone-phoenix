@@ -70,8 +70,8 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
     if Permission.admin?(subject) do
       true
     else
-      with {:ok, subject_id} <- Params.parse_positive_integer(subject.subject_id),
-           {:ok, target_id} <- Params.parse_positive_integer(target) do
+      with {:ok, subject_id} <- Params.parse_uuid(subject.subject_id),
+           {:ok, target_id} <- Params.parse_uuid(target) do
         subject_id == target_id
       else
         _ -> false
@@ -118,7 +118,7 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   defp has_any_key?(_attrs, _keys), do: false
 
   defp normalized_decision(role_id, permission) do
-    with {:ok, role_id} <- Params.parse_positive_integer(role_id),
+    with {:ok, role_id} <- Params.parse_uuid(role_id),
          true <- is_binary(permission) and permission != "",
          permission_id when is_binary(permission_id) <- permission_id(permission) do
       if Repo.exists?(

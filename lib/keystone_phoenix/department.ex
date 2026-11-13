@@ -38,7 +38,7 @@ defmodule KeystonePhoenix.Department do
   end
 
   def get_dept(id) do
-    case Params.parse_positive_integer(id) do
+    case Params.parse_uuid(id) do
       {:ok, id} ->
         case Repo.get_by(SysDept, dept_id: id, deleted: false) do
           nil -> {:error, :not_found}
@@ -53,7 +53,7 @@ defmodule KeystonePhoenix.Department do
   @doc "Returns active departments keyed by ID with one database query."
   @spec list_depts_by_ids(list()) :: [SysDept.t()]
   def list_depts_by_ids(ids) when is_list(ids) do
-    ids = ids |> Enum.map(&parse_positive_integer/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+    ids = ids |> Enum.map(&parse_uuid/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
 
     if ids == [] do
       []
@@ -178,21 +178,21 @@ defmodule KeystonePhoenix.Department do
     end)
   end
 
-  defp positive_parent_id(nil), do: {:ok, 0}
+  defp positive_parent_id(nil), do: {:ok, nil}
 
   defp positive_parent_id(value) do
-    case Params.non_negative_integer(value) do
+    case Params.parse_uuid(value) do
       {:ok, parent_id} -> {:ok, parent_id}
       :error -> {:error, :invalid_parent}
     end
   end
 
-  defp build_ancestors(0), do: {:ok, "0"}
+  defp build_ancestors(nil), do: {:ok, ""}
 
   defp build_ancestors(parent_id) do
     case get_dept(parent_id) do
       {:ok, %{status: 1} = parent} ->
-        {:ok, parent.ancestors <> "," <> Integer.to_string(parent.dept_id)}
+        {:ok, Enum.join([parent.ancestors, parent.dept_id], ",") |> String.trim_leading(",")}
 
       {:ok, _parent} ->
         {:error, :parent_disabled}
@@ -217,7 +217,7 @@ defmodule KeystonePhoenix.Department do
     do: {:error, :invalid_parent}
 
   defp ensure_not_descendant(%SysDept{dept_id: dept_id}, parent_id) do
-    if parent_id == 0 or not descendant_id?(dept_id, parent_id),
+    if is_nil(parent_id) or not descendant_id?(dept_id, parent_id),
       do: :ok,
       else: {:error, :invalid_parent}
   end
@@ -233,7 +233,7 @@ defmodule KeystonePhoenix.Department do
     ancestors
     |> to_string()
     |> String.split(",", trim: true)
-    |> Enum.map(&parse_positive_integer/1)
+    |> Enum.map(&parse_uuid/1)
     |> Enum.reject(&is_nil/1)
   end
 
@@ -269,7 +269,9 @@ defmodule KeystonePhoenix.Department do
 
       Enum.reduce(descendants, %{dept.dept_id => ancestors}, fn child, ancestor_map ->
         parent_ancestors = Map.fetch!(ancestor_map, child.parent_id)
-        child_ancestors = parent_ancestors <> "," <> Integer.to_string(child.parent_id)
+
+        child_ancestors =
+          Enum.join([parent_ancestors, child.parent_id], ",") |> String.trim_leading(",")
 
         Repo.update_all(
           from(record in SysDept, where: record.dept_id == ^child.dept_id),
@@ -300,16 +302,12 @@ defmodule KeystonePhoenix.Department do
     end
   end
 
-  defp parse_positive_integer(value) when is_integer(value) and value > 0, do: value
-
-  defp parse_positive_integer(value) when is_binary(value) do
-    case Params.parse_integer(value) do
-      {:ok, number} when number > 0 -> number
-      _ -> nil
+  defp parse_uuid(value) do
+    case Params.parse_uuid(value) do
+      {:ok, uuid} -> uuid
+      :error -> nil
     end
   end
-
-  defp parse_positive_integer(_value), do: nil
 
   defp status_label(1), do: "正常"
   defp status_label(0), do: "停用"

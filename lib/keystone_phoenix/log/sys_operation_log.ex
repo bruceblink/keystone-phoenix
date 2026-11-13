@@ -13,11 +13,11 @@ defmodule KeystonePhoenix.Log.SysOperationLog do
     field :request_url, :string
     field :called_method, :string
     field :operator_type, :integer
-    field :user_id, :integer
+    field :user_id, :binary_id
     field :username, :string
     field :operator_ip, :string
     field :operator_location, :string
-    field :dept_id, :integer
+    field :dept_id, :binary_id
     field :dept_name, :string
     field :operation_param, :string
     field :operation_result, :string

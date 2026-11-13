@@ -4,8 +4,8 @@ defmodule KeystonePhoenix.Role.SysRole do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @primary_key {:role_id, :id, autogenerate: true}
-  @foreign_key_type :id
+  @primary_key {:role_id, :binary_id, autogenerate: false}
+  @foreign_key_type :binary_id
 
   schema "sys_role" do
     field :role_name, :string
@@ -14,8 +14,8 @@ defmodule KeystonePhoenix.Role.SysRole do
     field :data_scope, :integer, default: 1
     field :dept_id_set, :string, default: ""
     field :status, :integer, default: 1
-    field :creator_id, :integer
-    field :updater_id, :integer
+    field :creator_id, :binary_id
+    field :updater_id, :binary_id
     field :remark, :string
     field :deleted, :boolean, default: false
 
@@ -33,6 +33,7 @@ defmodule KeystonePhoenix.Role.SysRole do
       :status,
       :remark
     ])
+    |> put_new_id()
     |> validate_required([:role_name, :role_key, :role_sort, :status])
     |> validate_length(:role_name, max: 32)
     |> validate_length(:role_key, max: 128)
@@ -41,5 +42,12 @@ defmodule KeystonePhoenix.Role.SysRole do
     |> validate_inclusion(:data_scope, [1, 2, 3, 4, 5])
     |> validate_inclusion(:status, [0, 1])
     |> unique_constraint(:role_key, name: :sys_role_role_key_unique_index)
+  end
+
+  # 新角色 ID 使用 UUIDv7。
+  defp put_new_id(changeset) do
+    if Ecto.Changeset.get_field(changeset, :role_id),
+      do: changeset,
+      else: Ecto.Changeset.put_change(changeset, :role_id, KeystonePhoenix.Identity.v7())
   end
 end

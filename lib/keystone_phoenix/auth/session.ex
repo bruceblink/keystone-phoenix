@@ -8,7 +8,7 @@ defmodule KeystonePhoenix.Auth.Session do
   alias KeystonePhoenix.User
 
   @doc "Claims the only active refresh session allowed for a user."
-  @spec occupy(integer(), String.t(), pos_integer(), boolean()) :: :ok | {:error, atom()}
+  @spec occupy(String.t(), String.t(), pos_integer(), boolean()) :: :ok | {:error, atom()}
   def occupy(user_id, jti, ttl, force_login \\ false) do
     now = DateTime.utc_now()
     expires_at = DateTime.add(now, ttl, :second)
@@ -38,7 +38,7 @@ defmodule KeystonePhoenix.Auth.Session do
   end
 
   @doc "Validates and replaces a refresh session while holding the user lock."
-  @spec rotate(integer(), String.t(), (map() -> {:ok, map()} | {:error, atom()})) ::
+  @spec rotate(String.t(), String.t(), (map() -> {:ok, map()} | {:error, atom()})) ::
           {:ok, map()} | {:error, atom()}
   def rotate(user_id, jti, issue_tokens) when is_function(issue_tokens, 1) do
     now = DateTime.utc_now()
@@ -63,7 +63,7 @@ defmodule KeystonePhoenix.Auth.Session do
   end
 
   @doc "Runs a login check while holding the user's session lock."
-  @spec with_user_lock(integer(), (-> {:ok, term()} | {:error, term()})) ::
+  @spec with_user_lock(String.t(), (-> {:ok, term()} | {:error, term()})) ::
           {:ok, term()} | {:error, term()}
   def with_user_lock(user_id, authenticate) when is_function(authenticate, 0) do
     Repo.transaction(fn ->
@@ -86,7 +86,7 @@ defmodule KeystonePhoenix.Auth.Session do
   The user lock serializes this operation with refresh rotation. A failed
   account update rolls back without revoking the current session.
   """
-  @spec update_account_and_revoke(integer(), (-> {:ok, term()} | {:error, term()})) ::
+  @spec update_account_and_revoke(String.t(), (-> {:ok, term()} | {:error, term()})) ::
           {:ok, term()} | {:error, term()}
   def update_account_and_revoke(user_id, update_account) when is_function(update_account, 0) do
     Repo.transaction(fn ->
@@ -107,7 +107,7 @@ defmodule KeystonePhoenix.Auth.Session do
   end
 
   @doc "Checks whether a refresh token belongs to an active user session."
-  @spec valid?(String.t(), integer()) :: boolean()
+  @spec valid?(String.t(), String.t()) :: boolean()
   def valid?(jti, user_id) do
     now = DateTime.utc_now()
 
@@ -123,11 +123,11 @@ defmodule KeystonePhoenix.Auth.Session do
   end
 
   @doc "Checks whether a token is the current active session for a user."
-  @spec active?(integer(), String.t()) :: boolean()
+  @spec active?(String.t(), String.t()) :: boolean()
   def active?(user_id, jti), do: valid?(jti, user_id)
 
   @doc "Revokes a user's current session."
-  @spec release(integer(), String.t()) :: :ok
+  @spec release(String.t(), String.t()) :: :ok
   def release(user_id, jti) do
     Repo.delete_all(
       from(session in AuthSession, where: session.user_id == ^user_id and session.jti == ^jti)
@@ -138,11 +138,11 @@ defmodule KeystonePhoenix.Auth.Session do
     _error -> :ok
   end
 
-  @spec revoke(integer(), String.t()) :: :ok
+  @spec revoke(String.t(), String.t()) :: :ok
   def revoke(user_id, jti), do: release(user_id, jti)
 
   @doc "Revokes the refresh session currently associated with a user account."
-  @spec revoke_account(integer()) :: :ok
+  @spec revoke_account(String.t()) :: :ok
   def revoke_account(user_id) do
     Repo.transaction(fn ->
       lock_user(user_id)
@@ -236,7 +236,7 @@ defmodule KeystonePhoenix.Auth.Session do
   def revoke_token(_jti), do: {:error, :not_found}
 
   defp lock_user(user_id) do
-    Repo.query!("SELECT pg_advisory_xact_lock($1)", [user_id])
+    Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [user_id])
   end
 
   defp valid_in_transaction?(jti, user_id, now) do
