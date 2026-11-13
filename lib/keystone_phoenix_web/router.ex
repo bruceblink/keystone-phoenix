@@ -59,16 +59,16 @@ defmodule KeystonePhoenixWeb.Router do
     post "/system/jobs/:job_id/run", JobController, :run
     post "/system/jobs/:job_id/cancel", JobController, :cancel
     delete "/system/jobs", JobController, :delete
-    get "/login/rsa-public-key", AuthController, :public_key
-    get "/getConfig", AuthController, :config
-    get "/captchaImage", AuthController, :captcha
-    post "/login", AuthController, :login
-    post "/refresh-token", AuthController, :refresh
-    post "/logout", AuthController, :logout
-    post "/logout-refresh-token", AuthController, :logout_refresh_token
-    post "/register", AuthController, :register
-    get "/getLoginUserInfo", AuthController, :current_user
-    get "/getRouters", AuthController, :routers
+    get "/auth/rsa-public-key", AuthController, :public_key
+    get "/auth/config", AuthController, :config
+    get "/auth/captcha", AuthController, :captcha
+    post "/auth/login", AuthController, :login
+    post "/auth/refresh", AuthController, :refresh
+    post "/auth/logout", AuthController, :logout
+    post "/auth/logout-refresh-token", AuthController, :logout_refresh_token
+    post "/auth/register", AuthController, :register
+    get "/auth/me", AuthController, :current_user
+    get "/auth/routers", AuthController, :routers
     get "/system/dict/types", DictionaryController, :list_types
     get "/system/dict/type/list", DictionaryController, :list_types
     get "/system/dict/type/:dict_id", DictionaryController, :show_type

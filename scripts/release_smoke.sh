@@ -32,7 +32,7 @@ try:
 except (KeyError, TypeError, ValueError):
     raise SystemExit(1)
 
-if response.get("code") != 0 or not isinstance(access_token, str) or not isinstance(refresh_token, str):
+if response.get("success") is not True or not isinstance(access_token, str) or not isinstance(refresh_token, str):
     raise SystemExit(1)
 
 print(f"{access_token}\t{refresh_token}")
@@ -97,7 +97,7 @@ docker run --rm --network "${network}" "${common_env[@]}" \
   --env "SMOKE_USERNAME=${smoke_username}" \
   --env "SMOKE_PASSWORD=${smoke_password}" \
   "${image}" eval \
-  'Application.ensure_all_started(:keystone_phoenix); %KeystonePhoenix.User.SysUser{} |> KeystonePhoenix.User.SysUser.create_changeset(%{username: System.fetch_env!("SMOKE_USERNAME"), password: System.fetch_env!("SMOKE_PASSWORD")}) |> Ecto.Changeset.put_change(:is_admin, true) |> KeystonePhoenix.Repo.insert!()' >/dev/null
+  'Application.ensure_all_started(:keystone_phoenix); admin_role = KeystonePhoenix.Repo.get_by!(KeystonePhoenix.Role.SysRole, role_key: "admin", deleted: false); %KeystonePhoenix.User.SysUser{} |> KeystonePhoenix.User.SysUser.create_changeset(%{username: System.fetch_env!("SMOKE_USERNAME"), password: System.fetch_env!("SMOKE_PASSWORD"), role_id: admin_role.role_id}) |> KeystonePhoenix.Repo.insert!()' >/dev/null
 
 docker run --detach --name "${app}" --network "${network}" \
   --volume "${resources}:/var/lib/keystone/resources" \
@@ -117,7 +117,7 @@ docker exec "${app}" sh -c 'test "$(id -un)" = keystone'
 
 # 通过真实 HTTP 请求验证 RSA 登录、刷新令牌轮换和受保护接口访问。
 public_key_json="$(docker exec "${app}" curl --fail --silent \
-  http://127.0.0.1:4000/login/rsa-public-key)"
+  http://127.0.0.1:4000/api/v1/auth/rsa-public-key)"
 printf '%s' "${public_key_json}" | python -c \
   'import base64, json, sys; sys.stdout.buffer.write(base64.b64decode(json.load(sys.stdin)["data"]["publicKey"]))' \
   >"${public_key_der_file}"
@@ -132,7 +132,7 @@ login_payload="$(SMOKE_USERNAME="${smoke_username}" \
   python -c 'import json, os; print(json.dumps({"username": os.environ["SMOKE_USERNAME"], "password": os.environ["SMOKE_PASSWORD_CIPHERTEXT"]}))')"
 login_json="$(docker exec -i "${app}" curl --fail --silent \
   --header 'Content-Type: application/json' --data-binary @- \
-  http://127.0.0.1:4000/login <<<"${login_payload}")"
+  http://127.0.0.1:4000/api/v1/auth/login <<<"${login_payload}")"
 login_tokens="$(extract_token_pair <<<"${login_json}")"
 read -r access_token refresh_token <<<"${login_tokens}"
 [[ "${access_token}" =~ ^ey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]]
@@ -140,7 +140,7 @@ read -r access_token refresh_token <<<"${login_tokens}"
 
 refresh_json="$(docker exec -i "${app}" curl --fail --silent \
   --header 'Content-Type: application/json' --data-binary @- \
-  http://127.0.0.1:4000/refresh-token <<<"{\"refreshToken\":\"${refresh_token}\"}")"
+  http://127.0.0.1:4000/api/v1/auth/refresh <<<"{\"refreshToken\":\"${refresh_token}\"}")"
 rotated_tokens="$(extract_token_pair <<<"${refresh_json}")"
 read -r token rotated_refresh_token <<<"${rotated_tokens}"
 [[ "${token}" =~ ^ey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]]
@@ -149,12 +149,12 @@ read -r token rotated_refresh_token <<<"${rotated_tokens}"
 
 old_refresh_status="$(docker exec -i "${app}" curl --silent --output /dev/null \
   --write-out '%{http_code}' --header 'Content-Type: application/json' --data-binary @- \
-  http://127.0.0.1:4000/refresh-token <<<"{\"refreshToken\":\"${refresh_token}\"}")"
+  http://127.0.0.1:4000/api/v1/auth/refresh <<<"{\"refreshToken\":\"${refresh_token}\"}")"
 [[ "${old_refresh_status}" == "401" ]]
 current_user_json="$(docker exec "${app}" curl --fail --silent \
   --header "Authorization: Bearer ${token}" \
-  http://127.0.0.1:4000/getLoginUserInfo)"
-python -c 'import json, sys; raise SystemExit(0 if json.load(sys.stdin).get("code") == 0 else 1)' \
+  http://127.0.0.1:4000/api/v1/auth/me)"
+python -c 'import json, sys; raise SystemExit(0 if json.load(sys.stdin).get("success") is True else 1)' \
   <<<"${current_user_json}"
 
 docker stop "${postgres}" >/dev/null
@@ -188,12 +188,12 @@ done
 [[ "$(docker inspect --format '{{.State.Health.Status}}' "${app}")" == "healthy" ]]
 docker exec "${app}" sh -c 'printf smoke > /tmp/smoke.txt && printf smoke > /var/lib/keystone/resources/.smoke-persistence'
 unauth_upload_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
-  --form file=@/tmp/smoke.txt http://127.0.0.1:4000/file/upload)"
+  --form file=@/tmp/smoke.txt http://127.0.0.1:4000/api/v1/file/upload)"
 [[ "${unauth_upload_status}" == "401" ]]
 
 upload_json="$(docker exec "${app}" curl --fail --silent \
   --header "Authorization: Bearer ${token}" \
-  --form file=@/tmp/smoke.txt http://127.0.0.1:4000/file/upload)"
+  --form file=@/tmp/smoke.txt http://127.0.0.1:4000/api/v1/file/upload)"
 upload_url="$(python -c 'import json, sys; print(json.load(sys.stdin)["data"]["url"])' <<<"${upload_json}")"
 [[ "${upload_url}" == /profile/upload/* ]]
 
@@ -205,9 +205,9 @@ downloaded="$(docker exec "${app}" curl --fail --silent \
   http://127.0.0.1:4000"${upload_url}")"
 [[ "${downloaded}" == "smoke" ]]
 
-docker exec "${app}" curl --fail --silent http://127.0.0.1:4000/health >/dev/null
-docker exec "${app}" curl --fail --silent http://127.0.0.1:4000/health/ready >/dev/null
-docker exec "${app}" curl --fail --silent http://127.0.0.1:4000/login/rsa-public-key >/dev/null
+docker exec "${app}" curl --fail --silent http://127.0.0.1:4000/api/v1/health >/dev/null
+docker exec "${app}" curl --fail --silent http://127.0.0.1:4000/api/v1/health/ready >/dev/null
+docker exec "${app}" curl --fail --silent http://127.0.0.1:4000/api/v1/auth/rsa-public-key >/dev/null
 docker restart "${app}" >/dev/null
 
 for _attempt in $(seq 1 60); do
@@ -229,11 +229,11 @@ docker exec "${app}" sh -c 'rm /tmp/smoke.txt /var/lib/keystone/resources/.smoke
 # 撤销当前访问令牌的会话，并确认随后受保护请求返回 401。
 logout_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
   --request POST --header "Authorization: Bearer ${token}" \
-  http://127.0.0.1:4000/logout)"
+  http://127.0.0.1:4000/api/v1/auth/logout)"
 [[ "${logout_status}" == "200" ]]
 post_logout_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
   --header "Authorization: Bearer ${token}" \
-  http://127.0.0.1:4000/getLoginUserInfo)"
+  http://127.0.0.1:4000/api/v1/auth/me)"
 [[ "${post_logout_status}" == "401" ]]
 
 echo "release smoke passed for ${image}"

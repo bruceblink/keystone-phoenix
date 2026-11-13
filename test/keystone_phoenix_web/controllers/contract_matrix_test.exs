@@ -45,6 +45,13 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
   end
 
   @tag :integration
+  test "clean break removes previous root authentication and health paths", %{} do
+    assert get(build_conn(), "/login").status == 404
+    assert get(build_conn(), "/system/users").status == 404
+    assert get(build_conn(), "/health").status == 404
+  end
+
+  @tag :integration
   test "authenticated controller paths return stable invalid and missing resource errors", %{} do
     user = insert_admin()
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")

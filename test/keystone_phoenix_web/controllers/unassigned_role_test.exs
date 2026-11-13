@@ -22,7 +22,7 @@ defmodule KeystonePhoenixWeb.UnassignedRoleTest do
     conn =
       build_conn()
       |> put_req_header("authorization", "Bearer #{tokens.token}")
-      |> get("/api/v1/getRouters")
+      |> get("/api/v1/auth/routers")
 
     assert %{"success" => true, "data" => [], "message" => "OK", "error" => nil} =
              json_response(conn, 200)

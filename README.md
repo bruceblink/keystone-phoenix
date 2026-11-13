@@ -88,15 +88,15 @@ CRUD, ETS-backed dictionary lookups, and system configuration CRUD with
 validated option values and cache refresh support. User list/detail queries and
 default local accounts are also available as the foundation for authentication.
 Local login, RS256 access/refresh tokens, refresh rotation, single-account
-session control, and protected user queries are now available through `/login`,
-`/refresh-token`, `/getLoginUserInfo`, and `/system/users`. The
-`/login/rsa-public-key` endpoint returns a Base64 encoded
-X.509 public key; clients encrypt the login password with RSA/PKCS#1 before
-sending `/login`, matching the original Keystone contract.
+session control, and protected user queries are now available through
+`/api/v1/auth/login`, `/api/v1/auth/refresh`, `/api/v1/auth/me`, and
+`/api/v1/system/users`. The `/api/v1/auth/rsa-public-key` endpoint returns a
+Base64 encoded X.509 public key; clients encrypt the login password with
+RSA/PKCS#1 before sending `/api/v1/auth/login`.
 
 Administrator access tokens can also create, update, soft-delete, disable, and
 reset passwords for local users through the write endpoints under
-`/system/users`. Passwords are validated and bcrypt-hashed before persistence;
+`/api/v1/system/users`. Passwords are validated and bcrypt-hashed before persistence;
 disabling, deleting, or resetting a user revokes that user's active refresh
 session. Management endpoints use the role menu permission strings from
 `sys_role_menu`; administrator access bypasses those checks and other roles are
@@ -104,8 +104,9 @@ constrained by their configured data scope.
 
 The organization and permission foundation now includes PostgreSQL-backed
 departments, posts, roles, menus, role-menu assignments, and the authenticated
-`/getRouters` menu tree. Read endpoints are available under `/system/depts`,
-`/system/post`, `/system/role`, and `/system/menus`. Departments and posts also
+`/api/v1/auth/routers` menu tree. Read endpoints are available under
+`/api/v1/system/depts`, `/api/v1/system/post`, `/api/v1/system/role`, and
+`/api/v1/system/menus`. Departments and posts also
 support role-permission checked create, update, and soft-delete commands; role
 and menu resources also support permission checked update, status, data scope,
 menu assignment, and soft-delete commands. Data-scope checks cover all data,
@@ -114,45 +115,47 @@ the current user. Role users can be queried and assigned or unassigned in bulk
 under the role grant endpoints.
 
 Authenticated users can read and update their own profile under
-`/system/user/profile`, including old-password-checked password changes and
-avatar URL updates, and `POST /system/user/profile/avatar` accepts the original
+`/api/v1/system/user/profile`, including old-password-checked password changes and
+avatar URL updates, and `POST /api/v1/system/user/profile/avatar` accepts the original
 `avatarfile` multipart upload and stores profile resources under `FILE_BASE_DIR`.
 User create and update commands validate referenced
 departments, posts, and roles before writing.
 
-Administrators can manage notices through `/system/notices` with paginated
+Administrators can manage notices through `/api/v1/system/notices` with paginated
 queries, detail reads, create, update, and soft-delete operations.
 
 Generic file upload/download endpoints, user/post/role/log Excel export, user
-Excel import/template download, and dictionary cache refresh are available at
-the same paths as the Java application. `/logout` revokes the current access
-token's PostgreSQL-backed session, while `/logout-refresh-token` remains
-available for clients that only have a refresh token.
+Excel import/template download, and dictionary cache refresh are available
+under the `/api/v1` prefix. `/api/v1/auth/logout` revokes the current access
+token's PostgreSQL-backed session, while
+`/api/v1/auth/logout-refresh-token` remains available for clients that only
+have a refresh token.
 
 The log foundation now provides permission-protected login and operation log
-queries and cleanup under `/logs`; authenticated users can submit operation log
+queries and cleanup under `/api/v1/logs`; authenticated users can submit operation log
 records for their own actions. All authenticated POST, PUT, PATCH, and DELETE
 management requests also create an operation record on the server, with
 passwords, tokens, captcha values, and upload paths redacted. Login success and
 failure results are recorded without passwords or tokens.
 
-Public login bootstrap endpoints now include `/getConfig` and
-`/captchaImage`. The seeded configuration keeps captcha disabled, and setting
+Public login bootstrap endpoints now include `/api/v1/auth/config` and
+`/api/v1/auth/captcha`. The seeded configuration keeps captcha disabled, and setting
 `sys.account.captchaOnOff` to `true` enables ETS-backed, one-time math or
-character GIF captchas selected with `CAPTCHA_TYPE`. `/login` consumes the
-captcha key before checking credentials. `/register` returns an explicit
+character GIF captchas selected with `CAPTCHA_TYPE`. `/api/v1/auth/login` consumes the
+captcha key before checking credentials. `/api/v1/auth/register` returns an explicit
 unsupported response until an open-registration policy is implemented.
 
 Administrator monitoring endpoints now cover ETS cache metrics at
-`/monitor/cacheInfo`, BEAM host metrics at `/monitor/serverInfo`, current online
-sessions backed by PostgreSQL at `/monitor/onlineUsers`, and forced logout at
-`DELETE /monitor/onlineUser/:tokenId`. The network status endpoint emits a
-server-sent event snapshot at `/monitor/networkStatus/stream`, which the
+`/api/v1/monitor/cacheInfo`, BEAM host metrics at `/api/v1/monitor/serverInfo`,
+current online sessions backed by PostgreSQL at `/api/v1/monitor/onlineUsers`,
+and forced logout at `DELETE /api/v1/monitor/onlineUser/:tokenId`. The network
+status endpoint emits a server-sent event snapshot at
+`/api/v1/monitor/networkStatus/stream`, which the
 frontend can reconnect to as needed.
 
-Scheduled job management is available through `/system/jobs`, including
+Scheduled job management is available through `/api/v1/system/jobs`, including
 allow-listed invocation targets, job definition CRUD, enable/disable status,
-manual execution, and execution logs at `/system/jobs/logs`. Manual execution
+manual execution, and execution logs at `/api/v1/system/jobs/logs`. Manual execution
 uses the same persisted log format that the scheduler will use for automatic
 Cron triggers.
 

@@ -58,7 +58,10 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
              )
 
     logout_conn = put_req_header(build_conn(), "authorization", "Bearer #{tokens.token}")
-    assert %{"success" => true} = json_response(post(logout_conn, "/api/v1/logout", %{}), 200)
+
+    assert %{"success" => true} =
+             json_response(post(logout_conn, "/api/v1/auth/logout", %{}), 200)
+
     assert {:error, :invalid_token} = Auth.authenticate_access_token(tokens.token)
   end
 

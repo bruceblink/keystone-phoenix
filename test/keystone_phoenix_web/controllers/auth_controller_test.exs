@@ -42,7 +42,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert {:ok, _tokens} = Auth.login_plaintext(user.username, "Strong!123")
 
     conn =
-      post(conn, "/api/v1/login", %{
+      post(conn, "/api/v1/auth/login", %{
         "username" => user.username,
         "password" => encrypted_password("Strong!123")
       })
@@ -58,14 +58,14 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     }
 
     for _attempt <- 1..10 do
-      assert get_in(build_conn() |> post("/api/v1/login", params) |> json_response(401), [
+      assert get_in(build_conn() |> post("/api/v1/auth/login", params) |> json_response(401), [
                "error",
                "code"
              ]) ==
                "invalid_credential"
     end
 
-    conn = build_conn() |> post("/api/v1/login", params)
+    conn = build_conn() |> post("/api/v1/auth/login", params)
     assert conn.status == 429
     assert get_in(json_response(conn, 429), ["error", "code"]) == "validation_failed"
     assert [retry_after] = get_resp_header(conn, "retry-after")
@@ -80,7 +80,10 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
 
     assert get_in(
              conn
-             |> post("/api/v1/login", login_params(user, captcha_code: nil, captcha_key: nil))
+             |> post(
+               "/api/v1/auth/login",
+               login_params(user, captcha_code: nil, captcha_key: nil)
+             )
              |> json_response(422),
              ["error", "code"]
            ) == "validation_failed"
@@ -90,7 +93,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert get_in(
              conn
              |> post(
-               "/api/v1/login",
+               "/api/v1/auth/login",
                login_params(user, captcha_code: expired_answer, captcha_key: expired_key)
              )
              |> json_response(422),
@@ -102,7 +105,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert get_in(
              conn
              |> post(
-               "/api/v1/login",
+               "/api/v1/auth/login",
                login_params(user, captcha_code: "incorrect", captcha_key: valid_key)
              )
              |> json_response(422),
@@ -112,7 +115,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert get_in(
              conn
              |> post(
-               "/api/v1/login",
+               "/api/v1/auth/login",
                login_params(user, captcha_code: valid_answer, captcha_key: valid_key)
              )
              |> json_response(422),
@@ -124,7 +127,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert get_in(
              conn
              |> post(
-               "/api/v1/login",
+               "/api/v1/auth/login",
                login_params(user, captcha_code: one_time_answer, captcha_key: one_time_key)
              )
              |> json_response(200),
@@ -134,7 +137,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert get_in(
              build_conn()
              |> post(
-               "/api/v1/login",
+               "/api/v1/auth/login",
                login_params(user, captcha_code: one_time_answer, captcha_key: one_time_key)
              )
              |> json_response(422),
