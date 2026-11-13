@@ -44,7 +44,7 @@ defmodule KeystonePhoenix.Menu do
   end
 
   def list_dropdown do
-    list_menus(%{"status" => 1})
+    Tree.nest(list_menus(%{"status" => 1}), "parentId", "menuId", nil)
   end
 
   def get_menu(id) do
@@ -350,6 +350,15 @@ defmodule KeystonePhoenix.Menu do
   end
 
   defp ensure_name_available(nil, _parent_id, _menu_id), do: :ok
+
+  defp ensure_name_available(name, nil, menu_id) do
+    query =
+      from m in SysMenu,
+        where: m.deleted == false and is_nil(m.parent_id) and m.menu_name == ^name
+
+    query = if menu_id, do: where(query, [menu], menu.menu_id != ^menu_id), else: query
+    if Repo.exists?(query), do: {:error, :name_exists}, else: :ok
+  end
 
   defp ensure_name_available(name, parent_id, menu_id) do
     query =

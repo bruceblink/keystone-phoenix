@@ -34,7 +34,7 @@ defmodule KeystonePhoenix.Department do
   end
 
   def list_dropdown do
-    Tree.nest(list_depts(), "parentId", "deptId")
+    Tree.nest(list_depts(), "parentId", "deptId", nil)
   end
 
   def get_dept(id) do
@@ -203,6 +203,15 @@ defmodule KeystonePhoenix.Department do
   end
 
   defp ensure_name_available(nil, _parent_id, _dept_id), do: :ok
+
+  defp ensure_name_available(name, nil, dept_id) do
+    query =
+      from d in SysDept,
+        where: d.deleted == false and is_nil(d.parent_id) and d.dept_name == ^name
+
+    query = if dept_id, do: where(query, [dept], dept.dept_id != ^dept_id), else: query
+    if Repo.exists?(query), do: {:error, :name_exists}, else: :ok
+  end
 
   defp ensure_name_available(name, parent_id, dept_id) do
     query =
