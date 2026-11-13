@@ -145,6 +145,14 @@ character GIF captchas selected with `CAPTCHA_TYPE`. `/api/v1/auth/login` consum
 captcha key before checking credentials. `/api/v1/auth/register` returns an explicit
 unsupported response until an open-registration policy is implemented.
 
+MFA HTTP endpoints use the same `/api/v1/auth` namespace. A password login for an
+account that requires MFA returns a short-lived challenge; the client completes it
+with `POST /api/v1/auth/mfa/verify`. Authenticated administrators can enroll a TOTP factor,
+verify enrollment, rotate recovery codes, update a user's MFA policy, and create or
+verify a session-bound step-up challenge through the corresponding `/mfa/*` endpoints.
+Recovery codes and TOTP secrets are returned only from the enrollment or rotation
+request that creates them.
+
 Administrator monitoring endpoints now cover ETS cache metrics at
 `/api/v1/monitor/cacheInfo`, BEAM host metrics at `/api/v1/monitor/serverInfo`,
 current online sessions backed by PostgreSQL at `/api/v1/monitor/onlineUsers`,

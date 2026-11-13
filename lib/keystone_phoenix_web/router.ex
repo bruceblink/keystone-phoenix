@@ -69,6 +69,13 @@ defmodule KeystonePhoenixWeb.Router do
     post "/auth/register", AuthController, :register
     get "/auth/me", AuthController, :current_user
     get "/auth/routers", AuthController, :routers
+    post "/auth/mfa/verify", AuthController, :verify_mfa
+    post "/auth/mfa/enroll", AuthController, :begin_mfa_enrollment
+    post "/auth/mfa/enroll/verify", AuthController, :verify_mfa_enrollment
+    post "/auth/mfa/recovery-codes/rotate", AuthController, :rotate_mfa_recovery_codes
+    put "/auth/mfa/policy/:user_id", AuthController, :set_mfa_policy
+    post "/auth/mfa/step-up", AuthController, :begin_mfa_step_up
+    post "/auth/mfa/step-up/verify", AuthController, :verify_mfa_step_up
     get "/system/dict/types", DictionaryController, :list_types
     get "/system/dict/type/list", DictionaryController, :list_types
     get "/system/dict/type/:dict_id", DictionaryController, :show_type
