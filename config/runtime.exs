@@ -119,11 +119,32 @@ if config_env() == :prod do
   jwt_audience = System.get_env("JWT_AUDIENCE", "keystone-api")
   jwt_key_id = System.get_env("JWT_KEY_ID", "keystone")
 
+  mfa_master_key =
+    System.get_env("MFA_MASTER_KEY") ||
+      raise "environment variable MFA_MASTER_KEY is missing"
+
+  mfa_recovery_pepper =
+    System.get_env("MFA_RECOVERY_PEPPER") ||
+      raise "environment variable MFA_RECOVERY_PEPPER is missing"
+
+  if byte_size(mfa_recovery_pepper) < 16 do
+    raise "environment variable MFA_RECOVERY_PEPPER must contain at least 16 bytes"
+  end
+
+  mfa_master_key_version = parse_integer_env.("MFA_MASTER_KEY_VERSION", 1, 1, 1_000_000)
+
+  mfa_challenge_lifetime_seconds =
+    parse_integer_env.("MFA_CHALLENGE_LIFETIME_SECONDS", 300, 60, 600)
+
   config :keystone_phoenix,
     jwt_private_key: jwt_private_key,
     jwt_public_key: jwt_public_key,
     jwt_audience: jwt_audience,
-    jwt_key_id: jwt_key_id
+    jwt_key_id: jwt_key_id,
+    mfa_master_key: mfa_master_key,
+    mfa_master_key_version: mfa_master_key_version,
+    mfa_recovery_pepper: mfa_recovery_pepper,
+    mfa_challenge_lifetime_seconds: mfa_challenge_lifetime_seconds
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you

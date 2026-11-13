@@ -67,12 +67,18 @@ docker exec "${postgres}" pg_isready -U postgres -d "${database}" >/dev/null
 
 private_key="$(openssl genrsa 2048 2>/dev/null)"
 secret_key_base="$(openssl rand -hex 32)"
+mfa_master_key="$(openssl rand -base64 32)"
+mfa_recovery_pepper="$(openssl rand -hex 32)"
 common_env=(
   --env "DATABASE_URL=${database_url}"
   --env DATABASE_SSL=false
   --env DATABASE_SSL_ALLOW_INSECURE=true
   --env "JWT_PRIVATE_KEY=${private_key}"
   --env "SECRET_KEY_BASE=${secret_key_base}"
+  --env "MFA_MASTER_KEY=${mfa_master_key}"
+  --env "MFA_MASTER_KEY_VERSION=1"
+  --env "MFA_RECOVERY_PEPPER=${mfa_recovery_pepper}"
+  --env "MFA_CHALLENGE_LIFETIME_SECONDS=300"
   --env PHX_HOST=localhost
   --env JOB_SCHEDULER_ENABLED=false
   --env FILE_BASE_DIR=/var/lib/keystone/resources

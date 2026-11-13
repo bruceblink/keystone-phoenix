@@ -17,6 +17,12 @@ config :keystone_phoenix, KeystonePhoenix.Repo,
 
 config :keystone_phoenix, job_scheduler_enabled: false
 
+config :keystone_phoenix,
+  mfa_master_key: Base.encode64(String.duplicate("m", 32)),
+  mfa_master_key_version: 1,
+  mfa_recovery_pepper: "test-only-mfa-recovery-pepper",
+  mfa_challenge_lifetime_seconds: 300
+
 config :ex_unit, exclude: [:integration]
 
 # We don't run a server during test. If one is required,

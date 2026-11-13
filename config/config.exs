@@ -28,7 +28,11 @@ config :keystone_phoenix,
   jwt_audience: "keystone-api",
   jwt_key_id: "keystone",
   jwt_private_key: nil,
-  jwt_public_key: nil
+  jwt_public_key: nil,
+  mfa_master_key: nil,
+  mfa_master_key_version: 1,
+  mfa_recovery_pepper: nil,
+  mfa_challenge_lifetime_seconds: 300
 
 # Configure the endpoint
 config :keystone_phoenix, KeystonePhoenixWeb.Endpoint,
