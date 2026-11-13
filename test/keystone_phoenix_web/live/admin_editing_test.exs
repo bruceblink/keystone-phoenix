@@ -3,8 +3,8 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
 
   import Phoenix.LiveViewTest
 
-  alias KeystonePhoenix.{Config, Dictionary, Log, Menu, Repo, Role}
-  alias KeystonePhoenix.Authz.SysPermission
+  alias KeystonePhoenix.{Cache, Config, Dictionary, Identity, Log, Menu, Repo, Role}
+  alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Config.SysConfig
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.SysRole
@@ -12,24 +12,36 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
   alias KeystonePhoenixWeb.Live.AdminPages.Operations
 
   setup do
-    Config.refresh_cache(authorization: %{principal: %{}})
-    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{}}) end)
+    clear_config_cache()
+    on_exit(&clear_config_cache/0)
+
+    admin_role =
+      %SysRole{role_id: Identity.v7()}
+      |> SysRole.changeset(%{
+        role_name: unique("编辑管理员角色"),
+        role_key: unique("editing_admin_role"),
+        role_sort: 1,
+        data_scope: 1,
+        dept_id_set: "",
+        status: 1
+      })
+      |> Repo.insert!()
+
+    for permission <- Repo.all(SysPermission) do
+      Repo.insert!(%SysRolePermission{
+        role_id: admin_role.role_id,
+        permission_id: permission.permission_id
+      })
+    end
 
     admin =
       Repo.insert!(%SysUser{
+        user_id: Identity.v7(),
+        role_id: admin_role.role_id,
         username: unique("editing_admin"),
         password: Bcrypt.hash_pwd_salt("Strong!123"),
         status: 1
       })
-
-    Repo.insert!(%SysPermission{
-      permission: "system:editing:read",
-      resource: "system",
-      domain: "editing",
-      action: "read",
-      status: 1,
-      deprecated: false
-    })
 
     {:ok, admin: admin}
   end
@@ -78,7 +90,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
           "status" => 1,
           "menuIds" => []
         },
-        authorization: %{principal: ctx.admin, permission: "system:role:add"}
+        authorization: %{principal: ctx.admin, permission: "role:create"}
       )
 
     {:ok, view} = login(ctx.conn, ctx.admin)
@@ -111,7 +123,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
           "status" => 1,
           "menuIds" => []
         },
-        authorization: %{principal: ctx.admin, permission: "system:role:add"}
+        authorization: %{principal: ctx.admin, permission: "role:create"}
       )
 
     {:ok, view} = login(ctx.conn, ctx.admin)
@@ -146,14 +158,14 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
           "menuName" => unique("原菜单"),
           "menuType" => 1,
           "routerName" => unique("EditingRoute"),
-          "parentId" => 0,
+          "parentId" => nil,
           "path" => "/editing-route",
           "isButton" => false,
-          "permission" => "system:editing:read",
+          "permission" => "menu:read",
           "metaInfo" => ~s({"title":"原菜单"}),
           "status" => 1
         },
-        authorization: %{principal: ctx.admin, permission: "system:menu:add"}
+        authorization: %{principal: ctx.admin, permission: "menu:create"}
       )
 
     {:ok, view} = login(ctx.conn, ctx.admin)
@@ -252,6 +264,8 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     assert has_element?(view, "nav[aria-label='管理模块']")
     {:ok, view}
   end
+
+  defp clear_config_cache, do: Cache.delete_prefix("keystone:system:config:")
 
   defp live_socket(view), do: find_socket(:sys.get_state(view.pid))
 

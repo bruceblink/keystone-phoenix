@@ -299,6 +299,7 @@ defmodule KeystonePhoenix.Menu do
   end
 
   defp parent_id(nil), do: {:ok, nil}
+  defp parent_id(""), do: {:ok, nil}
 
   defp parent_id(value) do
     case Params.parse_uuid(value) do

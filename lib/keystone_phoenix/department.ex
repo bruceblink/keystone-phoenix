@@ -179,6 +179,7 @@ defmodule KeystonePhoenix.Department do
   end
 
   defp positive_parent_id(nil), do: {:ok, nil}
+  defp positive_parent_id(""), do: {:ok, nil}
 
   defp positive_parent_id(value) do
     case Params.parse_uuid(value) do
