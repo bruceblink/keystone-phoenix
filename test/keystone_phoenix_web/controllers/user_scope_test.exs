@@ -4,18 +4,19 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
   alias KeystonePhoenix.{Auth, Excel, Permission, Repo, User}
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.User.SysUser
   alias KeystonePhoenixWeb.Live.AdminSupport
 
   setup do
-    parent = insert_dept(0, "0")
-    child = insert_dept(parent.dept_id, "0,#{parent.dept_id}")
-    outside = insert_dept(0, "0")
+    parent = insert_dept(nil, "")
+    child = insert_dept(parent.dept_id, "")
+    outside = insert_dept(nil, "")
 
     role =
-      %SysRole{}
+      %SysRole{role_id: Identity.v7()}
       |> SysRole.changeset(%{
         role_name: "用户范围测试",
         role_key: unique("scope"),
@@ -26,13 +27,13 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
       |> Repo.insert!()
 
     for permission <-
-          ~w(system:user:list system:user:query system:user:export system:user:edit system:user:add system:user:import) do
+          ~w(user:read user:export user:update user:create user:import) do
       menu =
-        %SysMenu{}
+        %SysMenu{menu_id: Identity.v7()}
         |> SysMenu.changeset(%{
           menu_name: permission,
           menu_type: 0,
-          parent_id: 0,
+          parent_id: nil,
           status: 1
         })
         |> Repo.insert!()
@@ -41,8 +42,9 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         Repo.get_by(SysPermission, permission: permission) ||
           Repo.insert!(%SysPermission{
             permission: permission,
-            resource: "system",
-            domain: permission |> String.split(":") |> Enum.at(1),
+            permission_id: Identity.permission_id(permission),
+            resource: permission |> String.split(":") |> Enum.at(0),
+            domain: "default",
             action: permission |> String.split(":") |> List.last(),
             status: 1,
             deprecated: false
@@ -61,6 +63,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
       for _ <- 1..60 do
         %{
           username: unique("scope_user"),
+          user_id: Identity.v7(),
           nickname: "范围外测试用户",
           password: password_hash,
           dept_id: outside.dept_id,
@@ -274,8 +277,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert User.list_users(%{}, ctx.actor).total == 0
     assert User.list_users(%{}, %{ctx.actor | role_id: nil}).total == 0
 
-    assert User.list_users(%{"pageSize" => 500, "username" => "scope_user"}, ctx.actor).total ==
-             63
+    assert User.list_users(%{"pageSize" => 500, "username" => "scope_user"}, ctx.actor).total == 0
 
     refute Permission.user_update_allowed?(ctx.actor, ctx.oldest.user_id, %{})
   end
@@ -311,8 +313,20 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
 
   defp authorized(token), do: put_req_header(build_conn(), "authorization", "Bearer #{token}")
 
-  defp insert_dept(parent_id, ancestors) do
-    %SysDept{}
+  defp insert_dept(parent_id, _ancestors) do
+    parent_id = if parent_id in [0, "0"], do: nil, else: parent_id
+
+    ancestors =
+      case parent_id do
+        nil ->
+          ""
+
+        parent_id ->
+          parent = Repo.get!(SysDept, parent_id)
+          Enum.join([parent.ancestors, parent.dept_id], ",") |> String.trim_leading(",")
+      end
+
+    %SysDept{dept_id: Identity.v7()}
     |> SysDept.changeset(%{
       parent_id: parent_id,
       ancestors: ancestors,
@@ -324,6 +338,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
 
   defp insert_user(dept_id, role_id, password_hash) do
     Repo.insert!(%SysUser{
+      user_id: Identity.v7(),
       username: unique("scope_user"),
       nickname: "范围测试用户",
       password: password_hash,
