@@ -76,11 +76,28 @@ defmodule KeystonePhoenixWeb.MfaContractTest do
     assert verified["success"] == true
     assert length(verified["data"]["recoveryCodes"]) > 0
 
-    {:ok, policy_tokens} = Auth.login_plaintext(user.username, "Strong!123", true)
+    {:ok, post_enrollment_tokens} = Auth.login_plaintext(user.username, "Strong!123", true)
+
+    step_up_challenge =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{post_enrollment_tokens.token}")
+      |> post("/api/v1/auth/mfa/step-up", %{})
+      |> json_response(201)
+
+    step_up =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{post_enrollment_tokens.token}")
+      |> post("/api/v1/auth/mfa/step-up/verify", %{
+        "challengeId" => step_up_challenge["data"]["challengeId"],
+        "code" => Totp.code(enrollment_data["secret"], System.system_time(:second) + 30)
+      })
+      |> json_response(200)
+
+    assert step_up["data"]["authenticationLevel"] == "AAL2"
 
     policy =
       build_conn()
-      |> put_req_header("authorization", "Bearer #{policy_tokens.token}")
+      |> put_req_header("authorization", "Bearer #{step_up["data"]["accessToken"]}")
       |> put("/api/v1/auth/mfa/policy/#{user.user_id}", %{"required" => true})
       |> json_response(200)
 

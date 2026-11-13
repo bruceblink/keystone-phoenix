@@ -40,6 +40,9 @@ defmodule KeystonePhoenix.Auth.TokenContractTest do
     assert access_claims["sid"] == session_id
     assert refresh_claims["sid"] == session_id
     assert access_claims["permission_version"] == 7
+    assert access_claims["aal"] == "AAL1"
+    assert access_claims["amr"] == ["pwd"]
+    assert access_claims["client_id"] == "web"
     assert refresh_claims["permission_version"] == 7
     assert access_claims["exp"] - access_claims["iat"] == 300
     assert refresh_claims["exp"] - refresh_claims["iat"] == 1_209_600
@@ -77,5 +80,16 @@ defmodule KeystonePhoenix.Auth.TokenContractTest do
 
     assert {:error, :invalid_token} =
              Token.verify(token_without_session.token, Token.refresh_type())
+  end
+
+  test "issues a short-lived AAL2 access token for step-up" do
+    user = %{user_id: Identity.v7(), username: "token_contract", permission_version: 1}
+    session_id = Identity.v7()
+
+    assert {:ok, token} = Token.issue(user, Token.access_type(), session_id, nil, "AAL2", "admin")
+    assert {:ok, claims} = Token.verify(token.token, Token.access_type())
+    assert claims["aal"] == "AAL2"
+    assert claims["amr"] == ["pwd", "otp"]
+    assert claims["client_id"] == "admin"
   end
 end

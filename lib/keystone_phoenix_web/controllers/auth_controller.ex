@@ -23,6 +23,14 @@ defmodule KeystonePhoenixWeb.AuthController do
               :verify_mfa_step_up
             ]
 
+  plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp
+       when action in [
+              :begin_mfa_enrollment,
+              :verify_mfa_enrollment,
+              :rotate_mfa_recovery_codes,
+              :set_mfa_policy
+            ]
+
   plug KeystonePhoenixWeb.Plugs.RateLimit,
        [key: "getConfig", limit: 5, window: 10, scope: :global]
        when action in [:config]
@@ -306,23 +314,18 @@ defmodule KeystonePhoenixWeb.AuthController do
         %{"challengeId" => challenge_id, "code" => code}
       )
       when is_binary(challenge_id) and is_binary(code) do
-    with {:ok, context} <- current_session_context(conn),
-         {:ok, verification} <-
+    with ["Bearer " <> token] <- get_req_header(conn, "authorization"),
+         {:ok, result} <-
            safe_mfa(fn ->
-             Mfa.verify_step_up(
-               context.user.user_id,
-               challenge_id,
-               context.client_id,
-               context.session_id,
-               code,
-               conn.remote_ip
-             )
+             Auth.complete_mfa_step_up(token, challenge_id, code, conn.remote_ip)
            end) do
       json(
         conn,
         ApiResponse.ok(%{
-          "authenticationLevel" => verification.assurance,
-          "amr" => verification.amr
+          "accessToken" => result.token,
+          "expiresIn" => result.expires_in,
+          "authenticationLevel" => result.authentication_level,
+          "amr" => result.amr
         })
       )
     else

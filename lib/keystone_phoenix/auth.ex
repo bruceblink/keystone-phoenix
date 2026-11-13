@@ -99,7 +99,7 @@ defmodule KeystonePhoenix.Auth do
            Session.with_user_lock(user.user_id, fn ->
              with {:ok, verification} <-
                     Mfa.verify_login(user.user_id, challenge_id, client_id, code, ip_address),
-                  {:ok, tokens} <- issue_pair(user, force_login, client_id) do
+                  {:ok, tokens} <- issue_pair(user, force_login, client_id, "AAL2") do
                {:ok,
                 %{
                   tokens: Map.put(tokens, :current_user, current_login_user(user)),
@@ -120,13 +120,44 @@ defmodule KeystonePhoenix.Auth do
     with {:ok, claims} <- Token.verify(token, Token.access_type()),
          {:ok, session_id} <- canonical_session_id(claims["sid"]),
          {:ok, user} <- authenticate_access_token(token) do
-      {:ok, %{user: user, session_id: session_id, client_id: "web"}}
+      {:ok,
+       %{
+         user: user,
+         session_id: session_id,
+         client_id: claims["client_id"],
+         authentication_level: claims["aal"],
+         amr: claims["amr"]
+       }}
     else
       _ -> {:error, :invalid_token}
     end
   end
 
   def session_context(_token), do: {:error, :invalid_token}
+
+  @doc "用当前 access token 完成 step-up，并签发短时 AAL2 access token。"
+  def complete_mfa_step_up(token, challenge_id, code, ip_address) do
+    with {:ok, claims} <- Token.verify(token, Token.access_type()),
+         {:ok, user_id} <- parse_user_id(claims["sub"]),
+         session_id when is_binary(session_id) <- claims["sid"],
+         client_id when is_binary(client_id) <- claims["client_id"],
+         {:ok, user} <- User.get_user(user_id),
+         {:ok, verification} <-
+           Mfa.verify_step_up(user_id, challenge_id, client_id, session_id, code, ip_address),
+         {:ok, access} <-
+           Token.issue(user, Token.access_type(), session_id, nil, "AAL2", client_id) do
+      {:ok,
+       %{
+         token: access.token,
+         expires_in: access.expires_in,
+         authentication_level: verification.assurance,
+         amr: verification.amr
+       }}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :invalid_token}
+    end
+  end
 
   @doc "Updates a user's MFA requirement and revokes sessions after a policy change."
   @spec set_mfa_policy(String.t(), boolean()) :: {:ok, map()} | {:error, atom()}
@@ -293,10 +324,18 @@ defmodule KeystonePhoenix.Auth do
     }
   end
 
-  defp issue_pair(user, force_login, client_id \\ "web") do
+  defp issue_pair(user, force_login, client_id \\ "web", authentication_level \\ "AAL1") do
     session_id = Session.new_session_id()
 
-    with {:ok, refresh} <- Token.issue(user, Token.refresh_type(), session_id),
+    with {:ok, refresh} <-
+           Token.issue(
+             user,
+             Token.refresh_type(),
+             session_id,
+             nil,
+             authentication_level,
+             client_id
+           ),
          :ok <-
            Session.occupy(
              user.user_id,
@@ -307,7 +346,7 @@ defmodule KeystonePhoenix.Auth do
              client_id,
              refresh.token
            ) do
-      issue_access_pair(user, refresh, session_id)
+      issue_access_pair(user, refresh, session_id, authentication_level, client_id)
     else
       {:error, :already_logged_in} -> {:error, :already_logged_in}
       {:error, {:token_configuration, _reason}} -> {:error, :token_configuration}
@@ -315,8 +354,8 @@ defmodule KeystonePhoenix.Auth do
     end
   end
 
-  defp issue_access_pair(user, refresh, session_id) do
-    case Token.issue(user, Token.access_type(), session_id) do
+  defp issue_access_pair(user, refresh, session_id, authentication_level, client_id) do
+    case Token.issue(user, Token.access_type(), session_id, nil, authentication_level, client_id) do
       {:ok, access} ->
         {:ok,
          %{
@@ -341,8 +380,16 @@ defmodule KeystonePhoenix.Auth do
       {:error, :invalid_refresh_token}
     else
       with {:ok, refresh} <-
-             Token.issue(user, Token.refresh_type(), session.id, refresh_ttl),
-           {:ok, access} <- Token.issue(user, Token.access_type(), session.id) do
+             Token.issue(
+               user,
+               Token.refresh_type(),
+               session.id,
+               refresh_ttl,
+               "AAL1",
+               session.client_id
+             ),
+           {:ok, access} <-
+             Token.issue(user, Token.access_type(), session.id, nil, "AAL1", session.client_id) do
         {:ok,
          %{
            token: access.token,

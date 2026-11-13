@@ -18,9 +18,16 @@ defmodule KeystonePhoenix.Auth.Token do
   @spec refresh_ttl() :: pos_integer()
   def refresh_ttl, do: Application.get_env(:keystone_phoenix, :jwt_refresh_ttl, 1_209_600)
 
-  @spec issue(map(), String.t(), String.t() | nil, pos_integer() | nil) ::
+  @spec issue(map(), String.t(), String.t() | nil, pos_integer() | nil, String.t(), String.t()) ::
           {:ok, map()} | {:error, term()}
-  def issue(user, token_type, session_id \\ nil, ttl_override \\ nil)
+  def issue(
+        user,
+        token_type,
+        session_id \\ nil,
+        ttl_override \\ nil,
+        authentication_level \\ "AAL1",
+        client_id \\ "web"
+      )
       when token_type in [@access_type, @refresh_type] do
     now = System.system_time(:second)
     ttl = token_ttl(token_type, ttl_override)
@@ -35,6 +42,9 @@ defmodule KeystonePhoenix.Auth.Token do
       "type" => token_type,
       "jti" => jti,
       "permission_version" => permission_version,
+      "aal" => normalize_authentication_level(authentication_level),
+      "amr" => authentication_methods(authentication_level),
+      "client_id" => normalize_client_id(client_id),
       "iat" => now,
       "exp" => now + ttl
     }
@@ -87,6 +97,24 @@ defmodule KeystonePhoenix.Auth.Token do
   defp token_ttl(_token_type, ttl) when is_integer(ttl) and ttl > 0, do: ttl
   defp token_ttl(_token_type, _ttl), do: raise(ArgumentError, "token ttl must be positive")
 
+  defp normalize_authentication_level(value) when value in ["AAL1", "AAL2"], do: value
+
+  defp normalize_authentication_level(_value),
+    do: raise(ArgumentError, "invalid authentication level")
+
+  defp authentication_methods("AAL2"), do: ["pwd", "otp"]
+  defp authentication_methods("AAL1"), do: ["pwd"]
+
+  defp normalize_client_id(value) when is_binary(value) do
+    normalized = String.trim(value)
+
+    if Regex.match?(~r/^[a-z0-9][a-z0-9._-]{0,63}$/, normalized),
+      do: normalized,
+      else: raise(ArgumentError, "invalid client id")
+  end
+
+  defp normalize_client_id(_value), do: raise(ArgumentError, "invalid client id")
+
   @spec public_key_pem() :: binary()
   def public_key_pem do
     {_modules, pem} = JOSE.JWK.to_pem(public_jwk())
@@ -130,6 +158,9 @@ defmodule KeystonePhoenix.Auth.Token do
       claims["exp"] > now and
       is_integer(claims["iat"]) and
       claims["iat"] <= now + 5 and
+      claims["aal"] in ["AAL1", "AAL2"] and
+      is_list(claims["amr"]) and
+      is_binary(claims["client_id"]) and
       is_binary(claims["sid"]) and KeystonePhoenix.Identity.canonical?(claims["sid"])
   end
 
