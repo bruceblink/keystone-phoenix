@@ -70,6 +70,8 @@ authentication_level
 
 统一范围策略为 `ALL`、`TENANT`、`SELF`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM`、`OWNER` 和 `MEMBER`。列表、详情、更新、删除、导出、批量操作和异步任务都必须使用同一范围策略。批量操作逐个检查目标；任一目标越界时整个事务回滚。
 
+资源适用规则固定如下：用户资源支持 `ALL`、`TENANT`、`SELF`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM`；部门资源支持 `ALL`、`TENANT`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM`；具有明确所有者或成员关系的资源支持 `ALL`、`OWNER`、`MEMBER`。当前系统为单租户部署，用户和部门资源中的 `TENANT` 等同当前租户的全部数据。没有租户、所有者或成员上下文的资源不得使用对应范围；未登记的范围名称和资源组合默认拒绝。
+
 PDP 固定提供：
 
 ```text
