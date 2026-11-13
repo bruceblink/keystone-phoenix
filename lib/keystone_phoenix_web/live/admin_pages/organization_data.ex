@@ -26,11 +26,14 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
     end)
   end
 
-  def data_scope_label(1), do: "全部数据"
-  def data_scope_label(2), do: "自定义数据"
-  def data_scope_label(3), do: "本部门数据"
-  def data_scope_label(4), do: "本部门及以下"
-  def data_scope_label(5), do: "仅本人数据"
+  def data_scope_label("ALL"), do: "全部数据"
+  def data_scope_label("TENANT"), do: "当前租户数据"
+  def data_scope_label("CUSTOM"), do: "自定义数据"
+  def data_scope_label("DEPARTMENT"), do: "本部门数据"
+  def data_scope_label("DEPARTMENT_AND_CHILDREN"), do: "本部门及以下"
+  def data_scope_label("SELF"), do: "仅本人数据"
+  def data_scope_label("OWNER"), do: "本人拥有"
+  def data_scope_label("MEMBER"), do: "成员关系"
   def data_scope_label(_scope), do: "未知"
 
   # 加载菜单列表并补充树深度、类型和状态文字。

@@ -290,7 +290,7 @@ role_entries = [
     role_name: "超级管理员",
     role_key: "admin",
     role_sort: 1,
-    data_scope: 1,
+    data_scope: "ALL",
     dept_id_set: "",
     status: 1,
     remark: "超级管理员"
@@ -300,7 +300,7 @@ role_entries = [
     role_name: "普通角色",
     role_key: "common",
     role_sort: 3,
-    data_scope: 2,
+    data_scope: "CUSTOM",
     dept_id_set: "",
     status: 1,
     remark: "普通角色"

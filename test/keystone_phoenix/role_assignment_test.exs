@@ -153,7 +153,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
 
   test "role user lists use the actor data scope" do
     role = create_role()
-    actor_role = create_role(data_scope: 5)
+    actor_role = create_role(data_scope: "SELF")
     actor = create_user(actor_role.role_id)
     assigned_to_role = create_user(role.role_id)
 
@@ -168,7 +168,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
       "roleName" => "角色分配测试",
       "roleKey" => unique("role_assignment"),
       "roleSort" => 1,
-      "dataScope" => Keyword.get(opts, :data_scope, 1),
+      "dataScope" => Keyword.get(opts, :data_scope, "ALL"),
       "status" => Keyword.get(opts, :status, 1),
       "menuIds" => []
     }

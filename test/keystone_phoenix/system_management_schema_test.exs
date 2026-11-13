@@ -29,7 +29,7 @@ defmodule KeystonePhoenix.SystemManagementSchemaTest do
         role_name: "普通角色",
         role_key: "common",
         role_sort: 1,
-        data_scope: 9,
+        data_scope: "UNKNOWN",
         status: 1
       })
 

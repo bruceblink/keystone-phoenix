@@ -17,8 +17,11 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
 
-  @doc "Applies the legacy role data scope to a user or role-user query."
+  @doc "Applies the role data scope to a user query."
   def scope_query(query, principal), do: Permission.scope_users(query, principal)
+
+  @doc "Applies the same role data scope to a department query."
+  def scope_departments(query, principal), do: Permission.scope_departments(query, principal)
 
   @doc "Checks an exact permission string against the current policy tables."
   def allowed?(principal, permission) do
@@ -63,6 +66,15 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
 
   defp scope_allowed_without_admin?(principal, :user_update, target),
     do: Permission.user_update_allowed?(principal, target, %{})
+
+  defp scope_allowed_without_admin?(principal, :dept_create, target),
+    do: Permission.department_create_allowed?(principal, target)
+
+  defp scope_allowed_without_admin?(principal, :dept_update, {target_id, parent_id}),
+    do: Permission.department_update_allowed?(principal, target_id, parent_id)
+
+  defp scope_allowed_without_admin?(principal, :dept_update, target),
+    do: Permission.department_update_allowed?(principal, target, nil)
 
   defp scope_allowed_without_admin?(_principal, _kind, _target), do: false
 

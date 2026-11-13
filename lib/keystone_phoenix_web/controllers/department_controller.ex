@@ -10,14 +10,18 @@ defmodule KeystonePhoenixWeb.DepartmentController do
       update: "department:update",
       delete: "department:delete"
     },
-    data_scope: %{update: {:dept, "dept_id"}, delete: {:dept, "dept_id"}}
+    data_scope: %{
+      show: {:dept, "dept_id"},
+      update: {:dept, "dept_id"},
+      delete: {:dept, "dept_id"}
+    }
 
   alias KeystonePhoenix.Department
   alias KeystonePhoenixWeb.ApiResponse
 
   @doc "Returns departments in display order."
   def list(conn, params) do
-    json(conn, ApiResponse.ok(Department.list_depts(params)))
+    json(conn, ApiResponse.ok(Department.list_depts(params, conn.assigns.current_user)))
   end
 
   @doc "Returns a department."
@@ -30,7 +34,7 @@ defmodule KeystonePhoenixWeb.DepartmentController do
 
   @doc "Returns the department dropdown source."
   def dropdown(conn, _params) do
-    json(conn, ApiResponse.ok(Department.list_dropdown()))
+    json(conn, ApiResponse.ok(Department.list_dropdown(conn.assigns.current_user)))
   end
 
   @doc "Creates a department."

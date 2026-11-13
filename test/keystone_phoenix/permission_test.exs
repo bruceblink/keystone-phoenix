@@ -37,7 +37,7 @@ defmodule KeystonePhoenix.PermissionTest do
     parent = insert_dept(100, nil, "")
     child = insert_dept(101, parent.dept_id, to_string(parent.dept_id))
     other = insert_dept(102, nil, "")
-    role = insert_role(%{data_scope: 4, role_key: unique("tree_role")})
+    role = insert_role(%{data_scope: "DEPARTMENT_AND_CHILDREN", role_key: unique("tree_role")})
     user = %{user_id: Identity.v7(), role_id: role.role_id, dept_id: parent.dept_id}
 
     assert Permission.data_scope_allowed?(user, :dept, child.dept_id)
@@ -45,7 +45,7 @@ defmodule KeystonePhoenix.PermissionTest do
 
     {:ok, custom_role} =
       role
-      |> SysRole.changeset(%{data_scope: 2, dept_id_set: other.dept_id})
+      |> SysRole.changeset(%{data_scope: "CUSTOM", dept_id_set: other.dept_id})
       |> Repo.update()
 
     custom_user = %{user | role_id: custom_role.role_id}
@@ -93,7 +93,7 @@ defmodule KeystonePhoenix.PermissionTest do
     user = %{user_id: Identity.v7(), role_id: role.role_id}
 
     refute Permission.role_metadata_allowed?(user, %{"menuIds" => "1"})
-    refute Permission.role_metadata_allowed?(user, %{"dataScope" => 1})
+    refute Permission.role_metadata_allowed?(user, %{"dataScope" => "ALL"})
     assert Permission.role_metadata_allowed?(user, %{"roleName" => "普通编辑"})
 
     permission_menu =
@@ -127,7 +127,7 @@ defmodule KeystonePhoenix.PermissionTest do
           role_name: "权限角色",
           role_key: unique("role"),
           role_sort: 1,
-          data_scope: 1,
+          data_scope: "ALL",
           dept_id_set: "",
           status: 1
         },

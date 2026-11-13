@@ -48,7 +48,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Forms do
       "roleName" => "",
       "roleKey" => "",
       "roleSort" => 0,
-      "dataScope" => 1,
+      "dataScope" => "ALL",
       "deptIdSet" => "",
       "status" => 1,
       "menuIds" => "",

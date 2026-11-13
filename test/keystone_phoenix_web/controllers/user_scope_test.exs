@@ -21,7 +21,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         role_name: "用户范围测试",
         role_key: unique("scope"),
         role_sort: 1,
-        data_scope: 4,
+        data_scope: "DEPARTMENT_AND_CHILDREN",
         status: 1
       })
       |> Repo.insert!()
@@ -92,11 +92,12 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     all_ids = [ctx.actor.user_id, ctx.oldest.user_id, ctx.descendant.user_id | ctx.outside_ids]
 
     cases = [
-      {1, "", all_ids},
-      {2, "#{ctx.child.dept_id}", [ctx.descendant.user_id]},
-      {3, "", [ctx.actor.user_id, ctx.oldest.user_id]},
-      {4, "", [ctx.actor.user_id, ctx.oldest.user_id, ctx.descendant.user_id]},
-      {5, "", [ctx.actor.user_id]}
+      {"ALL", "", all_ids},
+      {"CUSTOM", "#{ctx.child.dept_id}", [ctx.descendant.user_id]},
+      {"DEPARTMENT", "", [ctx.actor.user_id, ctx.oldest.user_id]},
+      {"DEPARTMENT_AND_CHILDREN", "",
+       [ctx.actor.user_id, ctx.oldest.user_id, ctx.descendant.user_id]},
+      {"SELF", "", [ctx.actor.user_id]}
     ]
 
     for {scope, department_set, expected_ids} <- cases do
@@ -118,7 +119,12 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
       assert length(page.rows) == min(max(length(expected_ids) - 1, 0), 1)
     end
 
-    Repo.update!(Ecto.Changeset.change(Repo.get!(SysRole, ctx.role.role_id), data_scope: 4))
+    Repo.update!(
+      Ecto.Changeset.change(Repo.get!(SysRole, ctx.role.role_id),
+        data_scope: "DEPARTMENT_AND_CHILDREN"
+      )
+    )
+
     result = User.list_users(%{"deptId" => ctx.child.dept_id}, ctx.actor)
     assert Enum.map(result.rows, & &1["userId"]) == [ctx.descendant.user_id]
     assert User.list_users(%{"deptId" => ctx.outside.dept_id}, ctx.actor).total == 0
@@ -212,7 +218,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
 
   @tag :integration
   test "self scope can list and edit itself but cannot move to another department", ctx do
-    Repo.update!(Ecto.Changeset.change(ctx.role, data_scope: 5))
+    Repo.update!(Ecto.Changeset.change(ctx.role, data_scope: "SELF"))
     {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
     response = get(authorized(tokens.token), "/api/v1/system/users")
     assert %{"data" => %{"total" => 1, "rows" => [row]}} = json_response(response, 200)
@@ -243,7 +249,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         role_name: unique("elevated_role"),
         role_key: unique("elevated_role_key"),
         role_sort: 1,
-        data_scope: 1,
+        data_scope: "ALL",
         status: 1
       })
       |> Repo.insert!()

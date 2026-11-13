@@ -4,7 +4,7 @@ defmodule KeystonePhoenixWeb.Live.OrganizationDataTest do
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationData
 
   test "maps organization display labels" do
-    assert OrganizationData.data_scope_label(4) == "本部门及以下"
+    assert OrganizationData.data_scope_label("DEPARTMENT_AND_CHILDREN") == "本部门及以下"
     assert OrganizationData.data_scope_label(99) == "未知"
     assert OrganizationData.menu_type_label(2, false) == "目录"
     assert OrganizationData.menu_type_label(0, true) == "按钮"

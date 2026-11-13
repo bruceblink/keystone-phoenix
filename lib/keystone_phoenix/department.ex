@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Department do
   import Ecto.Query
 
   alias KeystonePhoenix.Audit
+  alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Department.Authorization
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Params
@@ -23,18 +24,19 @@ defmodule KeystonePhoenix.Department do
     {"status", :status}
   ]
 
-  def list_depts(params \\ %{}) do
+  def list_depts(params \\ %{}, actor \\ nil) do
     from(d in SysDept,
       where: d.deleted == false,
       order_by: [asc: d.parent_id, asc: d.order_num, asc: d.dept_id]
     )
     |> filter_status(params["status"] || params[:status])
+    |> scope_query(actor)
     |> Repo.all()
     |> Enum.map(&dept_to_map/1)
   end
 
-  def list_dropdown do
-    Tree.nest(list_depts(), "parentId", "deptId", nil)
+  def list_dropdown(actor \\ nil) do
+    Tree.nest(list_depts(%{}, actor), "parentId", "deptId", nil)
   end
 
   def get_dept(id) do
@@ -68,7 +70,7 @@ defmodule KeystonePhoenix.Department do
   def create_dept(attrs, options)
 
   def create_dept(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize_create(options) do
+    with :ok <- Authorization.authorize_create(options, attrs) do
       do_create_dept(attrs, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
@@ -93,7 +95,7 @@ defmodule KeystonePhoenix.Department do
   def update_dept(id, attrs, options)
 
   def update_dept(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize_target(options, "department:update", id) do
+    with :ok <- Authorization.authorize_target(options, "department:update", id, attrs) do
       do_update_dept(id, attrs, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
@@ -177,6 +179,9 @@ defmodule KeystonePhoenix.Department do
       end
     end)
   end
+
+  defp scope_query(query, nil), do: query
+  defp scope_query(query, actor), do: Authz.scope_departments(query, actor)
 
   defp positive_parent_id(nil), do: {:ok, nil}
   defp positive_parent_id(""), do: {:ok, nil}

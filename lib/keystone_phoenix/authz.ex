@@ -54,6 +54,14 @@ defmodule KeystonePhoenix.Authz do
     _error -> where(query, false)
   end
 
+  @doc "Applies the actor's data scope to a department query."
+  def scope_departments(query, principal) do
+    subject = principal |> Principal.from_user() |> Principal.to_user()
+    PolicyStore.scope_departments(query, subject)
+  rescue
+    _error -> where(query, false)
+  end
+
   @doc "Checks whether a role write may change permission metadata."
   def role_metadata_allowed?(principal, attrs) when is_map(attrs) do
     PolicyStore.role_metadata_allowed?(Principal.to_user(Principal.from_user(principal)), attrs)

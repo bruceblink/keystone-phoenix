@@ -106,12 +106,28 @@ defmodule KeystonePhoenix.Permission do
     if admin?(user), do: query, else: scoped_users_query(query, user)
   end
 
+  @doc "Adds the current role's data scope before returning departments."
+  def scope_departments(query, user) do
+    if admin?(user), do: query, else: scoped_departments_query(query, user)
+  end
+
   defp scoped_users_query(query, user) do
     role_id = user_value(user, :role_id, "roleId")
 
     with true <- uuid?(role_id),
          %SysRole{status: 1} = role <- Repo.get_by(SysRole, role_id: role_id, deleted: false) do
       scope_user_query(query, role, user)
+    else
+      _ -> where(query, false)
+    end
+  end
+
+  defp scoped_departments_query(query, user) do
+    role_id = user_value(user, :role_id, "roleId")
+
+    with true <- uuid?(role_id),
+         %SysRole{status: 1} = role <- Repo.get_by(SysRole, role_id: role_id, deleted: false) do
+      scope_department_query(query, role, user)
     else
       _ -> where(query, false)
     end
@@ -128,6 +144,27 @@ defmodule KeystonePhoenix.Permission do
           check_scope(user, target.dept_id, target.user_id) and
             destination_allowed?(user, target, attrs)
       end
+    else
+      _ -> false
+    end
+  end
+
+  @doc "Checks whether a department can be created under the actor's scope."
+  def department_create_allowed?(user, parent_id) do
+    with {:ok, parent_id} <- optional_uuid(parent_id) do
+      check_scope(user, parent_id, nil)
+    else
+      :error -> false
+    end
+  end
+
+  @doc "Checks both the existing department and its requested new parent."
+  def department_update_allowed?(user, target_id, parent_id) do
+    with {:ok, target_id} <- required_uuid(target_id),
+         {:ok, parent_id} <- optional_uuid(parent_id),
+         true <- check_scope(user, target_id, nil),
+         true <- is_nil(parent_id) or check_scope(user, parent_id, nil) do
+      true
     else
       _ -> false
     end
@@ -186,21 +223,22 @@ defmodule KeystonePhoenix.Permission do
     end
   end
 
-  defp scope_user_query(query, %{data_scope: 1}, _user), do: query
+  defp scope_user_query(query, %{data_scope: scope}, _user) when scope in ["ALL", "TENANT"],
+    do: query
 
-  defp scope_user_query(query, %{data_scope: 2, dept_id_set: ids}, _user) do
+  defp scope_user_query(query, %{data_scope: "CUSTOM", dept_id_set: ids}, _user) do
     dept_ids = parse_id_set(ids)
     where(query, [target], target.dept_id in ^dept_ids)
   end
 
-  defp scope_user_query(query, %{data_scope: 3}, user) do
+  defp scope_user_query(query, %{data_scope: "DEPARTMENT"}, user) do
     case user_value(user, :dept_id, "deptId") do
       nil -> where(query, false)
       dept_id -> where(query, [target], target.dept_id == ^dept_id)
     end
   end
 
-  defp scope_user_query(query, %{data_scope: 4}, user) do
+  defp scope_user_query(query, %{data_scope: "DEPARTMENT_AND_CHILDREN"}, user) do
     case user_value(user, :dept_id, "deptId") do
       nil ->
         where(query, false)
@@ -220,12 +258,44 @@ defmodule KeystonePhoenix.Permission do
     end
   end
 
-  defp scope_user_query(query, %{data_scope: 5}, user) do
+  defp scope_user_query(query, %{data_scope: "SELF"}, user) do
     user_id = user_value(user, :user_id, "userId")
     where(query, [target], target.user_id == ^user_id)
   end
 
   defp scope_user_query(query, _role, _user), do: where(query, false)
+
+  defp scope_department_query(query, %{data_scope: scope}, _user) when scope in ["ALL", "TENANT"],
+    do: query
+
+  defp scope_department_query(query, %{data_scope: "CUSTOM", dept_id_set: ids}, _user) do
+    where(query, [target], target.dept_id in ^parse_id_set(ids))
+  end
+
+  defp scope_department_query(query, %{data_scope: scope}, user)
+       when scope in ["DEPARTMENT", "SELF"] do
+    case user_value(user, :dept_id, "deptId") do
+      nil -> where(query, false)
+      dept_id -> where(query, [target], target.dept_id == ^dept_id)
+    end
+  end
+
+  defp scope_department_query(query, %{data_scope: "DEPARTMENT_AND_CHILDREN"}, user) do
+    case user_value(user, :dept_id, "deptId") do
+      nil ->
+        where(query, false)
+
+      dept_id ->
+        ancestor = to_string(dept_id)
+
+        from dept in query,
+          where:
+            dept.dept_id == ^dept_id or
+              fragment("? = ANY(string_to_array(?, ','))", ^ancestor, dept.ancestors)
+    end
+  end
+
+  defp scope_department_query(query, _role, _user), do: where(query, false)
 
   defp check_scope(user, target_dept_id, target_user_id) do
     role_id = user_value(user, :role_id, "roleId")
@@ -241,10 +311,12 @@ defmodule KeystonePhoenix.Permission do
     _error -> false
   end
 
-  defp scope_matches?(%{data_scope: 1}, _user, _target_dept_id, _target_user_id), do: true
+  defp scope_matches?(%{data_scope: scope}, _user, _target_dept_id, _target_user_id)
+       when scope in ["ALL", "TENANT"],
+       do: true
 
   defp scope_matches?(
-         %{data_scope: 2, dept_id_set: dept_id_set},
+         %{data_scope: "CUSTOM", dept_id_set: dept_id_set},
          _user,
          target_dept_id,
          _target_user_id
@@ -252,11 +324,16 @@ defmodule KeystonePhoenix.Permission do
     target_dept_id != nil and target_dept_id in parse_id_set(dept_id_set)
   end
 
-  defp scope_matches?(%{data_scope: 3}, user, target_dept_id, _target_user_id) do
+  defp scope_matches?(%{data_scope: "DEPARTMENT"}, user, target_dept_id, _target_user_id) do
     user_value(user, :dept_id, "deptId") == target_dept_id and target_dept_id != nil
   end
 
-  defp scope_matches?(%{data_scope: 4}, user, target_dept_id, _target_user_id) do
+  defp scope_matches?(
+         %{data_scope: "DEPARTMENT_AND_CHILDREN"},
+         user,
+         target_dept_id,
+         _target_user_id
+       ) do
     current_dept_id = user_value(user, :dept_id, "deptId")
 
     with current when is_binary(current) <- parse_uuid(current_dept_id),
@@ -268,7 +345,7 @@ defmodule KeystonePhoenix.Permission do
     end
   end
 
-  defp scope_matches?(%{data_scope: 5}, user, _target_dept_id, target_user_id) do
+  defp scope_matches?(%{data_scope: "SELF"}, user, _target_dept_id, target_user_id) do
     user_value(user, :user_id, "userId") == target_user_id and target_user_id != nil
   end
 
@@ -295,4 +372,14 @@ defmodule KeystonePhoenix.Permission do
       :error -> nil
     end
   end
+
+  defp required_uuid(value) do
+    case parse_uuid(value) do
+      nil -> :error
+      uuid -> {:ok, uuid}
+    end
+  end
+
+  defp optional_uuid(value) when value in [nil, ""], do: {:ok, nil}
+  defp optional_uuid(value), do: required_uuid(value)
 end
