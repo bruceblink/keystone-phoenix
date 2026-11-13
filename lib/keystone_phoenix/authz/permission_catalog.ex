@@ -1,100 +1,104 @@
 defmodule KeystonePhoenix.Authz.PermissionCatalog do
   @moduledoc """
-  Stable permission catalog for the canonical policy store.
+  定义新系统唯一的权限目录。
 
-  The catalog gives writes and audits a common format, metadata shape, and
-  duplicate check. Menu navigation references these canonical capabilities.
+  权限使用 `resource:action` 两段格式。菜单只保存展示关系，不能生成权限。
+  目录中的权限 ID 由固定 UUIDv5 命名规则生成。
   """
 
-  @permission_pattern ~r/\A[a-z][a-z0-9_-]*:[a-z][a-z0-9_-]*:[A-Za-z][A-Za-z0-9_-]*\z/
+  @permission_pattern ~r/\A[a-z][a-z0-9-]*:[a-z][a-z0-9-]*\z/
 
   @permissions ~w(
-    monitor:cache:list
-    monitor:logininfor:export
-    monitor:logininfor:list
-    monitor:logininfor:remove
-    monitor:online:forceLogout
-    monitor:online:list
-    monitor:operlog:export
-    monitor:operlog:list
-    monitor:operlog:remove
-    monitor:server:list
-    system:config:add
-    system:config:edit
-    system:config:list
-    system:config:query
-    system:config:refresh
-    system:dept:add
-    system:dept:edit
-    system:dept:list
-    system:dept:query
-    system:dept:remove
-    system:dict:add
-    system:dict:edit
-    system:dict:list
-    system:dict:query
-    system:dict:refresh
-    system:dict:remove
-    system:file:download
-    system:file:upload
-    system:job:add
-    system:job:changeStatus
-    system:job:edit
-    system:job:list
-    system:job:query
-    system:job:remove
-    system:job:run
-    system:menu:add
-    system:menu:edit
-    system:menu:list
-    system:menu:permission
-    system:menu:query
-    system:menu:remove
-    system:notice:add
-    system:notice:edit
-    system:notice:list
-    system:notice:query
-    system:notice:remove
-    system:post:add
-    system:post:edit
-    system:post:export
-    system:post:list
-    system:post:query
-    system:post:remove
-    system:role:add
-    system:role:edit
-    system:role:export
-    system:role:list
-    system:role:permission
-    system:role:query
-    system:role:remove
-    system:user:add
-    system:user:edit
-    system:user:export
-    system:user:import
-    system:user:list
-    system:user:query
-    system:user:remove
-    system:user:resetPwd
+    api-key:create
+    api-key:read
+    api-key:revoke
+    api-key:rotate
+    audit:delete
+    audit:export
+    audit:read
+    cache:refresh
+    config:create
+    config:read
+    config:refresh
+    config:update
+    department:create
+    department:delete
+    department:read
+    department:update
+    dictionary:create
+    dictionary:delete
+    dictionary:read
+    dictionary:refresh
+    dictionary:update
+    file:read
+    file:write
+    job:create
+    job:delete
+    job:read
+    job:run
+    job:update
+    job:update-status
+    login-log:delete
+    login-log:export
+    login-log:read
+    menu:create
+    menu:delete
+    menu:manage
+    menu:read
+    menu:update
+    mfa:manage
+    notice:create
+    notice:delete
+    notice:read
+    notice:update
+    online-session:read
+    online-session:revoke
+    operation-log:delete
+    operation-log:export
+    operation-log:read
+    permission:manage
+    permission:read
+    post:create
+    post:delete
+    post:export
+    post:read
+    post:update
+    role:assign
+    role:create
+    role:delete
+    role:export
+    role:manage
+    role:read
+    role:update
+    server:read
+    session:read
+    session:revoke
+    user:create
+    user:delete
+    user:export
+    user:import
+    user:read
+    user:reset-password
+    user:update
   )
 
-  @doc "Returns every permission registered in the canonical catalog."
+  @doc "返回新系统登记的全部权限。"
   def permissions, do: @permissions
 
-  @doc "Returns metadata for every registered permission."
+  @doc "返回全部权限的稳定元数据。"
   def entries, do: Enum.map(@permissions, &metadata!/1)
 
-  @doc "Normalizes a permission string without changing its case-sensitive action."
+  @doc "去除权限两端空白。"
   def normalize(permission) when is_binary(permission), do: String.trim(permission)
   def normalize(_permission), do: ""
 
-  @doc "Checks the stable `resource:domain:action` permission format."
+  @doc "检查权限是否符合 resource:action 格式。"
   def valid?(permission) when is_binary(permission),
     do: Regex.match?(@permission_pattern, normalize(permission))
 
   def valid?(_permission), do: false
 
-  @doc "Validates one permission and returns normalized metadata."
+  @doc "校验一个权限并返回元数据。"
   def validate(permission) do
     normalized = normalize(permission)
 
@@ -106,7 +110,7 @@ defmodule KeystonePhoenix.Authz.PermissionCatalog do
     end
   end
 
-  @doc "Checks a permission list for malformed or duplicate entries."
+  @doc "检查权限列表中的格式错误和重复项。"
   def validate_catalog(permissions) when is_list(permissions) do
     normalized = Enum.map(permissions, &normalize/1)
     duplicates = normalized -- Enum.uniq(normalized)
@@ -119,17 +123,18 @@ defmodule KeystonePhoenix.Authz.PermissionCatalog do
 
   def validate_catalog(_permissions), do: {:error, %{duplicates: [], invalid: [:not_a_list]}}
 
-  @doc "Returns metadata for a known or format-valid permission."
+  @doc "返回已登记或格式正确的权限元数据。"
   def metadata(permission, registered? \\ nil) do
     normalized = normalize(permission)
-    [resource, domain, action] = String.split(normalized, ":", parts: 3)
+    [resource, action] = String.split(normalized, ":", parts: 2)
 
     %{
       permission: normalized,
       resource: resource,
-      domain: domain,
+      # 数据库迁移完成前保留非授权用途的默认分组字段。
+      domain: "default",
       action: action,
-      description: "#{resource} #{domain} #{action}",
+      description: "#{resource} #{action}",
       risk: risk(action),
       deprecated: false,
       registered?: registered? == true or normalized in @permissions
@@ -138,7 +143,11 @@ defmodule KeystonePhoenix.Authz.PermissionCatalog do
 
   defp metadata!(permission), do: metadata(permission, true)
 
-  defp risk(action) when action in ["remove", "resetPwd", "forceLogout"], do: :high
-  defp risk(action) when action in ["add", "edit", "changeStatus", "run"], do: :medium
+  defp risk(action) when action in ["delete", "revoke", "reset-password", "manage"], do: :high
+
+  defp risk(action)
+       when action in ["create", "update", "update-status", "run", "rotate", "import", "export"],
+       do: :medium
+
   defp risk(_action), do: :low
 end

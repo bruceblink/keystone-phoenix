@@ -5,6 +5,7 @@ end
 alias KeystonePhoenix.Repo
 alias KeystonePhoenix.Authz.PermissionCatalog
 alias KeystonePhoenix.Authz.SysPermission
+alias KeystonePhoenix.Identity
 
 import Ecto.Query
 
@@ -243,7 +244,8 @@ menu_entries = [
     parent_id: 1,
     path: "/system/user/index",
     is_button: false,
-    permission: "system:user:list",
+    # 菜单仅绑定目录中的新权限键，不负责创建权限。
+    permission: "user:read",
     meta_info: Jason.encode!(%{"title" => "用户管理", "showParent" => true}),
     status: 1,
     remark: "用户管理菜单"
@@ -256,7 +258,7 @@ menu_entries = [
     parent_id: 1,
     path: "/system/role/index",
     is_button: false,
-    permission: "system:role:list",
+    permission: "role:read",
     meta_info: Jason.encode!(%{"title" => "角色管理", "showParent" => true}),
     status: 1,
     remark: "角色管理菜单"
@@ -269,7 +271,7 @@ menu_entries = [
     parent_id: 1,
     path: "/system/dept/index",
     is_button: false,
-    permission: "system:dept:list",
+    permission: "department:read",
     meta_info: Jason.encode!(%{"title" => "部门管理", "showParent" => true}),
     status: 1,
     remark: "部门管理菜单"
@@ -282,7 +284,7 @@ menu_entries = [
     parent_id: 1,
     path: "/system/post/index",
     is_button: false,
-    permission: "system:post:list",
+    permission: "post:read",
     meta_info: Jason.encode!(%{"title" => "岗位管理", "showParent" => true}),
     status: 1,
     remark: "岗位管理菜单"
@@ -313,8 +315,9 @@ permission_entries =
   |> Enum.map(fn entry ->
     entry
     |> Map.take([:permission, :resource, :domain, :action, :description, :risk, :deprecated])
+    |> Map.put(:permission_id, entry.permission |> Identity.permission_id() |> Ecto.UUID.dump!())
     |> Map.put(:risk, Atom.to_string(entry.risk))
-    |> Map.merge(%{status: 1, create_time: now, update_time: now})
+    |> Map.merge(%{status: 1, version: 1, create_time: now, update_time: now})
   end)
 
 Repo.insert_all("sys_permission", permission_entries,
@@ -326,6 +329,7 @@ permission_ids =
   Repo.all(
     from permission in SysPermission, select: {permission.permission, permission.permission_id}
   )
+  |> Enum.map(fn {permission, permission_id} -> {permission, Ecto.UUID.dump!(permission_id)} end)
   |> Map.new()
 
 menu_permission_entries =

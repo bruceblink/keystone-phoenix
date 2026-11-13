@@ -121,7 +121,7 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
   defp normalized_decision(role_id, permission) do
     with {:ok, role_id} <- Params.parse_positive_integer(role_id),
          true <- is_binary(permission) and permission != "",
-         permission_id when is_integer(permission_id) <- permission_id(permission) do
+         permission_id when is_binary(permission_id) <- permission_id(permission) do
       if Repo.exists?(
            from role_permission in "sys_role_permission",
              join: role in "sys_role",

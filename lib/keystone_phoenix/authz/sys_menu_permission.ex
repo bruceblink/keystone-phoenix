@@ -7,6 +7,6 @@ defmodule KeystonePhoenix.Authz.SysMenuPermission do
 
   schema "sys_menu_permission" do
     field :menu_id, :integer, primary_key: true
-    field :permission_id, :integer, primary_key: true
+    field :permission_id, :binary_id, primary_key: true
   end
 end
