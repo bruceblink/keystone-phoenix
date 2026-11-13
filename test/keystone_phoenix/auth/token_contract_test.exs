@@ -69,4 +69,13 @@ defmodule KeystonePhoenix.Auth.TokenContractTest do
     Application.put_env(:keystone_phoenix, :jwt_key_id, "another-key")
     assert {:error, :invalid_token} = Token.verify(token.token, Token.access_type())
   end
+
+  test "requires a canonical session id on every token" do
+    user = %{user_id: Identity.v7(), username: "token_contract", permission_version: 1}
+
+    assert {:ok, token_without_session} = Token.issue(user, Token.refresh_type())
+
+    assert {:error, :invalid_token} =
+             Token.verify(token_without_session.token, Token.refresh_type())
+  end
 end

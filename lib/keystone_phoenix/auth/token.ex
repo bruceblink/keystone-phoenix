@@ -130,7 +130,7 @@ defmodule KeystonePhoenix.Auth.Token do
       claims["exp"] > now and
       is_integer(claims["iat"]) and
       claims["iat"] <= now + 5 and
-      (expected_type == @refresh_type or is_binary(claims["sid"]))
+      is_binary(claims["sid"]) and KeystonePhoenix.Identity.canonical?(claims["sid"])
   end
 
   defp audience_matches?(audience) when is_binary(audience),

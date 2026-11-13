@@ -30,6 +30,10 @@ defmodule KeystonePhoenix.User.SysUser do
     field :deleted, :boolean, default: false
     field :permission_version, :integer, default: 1
 
+    # MFA 策略只表示是否要求二次认证；只有已启用的 TOTP 因子才能设为 true。
+    field :mfa_required, :boolean, default: false
+    field :mfa_grace_until, :utc_datetime_usec
+
     timestamps(inserted_at: :create_time, updated_at: :update_time, type: :utc_datetime_usec)
   end
 

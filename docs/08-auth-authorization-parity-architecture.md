@@ -97,6 +97,14 @@ Phoenix 使用 Controller、Plug、LiveView 事件和领域命令作为 PEP；`K
 
 Phoenix 只提供 `/api/v1` 接口，并统一返回 `{success,data,message,error}`。旧路由、旧三段权限和 `{code,msg,data}` 响应不进入新系统。错误分类和 HTTP 状态固定为：`invalid_credential=401`、`permission_denied=403`、`data_scope_denied=403`、`session_revoked=401`、`authorization_unavailable=503`、`validation_failed=422`。两个项目使用相同的错误代码和字段含义。
 
+Phoenix 的 MFA 基础能力由 `KeystonePhoenix.Auth.Mfa` 提供。该领域服务保存加密的
+TOTP 因子、短期 `LOGIN`/`STEP_UP`/`ENROLL`/`RECOVERY` 请求、一次性恢复码摘要和
+失败限流状态。TOTP 使用 RFC 6238 的 30 秒窗口和前后各一个时间步；认证请求、因子
+和恢复码在同一数据库事务中加行锁，重复消费只能有一个成功。认证入口仍负责调用该
+服务并把成功结果写入 Principal 的 `authentication_level=AAL2` 和 `amr`；API Key
+不得调用 MFA 管理和 step-up 路径。密钥主键和恢复码 pepper 必须从运行时配置读取，
+配置缺失时 enrollment 和恢复码生成失败关闭。
+
 ## Native 适配边界
 
 Native 使用 Quarkus REST、`HttpAuthenticationMechanism`、`PermissionInterceptor`、`AuthorizationService` 和 `DataScopeService` 作为 PEP/PDP 适配层；Hibernate ORM with Panache、MySQL 和 Flyway 负责持久化。`AuthResource`、`ApiKeyResource`、`MfaService` 和 `JwkSetService` 必须共享同一 Principal 和权限目录。
