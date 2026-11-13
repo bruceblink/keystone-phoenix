@@ -20,7 +20,7 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLogTest do
 
     conn =
       :put
-      |> conn("/system/user/profile", "")
+      |> conn("/api/v1/system/user/profile", "")
       |> Map.put(:params, %{
         "nickName" => "审计用户",
         "password" => "do-not-persist",
@@ -43,7 +43,7 @@ defmodule KeystonePhoenixWeb.Plugs.OperationLogTest do
 
     assert log.request_module == "KeystonePhoenixWeb.ProfileController"
     assert log.called_method == "KeystonePhoenixWeb.ProfileController.update"
-    assert log.request_url == "/system/user/profile"
+    assert log.request_url == "/api/v1/system/user/profile"
     assert log.request_method == 3
     assert log.business_type == 2
     assert log.status == 1

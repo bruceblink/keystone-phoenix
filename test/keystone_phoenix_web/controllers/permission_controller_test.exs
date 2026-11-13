@@ -22,10 +22,15 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
 
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
-    assert %{"success" => true} = json_response(get(authorized_conn, "/system/post/list"), 200)
+
+    assert %{"success" => true} =
+             json_response(get(authorized_conn, "/api/v1/system/post/list"), 200)
 
     forbidden_conn = put_req_header(build_conn(), "authorization", "Bearer #{tokens.token}")
-    response = post(forbidden_conn, "/system/post", %{"postCode" => "x", "postName" => "x"})
+
+    response =
+      post(forbidden_conn, "/api/v1/system/post", %{"postCode" => "x", "postName" => "x"})
+
     assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
 
     post_record =
@@ -42,7 +47,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
 
     assert %{"success" => true} =
              json_response(
-               put(update_conn, "/system/post", %{
+               put(update_conn, "/api/v1/system/post", %{
                  "postId" => post_record.post_id,
                  "postCode" => post_record.post_code,
                  "postName" => "新岗位",
@@ -53,7 +58,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
              )
 
     logout_conn = put_req_header(build_conn(), "authorization", "Bearer #{tokens.token}")
-    assert %{"success" => true} = json_response(post(logout_conn, "/logout", %{}), 200)
+    assert %{"success" => true} = json_response(post(logout_conn, "/api/v1/logout", %{}), 200)
     assert {:error, :invalid_token} = Auth.authenticate_access_token(tokens.token)
   end
 
@@ -68,7 +73,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
 
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
 
-    response = get(authorized_conn, "/system/role/#{role.role_id}")
+    response = get(authorized_conn, "/api/v1/system/role/#{role.role_id}")
     assert %{"success" => true, "data" => data} = json_response(response, 200)
     assert data["menuIds"] == [menu.menu_id]
     assert data["selectedMenuList"] == [menu.menu_id]
@@ -84,7 +89,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     response =
       conn
       |> put_req_header("authorization", "Bearer #{tokens.token}")
-      |> get("/system/users/excelTemplate")
+      |> get("/api/v1/system/users/excelTemplate")
 
     assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
   end
@@ -101,7 +106,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
 
     assert %{"success" => true} =
              json_response(
-               post(authorized_conn, "/system/role", %{
+               post(authorized_conn, "/api/v1/system/role", %{
                  "roleName" => unique("role"),
                  "roleKey" => unique("role_key"),
                  "roleSort" => 1,
@@ -112,7 +117,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
 
     assert %{"success" => true} =
              json_response(
-               post(authorized_conn, "/system/menus", %{
+               post(authorized_conn, "/api/v1/system/menus", %{
                  "menuName" => unique("menu"),
                  "menuType" => 1,
                  "parentId" => "",
@@ -123,7 +128,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
 
     assert %{"success" => true} =
              json_response(
-               post(authorized_conn, "/system/dept", %{
+               post(authorized_conn, "/api/v1/system/dept", %{
                  "deptName" => unique("dept"),
                  "parentId" => "",
                  "orderNum" => 1,
@@ -143,7 +148,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
 
     assert json_response(
-             put(authorized_conn, "/system/role", %{
+             put(authorized_conn, "/api/v1/system/role", %{
                "roleId" => target_role.role_id,
                "roleName" => target_role.role_name,
                "roleKey" => target_role.role_key,
@@ -161,7 +166,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
 
     assert %{"success" => true} =
              json_response(
-               put(refreshed_conn, "/system/role", %{
+               put(refreshed_conn, "/api/v1/system/role", %{
                  "roleId" => target_role.role_id,
                  "roleName" => target_role.role_name,
                  "roleKey" => target_role.role_key,
@@ -191,7 +196,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
       "status" => 1
     }
 
-    assert get_in(json_response(post(authorized_conn, "/system/menus", params), 403), [
+    assert get_in(json_response(post(authorized_conn, "/api/v1/system/menus", params), 403), [
              "error",
              "code"
            ]) ==
@@ -202,7 +207,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     refreshed_conn = put_req_header(build_conn(), "authorization", "Bearer #{refreshed.token}")
 
     assert %{"success" => true} =
-             json_response(post(refreshed_conn, "/system/menus", params), 201)
+             json_response(post(refreshed_conn, "/api/v1/system/menus", params), 201)
   end
 
   @tag :integration
@@ -214,20 +219,23 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
 
-    assert get_in(json_response(get(authorized_conn, "/system/depts/dropdown"), 403), [
+    assert get_in(json_response(get(authorized_conn, "/api/v1/system/depts/dropdown"), 403), [
              "error",
              "code"
            ]) ==
              "permission_denied"
 
-    assert get_in(json_response(get(authorized_conn, "/system/menus/dropdown"), 403), [
+    assert get_in(json_response(get(authorized_conn, "/api/v1/system/menus/dropdown"), 403), [
              "error",
              "code"
            ]) ==
              "permission_denied"
 
     assert get_in(
-             json_response(get(authorized_conn, "/system/dict/data/type/common.status"), 403),
+             json_response(
+               get(authorized_conn, "/api/v1/system/dict/data/type/common.status"),
+               403
+             ),
              ["error", "code"]
            ) == "permission_denied"
   end
@@ -243,13 +251,16 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
 
     assert %{"success" => true} =
-             json_response(get(authorized_conn, "/system/depts/dropdown"), 200)
+             json_response(get(authorized_conn, "/api/v1/system/depts/dropdown"), 200)
 
     assert %{"success" => true} =
-             json_response(get(authorized_conn, "/system/menus/dropdown"), 200)
+             json_response(get(authorized_conn, "/api/v1/system/menus/dropdown"), 200)
 
     assert %{"success" => true} =
-             json_response(get(authorized_conn, "/system/dict/data/type/common.status"), 200)
+             json_response(
+               get(authorized_conn, "/api/v1/system/dict/data/type/common.status"),
+               200
+             )
   end
 
   @tag :integration
@@ -260,7 +271,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
 
-    assert get_in(json_response(delete(authorized_conn, "/system/dict/cache"), 403), [
+    assert get_in(json_response(delete(authorized_conn, "/api/v1/system/dict/cache"), 403), [
              "error",
              "code"
            ]) ==
@@ -270,7 +281,8 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     {:ok, refreshed} = Auth.login_plaintext(user.username, "Strong!123", true)
     refreshed_conn = put_req_header(build_conn(), "authorization", "Bearer #{refreshed.token}")
 
-    assert %{"success" => true} = json_response(delete(refreshed_conn, "/system/dict/cache"), 200)
+    assert %{"success" => true} =
+             json_response(delete(refreshed_conn, "/api/v1/system/dict/cache"), 200)
   end
 
   @tag :integration

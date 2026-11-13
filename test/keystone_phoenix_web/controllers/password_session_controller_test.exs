@@ -63,7 +63,7 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
     response =
       conn
       |> authorized(token)
-      |> put("/system/users/#{user.user_id}/password", %{"password" => "Reset!456"})
+      |> put("/api/v1/system/users/#{user.user_id}/password", %{"password" => "Reset!456"})
 
     assert get_in(json_response(response, 503), ["error", "code"]) == "authorization_unavailable"
     assert Auth.Session.active?(user.user_id, session_id(token))
@@ -77,7 +77,7 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
     response =
       conn
       |> authorized(token)
-      |> put("/system/user/profile/password", %{
+      |> put("/api/v1/system/user/profile/password", %{
         "oldPassword" => "Strong!123",
         "newPassword" => "Reset!456"
       })

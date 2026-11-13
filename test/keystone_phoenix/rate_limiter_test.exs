@@ -163,7 +163,7 @@ defmodule KeystonePhoenix.RateLimiterTest do
 
   test "no-repeat plug keys submissions by user and action" do
     opts = NoRepeat.init(interval: 60)
-    base = conn(:post, "/system/notices") |> assign(:current_user, %{user_id: 42})
+    base = conn(:post, "/api/v1/system/notices") |> assign(:current_user, %{user_id: 42})
     base = Map.put(base, :private, %{phoenix_action: :create})
 
     assert %{state: :unset} = NoRepeat.call(base, opts)

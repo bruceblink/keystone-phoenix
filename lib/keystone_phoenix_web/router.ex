@@ -23,6 +23,7 @@ defmodule KeystonePhoenixWeb.Router do
     plug KeystonePhoenixWeb.Plugs.Authenticate
   end
 
+  # 所有 HTTP API 使用与 Keystone Native 相同的 /api/v1 外部前缀。
   scope "/", KeystonePhoenixWeb do
     pipe_through :browser
 
@@ -36,7 +37,7 @@ defmodule KeystonePhoenixWeb.Router do
     get "/profile/*path", ResourceController, :show
   end
 
-  scope "/", KeystonePhoenixWeb do
+  scope "/api/v1", KeystonePhoenixWeb do
     pipe_through :api
 
     get "/health", HealthController, :show
@@ -145,7 +146,7 @@ defmodule KeystonePhoenixWeb.Router do
     post "/system/user/profile/avatar", ProfileController, :update_avatar
   end
 
-  scope "/", KeystonePhoenixWeb do
+  scope "/api/v1", KeystonePhoenixWeb do
     pipe_through :event_stream
 
     get "/monitor/networkStatus/stream", MonitorController, :network_status_stream
