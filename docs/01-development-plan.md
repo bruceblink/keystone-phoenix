@@ -404,7 +404,7 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 
 本轮继续完成规范权限目录与审计补强：`3c290d3` 将完整 `PermissionCatalog` 绑定到系统管理员角色，`33e039a`、`9e09f6e` 补齐已有数据库的权限目录和管理员权限，`01d3c1c` 补齐管理员菜单可见性，`12646b4` 统一测试夹具，`70c1755` 持久化授权审计上下文并增加 `sys_permission.version`。
 
-Docker 中使用 Elixir 1.20.5 / OTP 29、代理 CA 和 PostgreSQL 18 完成严格编译与默认测试：192 项通过，20 项集成测试排除。提交 `dfb7407` 修正 canonical 权限集成夹具后，`mix test --include integration` 通过 212 项；`main` 与 `origin/main` 已同步。严格编译、格式和源码行数检查均通过。当前生产镜像 `keystone-phoenix:acceptance-20261113`（`sha256:2b12f980e316f9d19c0ca47c3b6445879235cf7c4bfcc92d200640dcbc4de42d`，252432406 字节，amd64）已通过 release smoke，覆盖空库/重复迁移、备份恢复、非 root、健康检查、RSA 登录、refresh token 轮换、logout 撤销和文件链路。
+提交 `4c105fa` 让 canonical 管理员角色优先驱动登录权限和菜单投影，同时保留无角色旧账号的兼容回退。Docker 中使用 Elixir 1.20.5 / OTP 29、代理 CA 和 PostgreSQL 18 完成严格编译与默认测试：192 项通过，20 项集成测试排除。提交 `dfb7407` 修正 canonical 权限集成夹具后，`mix test --include integration` 通过 212 项；`main` 与 `origin/main` 已同步。严格编译、格式和源码行数检查均通过。当前生产镜像 `keystone-phoenix:acceptance-20261113`（`sha256:2b12f980e316f9d19c0ca47c3b6445879235cf7c4bfcc92d200640dcbc4de42d`，252432406 字节，amd64）已通过 release smoke，覆盖空库/重复迁移、备份恢复、非 root、健康检查、RSA 登录、refresh token 轮换、logout 撤销和文件链路。
 
 
 ### 2026-11-12 授权架构复核
