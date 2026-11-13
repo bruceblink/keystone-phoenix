@@ -344,6 +344,12 @@ Repo.insert_all(
   on_conflict: :nothing
 )
 
+Repo.insert_all(
+  "sys_role_permission",
+  Enum.map(Map.values(permission_ids), &%{role_id: 1, permission_id: &1}),
+  on_conflict: :nothing
+)
+
 notice_entries = [
   %{
     notice_id: 1,
