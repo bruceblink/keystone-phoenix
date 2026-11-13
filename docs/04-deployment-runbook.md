@@ -43,7 +43,8 @@ docker run --rm \
 
 ## 启动和 smoke 检查
 
-启动应用并暴露 4000 端口：
+启动应用并暴露 4000 端口。生产环境必须提供 `JWT_PRIVATE_KEY`、`MFA_MASTER_KEY` 和至少 16 字节的
+`MFA_RECOVERY_PEPPER`；MFA 密钥版本使用 `MFA_MASTER_KEY_VERSION` 管理：
 
 ```bash
 docker run -d --name keystone-phoenix \
@@ -55,14 +56,16 @@ docker run -d --name keystone-phoenix \
 依次检查存活、数据库就绪和 LiveView 首页：
 
 ```bash
-curl --fail http://127.0.0.1:4000/health
-curl --fail http://127.0.0.1:4000/health/ready
+curl --fail http://127.0.0.1:4000/api/v1/health
+curl --fail http://127.0.0.1:4000/api/v1/health/ready
 curl --fail http://127.0.0.1:4000/
 ```
 
-发布 smoke 还需要在临时环境停止 PostgreSQL，确认 `/health/ready` 返回失败且容器健康状态变为 `unhealthy`；恢复 PostgreSQL 后，确认数据库就绪和容器健康状态恢复为 `healthy`。仓库中的 `scripts/release_smoke.sh` 会自动执行这组检查。
+发布 smoke 还需要在临时环境停止 PostgreSQL，确认 `/api/v1/health/ready` 返回失败且容器健康状态变为 `unhealthy`；恢复 PostgreSQL 后，确认数据库就绪和容器健康状态恢复为 `healthy`。仓库中的 `scripts/release_smoke.sh` 会自动执行这组检查。
 
-认证 smoke 流程应覆盖：获取 `/login/rsa-public-key`，使用 RSA 公钥登录，调用 `/getLoginUserInfo` 和 `/getRouters`，刷新 `/refresh-token`，最后调用 `/logout`。启用验证码时还要先验证 `/getConfig` 和 `/captchaImage`。
+认证 smoke 流程应覆盖：获取 `/api/v1/auth/rsa-public-key`，使用 RSA 公钥登录，调用 `/api/v1/auth/me` 和 `/api/v1/auth/routers`，刷新 `/api/v1/auth/refresh`，最后调用 `/api/v1/auth/logout`。启用验证码时还要先验证 `/api/v1/auth/config` 和 `/api/v1/auth/captcha`。启用 MFA 的用户还要验证 `/api/v1/auth/mfa/verify`、enrollment、恢复码和 step-up 的失败边界。
+
+API Key smoke 流程应使用具有 `api-key:create`、`api-key:read`、`api-key:rotate` 和 `api-key:revoke` 的 Bearer 用户调用 `/api/v1/api-keys`，确认创建响应只返回一次明文，列表不返回明文或摘要，轮换后旧密钥立即拒绝，撤销后认证失败。
 
 文件 smoke 流程应上传一个允许的头像和一个普通文本/PDF 文件，确认头像可以通过 `/profile/...` 内联返回，普通文件可以下载，并确认不存在路径穿越。
 

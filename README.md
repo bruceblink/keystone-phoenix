@@ -153,6 +153,11 @@ verify a session-bound step-up challenge through the corresponding `/mfa/*` endp
 Recovery codes and TOTP secrets are returned only from the enrollment or rotation
 request that creates them.
 
+API Key 管理使用 `/api/v1/api-keys`。创建、读取、轮换和撤销分别需要 `api-key:create`、
+`api-key:read`、`api-key:rotate` 和 `api-key:revoke`。密钥使用 `ks_live_<prefix>_<secret>`
+格式，明文只在创建或轮换响应中返回；数据库只保存 SHA-256 摘要。每次 API Key 认证都会
+把密钥批准范围与用户当前权限求交集。
+
 Administrator monitoring endpoints now cover ETS cache metrics at
 `/api/v1/monitor/cacheInfo`, BEAM host metrics at `/api/v1/monitor/serverInfo`,
 current online sessions backed by PostgreSQL at `/api/v1/monitor/onlineUsers`,

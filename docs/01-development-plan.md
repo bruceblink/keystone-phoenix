@@ -2,7 +2,7 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
-更新日期：2026-11-14。本次文档审查基于已推送代码基线 `f7d410d`。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
+更新日期：2026-11-14。本次文档审查基于已推送代码基线 `157865c`。认证会话、MFA 领域与 HTTP 接口、API Key 领域与 HTTP PEP 已完成；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1，真实运行验收仍需补充。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
 
 本文较早的功能和验收记录只用于识别需要替换的范围，不代表新系统已经完成。一次性重构从 U0 阶段重新实现和验收；现有实体、迁移、接口和测试只有在符合统一架构后才能继续使用。
 
@@ -374,8 +374,8 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 | --- | --- | --- | --- |
 | 密码登录、刷新和注销 | 重新实现 | 重新实现 | 统一会话状态、令牌字段和错误分类 |
 | 权限格式 | 重新实现两段权限 | 重新实现两段权限 | 只使用 `resource:action`，角色只绑定权限目录 ID |
-| API Key 与服务主体 | 待实现 | 已实现 | Phoenix 先补齐，Native 补运行验收 |
-| MFA、step-up、恢复码 | 已实现领域基础，认证入口接入待完成 | 已实现第一版 | Phoenix 接入统一 Principal 后执行跨项目并发验收 |
+| API Key 与服务主体 | 领域、迁移、HTTP PEP 已实现 | 已实现 | 两项目补真实 HTTP、撤销和并发运行验收 |
+| MFA、step-up、恢复码 | 领域与 HTTP 接口已实现；AAL2 使用短时 access token | 已实现第一版 | 补统一 Principal、敏感写 step-up 和跨项目并发验收 |
 | JWK Set 与 `kid` | 待实现 | 已实现部分 | 统一外部密钥配置和轮换规则 |
 | 管理界面 | LiveView | 当前无管理界面 | Native 只对齐后端接口，不复制 LiveView |
 
