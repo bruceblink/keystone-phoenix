@@ -137,11 +137,14 @@ defmodule KeystonePhoenix.Auth.ApiKey do
       {:ok,
        %{
          key_id: key.id,
+         credential_id: key.id,
+         subject_type: "SERVICE_SUBJECT",
          subject_id: subject.id,
          user_id: user.user_id,
          username: user.username,
          credential_type: "API_KEY",
-         scopes: scopes
+         scopes: scopes,
+         approved_scopes: scopes
        }}
     else
       _ -> {:error, :invalid_credential}

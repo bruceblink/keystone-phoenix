@@ -40,6 +40,9 @@ defmodule KeystonePhoenix.Auth.ApiKeyTest do
 
     assert {:ok, principal} = ApiKey.authenticate(issued.api_key, "127.0.0.1")
     assert principal.credential_type == "API_KEY"
+    assert principal.credential_id == issued.id
+    assert principal.subject_type == "SERVICE_SUBJECT"
+    assert principal.approved_scopes == ["api-key:read"]
     assert principal.scopes == ["api-key:read"]
     assert :ok = ApiKey.revoke(user.user_id, issued.id)
     assert {:error, :invalid_credential} = ApiKey.authenticate(issued.api_key, "127.0.0.1")
