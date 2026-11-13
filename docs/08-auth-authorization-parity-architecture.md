@@ -1,6 +1,6 @@
 # Keystone Native 与 Keystone Phoenix 鉴权授权统一架构
 
-更新日期：2026-11-13。本文是两个项目的共同架构基线。实现语言、数据库和 Web 框架可以不同，但外部行为、数据约定和安全边界必须一致。
+更新日期：2026-11-14。本文是两个项目的共同架构基线。实现语言、数据库和 Web 框架可以不同，但外部行为、数据约定和安全边界必须一致。项目采用一次性重构，旧设计、旧接口和旧数据结构不进入新系统。
 
 ## 术语和命名规则
 
@@ -16,15 +16,17 @@
 | 授权执行点 | Policy Enforcement Point（PEP） | 在 HTTP、LiveView 或领域命令入口执行 PDP 决策。 | 不复制另一套权限规则。 |
 | 安全事件 | Security event | 记录登录、令牌、API Key、MFA 和授权结果。 | 不保存密码、令牌或完整 API Key。 |
 
-新权限统一使用两段格式：`resource:action`，例如 `user:read`、`user:write`、`api-key:create`、`session:revoke`。Phoenix 现有三段权限，例如 `system:user:edit`，只作为兼容输入，由集中映射转换到两段权限。新代码不得新增三段权限。
+新系统只使用两段权限格式：`resource:action`，例如 `user:read`、`user:write`、`api-key:create`、`session:revoke`。三段权限、菜单权限字段和角色名称不属于新接口、数据库或授权输入。权限目录使用固定 UUIDv5，角色只保存权限目录 ID。
 
 ## 主键和标识符
 
-用户、角色、部门、菜单、权限、会话、令牌族、API Key、MFA 请求和审计记录的主键统一使用规范小写连字符 UUID 字符串。新建业务实体默认使用 UUIDv7，以便保留创建时间排序特征；权限目录、固定种子和跨项目需要稳定复现的标识使用 UUIDv5，并固定命名空间和名称规则。UUIDv5 不用于随机业务实体。
+用户、角色、部门、岗位、菜单、配置、字典、公告、任务、任务日志、登录日志、操作日志、权限、会话、刷新令牌、刷新令牌事件、服务主体、API Key、MFA 请求和安全事件的逻辑主键统一使用规范小写连字符 UUID。接口和领域层使用字符串；Native 的 MySQL 持久化使用 `BINARY(16)`，Phoenix 的 PostgreSQL 使用原生 `uuid`。新业务实体默认使用 UUIDv7，以便保留创建时间排序特征；权限目录和固定种子使用 UUIDv5，并固定命名空间和名称规则。UUIDv5 不用于随机业务实体。
 
-两个项目都禁止把 UUID 转回整数、使用自增整数或在接口中同时暴露整数和 UUID。Native 的 MySQL 使用 `BINARY(16)` 保存 UUID 原始 16 字节：写入使用 `UUID_TO_BIN(?, 0)`，读取文本结果使用 `BIN_TO_UUID(id, 0)`；按 ID 过滤时在参数侧使用 `UUID_TO_BIN(:uuid, 0)`，不在列上调用 `BIN_TO_UUID`，以保持索引可用。`0` 保持 UUIDv7 的时间字段顺序，不使用 UUIDv1 专用的字节交换。应用层和 HTTP 接口只接受或返回 36 字符的规范 UUID 字符串，ORM 转换器负责字符串与 `BINARY(16)` 的边界转换。Phoenix 的 PostgreSQL 使用原生 `uuid` 类型。迁移阶段允许破坏性替换旧整数主键，外键、索引、缓存键、日志字段、令牌 Claim 和测试数据必须同批更新。
+两个项目都禁止把 UUID 转回整数、使用自增整数或在接口中同时暴露整数和 UUID。Native 的 MySQL 使用 `BINARY(16)` 保存 UUID 原始 16 字节：SQL 写入使用 `UUID_TO_BIN(?, 0)`，文本结果使用 `BIN_TO_UUID(id, 0)`；按 ID 过滤时在参数侧使用 `UUID_TO_BIN(:uuid, 0)`，不在过滤列上调用 `BIN_TO_UUID`，以保持索引可用。ORM 直接把规范字符串转换为同样的 16 字节值，不再叠加 SQL 转换。`0` 保持 UUIDv7 的时间字段顺序，不使用 UUIDv1 专用的字节交换。应用层和 HTTP 接口只接受或返回 36 字符的规范 UUID 字符串。Phoenix 的 PostgreSQL 使用原生 `uuid` 类型。迁移阶段一次性替换旧整数主键、外键、索引、缓存键、日志字段、令牌 Claim 和测试数据。
 
-UUID 生成规则必须集中在基础模块。UUIDv7 生成失败时请求失败，不使用时间戳拼接、随机字符串或整数回退。UUIDv5 的命名空间、名称、版本和大小写规则必须写入迁移说明和跨项目测试向量。
+UUID 生成规则必须集中在基础模块。UUIDv7 生成失败时请求失败，不使用时间戳拼接、随机字符串或整数回退。UUIDv5 固定使用命名空间 `eb754ae2-49de-5e5f-87ef-1fa5eded86d8`，名称使用 UTF-8 小写规范权限前缀 `permission:<resource>:<action>`。例如 `permission:user:read` 的 UUIDv5 是 `950c8856-7230-5a63-937f-472185c3a8c4`。两个项目必须共享该向量和完整权限目录向量。
+
+主键迁移顺序固定为：主体和权限主表、角色与权限关系、部门和组织关系、其他业务主表、刷新令牌和安全事件、外键与联合索引、ORM 实体和仓储、DTO 与路由参数、数据范围和测试夹具。迁移前必须备份并检查整数外键孤儿、`parent_id=0` 哨兵、权限种子和组织祖先字段；迁移后必须检查所有主键/外键类型、索引、UUID 往返和孤儿记录。
 
 ## 目标架构
 
@@ -58,7 +60,7 @@ data_scope / permission_version
 authentication_level
 ```
 
-`is_admin` 只作为迁移期兼容字段。拥有角色的主体必须从规范角色权限关系读取权限。无角色的历史管理员账号可以暂时使用兼容回退，最终删除字段旁路。
+系统不使用 `is_admin` 字段旁路。管理员能力由系统角色和权限目录授予；角色失效、权限关系删除或数据范围不允许时，即使客户端声明管理员也必须拒绝。
 
 访问令牌必须校验 `iss`、`aud`、`sub`、`jti`、`sid`、`iat`、`exp`、令牌类型、签名算法和 `permission_version`。令牌头部使用 `kid`。访问令牌建议五分钟有效，刷新令牌建议十四天绝对期限和二十四小时非活动期限。刷新令牌每次使用都轮换；旧令牌重用时撤销整个令牌族。签发失败时撤销刚创建或刚轮换的会话。
 
@@ -76,7 +78,7 @@ allowed(principal, permission, context)
 scope_allowed(principal, scope, resource, context)
 ```
 
-缺少权限映射、主体无效、资源上下文不完整或策略存储不可用时默认拒绝。策略缓存键至少包含版本、租户、主体角色和权限。权限目录、角色权限、角色状态、用户角色或范围变化时增加版本并清理缓存。
+缺少权限映射、主体无效、资源上下文不完整或策略存储不可用时默认拒绝。策略缓存键至少包含版本、租户、主体 ID、凭据 ID、主体角色、批准范围摘要、数据范围摘要和权限。权限目录、角色权限、角色状态、用户角色、凭据范围或数据范围变化时增加版本并清理缓存。
 
 安全事件至少记录主体、会话、凭据类型和 ID、权限、资源、范围、决策、原因、请求 ID 和时间。禁止保存密码、访问令牌、刷新令牌、验证码、完整 API Key 和敏感请求体。授权 Telemetry 至少区分允许、权限拒绝、范围拒绝和策略不可用。
 
@@ -91,19 +93,7 @@ scope_allowed(principal, scope, resource, context)
 
 Phoenix 使用 Controller、Plug、LiveView 事件和领域命令作为 PEP；`KeystonePhoenix.Authz`、`PolicyStore` 和 `Principal` 作为 PDP 适配层。Ecto、PostgreSQL 和 Ecto migration 负责持久化。
 
-Legacy 权限必须通过显式映射转换，例如：
-
-| Legacy 权限 | 规范权限 |
-| --- | --- |
-| `system:user:list`、`system:user:query` | `user:read` |
-| `system:user:add`、`system:user:edit`、`system:user:remove` | `user:write` |
-| `system:user:export`、`system:user:import` | `user:export`、`user:import` |
-| `system:role:permission` | `role:manage` |
-| `system:job:run`、`system:job:changeStatus` | `job:run` |
-| `system:file:upload`、`system:file:download` | `file:write`、`file:read` |
-| `monitor:online:forceLogout` | `session:revoke` |
-
-Phoenix 保留现有 `{code,msg,data}` 兼容响应；新增现代接口统一使用 `{success,data,message}`。同一业务错误必须在两个响应层映射到相同的错误分类。
+Phoenix 只提供 `/api/v1` 接口，并统一返回 `{success,data,message,error}`。旧路由、旧三段权限和 `{code,msg,data}` 响应不进入新系统。错误分类和 HTTP 状态固定为：`invalid_credential=401`、`permission_denied=403`、`data_scope_denied=403`、`session_revoked=401`、`authorization_unavailable=503`、`validation_failed=422`。两个项目使用相同的错误代码和字段含义。
 
 ## Native 适配边界
 
@@ -113,8 +103,8 @@ Phoenix 的 LiveView 事件总线属于管理界面能力。Native 当前只提�
 
 ## 设计决策
 
-1. 两项目使用同一权限语义和错误分类，允许响应字段名在兼容层不同。
+1. 两项目使用同一权限语义、错误代码、HTTP 状态和响应字段。
 2. 两项目使用同一 Principal 字段集合，允许 Java record 和 Elixir struct 不同。
 3. 两项目使用各自数据库事务和锁机制，但必须证明相同状态转换和并发结果。
 4. 新功能先写公共接口约定和跨项目测试向量，再写语言适配代码。
-5. 迁移期允许破坏性数据库更新。已执行迁移追加新版本，禁止修改已执行迁移。
+5. 一次性迁移允许破坏性数据库更新。新环境从新 schema 初始化，既有环境先备份再执行新版本迁移；旧接口、旧字段和旧整数主键不保留。

@@ -2,7 +2,9 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
-更新日期：2026-11-12。当前代码基线为 `b0d3c29`。`9457759` 是较早的镜像验证基线，不是当前发布候选。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。
+更新日期：2026-11-14。当前代码基线为 `4c105fa`，当前文档提交为 `7d66b63`。`9457759` 及更早镜像仅作为历史证据。审查依据和问题编号见 [`03-code-review.md`](03-code-review.md)。历史后续计划已归档到 [`archive/06-follow-up-development-plan.md`](archive/06-follow-up-development-plan.md)，本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
+
+本文较早的功能和验收记录只用于识别需要替换的范围，不代表新系统已经完成。一次性重构从 U0 阶段重新实现和验收；现有实体、迁移、接口和测试只有在符合统一架构后才能继续使用。
 
 ## 目标与范围
 
@@ -299,21 +301,18 @@
 
 验收条件：记录宿主资源、容器 CPU 与内存限额、预热、并发数、时长、重复次数、请求错误、吞吐和延迟分位数。区分镜像展开大小与本地压缩归档、应用与数据库资源、容器内存与进程 RSS。短时本机结果不能代表真实业务容量或长时间稳定性。
 
-验证命令：通过 WSL 执行 `docker build`、有字段限制的 `docker image inspect`、`docker history`、镜像内迁移、HTTP 就绪检查和 Docker Engine stats 采样；完整命令与原始数据位置写入测量报告。回滚边界：停止本轮性能容器，保留镜像和测量结果，不修改持久开发数据库或服务。
+验证命令：在 macOS 原生环境执行 `docker build`、有字段限制的 `docker image inspect`、`docker history`、镜像内迁移、HTTP 就绪检查和 Docker Engine stats 采样；完整命令与原始数据位置写入测量报告。回滚边界：停止本轮性能容器，保留镜像和测量结果，不修改持久开发数据库或服务。
 
 ### 构建与测试环境
 
-Docker 和 Docker 测试依赖服务通过 WSL 执行。先读取实际发行版、Docker 状态、已有容器、健康状态和映射端口。其他 Elixir 构建与测试可以在 Windows 执行，不要求迁入 WSL。
+Docker 和 Docker 测试依赖服务通过 macOS Docker Desktop 执行。先读取 Docker 状态、已有容器、健康状态和映射端口。每次执行前重新检查服务和端口，不要直接重建已有容器：
 
-本轮核实的发行版为 `Ubuntu-24.04`。后续执行前重新检查服务和端口，不要直接重建已有容器：
-
-```powershell
-wsl --list --verbose
-wsl -d Ubuntu-24.04 -- docker info
-wsl -d Ubuntu-24.04 -- docker ps
-wsl -d Ubuntu-24.04 --cd /mnt/f/project/keystone-phoenix -- docker compose ps
+```bash
+docker info
+docker ps
+docker compose ps
 # 仅在确认需要启动项目开发服务时执行
-wsl -d Ubuntu-24.04 --cd /mnt/f/project/keystone-phoenix -- docker compose up -d postgres
+docker compose up -d postgres
 elixir --version
 mix deps.get
 mix format --check-formatted
@@ -327,7 +326,7 @@ mix test --include integration
 
 ## 回滚边界
 
-文档更新可以单独撤销。第 01 项的认证、LiveView 入口与测试作为同一功能切片回退，不删除 PostgreSQL 会话表或用户数据。后续修复优先通过向前兼容代码回退；保留上传文件。Redis 移除后的旧 Redis 会话不迁移，回退不能恢复这些登录状态。生产迁移回退和数据恢复必须先在独立环境验证。
+文档更新可以单独撤销。一次性重构切片以应用版本和数据库备份作为回滚边界；失败时恢复应用版本或备份，不增加旧接口、旧权限格式或旧整数字段。生产迁移回退和数据恢复必须先在独立环境验证。
 
 ### 2026-11-12 当前基线
 
@@ -371,8 +370,8 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 
 | 能力 | Phoenix | Native | 处理方式 |
 | --- | --- | --- | --- |
-| 密码登录、刷新和注销 | 已有兼容接口 | 已有现代接口 | 统一会话状态、令牌字段和错误分类 |
-| 权限格式 | 旧代码存在三段权限 | 两段权限 | 新代码只使用 `resource:action`，旧权限集中映射 |
+| 密码登录、刷新和注销 | 重新实现 | 重新实现 | 统一会话状态、令牌字段和错误分类 |
+| 权限格式 | 重新实现两段权限 | 重新实现两段权限 | 只使用 `resource:action`，角色只绑定权限目录 ID |
 | API Key 与服务主体 | 待实现 | 已实现 | Phoenix 先补齐，Native 补运行验收 |
 | MFA、step-up、恢复码 | 待实现 | 已实现第一版 | Phoenix 对齐后执行并发验收 |
 | JWK Set 与 `kid` | 待实现 | 已实现部分 | 统一外部密钥配置和轮换规则 |
@@ -381,18 +380,20 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 ### 阶段一：公共接口和 UUID 主键冻结
 
 - 固定 Principal、凭据类型、认证强度、权限版本和错误分类。
-- 固定权限目录和 Phoenix 旧权限到 `resource:action` 的映射。
+- 固定权限目录、权限 UUIDv5 向量和 `resource:action` 约定。
 - 用户、角色、部门、菜单、权限、会话、令牌族、API Key、MFA 请求和安全事件统一使用 UUID。
 - 新业务实体使用 UUIDv7；权限目录和固定种子使用固定命名空间的 UUIDv5。
 - 外部接口使用规范小写连字符 UUID 字符串。Native 的 MySQL 使用 `BINARY(16)`；写入和按 ID 过滤使用参数侧 `UUID_TO_BIN(?, 0)`，文本结果使用 `BIN_TO_UUID(id, 0)`，不得在过滤列上调用 `BIN_TO_UUID`。Phoenix 的 PostgreSQL 使用原生 `uuid` 类型。
 - 删除整数主键、整数外键、整数路径参数和整数兼容转换。
 
-验收必须覆盖 UUIDv7 生成、固定 UUIDv5 测试向量、MySQL 二进制往返、索引可用性、非法 UUID、旧整数输入、空值和重复迁移。
+验收必须覆盖 UUIDv7 生成、固定 UUIDv5 测试向量、MySQL 二进制往返、索引可用性、非法 UUID、空值、全量主键/外键类型检查和重复迁移。旧整数输入必须拒绝，不提供兼容转换。
+
+新系统固定使用 `ALL`、`TENANT`、`SELF`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM`、`OWNER` 和 `MEMBER` 八种数据范围。每个资源必须登记支持的范围；未登记的范围和缺少 `tenant_id` 的请求默认拒绝。错误代码和 HTTP 状态固定为 `invalid_credential=401`、`permission_denied=403`、`data_scope_denied=403`、`session_revoked=401`、`authorization_unavailable=503`、`validation_failed=422`。
 
 ### 阶段二：收紧角色授权
 
-- 有角色的管理员必须从角色权限关系读取权限。
-- 无角色的历史管理员只保留明确的迁移期兼容回退。
+- 管理员能力必须从系统角色和权限目录读取。
+- 删除 `is_admin` 和无角色管理员旁路；没有角色权限的主体必须拒绝。
 - HTTP、LiveView、领域命令和 Native REST 拦截器使用同一决策结果。
 - 缺少权限、范围越界、主体无效和策略存储不可用时默认拒绝。
 
@@ -410,7 +411,7 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 
 ### 阶段六：接口差异收口与运行验收
 
-- 新接口使用 `/api/v1` 和 `{success,data,message}`；旧接口只保留兼容映射。
+- 新接口统一使用 `/api/v1` 和 `{success,data,message,error}`；旧接口、旧路由和旧响应封装全部删除。
 - Native 需要记录作业取消和网络 SSE 的替代接口或实现计划。
 - 两项目分别完成迁移、重复迁移、刷新并发、API Key 并发、MFA 并发、故障回滚、备份恢复、真实 HTTP 和安全事件检查。
 - 静态编译不能替代数据库、HTTP 或浏览器运行证据。
@@ -458,11 +459,11 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 
 本轮继续完成规范权限目录与审计补强：`3c290d3` 将完整 `PermissionCatalog` 绑定到系统管理员角色，`33e039a`、`9e09f6e` 补齐已有数据库的权限目录和管理员权限，`01d3c1c` 补齐管理员菜单可见性，`12646b4` 统一测试夹具，`70c1755` 持久化授权审计上下文并增加 `sys_permission.version`。
 
-提交 `4c105fa` 让 canonical 管理员角色优先驱动登录权限和菜单投影，同时保留无角色旧账号的兼容回退。Docker 中使用 Elixir 1.20.5 / OTP 29、代理 CA 和 PostgreSQL 18 完成严格编译与默认测试：192 项通过，20 项集成测试排除。提交 `dfb7407` 修正 canonical 权限集成夹具后，`mix test --include integration` 通过 212 项；`main` 与 `origin/main` 已同步。严格编译、格式和源码行数检查均通过。当前生产镜像 `keystone-phoenix:acceptance-20261113`（`sha256:2b12f980e316f9d19c0ca47c3b6445879235cf7c4bfcc92d200640dcbc4de42d`，252432406 字节，amd64）已通过 release smoke，覆盖空库/重复迁移、备份恢复、非 root、健康检查、RSA 登录、refresh token 轮换、logout 撤销和文件链路。
+历史记录：提交 `4c105fa` 曾让 canonical 管理员角色优先驱动登录权限和菜单展示映射，并保留无角色账号的旧旁路。该记录只用于说明重构起点；新实现删除旁路，统一由系统角色和权限目录授予能力。Docker 中使用 Elixir 1.20.5 / OTP 29、代理 CA 和 PostgreSQL 18 完成严格编译与默认测试：192 项通过，20 项集成测试排除。提交 `dfb7407` 修正 canonical 权限集成夹具后，`mix test --include integration` 通过 212 项；`main` 与 `origin/main` 已同步。严格编译、格式和源码行数检查均通过。当前生产镜像 `keystone-phoenix:acceptance-20261113`（`sha256:2b12f980e316f9d19c0ca47c3b6445879235cf7c4bfcc92d200640dcbc4de42d`，252432406 字节，amd64）已通过 release smoke，覆盖空库/重复迁移、备份恢复、非 root、健康检查、RSA 登录、refresh token 轮换、logout 撤销和文件链路。
 
 
 ### 2026-11-12 授权架构复核
 
 当前代码基线为 `b0d3c29`，远端 `v0.3.0` 标签已存在。当前模型采用 RBAC 角色绑定权限字符串，并由数据范围限制目标资源；统一架构和入口规则见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。
 
-本轮复核发现并修复 `2817ca3`：LiveView 用户保存、状态切换、删除和密码重置事件现在同时检查具体权限字符串和目标数据范围，成功后按当前主体范围重新加载用户列表。`cca52dc`、`7ad47fa` 和 `121c196` 将 HTTP Plug、LiveView 权限入口、管理员识别和用户范围判断迁移到 `Authz`；`6d0ea8a` 新增统一决策入口；`9f83efe` 增加策略异常决策；`7e951cf`、`3055889`、`0fbb3e0`、`6df984c` 和 `b571fb5` 将角色、部门、岗位、配置、字典、公告和任务领域写入迁移到主体授权；`4fc73c9`、`4b99d31` 和 `d9a0413` 完成通用资源所有者隔离、批量清理和路径遍历保护；`aad3a96` 增加权限目录校验；`509f6c8`、`0df35a4`、`0a6d2d3` 和 `e977680` 完成规范化权限表、种子同步和新旧策略兼容读取；`1343efb` 增加版本化策略缓存；`bcf163a` 增加脱敏授权审计；`fb30482` 统一主体自身范围判断；`1c45bf4`、`31feb3f` 完成用户及资料写入收口；`631cd39` 增加授权决策 Telemetry；`b0d3c29` 修复旧菜单权限回退缓存污染。新增越界回归测试证明拥有 `system:user:edit` 权限字符串的非管理员角色不能修改其他部门用户，数据库保持不变；直接领域调用缺少权限、目标越界或资源所有者不匹配时也会在写入/读取前拒绝。当前默认测试为 192 项通过、20 项排除，集成测试为 20 项通过；格式、源码行数和 dev/prod 严格编译通过。
+历史记录：本轮曾修复 LiveView 用户范围、HTTP Plug、领域授权、权限目录和策略缓存问题。该记录只用于识别待替换行为；新实现不保留旧三段权限、旧菜单回退或旧管理员旁路。当前默认测试为 192 项通过、20 项排除，集成测试为 20 项通过；格式、源码行数和 dev/prod 严格编译通过。
