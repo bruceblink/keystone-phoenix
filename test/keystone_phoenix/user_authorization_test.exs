@@ -86,14 +86,15 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
       |> Repo.insert!()
 
     permission_entry =
-      Repo.insert!(%SysPermission{
-        permission: "system:user:edit",
-        resource: "system",
-        domain: "user",
-        action: "edit",
-        status: 1,
-        deprecated: false
-      })
+      Repo.get_by(SysPermission, permission: "system:user:edit") ||
+        Repo.insert!(%SysPermission{
+          permission: "system:user:edit",
+          resource: "system",
+          domain: "user",
+          action: "edit",
+          status: 1,
+          deprecated: false
+        })
 
     Repo.insert!(%SysMenuPermission{
       menu_id: menu.menu_id,
