@@ -24,7 +24,6 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
       user_id: actor.user_id,
       role_id: actor.role_id,
       dept_id: actor.dept_id,
-      is_admin: false,
       permissions: ["user:update"]
     }
 
@@ -45,7 +44,6 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
       user_id: actor.user_id,
       role_id: actor.role_id,
       dept_id: actor.dept_id,
-      is_admin: false,
       permissions: []
     }
 

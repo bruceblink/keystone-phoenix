@@ -12,14 +12,13 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
   alias KeystonePhoenixWeb.Live.AdminPages.Operations
 
   setup do
-    Config.refresh_cache(authorization: %{principal: %{is_admin: true}})
-    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{is_admin: true}}) end)
+    Config.refresh_cache(authorization: %{principal: %{}})
+    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{}}) end)
 
     admin =
       Repo.insert!(%SysUser{
         username: unique("editing_admin"),
         password: Bcrypt.hash_pwd_salt("Strong!123"),
-        is_admin: true,
         status: 1
       })
 

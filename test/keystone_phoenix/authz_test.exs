@@ -22,7 +22,6 @@ defmodule KeystonePhoenix.AuthzTest do
     assert principal.roles == [@role_id]
     assert principal.department_id == @dept_id
     assert principal.session_id == "session-1"
-    refute principal.is_admin
     assert principal.raw["userId"] == @user_id
   end
 
@@ -34,14 +33,12 @@ defmodule KeystonePhoenix.AuthzTest do
         "deptId" => @dept_id,
         user_id: nil,
         role_id: nil,
-        dept_id: nil,
-        is_admin: nil
+        dept_id: nil
       })
 
     assert principal.subject_id == @user_id
     assert principal.roles == [@role_id]
     assert principal.department_id == @dept_id
-    refute principal.is_admin
   end
 
   test "checks exact catalog permissions without an administrator bypass" do
@@ -51,7 +48,7 @@ defmodule KeystonePhoenix.AuthzTest do
     assert Authz.allowed?(principal, "user:read")
     refute Authz.allowed?(principal, "user:update")
     assert Authz.admin?(principal)
-    refute Authz.allowed?(%{is_admin: true}, "user:update")
+    refute Authz.allowed?(%{}, "user:update")
   end
 
   test "defaults to deny for missing or malformed permission input" do

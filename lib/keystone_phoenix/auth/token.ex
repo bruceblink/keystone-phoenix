@@ -29,7 +29,6 @@ defmodule KeystonePhoenix.Auth.Token do
       "iss" => Application.get_env(:keystone_phoenix, :jwt_issuer, "keystone"),
       "sub" => to_string(user.user_id),
       "username" => user.username,
-      "isAdmin" => user.is_admin,
       "type" => token_type,
       "jti" => jti,
       "iat" => now,

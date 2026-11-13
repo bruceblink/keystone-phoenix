@@ -18,7 +18,7 @@ defmodule KeystonePhoenix.PermissionTest do
       |> SysMenu.changeset(%{
         menu_name: "用户列表",
         menu_type: 0,
-        parent_id: 0,
+        parent_id: nil,
         permission: "user:read",
         status: 1
       })
@@ -30,7 +30,7 @@ defmodule KeystonePhoenix.PermissionTest do
 
     assert Permission.allowed?(user, "user:read")
     refute Permission.allowed?(user, "user:delete")
-    refute Permission.allowed?(%{is_admin: true}, "user:update")
+    refute Permission.allowed?(%{}, "user:update")
   end
 
   test "enforces custom and department-tree data scopes" do
@@ -62,7 +62,7 @@ defmodule KeystonePhoenix.PermissionTest do
       |> SysMenu.changeset(%{
         menu_name: "角色菜单",
         menu_type: 0,
-        parent_id: 0,
+        parent_id: nil,
         permission: "role:read",
         status: 1
       })
@@ -77,7 +77,7 @@ defmodule KeystonePhoenix.PermissionTest do
                  "roleSort" => role.role_sort,
                  "dataScope" => role.data_scope,
                  "status" => role.status,
-                 "menuIds" => Integer.to_string(menu.menu_id)
+                 "menuIds" => menu.menu_id
                },
                authorization: %{
                  principal: %{permissions: ["role:update", "permission:manage"]},
@@ -101,7 +101,7 @@ defmodule KeystonePhoenix.PermissionTest do
       |> SysMenu.changeset(%{
         menu_name: "角色权限配置",
         menu_type: 0,
-        parent_id: 0,
+        parent_id: nil,
         permission: "role:manage",
         status: 1
       })

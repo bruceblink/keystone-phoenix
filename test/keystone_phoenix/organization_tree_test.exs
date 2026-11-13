@@ -18,7 +18,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
 
     assert {:ok, _updated} =
              Department.update_dept(old_parent.dept_id, %{"parentId" => new_parent.dept_id},
-               authorization: %{principal: %{is_admin: true}}
+               authorization: %{principal: %{}}
              )
 
     assert {:ok, moved} = Department.get_dept(old_parent.dept_id)
@@ -30,7 +30,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
 
     assert {:error, :invalid_parent} =
              Department.update_dept(old_parent.dept_id, %{"parentId" => child.dept_id},
-               authorization: %{principal: %{is_admin: true}}
+               authorization: %{principal: %{}}
              )
 
     assert {:error, :name_exists} =
@@ -40,7 +40,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
                  "deptName" => "子部门",
                  "status" => 1
                },
-               authorization: %{principal: %{is_admin: true}}
+               authorization: %{principal: %{}}
              )
 
     disabled = insert_dept(205, 0, "0", "停用部门", 0)
@@ -52,12 +52,12 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
                  "deptName" => "非法子部门",
                  "status" => 1
                },
-               authorization: %{principal: %{is_admin: true}}
+               authorization: %{principal: %{}}
              )
 
     assert {:error, :status_invalid} =
              Department.update_dept(new_parent.dept_id, %{"status" => 0},
-               authorization: %{principal: %{is_admin: true}}
+               authorization: %{principal: %{}}
              )
   end
 
@@ -67,12 +67,12 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
 
     assert {:error, :invalid_parent} =
              Menu.update_menu(root.menu_id, %{"parentId" => page.menu_id},
-               authorization: %{principal: %{is_admin: true}, permission: "system:menu:edit"}
+               authorization: %{principal: %{}, permission: "system:menu:edit"}
              )
 
     assert {:error, :menu_type_locked} =
              Menu.update_menu(page.menu_id, %{"menuType" => 2},
-               authorization: %{principal: %{is_admin: true}, permission: "system:menu:edit"}
+               authorization: %{principal: %{}, permission: "system:menu:edit"}
              )
 
     assert {:error, :menu_parent_invalid} =
@@ -83,7 +83,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
                  "menuType" => 1,
                  "status" => 1
                },
-               authorization: %{principal: %{is_admin: true}, permission: "system:menu:add"}
+               authorization: %{principal: %{}, permission: "system:menu:add"}
              )
 
     assert {:error, :external_link_invalid} =
@@ -95,7 +95,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
                  "path" => "javascript:alert(1)",
                  "status" => 1
                },
-               authorization: %{principal: %{is_admin: true}, permission: "system:menu:add"}
+               authorization: %{principal: %{}, permission: "system:menu:add"}
              )
 
     assert {:error, :external_link_invalid} =
@@ -107,7 +107,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
                  "path" => "https:relative",
                  "status" => 1
                },
-               authorization: %{principal: %{is_admin: true}, permission: "system:menu:add"}
+               authorization: %{principal: %{}, permission: "system:menu:add"}
              )
 
     role =
@@ -125,7 +125,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
 
     assert {:error, :assigned_to_role} =
              Menu.delete_menu(page.menu_id,
-               authorization: %{principal: %{is_admin: true}, permission: "system:menu:remove"}
+               authorization: %{principal: %{}, permission: "system:menu:remove"}
              )
   end
 

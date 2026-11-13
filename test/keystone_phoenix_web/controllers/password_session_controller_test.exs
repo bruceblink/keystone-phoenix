@@ -44,7 +44,6 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
         password: "Strong!123",
         status: 1
       })
-      |> Ecto.Changeset.put_change(:is_admin, true)
       |> Repo.insert!()
 
     assert {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")

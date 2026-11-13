@@ -65,7 +65,6 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
           password: password_hash,
           dept_id: outside.dept_id,
           status: 1,
-          is_admin: false,
           deleted: false,
           create_time: now,
           update_time: now
@@ -275,10 +274,8 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert User.list_users(%{}, ctx.actor).total == 0
     assert User.list_users(%{}, %{ctx.actor | role_id: nil}).total == 0
 
-    assert User.list_users(%{"pageSize" => 500, "username" => "scope_user"}, %{
-             ctx.actor
-             | is_admin: true
-           }).total == 63
+    assert User.list_users(%{"pageSize" => 500, "username" => "scope_user"}, ctx.actor).total ==
+             63
 
     refute Permission.user_update_allowed?(ctx.actor, ctx.oldest.user_id, %{})
   end

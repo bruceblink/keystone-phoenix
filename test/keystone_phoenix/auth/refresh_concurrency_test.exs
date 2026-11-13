@@ -120,7 +120,7 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
           with_unboxed(fn ->
             User.reset_password(fixture.user_id, %{"password" => "Reset!456"},
               authorization: %{
-                principal: %{user_id: fixture.user_id, is_admin: true},
+                principal: %{user_id: fixture.user_id},
                 permission: "system:user:resetPwd"
               }
             )
@@ -188,7 +188,7 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
           with_unboxed(fn ->
             User.reset_password(fixture.user_id, %{"password" => "Reset!456"},
               authorization: %{
-                principal: %{user_id: fixture.user_id, is_admin: true},
+                principal: %{user_id: fixture.user_id},
                 permission: "system:user:resetPwd"
               }
             )
@@ -281,7 +281,6 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
           password: "Strong!123",
           status: 1
         })
-        |> Ecto.Changeset.put_change(:is_admin, true)
         |> Repo.insert!()
 
       {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")

@@ -19,7 +19,7 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
   @doc "Captures permission and data-scope fields; display-only profile changes remain valid."
   def context(user, permissions) do
     %{
-      user: Map.take(user, ~w(userId isAdmin roleId deptId)),
+      user: Map.take(user, ~w(userId roleId deptId)),
       permissions: Enum.sort(permissions),
       role: role_context(user["roleId"])
     }

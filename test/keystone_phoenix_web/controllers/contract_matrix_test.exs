@@ -65,7 +65,6 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
       password: "Strong!123",
       status: 1
     })
-    |> Ecto.Changeset.put_change(:is_admin, true)
     |> Repo.insert!()
   end
 end

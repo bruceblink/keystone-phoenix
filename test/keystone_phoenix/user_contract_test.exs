@@ -72,7 +72,7 @@ defmodule KeystonePhoenix.UserContractTest do
                  "status" => "1"
                },
                authorization: %{
-                 principal: %{is_admin: true},
+                 principal: %{},
                  permission: "system:user:add"
                }
              )
@@ -90,7 +90,7 @@ defmodule KeystonePhoenix.UserContractTest do
     assert {:error, :data_scope_denied} =
              User.reset_password("invalid", %{"password" => "Strong!123"},
                authorization: %{
-                 principal: %{is_admin: true},
+                 principal: %{},
                  permission: "system:user:resetPwd"
                }
              )

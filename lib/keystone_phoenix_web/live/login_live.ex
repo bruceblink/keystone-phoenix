@@ -67,10 +67,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
         current_user = Map.get(tokens.current_user, "userInfo", tokens.current_user)
         permissions = Map.get(tokens.current_user, "permissions", [])
 
-        is_admin = Authz.admin?(Map.put(current_user, :permissions, permissions))
+        admin? = Authz.admin?(Map.put(current_user, :permissions, permissions))
 
         dashboard =
-          if is_admin,
+          if admin?,
             do: AdminSupport.load_dashboard(),
             else: AdminSupport.load_dashboard_for_permissions(current_user, permissions)
 
@@ -85,7 +85,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
            permissions: permissions,
            auth_context: Authentication.context(current_user, permissions),
            panel_access: panel_access,
-           read_only: not is_admin,
+           read_only: not admin?,
            access_token: tokens.token,
            refresh_token: tokens.refresh_token,
            active_panel: "overview",

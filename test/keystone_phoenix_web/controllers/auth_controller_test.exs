@@ -9,7 +9,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
   alias KeystonePhoenix.User.SysUser
 
   setup do
-    Config.refresh_cache(authorization: %{principal: %{is_admin: true}})
+    Config.refresh_cache(authorization: %{principal: %{}})
 
     _captcha_config =
       %SysConfig{}
@@ -28,10 +28,9 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
         password: "Strong!123",
         status: 1
       })
-      |> Ecto.Changeset.put_change(:is_admin, true)
       |> Repo.insert!()
 
-    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{is_admin: true}}) end)
+    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{}}) end)
 
     {:ok, user: user}
   end
@@ -141,7 +140,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       |> Ecto.Changeset.change(config_value: if(enabled?, do: "true", else: "false"))
       |> Repo.update()
 
-    Config.refresh_cache(authorization: %{principal: %{is_admin: true}})
+    Config.refresh_cache(authorization: %{principal: %{}})
   end
 
   defp store_captcha(ttl \\ 120) do

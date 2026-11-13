@@ -151,5 +151,5 @@ defmodule KeystonePhoenix.UploadTest do
     path
   end
 
-  defp auth_options, do: [authorization: %{principal: %{is_admin: true}}]
+  defp auth_options, do: [authorization: %{principal: %{}}]
 end

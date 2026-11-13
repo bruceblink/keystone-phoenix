@@ -23,14 +23,13 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
 
   setup do
     ensure_captcha_config()
-    Config.refresh_cache(authorization: %{principal: %{is_admin: true}})
-    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{is_admin: true}}) end)
+    Config.refresh_cache(authorization: %{principal: %{}})
+    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{}}) end)
 
     {:ok, admin} =
       create_user(%{
         "username" => unique("live_auth_admin"),
-        "nickname" => "认证管理员",
-        "is_admin" => true
+        "nickname" => "认证管理员"
       })
 
     {:ok, admin: admin}
@@ -162,7 +161,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     {:ok, _disabled} =
       User.change_status(admin.user_id, 0,
         authorization: %{
-          principal: %{user_id: admin.user_id, is_admin: true},
+          principal: %{user_id: admin.user_id},
           permission: "system:user:edit"
         }
       )
@@ -183,7 +182,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     assert {:ok, _reset} =
              User.reset_password(admin.user_id, %{"password" => "Reset!456"},
                authorization: %{
-                 principal: %{user_id: admin.user_id, is_admin: true},
+                 principal: %{user_id: admin.user_id},
                  permission: "system:user:resetPwd"
                }
              )
@@ -283,7 +282,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     disable_captcha()
     {:ok, target} = create_user(%{"nickname" => "目标用户"})
     {:ok, view, _html} = login_view(conn, admin)
-    assert {:ok, _updated_admin} = Repo.update(Ecto.Changeset.change(admin, is_admin: false))
+    assert {:ok, _updated_admin} = Repo.update(Ecto.Changeset.change(admin))
     {:ok, before} = User.get_user(target.user_id)
 
     html =
@@ -412,7 +411,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   defp set_captcha(value) do
     config = Repo.get_by!(SysConfig, config_key: @captcha_config_key, deleted: false)
     Repo.update!(Ecto.Changeset.change(config, config_value: value))
-    Config.refresh_cache(authorization: %{principal: %{is_admin: true}})
+    Config.refresh_cache(authorization: %{principal: %{}})
   end
 
   defp ensure_captcha_config do
@@ -477,12 +476,6 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
       %SysUser{}
       |> SysUser.create_changeset(attrs)
       |> Repo.insert!()
-
-    if Map.get(attrs, "is_admin", false) do
-      {:ok, Repo.update!(Ecto.Changeset.change(user, is_admin: true))}
-    else
-      {:ok, user}
-    end
   end
 
   defp create_scoped_user do

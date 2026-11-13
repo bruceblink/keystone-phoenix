@@ -385,7 +385,6 @@ defmodule KeystonePhoenix.User do
       "status" => user.status,
       "loginIp" => user.login_ip,
       "loginDate" => format_datetime(user.login_date),
-      "isAdmin" => if(user.is_admin, do: 1, else: 0),
       "deptName" => Map.get(names.departments, user.dept_id, ""),
       "postName" => Map.get(names.posts, user.post_id, ""),
       "roleName" => Map.get(names.roles, user.role_id, ""),
@@ -425,7 +424,7 @@ defmodule KeystonePhoenix.User do
     end)
   end
 
-  # 管理员账号通过系统角色保护；用户表的旧 is_admin 字段不参与授权或保护判断。
+  # 管理员账号通过系统角色保护；用户表不保存独立管理员旁路字段。
   defp protected_role_user?(%{role_id: role_id}) do
     case Role.get_role(role_id) do
       {:ok, %{role_key: "admin"}} -> true

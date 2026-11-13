@@ -54,4 +54,17 @@ defmodule KeystonePhoenix.IdentityCoreTest do
                    binding.permission_id == ^permission_manage_id
            )
   end
+
+  test "administrator capability has no user table bypass column" do
+    %{rows: [[count]]} =
+      Repo.query!("""
+      SELECT COUNT(*)
+      FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'sys_user'
+        AND column_name = 'is_admin'
+      """)
+
+    assert count == 0
+  end
 end

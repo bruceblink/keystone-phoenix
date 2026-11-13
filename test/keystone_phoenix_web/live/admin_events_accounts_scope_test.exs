@@ -56,8 +56,7 @@ defmodule KeystonePhoenixWeb.AdminEventsAccountsScopeTest do
         current_user: %{
           "userId" => actor.user_id,
           "roleId" => role.role_id,
-          "deptId" => actor_dept.dept_id,
-          "isAdmin" => 0
+          "deptId" => actor_dept.dept_id
         },
         permissions: ["user:update"]
       }

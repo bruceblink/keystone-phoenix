@@ -20,7 +20,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
     assert {:ok, department} =
              Department.create_dept(
                %{"deptName" => "审计部门", "status" => 1},
-               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+               authorization: %{principal: %{user_id: actor.user_id}}
              )
 
     assert department.creator_id == actor.user_id
@@ -29,7 +29,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
              Department.update_dept(
                department.dept_id,
                %{"status" => 0},
-               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+               authorization: %{principal: %{user_id: actor.user_id}}
              )
 
     assert department.updater_id == actor.user_id
@@ -42,7 +42,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
                  "postSort" => 1,
                  "status" => 1
                },
-               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+               authorization: %{principal: %{user_id: actor.user_id}}
              )
 
     assert post.creator_id == actor.user_id
@@ -51,7 +51,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
              Post.update_post(
                post.post_id,
                %{"status" => 0},
-               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+               authorization: %{principal: %{user_id: actor.user_id}}
              )
 
     assert post.updater_id == actor.user_id
@@ -60,7 +60,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
              Menu.create_menu(
                %{"menuName" => "审计菜单", "menuType" => 1, "parentId" => 0, "status" => 1},
                authorization: %{
-                 principal: %{user_id: actor.user_id, is_admin: true},
+                 principal: %{user_id: actor.user_id},
                  permission: "system:menu:add"
                }
              )
@@ -70,7 +70,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
     assert {:ok, menu} =
              Menu.update_menu(menu.menu_id, %{"status" => 0},
                authorization: %{
-                 principal: %{user_id: actor.user_id, is_admin: true},
+                 principal: %{user_id: actor.user_id},
                  permission: "system:menu:edit"
                }
              )
@@ -88,7 +88,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
                  "menuIds" => []
                },
                authorization: %{
-                 principal: %{user_id: actor.user_id, is_admin: true},
+                 principal: %{user_id: actor.user_id},
                  permission: "system:role:add"
                }
              )
@@ -98,7 +98,7 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
     assert {:ok, role} =
              Role.update_role(role.role_id, %{"roleName" => "更新角色"},
                authorization: %{
-                 principal: %{user_id: actor.user_id, is_admin: true},
+                 principal: %{user_id: actor.user_id},
                  permission: "system:role:edit"
                }
              )

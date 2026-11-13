@@ -90,12 +90,12 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
                  "configValue" => "enabled",
                  "isAllowChange" => false
                },
-               authorization: %{principal: %{is_admin: true}}
+               authorization: %{principal: %{}}
              )
 
     assert {:error, :not_allow_change} =
              Config.update_config(config.config_id, %{"configValue" => "disabled"},
-               authorization: %{principal: %{is_admin: true}}
+               authorization: %{principal: %{}}
              )
 
     assert {:error, :dict_type_not_found} =
@@ -106,7 +106,7 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
                  "dictValue" => 1,
                  "status" => 1
                },
-               authorization: %{principal: %{is_admin: true}}
+               authorization: %{principal: %{}}
              )
   end
 

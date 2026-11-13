@@ -19,14 +19,14 @@ defmodule KeystonePhoenix.NoticeAuditTest do
                  "noticeContent" => "内容",
                  "status" => 1
                },
-               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+               authorization: %{principal: %{user_id: actor.user_id}}
              )
 
     assert notice.creator_id == actor.user_id
 
     assert {:ok, updated} =
              Notice.update_notice(notice.notice_id, %{"status" => 0},
-               authorization: %{principal: %{user_id: actor.user_id, is_admin: true}}
+               authorization: %{principal: %{user_id: actor.user_id}}
              )
 
     assert updated.updater_id == actor.user_id

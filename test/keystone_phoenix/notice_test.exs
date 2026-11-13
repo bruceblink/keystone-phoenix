@@ -37,7 +37,7 @@ defmodule KeystonePhoenix.NoticeTest do
   end
 
   test "rejects invalid deletion IDs before accessing the database" do
-    authorization = [authorization: %{principal: %{is_admin: true}}]
+    authorization = [authorization: %{principal: %{}}]
     assert {:error, :invalid_ids} = Notice.delete_notices([], authorization)
     assert {:error, :invalid_ids} = Notice.delete_notices(["bad-id"], authorization)
   end

@@ -66,5 +66,5 @@ defmodule KeystonePhoenix.UserAuditTest do
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 
   defp auth(actor, permission),
-    do: %{principal: %{user_id: actor.user_id, is_admin: true}, permission: permission}
+    do: %{principal: %{user_id: actor.user_id}, permission: permission}
 end

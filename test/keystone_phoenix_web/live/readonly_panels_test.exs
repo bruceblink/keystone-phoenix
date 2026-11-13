@@ -20,8 +20,8 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
 
   setup do
     ensure_captcha_disabled()
-    Config.refresh_cache(authorization: %{principal: %{is_admin: true}})
-    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{is_admin: true}}) end)
+    Config.refresh_cache(authorization: %{principal: %{}})
+    on_exit(fn -> Config.refresh_cache(authorization: %{principal: %{}}) end)
     :ok
   end
 

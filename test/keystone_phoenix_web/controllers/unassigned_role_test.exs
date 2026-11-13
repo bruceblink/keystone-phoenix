@@ -37,7 +37,7 @@ defmodule KeystonePhoenixWeb.UnassignedRoleTest do
       })
       |> Repo.insert!()
 
-    rows = Menu.menus_for_user(%{is_admin: true, role_id: nil})
+    rows = Menu.menus_for_user(%{role_id: nil})
     assert menu.menu_id in Enum.map(rows, & &1["menuId"])
   end
 end

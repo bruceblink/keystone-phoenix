@@ -344,8 +344,15 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def human_error(:storage_error), do: "头像文件保存失败"
   def human_error(reason), do: "操作失败：#{inspect(reason)}"
 
-  def admin_socket?(socket),
-    do: is_map(socket.assigns.current_user) and Authz.admin?(socket.assigns.current_user)
+  def admin_socket?(socket) do
+    case socket.assigns[:current_user] do
+      user when is_map(user) ->
+        Authz.admin?(Map.put(user, :permissions, List.wrap(socket.assigns[:permissions])))
+
+      _ ->
+        false
+    end
+  end
 
   def authenticated_socket?(socket), do: is_map(socket.assigns.current_user)
 

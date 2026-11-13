@@ -26,7 +26,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
       })
       |> Repo.insert()
 
-    {:ok, user} = Repo.update(Ecto.Changeset.change(user, is_admin: true))
+    {:ok, user} = Repo.update(Ecto.Changeset.change(user))
 
     {:ok, admin: user}
   end

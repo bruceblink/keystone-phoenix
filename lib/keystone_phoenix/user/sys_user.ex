@@ -22,7 +22,6 @@ defmodule KeystonePhoenix.User.SysUser do
     field :status, :integer, default: 1
     field :login_ip, :string, default: ""
     field :login_date, :utc_datetime_usec
-    field :is_admin, :boolean, default: false
     field :external_subject, :string
     field :external_user_id, :string
     field :creator_id, :binary_id

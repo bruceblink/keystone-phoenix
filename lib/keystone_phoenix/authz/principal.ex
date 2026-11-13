@@ -2,15 +2,13 @@ defmodule KeystonePhoenix.Authz.Principal do
   @moduledoc """
   Normalized authorization subject used by `KeystonePhoenix.Authz`.
 
-  The principal keeps normalized identity, role and permission values. The
-  legacy `is_admin` field is retained only as an inert transport field until
-  the user schema migration removes it; authorization never reads it.
+  The principal keeps normalized identity, role and permission values. Admin
+  capability comes only from the catalog permission `permission:manage`.
   """
 
   @enforce_keys []
   defstruct subject_id: nil,
             roles: [],
-            is_admin: false,
             tenant_id: nil,
             department_id: nil,
             session_id: nil,
@@ -20,7 +18,6 @@ defmodule KeystonePhoenix.Authz.Principal do
   @type t :: %__MODULE__{
           subject_id: term(),
           roles: list(),
-          is_admin: boolean(),
           tenant_id: term(),
           department_id: term(),
           session_id: term(),
@@ -36,7 +33,6 @@ defmodule KeystonePhoenix.Authz.Principal do
     %__MODULE__{
       subject_id: value(user, :user_id, "userId"),
       roles: roles(user),
-      is_admin: false,
       tenant_id: value(user, :tenant_id, "tenantId"),
       department_id: value(user, :dept_id, "deptId"),
       session_id: value(user, :session_id, "sessionId"),
@@ -55,7 +51,6 @@ defmodule KeystonePhoenix.Authz.Principal do
     %{
       user_id: principal.subject_id,
       role_id: List.first(principal.roles),
-      is_admin: principal.is_admin,
       tenant_id: principal.tenant_id,
       dept_id: principal.department_id,
       session_id: principal.session_id
