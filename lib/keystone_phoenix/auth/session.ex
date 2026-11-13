@@ -302,7 +302,7 @@ defmodule KeystonePhoenix.Auth.Session do
 
   defp persist_rotation(session, old_jti, tokens, now) do
     new_jti = Map.get(tokens, :refresh_jti)
-    refresh_expires_at = DateTime.add(now, Map.fetch!(tokens, :refresh_expires_in), :second)
+    refresh_expires_at = session.refresh_expires_at
 
     idle_expires_at =
       min_datetime(DateTime.add(now, @idle_lifetime, :second), session.refresh_expires_at)

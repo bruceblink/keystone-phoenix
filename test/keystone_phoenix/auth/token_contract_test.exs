@@ -43,6 +43,13 @@ defmodule KeystonePhoenix.Auth.TokenContractTest do
     assert refresh_claims["permission_version"] == 7
     assert access_claims["exp"] - access_claims["iat"] == 300
     assert refresh_claims["exp"] - refresh_claims["iat"] == 1_209_600
+
+    assert {:ok, bounded_refresh} =
+             Token.issue(user, Token.refresh_type(), session_id, 37)
+
+    assert {:ok, bounded_claims} = Token.verify(bounded_refresh.token, Token.refresh_type())
+    assert bounded_claims["exp"] - bounded_claims["iat"] == 37
+
     assert Identity.canonical?(access_claims["jti"])
     assert Identity.canonical?(refresh_claims["jti"])
 

@@ -18,11 +18,12 @@ defmodule KeystonePhoenix.Auth.Token do
   @spec refresh_ttl() :: pos_integer()
   def refresh_ttl, do: Application.get_env(:keystone_phoenix, :jwt_refresh_ttl, 1_209_600)
 
-  @spec issue(map(), String.t(), String.t() | nil) :: {:ok, map()} | {:error, term()}
-  def issue(user, token_type, session_id \\ nil)
+  @spec issue(map(), String.t(), String.t() | nil, pos_integer() | nil) ::
+          {:ok, map()} | {:error, term()}
+  def issue(user, token_type, session_id \\ nil, ttl_override \\ nil)
       when token_type in [@access_type, @refresh_type] do
     now = System.system_time(:second)
-    ttl = if token_type == @access_type, do: access_ttl(), else: refresh_ttl()
+    ttl = token_ttl(token_type, ttl_override)
     jti = KeystonePhoenix.Identity.v7()
     permission_version = Map.get(user, :permission_version, 1)
 
@@ -78,6 +79,13 @@ defmodule KeystonePhoenix.Auth.Token do
   end
 
   def verify(_token, _expected_type), do: {:error, :invalid_token}
+
+  defp token_ttl(token_type, nil) do
+    if token_type == @access_type, do: access_ttl(), else: refresh_ttl()
+  end
+
+  defp token_ttl(_token_type, ttl) when is_integer(ttl) and ttl > 0, do: ttl
+  defp token_ttl(_token_type, _ttl), do: raise(ArgumentError, "token ttl must be positive")
 
   @spec public_key_pem() :: binary()
   def public_key_pem do

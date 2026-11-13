@@ -176,17 +176,24 @@ defmodule KeystonePhoenix.Auth do
   end
 
   defp issue_pair_for_session(user, session) do
-    with {:ok, refresh} <- Token.issue(user, Token.refresh_type(), session.id),
-         {:ok, access} <- Token.issue(user, Token.access_type(), session.id) do
-      {:ok,
-       %{
-         token: access.token,
-         refresh_token: refresh.token,
-         expires_in: access.expires_in,
-         refresh_expires_in: refresh.expires_in,
-         refresh_jti: refresh.jti,
-         session_id: session.id
-       }}
+    refresh_ttl = DateTime.diff(session.refresh_expires_at, DateTime.utc_now(), :second)
+
+    if refresh_ttl <= 0 do
+      {:error, :invalid_refresh_token}
+    else
+      with {:ok, refresh} <-
+             Token.issue(user, Token.refresh_type(), session.id, refresh_ttl),
+           {:ok, access} <- Token.issue(user, Token.access_type(), session.id) do
+        {:ok,
+         %{
+           token: access.token,
+           refresh_token: refresh.token,
+           expires_in: access.expires_in,
+           refresh_expires_in: refresh.expires_in,
+           refresh_jti: refresh.jti,
+           session_id: session.id
+         }}
+      end
     end
   end
 
