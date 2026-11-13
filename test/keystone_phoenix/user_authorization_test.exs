@@ -71,7 +71,7 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
     target_dept = insert_dept("target")
 
     role =
-      %SysRole{}
+      %SysRole{role_id: Identity.v7()}
       |> SysRole.changeset(%{
         role_name: unique("scope_role"),
         role_key: unique("scope_role"),
@@ -82,11 +82,11 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
       |> Repo.insert!()
 
     menu =
-      %SysMenu{}
+      %SysMenu{menu_id: Identity.v7()}
       |> SysMenu.changeset(%{
         menu_name: "用户编辑",
         menu_type: 0,
-        parent_id: 0,
+        parent_id: nil,
         status: 1
       })
       |> Repo.insert!()
@@ -141,7 +141,7 @@ defmodule KeystonePhoenix.UserAuthorizationTest do
   end
 
   defp insert_dept(label) do
-    %SysDept{}
+    %SysDept{dept_id: Identity.v7()}
     |> SysDept.changeset(%{
       dept_name: "#{label}-#{unique("department")}",
       parent_id: nil,

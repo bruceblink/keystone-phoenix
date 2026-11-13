@@ -2,6 +2,7 @@ defmodule KeystonePhoenix.UserContractTest do
   use KeystonePhoenix.DataCase, async: false
 
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
@@ -10,12 +11,12 @@ defmodule KeystonePhoenix.UserContractTest do
 
   test "user rows and profile include related display names" do
     dept =
-      %SysDept{dept_id: 501}
-      |> SysDept.changeset(%{dept_name: "合同部门", ancestors: "0", status: 1})
+      %SysDept{dept_id: Identity.v7()}
+      |> SysDept.changeset(%{dept_name: "合同部门", ancestors: "", parent_id: nil, status: 1})
       |> Repo.insert!()
 
     post =
-      %SysPost{post_id: 502}
+      %SysPost{post_id: Identity.v7()}
       |> SysPost.changeset(%{
         post_code: "contract_post",
         post_name: "合同岗位",
@@ -25,7 +26,7 @@ defmodule KeystonePhoenix.UserContractTest do
       |> Repo.insert!()
 
     role =
-      %SysRole{role_id: 503}
+      %SysRole{role_id: Identity.v7()}
       |> SysRole.changeset(%{
         role_name: "合同角色",
         role_key: unique("contract_role"),
@@ -36,7 +37,7 @@ defmodule KeystonePhoenix.UserContractTest do
       |> Repo.insert!()
 
     user =
-      %SysUser{user_id: 504}
+      %SysUser{user_id: Identity.v7()}
       |> SysUser.create_changeset(%{
         username: unique("contract_user"),
         password: "Strong!123",
@@ -72,8 +73,8 @@ defmodule KeystonePhoenix.UserContractTest do
                  "status" => "1"
                },
                authorization: %{
-                 principal: %{},
-                 permission: "system:user:add"
+                 principal: %{permissions: ["permission:manage", "user:create"]},
+                 permission: "user:create"
                }
              )
 
@@ -84,21 +85,23 @@ defmodule KeystonePhoenix.UserContractTest do
     assert %{rows: [row], total: 1} = User.list_users(%{"userId" => to_string(user.user_id)})
     assert row["userId"] == user.user_id
 
-    assert %{rows: [_row], total: 1} = User.list_users(%{"userId" => "invalid"})
+    result = User.list_users(%{"userId" => "invalid", "pageSize" => 500})
+    assert result.total >= 1
+    assert user.user_id in Enum.map(result.rows, & &1["userId"])
     assert {:error, :not_found} = User.get_user("0")
 
     assert {:error, :data_scope_denied} =
              User.reset_password("invalid", %{"password" => "Strong!123"},
                authorization: %{
-                 principal: %{},
-                 permission: "system:user:resetPwd"
+                 principal: %{permissions: ["user:reset-password"]},
+                 permission: "user:reset-password"
                }
              )
   end
 
   test "principal-aware user writes reject missing permissions before updating" do
     user =
-      %SysUser{}
+      %SysUser{user_id: Identity.v7()}
       |> SysUser.create_changeset(%{
         username: unique("protected_user"),
         password: "Strong!123",
@@ -108,8 +111,8 @@ defmodule KeystonePhoenix.UserContractTest do
       |> Repo.insert!()
 
     authorization = %{
-      principal: %{user_id: 9001, permissions: []},
-      permission: "system:user:edit"
+      principal: %{user_id: Identity.v7(), permissions: []},
+      permission: "user:update"
     }
 
     assert {:error, :permission_denied} =

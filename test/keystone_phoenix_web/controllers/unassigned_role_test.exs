@@ -2,12 +2,14 @@ defmodule KeystonePhoenixWeb.UnassignedRoleTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
   alias KeystonePhoenix.{Auth, Menu, Repo}
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.User.SysUser
 
   test "a user without a role can log in and receives no routes or permissions" do
     user =
       Repo.insert!(%SysUser{
+        user_id: Identity.v7(),
         username: "unassigned_#{System.unique_integer([:positive])}",
         password: Bcrypt.hash_pwd_salt("Strong!123"),
         status: 1
@@ -22,22 +24,23 @@ defmodule KeystonePhoenixWeb.UnassignedRoleTest do
       |> put_req_header("authorization", "Bearer #{tokens.token}")
       |> get("/getRouters")
 
-    assert %{"code" => 0, "data" => []} = json_response(conn, 200)
+    assert %{"success" => true, "data" => [], "message" => "OK", "error" => nil} =
+             json_response(conn, 200)
   end
 
-  test "administrator routes do not require an assigned role" do
-    menu =
-      %SysMenu{}
+  test "an unassigned role cannot expose menus" do
+    _menu =
+      %SysMenu{menu_id: Identity.v7()}
       |> SysMenu.changeset(%{
         menu_name: "菜单读取测试",
         menu_type: 1,
         path: "/unassigned-role-test",
-        parent_id: 0,
+        parent_id: nil,
         status: 1
       })
       |> Repo.insert!()
 
     rows = Menu.menus_for_user(%{role_id: nil})
-    assert menu.menu_id in Enum.map(rows, & &1["menuId"])
+    assert rows == []
   end
 end

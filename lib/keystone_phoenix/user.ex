@@ -463,7 +463,7 @@ defmodule KeystonePhoenix.User do
     end)
   end
 
-  defp normalize_relation_value(field, value) when field in [:dept_id, :role_id] do
+  defp normalize_relation_value(field, value) when field in [:dept_id, :post_id, :role_id] do
     case value do
       nil ->
         nil
