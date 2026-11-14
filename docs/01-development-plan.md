@@ -2,9 +2,9 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
-更新日期：2026-11-14。本次文档审查基于已推送代码基线 `87d2e8a`。认证会话、MFA、API Key、标准 JWK Set、持久化 JWK 注册表、入口级资源范围矩阵、运行时 HTTPS 检查、OIDC Authorization Code + PKCE 和 Phoenix Passkey 已完成代码实现及本地数据库测试；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1。当前默认测试为 300 项通过、26 项排除，集成测试为 326 项通过；test/dev/prod 严格编译、格式和源码行数检查通过。OIDC 使用服务端生成的 state、nonce 和 verifier，Passkey 使用一次性 challenge、受控 RP/origin、公钥和签名计数器。PostgreSQL 18 迁移、重复迁移、认证 HTTP 链路、并发边界、单进程崩溃重启后的旧访问令牌恢复、非用户资源入口范围矩阵、本地 OIDC provider 实际重定向链、临时 TLS 终止代理和最新镜像 release smoke 已有真实验收。`b60a7fe` 又将角色、岗位、登录日志、操作日志和岗位导出查询接入显式授权上下文；公告和任务继续使用真实 `OWNER/SELF` 过滤并覆盖越界读取、更新、执行和混合删除回滚。当前未完成的是真实公网 IdP、浏览器 Passkey/硬件仪式、浏览器 CSRF/Cookie 实际行为、多节点恢复、全部资源的真实 owner/member 数据过滤、全部批量/异步范围和跨项目生产端到端一致性验收；四类导出接口已有真实 HTTP 范围回归。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
+更新日期：2026-11-14。本次文档审查基于已推送代码基线 `6d537f4`。认证会话、MFA、API Key、标准 JWK Set、持久化 JWK 注册表、入口级资源范围矩阵、运行时 HTTPS 检查、OIDC Authorization Code + PKCE 和 Phoenix Passkey 已完成代码实现及本地数据库测试；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1。当前默认测试为 303 项通过、26 项排除，集成测试为 329 项通过；test/dev/prod 严格编译、格式和源码行数检查通过。OIDC 使用服务端生成的 state、nonce 和 verifier，Passkey 使用一次性 challenge、受控 RP/origin、公钥和签名计数器。PostgreSQL 18 迁移、重复迁移、认证 HTTP 链路、并发边界、单进程崩溃重启后的旧访问令牌恢复、非用户资源入口范围矩阵、本地 OIDC provider 实际重定向链、临时 TLS 终止代理和最新镜像 release smoke 已有真实验收。`b60a7fe` 又将角色、岗位、登录日志、操作日志和岗位导出查询接入显式授权上下文；`fff0bf3` 将相同授权上下文继续传入 LiveView 的查询、刷新、监控、任务执行和面板显示入口；`6d537f4` 又将角色创建、更新、删除、状态变更、角色用户分配和菜单元数据读取接入资源范围检查，并对 `OWNER` 公告和任务保留范围过滤；越权任务执行统一返回“找不到指定任务”以避免资源存在性泄露。Native 的 REST 资源范围矩阵和 owner 资源 HTTP 回归已核对通过，两个项目的资源约束保持一致。当前未完成的是真实公网 IdP、浏览器 Passkey/硬件仪式、浏览器 CSRF/Cookie 实际行为、多节点恢复、全部资源的真实 owner/member 数据过滤、全部批量/异步范围和跨项目生产端到端一致性验收；四类导出接口已有真实 HTTP 范围回归。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
 
-当前结论：核心功能已完成，开发计划尚未全部完成，不能据此声明生产发布验收通过。服务层已完成主要资源的显式主体边界；`68d693f` 完成公告和任务的 `OWNER/SELF` 查询、详情、更新、执行和混合删除回滚，`b60a7fe` 补齐角色、岗位和审计日志的授权查询入口，`dc11b6a` 修复角色导出和详情授权错误的 HTTP 返回，`79faba3` 让导出分页显式透传授权错误，`87d2e8a` 增加四类导出接口的真实 HTTP 范围回归。全部资源的真实 owner/member 数据过滤和完整批量/异步范围仍未闭环；当前四类导出控制器已有真实范围回归。macOS 真实浏览器已完成新的登录会话、LiveView CSRF handshake、管理概览和退出登录；生产边缘代理下的 CSRF/Cookie 全链路、浏览器或硬件 Passkey、多节点恢复、真实生产 IdP 与真实生产 TLS 链路仍未完成。提交 `02c45b2` 已明确 `HttpOnly`、`SameSite=Lax` 和生产 `Secure` Cookie 配置，提交 `dc2e24f` 已清理业务 ID 的整数兼容规格和根节点哨兵测试，独立 prod 进程重启验收已证明旧访问令牌可恢复。Phoenix 应用代码在 dev/test/prod 严格编译中无 warning；`x509`、`asn1_compiler`、`cbor` 和 `wax_` 的 13 条依赖 warning 来自当前上游版本，已确认没有可用的正式升级修复，发布记录必须单独说明。
+当前结论：核心功能已完成，开发计划尚未全部完成，不能据此声明生产发布验收通过。服务层已完成主要资源的显式主体边界；`68d693f` 完成公告和任务的 `OWNER` 查询、详情、更新、执行和混合删除回滚，`b60a7fe` 补齐角色、岗位和审计日志的授权查询入口，`6d537f4` 补齐角色写操作、角色用户批量分配和菜单元数据读取的范围检查，`dc11b6a` 修复角色导出和详情授权错误的 HTTP 返回，`79faba3` 让导出分页显式透传授权错误，`87d2e8a` 增加四类导出接口的真实 HTTP 范围回归。全部资源的真实 owner/member 数据过滤和完整批量/异步范围仍未闭环；当前四类导出控制器已有真实范围回归。macOS 真实浏览器已完成新的登录会话、LiveView CSRF handshake、管理概览和退出登录；生产边缘代理下的 CSRF/Cookie 全链路、浏览器或硬件 Passkey、多节点恢复、真实生产 IdP 与真实生产 TLS 链路仍未完成。提交 `02c45b2` 已明确 `HttpOnly`、`SameSite=Lax` 和生产 `Secure` Cookie 配置，提交 `dc2e24f` 已清理业务 ID 的整数兼容规格和根节点哨兵测试，独立 prod 进程重启验收已证明旧访问令牌可恢复。Phoenix 应用代码在 dev/test/prod 严格编译中无 warning；`x509`、`asn1_compiler`、`cbor` 和 `wax_` 的 13 条依赖 warning 来自当前上游版本，已确认没有可用的正式升级修复，发布记录必须单独说明。
 
 本文较早的功能和验收记录只用于识别需要替换的范围，不代表新系统已经完成。一次性重构从 U0 阶段重新实现和验收；现有实体、迁移、接口和测试只有在符合统一架构后才能继续使用。
 
@@ -40,9 +40,11 @@
 - OIDC Authorization Code + PKCE：服务端保存短期 state、nonce 和 verifier；回调校验 JWKS、RS256、issuer、audience、`azp`、nonce、时间窗口和完整 issuer/subject 映射。
 - Passkey：Ithibati/Wax 校验注册与认证数据，数据库保存账户映射、凭据、公钥和签名计数器；注册要求 step-up，登录签发 AAL2 会话，challenge 单次消费并定期清理。
 
-2026-11-14 服务层授权切片：`40e8a37` 将岗位列表、详情、创建、更新和删除接入显式授权上下文；`5f2b898` 将菜单和配置的查询、写入及缓存刷新接入同一边界；`4a939ee` 将字典类型、字典数据和公告的查询、写入及缓存刷新接入同一边界；`6973751` 将任务、任务日志、登录日志和操作日志的查询、导出、执行、取消及删除接入同一边界；`0e8c0b8` 将会话和文件操作接入同一边界；`8736c1a` 将 API Key 签发、列表、轮换和撤销接入同一边界；`68d693f` 为公告和任务增加真实 owner 字段、`OWNER/SELF` 查询过滤和混合删除回滚；`b60a7fe` 将角色、岗位、登录日志和操作日志的列表、详情及导出查询接入授权上下文。全部资源的真实 owner/member 关系、批量和异步任务范围，以及导出控制器回归已覆盖角色、岗位和两类审计日志；其余批量和异步任务范围仍需落实到查询层和 HTTP 验收。
+2026-11-14 服务层授权切片：`40e8a37` 将岗位列表、详情、创建、更新和删除接入显式授权上下文；`5f2b898` 将菜单和配置的查询、写入及缓存刷新接入同一边界；`4a939ee` 将字典类型、字典数据和公告的查询、写入及缓存刷新接入同一边界；`6973751` 将任务、任务日志、登录日志和操作日志的查询、导出、执行、取消及删除接入同一边界；`0e8c0b8` 将会话和文件操作接入同一边界；`8736c1a` 将 API Key 签发、列表、轮换和撤销接入同一边界；`68d693f` 为公告和任务增加真实 owner 字段、`OWNER` 查询过滤和混合删除回滚；`b60a7fe` 将角色、岗位、登录日志和操作日志的列表、详情及导出查询接入授权上下文；`6d537f4` 将角色写操作、角色用户批量分配和菜单元数据读取接入同一边界。全部资源的真实 owner/member 关系、批量和异步任务范围，以及导出控制器回归已覆盖角色、岗位和两类审计日志；其余批量和异步任务范围仍需落实到查询层和 HTTP 验收。
 
 这些实现的主要功能范围已覆盖。较早测试数字和镜像结果只作为历史证据；它们不替代 clean-break 后的当前验证。当前验收必须分别记录：编译和格式、非集成测试、集成测试、PostgreSQL 迁移与重复迁移、认证 HTTP 链路、管理页面真实窗口、生产镜像 smoke。功能清单已经合并到本节“已有实现”和“后续执行顺序”，不再维护单独的 Java parity 文档。
+
+2026-11-14 LiveView 范围补齐：`fff0bf3` 将当前主体和权限列表封装为统一授权上下文，传入组织、角色、菜单、配置、字典、公告、任务、任务日志、审计日志和监控查询；刷新、保存、删除和任务执行后的重新加载也使用相同上下文。面板显示先检查权限，再检查资源范围。无范围权限的面板不向有范围主体展示全局数据；任务越界执行按资源不存在处理。`6d537f4` 又将角色写操作、角色用户批量分配和菜单元数据读取接入同一范围边界。对应的 Native 行为已由 `DataScopeResourceHttpTest` 和 `OwnerScopeResourceHttpTest` 覆盖，暂无需要新增的 Native 代码缺口。
 
 ### 2026-11-08 修复进度
 
@@ -159,6 +161,8 @@
 负责模块：组织、账号、系统和运维页面及其事件处理模块。对应 R07、R08。
 
 实施状态（2026-11-08）：`5c7c3bc` 和 `b0efb18` 修复了编辑 ID 覆盖、字典默认值、操作日志删除 ID、任务结束时间、普通用户页面入口和只读刷新。日志和监控按单项读取权限加载，管理写入仍只允许管理员。数据库和 LiveView 回归测试通过。此前使用 Codex 内置浏览器验证了配置保存、字典“否”值保留、普通用户资料、只读刷新和失效会话，并在 `1280×900` 与 `390×844` 复测页头布局。
+
+实施状态（2026-11-14）：`fff0bf3` 将 LiveView 的查询、刷新、监控、任务执行和面板显示统一接入服务层授权上下文。普通主体只能看到其资源范围内的数据；公告和任务继续按 `OWNER` 过滤；越权任务执行返回统一的资源不存在反馈。`6d537f4` 又将角色写操作、角色用户批量分配和菜单元数据读取接入服务层范围检查。新增的 LiveView 回归覆盖了有 `role:read` 但数据范围为 `DEPARTMENT` 的主体，确认其不能看到全局角色数据或打开角色面板。Native 对应的 REST 范围行为已由 `DataScopeResourceHttpTest` 和 `OwnerScopeResourceHttpTest` 验证。
 
 范围：
 
@@ -415,7 +419,7 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 
 ### 阶段五：资源范围矩阵
 
-Phoenix 已实现控制器入口的统一资源范围检查。`user` 和 `department` 保留现有查询、详情、写入和导出范围过滤；`profile` 和 `api_key` 使用 `SELF`；具有明确关系的资源使用 `OWNER/MEMBER`；`role`、`post`、`menu`、`config`、`dictionary`、`audit`、`session` 和通用 `file` 入口只接受 `ALL/TENANT`，`job` 和 `notice` 的领域查询另有真实 `OWNER/SELF` 过滤。缺少角色范围或关系时默认拒绝。管理员仍通过 `permission:manage` 保持原有能力，API Key 继续由人类管理入口拒绝。
+Phoenix 已实现控制器入口的统一资源范围检查。`user` 和 `department` 保留现有查询、详情、写入和导出范围过滤；`profile` 和 `api_key` 使用 `SELF`；具有明确关系的资源使用 `OWNER/MEMBER`；`role`、`post`、`menu`、`config`、`dictionary`、`audit`、`session` 和通用 `file` 入口只接受 `ALL/TENANT`，`job` 和 `notice` 的领域查询使用真实 `OWNER` 过滤。角色写操作、角色用户批量分配和菜单元数据读取同样要求资源范围通过。缺少角色范围或关系时默认拒绝。管理员仍通过 `permission:manage` 保持原有能力，API Key 继续由人类管理入口拒绝。
 
 实现位置：`KeystonePhoenix.Authz.ResourceScope`、`KeystonePhoenixWeb.Plugs.RequireResourceScope` 和各资源控制器。矩阵单元测试位于 `test/keystone_phoenix/authz/resource_scope_test.exs`，控制器入口集成测试位于 `test/keystone_phoenix_web/controllers/resource_scope_controller_test.exs`。定向测试命令为 `mix test --include integration test/keystone_phoenix/authz/resource_scope_test.exs test/keystone_phoenix_web/controllers/resource_scope_controller_test.exs`；当前结果为 6 项通过。未知资源、缺少主体、非法范围和缺少 owner/member 上下文均有默认拒绝断言。
 

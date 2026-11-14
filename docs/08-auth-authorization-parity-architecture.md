@@ -84,9 +84,12 @@ Phoenix 的 `RequireResourceScope` 是控制器入口的统一 PEP。它在 `Aut
 | `api_key` | `/api/v1/api-keys` | `SELF` | 只能操作当前主体拥有的密钥；签发、列表、轮换和撤销不接受其他主体 ID。 |
 | `owned` | 受保护的用户资源文件 | `OWNER`、`MEMBER` | 入口必须提供明确 `owner_id` 或成员列表；当前用户资源文件使用 `OWNER`。 |
 | `role`、`post`、`menu`、`config`、`dictionary` | `/api/v1/system/*` | `ALL`、`TENANT` | 资源没有稳定的主体关系；角色数据范围不是 `ALL` 或 `TENANT` 时默认拒绝。 |
-| `audit`、`session`、`job`、`notice`、`file` | 日志、监控、任务、公告和通用文件入口 | `ALL`、`TENANT` | 资源没有稳定的所有者或成员关系；只接受全局或当前租户范围。 |
+| `audit`、`session`、`file` | 日志、监控和通用文件入口 | `ALL`、`TENANT` | 资源没有稳定的所有者或成员关系；只接受全局或当前租户范围。 |
+| `job`、`notice` | 任务和公告入口 | `ALL`、`TENANT`、`OWNER` | 公告使用 `owner_id`，任务使用 `created_by`；`OWNER` 主体只能读取和操作自己的记录。 |
 
-`ResourceScope` 只登记可用资源。未知资源和未登记组合默认拒绝。`OWNER`、`MEMBER` 只在入口显式提供关系上下文时生效，不能从请求参数缺失推断为允许。通用文件入口使用 `ALL/TENANT`；用户资源文件通过 `owned` 规则单独检查。API Key 仍可访问已经批准的业务资源，但不能进入人类认证、密码、MFA 或 API Key 管理路径。
+`ResourceScope` 只登记可用资源。未知资源和未登记组合默认拒绝。`OWNER`、`MEMBER` 只在入口显式提供关系上下文时生效，不能从请求参数缺失推断为允许。公告和任务必须在查询、详情、更新、删除、执行、日志和导出入口传入 owner 关系；缺少关系时返回 `data_scope_denied` 或空结果，不能退化为全局查询。通用文件入口使用 `ALL/TENANT`；用户资源文件通过 `owned` 规则单独检查。API Key 仍可访问已经批准的业务资源，但不能进入人类认证、密码、MFA 或 API Key 管理路径。
+
+角色、岗位、菜单、配置和字典没有主体关系。它们的创建、更新、删除、状态变更、权限元数据读取和角色用户分配都必须先通过对应资源的 `ALL/TENANT` 范围检查。只有管理页面隐藏或前端权限判断不能替代领域命令的范围检查。
 
 PDP 固定提供：
 
