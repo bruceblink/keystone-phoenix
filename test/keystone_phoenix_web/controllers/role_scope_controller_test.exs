@@ -46,6 +46,44 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     assert Repo.get!(SysUser, target.user_id).role_id == target_role.role_id
   end
 
+  @tag :integration
+  test "role member HTTP queries return allocated and unallocated users" do
+    actor_role = create_role("TENANT")
+    grant_permission(actor_role.role_id, "role:read")
+    target_role = create_role("TENANT")
+    actor = create_user(actor_role.role_id)
+    allocated = create_user(target_role.role_id)
+    unallocated = create_user(nil)
+    allocated_id = allocated.user_id
+    unallocated_id = unallocated.user_id
+    {:ok, tokens} = Auth.login_plaintext(actor.username, "Strong!123")
+
+    # 查询接口必须通过真实路由返回 UUID 用户记录，并保持筛选条件生效。
+    allocated_response =
+      get(
+        authorized(tokens.token),
+        "/api/v1/system/role/#{target_role.role_id}/allocated/list",
+        %{"username" => allocated.username}
+      )
+
+    assert %{
+             "success" => true,
+             "data" => %{"total" => 1, "rows" => [%{"userId" => ^allocated_id}]}
+           } = json_response(allocated_response, 200)
+
+    unallocated_response =
+      get(
+        authorized(tokens.token),
+        "/api/v1/system/role/#{target_role.role_id}/unallocated/list",
+        %{"username" => unallocated.username}
+      )
+
+    assert %{
+             "success" => true,
+             "data" => %{"total" => 1, "rows" => [%{"userId" => ^unallocated_id}]}
+           } = json_response(unallocated_response, 200)
+  end
+
   defp authorized(token), do: put_req_header(build_conn(), "authorization", "Bearer #{token}")
 
   defp create_role(data_scope) do
