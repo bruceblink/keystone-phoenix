@@ -63,5 +63,22 @@ defmodule KeystonePhoenix.RolePermissionAssignmentTest do
     assert Menu.permissions_for_user(%{role_id: role.role_id}) == ["department:read"]
   end
 
+  test "role permission metadata requires the dedicated management permission" do
+    principal = %{user_id: Identity.v7(), data_scope: "ALL", permissions: ["role:create"]}
+
+    assert {:error, :permission_denied} =
+             Role.create_role(
+               %{
+                 "roleName" => "未授权权限角色",
+                 "roleKey" => unique("permission_denied"),
+                 "roleSort" => 1,
+                 "dataScope" => "ALL",
+                 "status" => 1,
+                 "permissions" => ["user:read"]
+               },
+               authorization: %{principal: principal, permission: "role:create"}
+             )
+  end
+
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"
 end

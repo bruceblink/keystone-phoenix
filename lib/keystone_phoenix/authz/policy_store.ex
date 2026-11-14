@@ -115,9 +115,11 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
       admin?(principal) or
         not has_any_key?(attrs, [
           "menuIds",
+          "permissions",
           "dataScope",
           "deptIdSet",
           :menu_ids,
+          :permissions,
           :data_scope,
           :dept_id_set
         ]) or
