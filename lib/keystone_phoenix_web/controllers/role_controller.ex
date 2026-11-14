@@ -75,21 +75,19 @@ defmodule KeystonePhoenixWeb.RoleController do
   def show(conn, %{"role_id" => role_id}) do
     authorization = [authorization: %{principal: conn.assigns.current_user}]
 
-    case Role.get_role(role_id, authorization) do
-      {:ok, role} ->
-        menu_ids = Role.menu_ids_for_role(role.role_id)
+    with {:ok, role} <- Role.get_role(role_id, authorization),
+         {:ok, menu_ids} <- Role.menu_ids_for_role(role.role_id, authorization) do
+      data =
+        role
+        |> Role.role_to_map()
+        |> Map.merge(%{
+          "menuIds" => menu_ids,
+          "selectedMenuList" => menu_ids,
+          "selectedDeptList" => Role.dept_ids_for_role(role)
+        })
 
-        data =
-          role
-          |> Role.role_to_map()
-          |> Map.merge(%{
-            "menuIds" => menu_ids,
-            "selectedMenuList" => menu_ids,
-            "selectedDeptList" => Role.dept_ids_for_role(role)
-          })
-
-        json(conn, ApiResponse.ok(data))
-
+      json(conn, ApiResponse.ok(data))
+    else
       {:error, :not_found} ->
         render_error(conn, :not_found)
 

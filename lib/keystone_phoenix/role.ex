@@ -186,7 +186,10 @@ defmodule KeystonePhoenix.Role do
   def change_status(id, status, options)
 
   def change_status(id, status, options) when is_list(options) do
-    update_role(id, %{"status" => status, "menuIds" => menu_ids_for_role(id)}, options)
+    with :ok <- Authorization.authorize_write(options, "role:update"),
+         menu_ids <- menu_ids_for_role_unchecked(id) do
+      update_role(id, %{"status" => status, "menuIds" => menu_ids}, options)
+    end
   end
 
   def change_status(_id, _status, _options), do: {:error, :authorization_required}
@@ -214,6 +217,10 @@ defmodule KeystonePhoenix.Role do
   end
 
   def menu_ids_for_role(role_id) do
+    menu_ids_for_role_unchecked(role_id)
+  end
+
+  defp menu_ids_for_role_unchecked(role_id) do
     from(rm in SysRoleMenu,
       join: menu in SysMenu,
       on: menu.menu_id == rm.menu_id,
@@ -221,6 +228,13 @@ defmodule KeystonePhoenix.Role do
       select: rm.menu_id
     )
     |> Repo.all()
+  end
+
+  @doc "在检查角色读取范围后读取角色菜单 ID。"
+  def menu_ids_for_role(role_id, options) when is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "role:read") do
+      {:ok, menu_ids_for_role_unchecked(role_id)}
+    end
   end
 
   @doc "Returns the department IDs selected for a role data scope."
@@ -265,44 +279,30 @@ defmodule KeystonePhoenix.Role do
   def assign_users(role_id, user_ids, options)
 
   def assign_users(role_id, user_ids, options) when is_list(options) do
-    with :ok <- Authorization.authorize_assignment(options, "role:assign"),
-         {:ok, principal} <- Authorization.principal(options) do
-      do_assign_users(role_id, user_ids, principal)
+    with {:ok, user_ids} <- normalize_user_ids(user_ids),
+         :ok <- Authorization.authorize_assignment(options, "role:assign", user_ids),
+         {:ok, role} <- get_role(role_id),
+         :ok <- ensure_role_active(role) do
+      update_user_assignments(user_ids, role.role_id)
     end
   end
 
   def assign_users(_role_id, _user_ids, _options), do: {:error, :authorization_required}
 
-  defp do_assign_users(role_id, user_ids, _actor) do
-    with {:ok, role} <- get_role(role_id),
-         true <- role.status == 1,
-         {:ok, user_ids} <- normalize_user_ids(user_ids) do
-      update_user_assignments(user_ids, role.role_id)
-    else
-      {:error, :forbidden} -> {:error, :forbidden}
-      {:error, :not_found} -> {:error, :not_found}
-      {:error, :invalid_ids} -> {:error, :invalid_ids}
-      false -> {:error, :role_unavailable}
-    end
-  end
-
   @doc "Removes role assignments from a batch of users."
   def unassign_users(user_ids, options)
 
   def unassign_users(user_ids, options) when is_list(options) do
-    with :ok <- Authorization.authorize_assignment(options, "role:assign"),
-         {:ok, principal} <- Authorization.principal(options) do
-      do_unassign_users(user_ids, principal)
+    with {:ok, user_ids} <- normalize_user_ids(user_ids),
+         :ok <- Authorization.authorize_assignment(options, "role:assign", user_ids) do
+      update_user_assignments(user_ids, nil)
     end
   end
 
   def unassign_users(_user_ids, _options), do: {:error, :authorization_required}
 
-  defp do_unassign_users(user_ids, _actor) do
-    with {:ok, user_ids} <- normalize_user_ids(user_ids) do
-      update_user_assignments(user_ids, nil)
-    end
-  end
+  defp ensure_role_active(%SysRole{status: 1}), do: :ok
+  defp ensure_role_active(_role), do: {:error, :role_unavailable}
 
   defp replace_menu_ids(role_id, menu_ids) do
     case validate_menu_ids(menu_ids) do

@@ -282,9 +282,19 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           {:noreply, assign(socket, role_feedback: Feedback.error("找不到指定角色"))}
 
         role ->
-          menu_ids = Role.menu_ids_for_role(role_id) |> Enum.join(",")
-          form = Support.empty_role_form() |> Map.merge(role) |> Map.put("menuIds", menu_ids)
-          {:noreply, assign(socket, role_form: form, role_feedback: nil, active_modal: "role")}
+          case Role.menu_ids_for_role(role_id, Support.authorization_options(socket, "role:read")) do
+            {:ok, menu_ids} ->
+              form =
+                Support.empty_role_form()
+                |> Map.merge(role)
+                |> Map.put("menuIds", Enum.join(menu_ids, ","))
+
+              {:noreply,
+               assign(socket, role_form: form, role_feedback: nil, active_modal: "role")}
+
+            {:error, _reason} ->
+              {:noreply, assign(socket, role_feedback: Feedback.error("找不到指定角色"))}
+          end
       end
     else
       {:noreply, socket}
