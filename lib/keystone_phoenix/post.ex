@@ -33,6 +33,13 @@ defmodule KeystonePhoenix.Post do
     Pagination.page(query, params, :post_id, &post_to_map/1)
   end
 
+  @doc "Lists posts after checking the caller's permission and resource scope."
+  def list_posts(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "post:read") do
+      {:ok, list_posts(params)}
+    end
+  end
+
   def get_post(id) do
     case Params.parse_uuid(id) do
       {:ok, id} ->
@@ -43,6 +50,13 @@ defmodule KeystonePhoenix.Post do
 
       :error ->
         {:error, :not_found}
+    end
+  end
+
+  @doc "Returns one post after checking the caller's resource scope."
+  def get_post(id, options) when is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "post:read") do
+      get_post(id)
     end
   end
 

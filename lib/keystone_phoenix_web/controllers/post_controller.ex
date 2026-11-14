@@ -22,26 +22,38 @@ defmodule KeystonePhoenixWeb.PostController do
 
   @doc "Returns a paginated list of posts."
   def list(conn, params) do
-    json(conn, ApiResponse.ok(Post.list_posts(params)))
+    case Post.list_posts(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
   end
 
   @doc "Exports all posts matching the current filters."
   def export(conn, params) do
-    rows = Excel.all_rows(&Post.list_posts/1, params)
+    authorization = [authorization: %{principal: conn.assigns.current_user}]
 
-    ExcelResponse.send_xlsx(
-      conn,
-      "posts.xlsx",
-      @post_export_headers,
-      Enum.map(rows, &post_export_row/1)
-    )
+    case KeystonePhoenix.Post.Authorization.authorize_read(authorization, "post:export") do
+      :ok ->
+        rows = Excel.all_rows(&Post.list_posts/1, params)
+
+        ExcelResponse.send_xlsx(
+          conn,
+          "posts.xlsx",
+          @post_export_headers,
+          Enum.map(rows, &post_export_row/1)
+        )
+
+      {:error, reason} ->
+        render_error(conn, reason)
+    end
   end
 
   @doc "Returns a post."
   def show(conn, %{"post_id" => post_id}) do
-    case Post.get_post(post_id) do
+    case Post.get_post(post_id, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, post} -> json(conn, ApiResponse.ok(Post.post_to_map(post)))
       {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
@@ -116,6 +128,14 @@ defmodule KeystonePhoenixWeb.PostController do
   end
 
   defp render_error(conn, :invalid_id), do: render_error(conn, :invalid_ids)
+
+  defp render_error(conn, :permission_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "没有操作权限"))
+  end
+
+  defp render_error(conn, :data_scope_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
+  end
 
   defp render_error(conn, reason) when reason in [:has_users, :update_failed] do
     message = if reason == :has_users, do: "岗位存在用户，不能删除", else: "岗位更新失败"

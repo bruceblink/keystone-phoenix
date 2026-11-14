@@ -13,6 +13,24 @@ defmodule KeystonePhoenix.Authz.Command do
     end
   end
 
+  @doc "Checks a command permission and the registered resource data scope."
+  def authorize_resource(options, permission, resource, context \\ %{})
+
+  def authorize_resource(options, permission, resource, context)
+      when is_list(options) and is_binary(permission) and is_map(context) do
+    with {:ok, principal} <- principal(options),
+         :ok <- Authz.authorize(principal, permission),
+         true <- Authz.resource_scope_allowed?(principal, resource, context) do
+      :ok
+    else
+      false -> {:error, :data_scope_denied}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def authorize_resource(_options, _permission, _resource, _context),
+    do: {:error, :authorization_required}
+
   @doc "Returns the principal carried by keyword authorization options."
   def principal(options) do
     case Keyword.get(options, :authorization) do
