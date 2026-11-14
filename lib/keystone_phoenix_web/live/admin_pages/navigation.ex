@@ -12,6 +12,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Navigation do
   def panel_title("roles"), do: "角色管理"
   def panel_title("menus"), do: "菜单管理"
   def panel_title("users"), do: "用户管理"
+  def panel_title("api-keys"), do: "API Key 管理"
   def panel_title("configs"), do: "配置管理"
   def panel_title("dicts"), do: "字典管理"
   def panel_title("notices"), do: "公告管理"

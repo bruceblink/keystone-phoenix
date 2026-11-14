@@ -231,6 +231,45 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     assert render(view) =~ "安全运营指标"
   end
 
+  test "administrator can issue, rotate, filter, and revoke API Keys", %{conn: conn} do
+    admin_role = Repo.get_by!(SysRole, role_key: "admin")
+    admin = create_user(%{role_id: admin_role.role_id})
+    {:ok, view, _html} = login_view(conn, admin)
+
+    render_click(view, "show-panel", %{"panel" => "api-keys"})
+    assert has_element?(view, "button[phx-click='new-api-key']")
+
+    render_click(view, "new-api-key")
+
+    render_submit(view, "save-api-key", %{
+      "name" => "liveview-test",
+      "scopes" => "user:read",
+      "expiresAt" => ""
+    })
+
+    issued = live_socket(view).assigns.issued_api_key
+    assert is_binary(issued.api_key)
+    assert String.starts_with?(issued.api_key, "ks_live_")
+    assert render(view) =~ issued.api_key
+
+    render_click(view, "dismiss-api-key-secret")
+    refute render(view) =~ issued.api_key
+
+    render_click(view, "filter-api-keys", %{"query" => "liveview-test", "status" => "active"})
+    assert live_socket(view).assigns.api_key_query == "liveview-test"
+    assert live_socket(view).assigns.api_key_status == "active"
+
+    render_click(view, "rotate-api-key", %{"id" => issued.id})
+    replacement = live_socket(view).assigns.issued_api_key
+    assert replacement.id != issued.id
+    render_click(view, "revoke-api-key", %{"id" => replacement.id})
+
+    assert Enum.any?(
+             live_socket(view).assigns.api_key_rows,
+             &(&1.id == replacement.id and not is_nil(&1.revoked_at))
+           )
+  end
+
   defp login_view(conn, user) do
     {:ok, view, _html} = live(conn, "/")
 

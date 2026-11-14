@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   import Phoenix.Component, only: [assign: 2]
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Auth.ApiKey
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Dictionary
@@ -26,6 +27,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     "posts" => ["post:read"],
     "roles" => ["role:read"],
     "menus" => ["menu:read"],
+    "api-keys" => ["api-key:read"],
     "users" => ["user:read"],
     "configs" => ["config:read"],
     "dicts" => ["dictionary:read"],
@@ -40,6 +42,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     "posts" => :post,
     "roles" => :role,
     "menus" => :menu,
+    "api-keys" => :api_key,
     "configs" => :config,
     "dicts" => :dictionary,
     "notices" => :notice,
@@ -145,6 +148,13 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     if admin_socket?(socket),
       do: load_users(),
       else: load_users_for_user(socket.assigns.current_user)
+  end
+
+  def load_api_keys_for_socket(socket) do
+    case ApiKey.list(current_user_id(socket), authorization_options(socket)) do
+      {:ok, rows} -> rows
+      _ -> []
+    end
   end
 
   def load_posts, do: load_all(&Post.list_posts/1)
@@ -283,6 +293,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def empty_dict_data_form, do: Forms.empty_dict_data_form()
   def empty_dict_data_form(dict_type), do: Forms.empty_dict_data_form(dict_type)
   def empty_job_form, do: Forms.empty_job_form()
+  def empty_api_key_form, do: %{name: "", scopes: "", expires_at: ""}
   def empty_profile_form, do: Forms.empty_profile_form()
   def empty_password_form, do: Forms.empty_password_form()
 
@@ -447,6 +458,9 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   def authenticated_socket?(socket), do: is_map(socket.assigns.current_user)
+
+  defp current_user_id(socket),
+    do: socket.assigns.current_user["userId"] || socket.assigns.current_user[:user_id]
 
   @doc "Returns the current LiveView principal as service-layer authorization options."
   def authorization_options(socket, permission \\ nil) do

@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   import Phoenix.Component
   import KeystonePhoenixWeb.Live.AdminPages.Accounts
+  import KeystonePhoenixWeb.Live.AdminPages.ApiKeys
   import KeystonePhoenixWeb.Live.AdminPages.Operations
   import KeystonePhoenixWeb.Live.AdminPages.Organization
   import KeystonePhoenixWeb.Live.AdminPages.System
@@ -21,6 +22,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenixWeb.Live.AdminEvents.Operations, as: OperationsEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.Organization, as: OrganizationEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.System, as: SystemEvents
+  alias KeystonePhoenixWeb.Live.AdminEvents.Security, as: SecurityEvents
 
   @impl true
   def mount(_params, _session, socket) do
@@ -192,6 +194,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
              "posts",
              "roles",
              "menus",
+             "api-keys",
              "notices",
              "logs",
              "users",
@@ -226,6 +229,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
              active_panel: panel,
              login_log_rows: logs.login_log_rows,
              operation_log_rows: logs.operation_log_rows
+           )}
+
+        panel == "api-keys" ->
+          {:noreply,
+           assign(socket,
+             active_panel: panel,
+             api_key_rows: AdminSupport.load_api_keys_for_socket(socket),
+             api_key_feedback: nil,
+             issued_api_key: nil
            )}
 
         panel == "users" and not AdminSupport.admin_socket?(socket) ->
@@ -278,6 +290,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   @accounts_events ~w(refresh-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
   @system_events ~w(refresh-config new-config edit-config save-config refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs edit-notice cancel-notice save-notice toggle-notice-status delete-notice refresh-notices delete-login-log delete-operation-log)
   @operations_events ~w(refresh-jobs new-job edit-job save-job delete-job run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor logout-online-user)
+  @security_events ~w(refresh-api-keys new-api-key save-api-key rotate-api-key revoke-api-key filter-api-keys dismiss-api-key-secret)
 
   @impl true
   def handle_event(event, params, socket) when event in @organization_events,
@@ -291,6 +304,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   def handle_event(event, params, socket) when event in @operations_events,
     do: OperationsEvents.handle_event(event, params, socket)
+
+  def handle_event(event, params, socket) when event in @security_events,
+    do: SecurityEvents.handle_event(event, params, socket)
 
   @impl true
   def handle_event("logout", _params, socket) do
@@ -398,6 +414,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <button :if={@panel_access["roles"]} data-icon="♢" type="button" class={if @active_panel == "roles", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "roles", do: "page"} phx-value-panel="roles">角色</button>
                     <button :if={@panel_access["menus"]} data-icon="☷" type="button" class={if @active_panel == "menus", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "menus", do: "page"} phx-value-panel="menus">菜单</button>
                     <button :if={@panel_access["users"]} data-icon="●" type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "users", do: "page"} phx-value-panel="users">用户</button>
+                    <button :if={@panel_access["api-keys"]} data-icon="⌘" type="button" class={if @active_panel == "api-keys", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "api-keys", do: "page"} phx-value-panel="api-keys">API Key</button>
                     <span class="nav-section-title">系统设置</span>
                     <button :if={@panel_access["configs"]} data-icon="⚙" type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "configs", do: "page"} phx-value-panel="configs">配置</button>
                     <button :if={@panel_access["dicts"]} data-icon="≡" type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "dicts", do: "page"} phx-value-panel="dicts">字典</button>
@@ -451,6 +468,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
                       <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} active_modal={@active_modal} read_only={@read_only} />
                     <% "users" -> %>
                       <.users user_rows={@user_rows} user_form={@user_form} user_feedback={@user_feedback} active_modal={@active_modal} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} page_num={@page_nums["users"]} page_size={@page_sizes["users"]} read_only={@read_only} />
+                    <% "api-keys" -> %>
+                      <.api_keys api_key_rows={@api_key_rows} api_key_feedback={@api_key_feedback} api_key_form={@api_key_form} api_key_query={@api_key_query} api_key_status={@api_key_status} issued_api_key={@issued_api_key} permissions={@permissions} active_modal={@active_modal} read_only={@read_only} />
                     <% "configs" -> %>
                       <.configs config_rows={@config_rows} config_form={@config_form} config_feedback={@config_feedback} active_modal={@active_modal} read_only={@read_only} />
                     <% "dicts" -> %>
