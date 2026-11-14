@@ -13,6 +13,7 @@ defmodule KeystonePhoenix.Authz do
   alias KeystonePhoenix.Authz.PolicyStore
   alias KeystonePhoenix.Authz.Principal
   alias KeystonePhoenix.Authz.PermissionCatalog
+  alias KeystonePhoenix.Authz.ResourceScope
   alias KeystonePhoenix.Log
 
   @type denial ::
@@ -45,6 +46,11 @@ defmodule KeystonePhoenix.Authz do
 
   @doc "Returns whether a principal has the catalog permission used for administration."
   def admin?(principal), do: allowed?(principal, "permission:manage")
+
+  @doc "Checks the resource-level data scope used by controller entry points."
+  def resource_scope_allowed?(principal, resource, context \\ %{}) do
+    ResourceScope.allowed?(principal, resource, context)
+  end
 
   @doc "Applies the actor's data scope to an Ecto query."
   def scope_query(query, principal) do

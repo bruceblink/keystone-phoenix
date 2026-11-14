@@ -409,7 +409,9 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 
 ### 阶段五：资源范围矩阵
 
-为 user、role、department、post、menu、config、dictionary、notice、job、file、session 和 audit 建立 `list/detail/create/update/delete/export/batch/async` 矩阵。每个入口记录范围策略、事务边界、测试文件和运行验收状态。
+Phoenix 已实现控制器入口的统一资源范围检查。`user` 和 `department` 保留现有查询、详情、写入和导出范围过滤；`profile` 和 `api_key` 使用 `SELF`；具有明确关系的资源使用 `OWNER/MEMBER`；`role`、`post`、`menu`、`config`、`dictionary`、`audit`、`session`、`job`、`notice` 和通用 `file` 入口只接受 `ALL/TENANT`，缺少角色范围或关系时默认拒绝。管理员仍通过 `permission:manage` 保持原有能力，API Key 继续由人类管理入口拒绝。
+
+实现位置：`KeystonePhoenix.Authz.ResourceScope`、`KeystonePhoenixWeb.Plugs.RequireResourceScope` 和各资源控制器。矩阵单元测试位于 `test/keystone_phoenix/authz/resource_scope_test.exs`，控制器入口集成测试位于 `test/keystone_phoenix_web/controllers/resource_scope_controller_test.exs`。定向测试命令为 `mix test --include integration test/keystone_phoenix/authz/resource_scope_test.exs test/keystone_phoenix_web/controllers/resource_scope_controller_test.exs`；当前结果为 6 项通过。未知资源、缺少主体、非法范围和缺少 owner/member 上下文均有默认拒绝断言。
 
 ### 阶段六：接口差异收口与运行验收
 

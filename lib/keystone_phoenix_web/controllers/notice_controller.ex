@@ -11,6 +11,8 @@ defmodule KeystonePhoenixWeb.NoticeController do
       delete: "notice:delete"
     }
 
+  plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :notice
+
   plug KeystonePhoenixWeb.Plugs.NoRepeat, [interval: 60] when action in [:create]
 
   alias KeystonePhoenix.Notice

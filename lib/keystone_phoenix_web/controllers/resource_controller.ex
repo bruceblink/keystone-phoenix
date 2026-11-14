@@ -64,7 +64,7 @@ defmodule KeystonePhoenixWeb.ResourceController do
     do: segment in [".", ".."] or String.contains?(to_string(segment), ["\\", "\0"])
 
   defp owner_allowed?(principal, owner_id) when is_map(principal) do
-    Authz.scope_allowed?(principal, :self, owner_id)
+    Authz.resource_scope_allowed?(principal, :owned, %{owner_id: owner_id})
   end
 
   defp owner_allowed?(_principal, _owner_id), do: false

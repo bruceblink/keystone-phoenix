@@ -17,6 +17,8 @@ defmodule KeystonePhoenixWeb.RoleController do
       unassign_users: "role:update"
     }
 
+  plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :role
+
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Role

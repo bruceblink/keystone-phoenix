@@ -10,6 +10,8 @@ defmodule KeystonePhoenixWeb.MonitorController do
       network_status_stream: "server:read"
     }
 
+  plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :session
+
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenixWeb.ApiResponse
 

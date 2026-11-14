@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
 
   plug KeystonePhoenixWeb.Plugs.RejectApiKey
   plug KeystonePhoenixWeb.Plugs.Authenticate
+  plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :profile
 
   alias KeystonePhoenix.Upload
   alias KeystonePhoenix.User

@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
 
   plug KeystonePhoenixWeb.Plugs.RejectApiKey
   plug KeystonePhoenixWeb.Plugs.Authenticate
+  plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :api_key
 
   alias KeystonePhoenix.Auth.ApiKey
   alias KeystonePhoenix.Authz

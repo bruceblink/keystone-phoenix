@@ -11,6 +11,8 @@ defmodule KeystonePhoenixWeb.MenuController do
       delete: "menu:delete"
     }
 
+  plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :menu
+
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Authz
   alias KeystonePhoenixWeb.ApiResponse

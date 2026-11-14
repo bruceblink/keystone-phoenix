@@ -21,6 +21,17 @@ defmodule KeystonePhoenixWeb.LogController do
               :export_operation_logs
             ]
 
+  plug KeystonePhoenixWeb.Plugs.RequireResourceScope,
+       [resource: :audit]
+       when action in [
+              :login_logs,
+              :operation_logs,
+              :delete_login_logs,
+              :delete_operation_logs,
+              :export_login_logs,
+              :export_operation_logs
+            ]
+
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.ApiResponse

@@ -15,6 +15,8 @@ defmodule KeystonePhoenixWeb.JobController do
       delete: "job:delete"
     }
 
+  plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :job
+
   alias KeystonePhoenix.Job
   alias KeystonePhoenixWeb.ApiResponse
 

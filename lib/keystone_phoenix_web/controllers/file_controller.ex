@@ -8,6 +8,8 @@ defmodule KeystonePhoenixWeb.FileController do
       download: "file:read"
     }
 
+  plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :file
+
   alias KeystonePhoenix.Upload
   alias KeystonePhoenixWeb.ApiResponse
 

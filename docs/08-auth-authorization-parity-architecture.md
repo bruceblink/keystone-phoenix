@@ -72,6 +72,22 @@ authentication_level
 
 资源适用规则固定如下：用户资源支持 `ALL`、`TENANT`、`SELF`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM`；部门资源支持 `ALL`、`TENANT`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM`；具有明确所有者或成员关系的资源支持 `ALL`、`OWNER`、`MEMBER`。当前系统为单租户部署，用户和部门资源中的 `TENANT` 等同当前租户的全部数据。没有租户、所有者或成员上下文的资源不得使用对应范围；未登记的范围名称和资源组合默认拒绝。
 
+### Phoenix 资源范围矩阵
+
+Phoenix 的 `RequireResourceScope` 是控制器入口的统一 PEP。它在 `Authenticate` 完成后执行；管理员能力只由 `permission:manage` 授予。用户和部门入口继续使用各自的查询范围过滤，不重复套用本矩阵。其余入口按下表执行，缺少主体、角色范围或关系时返回 `data_scope_denied`：
+
+| 资源标识 | 入口示例 | 支持范围 | 执行规则 |
+| --- | --- | --- | --- |
+| `user` | `/api/v1/system/users` | `ALL`、`TENANT`、`SELF`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM` | 使用现有列表、详情、写入和导出范围检查；先过滤再计数和分页。 |
+| `department` | `/api/v1/system/depts` | `ALL`、`TENANT`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM` | 使用现有部门层级范围检查；目标部门和子部门关系在写入前核验。 |
+| `profile` | `/api/v1/system/user/profile` | `SELF` | 目标固定为当前主体；API Key 主体由人类用户入口拒绝。 |
+| `api_key` | `/api/v1/api-keys` | `SELF` | 只能操作当前主体拥有的密钥；签发、列表、轮换和撤销不接受其他主体 ID。 |
+| `owned` | 受保护的用户资源文件 | `OWNER`、`MEMBER` | 入口必须提供明确 `owner_id` 或成员列表；当前用户资源文件使用 `OWNER`。 |
+| `role`、`post`、`menu`、`config`、`dictionary` | `/api/v1/system/*` | `ALL`、`TENANT` | 资源没有稳定的主体关系；角色数据范围不是 `ALL` 或 `TENANT` 时默认拒绝。 |
+| `audit`、`session`、`job`、`notice`、`file` | 日志、监控、任务、公告和通用文件入口 | `ALL`、`TENANT` | 资源没有稳定的所有者或成员关系；只接受全局或当前租户范围。 |
+
+`ResourceScope` 只登记可用资源。未知资源和未登记组合默认拒绝。`OWNER`、`MEMBER` 只在入口显式提供关系上下文时生效，不能从请求参数缺失推断为允许。通用文件入口使用 `ALL/TENANT`；用户资源文件通过 `owned` 规则单独检查。API Key 仍可访问已经批准的业务资源，但不能进入人类认证、密码、MFA 或 API Key 管理路径。
+
 PDP 固定提供：
 
 ```text

@@ -10,6 +10,8 @@ defmodule KeystonePhoenixWeb.ConfigController do
       refresh_cache: "config:refresh"
     }
 
+  plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :config
+
   alias KeystonePhoenix.Config
   alias KeystonePhoenixWeb.ApiResponse
 

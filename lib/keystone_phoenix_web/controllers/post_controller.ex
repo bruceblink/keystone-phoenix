@@ -11,6 +11,8 @@ defmodule KeystonePhoenixWeb.PostController do
       delete: "post:delete"
     }
 
+  plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :post
+
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Post
   alias KeystonePhoenixWeb.ApiResponse

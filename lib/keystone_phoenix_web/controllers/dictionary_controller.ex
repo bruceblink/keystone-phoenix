@@ -17,6 +17,8 @@ defmodule KeystonePhoenixWeb.DictionaryController do
       refresh_cache: "dictionary:refresh"
     }
 
+  plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :dictionary
+
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenixWeb.ApiResponse
 
