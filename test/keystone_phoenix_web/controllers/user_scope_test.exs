@@ -28,7 +28,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
       |> Repo.insert!()
 
     for permission <-
-          ~w(user:read user:export user:update user:create user:import mfa:manage) do
+          ~w(user:read user:export user:update user:create user:import user:delete mfa:manage) do
       menu =
         %SysMenu{menu_id: Identity.v7()}
         |> SysMenu.changeset(%{
@@ -240,6 +240,48 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
 
     assert get_in(json_response(response, 403), ["error", "code"]) == "data_scope_denied"
     assert Repo.get!(SysUser, ctx.actor.user_id).dept_id == ctx.actor.dept_id
+  end
+
+  @tag :integration
+  test "HTTP user batch delete rolls back invalid targets and revokes only committed sessions",
+       ctx do
+    {:ok, actor_tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
+    {:ok, target_tokens} = Auth.login_plaintext(ctx.oldest.username, "Strong!123")
+    missing_id = Identity.v7()
+
+    response =
+      delete(
+        authorized(actor_tokens.token),
+        "/api/v1/system/users/#{ctx.oldest.user_id},#{missing_id}",
+        %{}
+      )
+
+    assert response.status == 404
+    assert json_response(response, 404)["error"]["code"] == "validation_failed"
+    assert {:ok, _user} = User.get_user(ctx.oldest.user_id)
+    assert {:ok, _session} = Auth.session_context(target_tokens.token)
+
+    response =
+      delete(
+        authorized(actor_tokens.token),
+        "/api/v1/system/users/#{ctx.oldest.user_id},#{hd(ctx.outside_ids)}",
+        %{}
+      )
+
+    assert response.status == 403
+    assert json_response(response, 403)["error"]["code"] == "data_scope_denied"
+    assert {:ok, _user} = User.get_user(ctx.oldest.user_id)
+
+    response =
+      delete(
+        authorized(actor_tokens.token),
+        "/api/v1/system/users/#{ctx.oldest.user_id}",
+        %{}
+      )
+
+    assert json_response(response, 200)["success"] == true
+    assert {:error, :not_found} = User.get_user(ctx.oldest.user_id)
+    assert {:error, :invalid_token} = Auth.session_context(target_tokens.token)
   end
 
   @tag :integration
