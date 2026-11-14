@@ -58,7 +58,6 @@ defmodule KeystonePhoenix.Auth.Session do
       refresh_token
     )
   end
-
   defp occupy_with_access_token(
          user_id,
          jti,
