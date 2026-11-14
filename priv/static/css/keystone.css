@@ -46,7 +46,6 @@ th { color: var(--muted); font-weight: 700; background: var(--surface-soft); }
 .muted { color: var(--muted); }
 .refresh { width: auto; margin: 0 0 14px; padding: 8px 12px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
-
 /* 生产管理平台视觉层：登录入口和管理壳共用同一套颜色与间距。 */
 :root {
   --canvas: #f1f5f9;
@@ -342,6 +341,7 @@ tbody tr:hover { background: #f8faff; }
   background: rgba(15, 23, 42, 0.52);
   backdrop-filter: blur(8px);
 }
+/* 面板的 backdrop-filter 会改变 fixed 模态框的定位参考，打开模态框时移除该上下文。 */ .panel:has(> .modal-backdrop) { backdrop-filter: none; }
 .modal-panel {
   width: min(720px, 100%);
   max-height: min(820px, calc(100vh - 48px));
