@@ -58,15 +58,20 @@ defmodule KeystonePhoenix.Config do
     case Params.parse_uuid(id) do
       {:ok, id} ->
         case Repo.get_by(SysConfig, config_id: id, deleted: false) do
-          nil -> {:error, :not_found}
+          # Native 允许业务 key 使用 UUID 形状；主键未命中时继续按 key 查询。
+          nil -> get_config_by_key(id)
           config -> {:ok, config}
         end
 
       :error ->
-        case Repo.get_by(SysConfig, config_key: id, deleted: false) do
-          nil -> {:error, :not_found}
-          config -> {:ok, config}
-        end
+        get_config_by_key(id)
+    end
+  end
+
+  defp get_config_by_key(key) do
+    case Repo.get_by(SysConfig, config_key: key, deleted: false) do
+      nil -> {:error, :not_found}
+      config -> {:ok, config}
     end
   end
 

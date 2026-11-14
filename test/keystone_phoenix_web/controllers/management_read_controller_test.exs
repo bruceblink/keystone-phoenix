@@ -26,7 +26,8 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
   @tag :integration
   test "字典类型和条目通过 HTTP 创建后可以按类型读取并清理" do
     token = admin_token()
-    dict_type = "http.read.#{System.unique_integer([:positive])}"
+    # 使用 UUID 形状的 code，覆盖 Native 允许的业务键边界。
+    dict_type = Identity.v7()
 
     type_response =
       post(authorized(build_conn(), token), "/api/v1/dictionaries", %{
@@ -76,7 +77,8 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
   @tag :integration
   test "管理员可以通过 HTTP 完成配置和公告的新增、修改与删除" do
     token = admin_token()
-    config_key = "http.write.config.#{System.unique_integer([:positive])}"
+    # 使用 UUID 形状的 key，避免把业务 key 错当成配置主键。
+    config_key = Identity.v7()
     notice_title = "HTTP 写入公告 #{System.unique_integer([:positive])}"
 
     config_response =
@@ -94,11 +96,11 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
       |> json_response(200)
       |> get_in(["data", Access.at(0), "id"])
 
-    assert put(authorized(build_conn(), token), "/api/v1/configs/#{config_id}", %{
+    assert put(authorized(build_conn(), token), "/api/v1/configs/#{config_key}", %{
              "configValue" => "更新值"
            }).status == 200
 
-    assert get(authorized(build_conn(), token), "/api/v1/configs/#{config_id}")
+    assert get(authorized(build_conn(), token), "/api/v1/configs/#{config_key}")
            |> json_response(200)
            |> get_in(["data", "configValue"]) == "更新值"
 

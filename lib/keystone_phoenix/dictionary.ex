@@ -47,15 +47,20 @@ defmodule KeystonePhoenix.Dictionary do
     case Params.parse_uuid(id) do
       {:ok, id} ->
         case Repo.get_by(DictType, dict_id: id, deleted: false) do
-          nil -> {:error, :not_found}
+          # Native 允许业务 code 使用 UUID 形状；主键未命中时继续按 code 查询。
+          nil -> get_dict_type_by_code(id)
           dict_type -> {:ok, dict_type}
         end
 
       :error ->
-        case Repo.get_by(DictType, dict_type: id, deleted: false) do
-          nil -> {:error, :not_found}
-          dict_type -> {:ok, dict_type}
-        end
+        get_dict_type_by_code(id)
+    end
+  end
+
+  defp get_dict_type_by_code(code) do
+    case Repo.get_by(DictType, dict_type: code, deleted: false) do
+      nil -> {:error, :not_found}
+      dict_type -> {:ok, dict_type}
     end
   end
 
