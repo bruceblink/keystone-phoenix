@@ -251,6 +251,32 @@ defmodule KeystonePhoenix.Auth do
 
   def login_plaintext(_username, _password, _force_login), do: {:error, :invalid_credentials}
 
+  @doc "使用已经验证的 OIDC 用户主体创建本地会话。"
+  @spec login_oidc_user(map(), String.t()) ::
+          {:ok, map()} | {:mfa_required, map()} | {:error, atom()}
+  def login_oidc_user(user, client_id \\ "oidc")
+
+  def login_oidc_user(user, client_id) when is_map(user) and is_binary(client_id) do
+    with {:ok, preparation} <- Mfa.prepare_login(user.user_id, client_id) do
+      case preparation do
+        %{required: true, challenge: challenge} when is_map(challenge) ->
+          {:mfa_required, %{challenge: challenge, username: user.username}}
+
+        %{required: true, challenge: nil} ->
+          {:error, :mfa_enrollment_required}
+
+        _ ->
+          with {:ok, tokens} <- issue_pair(user, false, client_id) do
+            {:ok, Map.put(tokens, :current_user, current_login_user(user))}
+          end
+      end
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def login_oidc_user(_user, _client_id), do: {:error, :invalid_external_identity}
+
   @spec refresh(String.t()) :: {:ok, map()} | {:error, atom()}
   def refresh(refresh_token) when is_binary(refresh_token) do
     with {:ok, claims} <- Token.verify(refresh_token, Token.refresh_type()),

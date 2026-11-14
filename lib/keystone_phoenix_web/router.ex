@@ -22,6 +22,11 @@ defmodule KeystonePhoenixWeb.Router do
     plug :accepts, ["sse"]
   end
 
+  pipeline :oidc_browser do
+    plug :accepts, ["html", "json"]
+    plug :fetch_session
+  end
+
   pipeline :protected_profile_resources do
     plug KeystonePhoenixWeb.Plugs.Authenticate
   end
@@ -38,6 +43,13 @@ defmodule KeystonePhoenixWeb.Router do
     pipe_through [:browser, :protected_profile_resources]
 
     get "/profile/*path", ResourceController, :show
+  end
+
+  scope "/api/v1", KeystonePhoenixWeb do
+    pipe_through :oidc_browser
+
+    get "/auth/oidc/authorize", OidcController, :authorize
+    get "/auth/oidc/callback", OidcController, :callback
   end
 
   scope "/api/v1", KeystonePhoenixWeb do

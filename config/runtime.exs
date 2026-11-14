@@ -158,6 +158,46 @@ if config_env() == :prod do
     mfa_recovery_pepper: mfa_recovery_pepper,
     mfa_challenge_lifetime_seconds: mfa_challenge_lifetime_seconds
 
+  oidc_enabled = parse_boolean_env.("OIDC_ENABLED", false)
+  oidc_client_secret = System.get_env("OIDC_CLIENT_SECRET")
+
+  oidc_required_env = %{
+    "OIDC_ISSUER" => System.get_env("OIDC_ISSUER"),
+    "OIDC_AUTHORIZATION_ENDPOINT" => System.get_env("OIDC_AUTHORIZATION_ENDPOINT"),
+    "OIDC_TOKEN_ENDPOINT" => System.get_env("OIDC_TOKEN_ENDPOINT"),
+    "OIDC_JWKS_URI" => System.get_env("OIDC_JWKS_URI"),
+    "OIDC_CLIENT_ID" => System.get_env("OIDC_CLIENT_ID"),
+    "OIDC_REDIRECT_URI" => System.get_env("OIDC_REDIRECT_URI")
+  }
+
+  oidc_missing_env =
+    oidc_required_env
+    |> Enum.filter(fn {_name, value} -> is_nil(value) or String.trim(value) == "" end)
+    |> Enum.map(&elem(&1, 0))
+
+  if oidc_enabled and is_nil(oidc_client_secret) do
+    raise "environment variable OIDC_CLIENT_SECRET is missing when OIDC_ENABLED=true"
+  end
+
+  if oidc_enabled and oidc_missing_env != [] do
+    raise "environment variables #{Enum.join(oidc_missing_env, ", ")} are missing when OIDC_ENABLED=true"
+  end
+
+  config :keystone_phoenix, :oidc,
+    enabled: oidc_enabled,
+    issuer: System.get_env("OIDC_ISSUER"),
+    authorization_endpoint: System.get_env("OIDC_AUTHORIZATION_ENDPOINT"),
+    token_endpoint: System.get_env("OIDC_TOKEN_ENDPOINT"),
+    jwks_uri: System.get_env("OIDC_JWKS_URI"),
+    client_id: System.get_env("OIDC_CLIENT_ID"),
+    client_secret: oidc_client_secret,
+    redirect_uri: System.get_env("OIDC_REDIRECT_URI"),
+    audience: System.get_env("OIDC_AUDIENCE", jwt_audience),
+    scopes: String.split(System.get_env("OIDC_SCOPES", "openid profile email")),
+    code_ttl_seconds: parse_integer_env.("OIDC_CODE_TTL_SECONDS", 300, 60, 600),
+    auto_provision: parse_boolean_env.("OIDC_AUTO_PROVISION", false),
+    http_client: KeystonePhoenix.Auth.Oidc.HttpClient
+
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
   # want to use a different value for prod and you most likely don't want
