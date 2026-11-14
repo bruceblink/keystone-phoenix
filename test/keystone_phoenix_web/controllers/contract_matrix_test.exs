@@ -7,19 +7,9 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
   alias KeystonePhoenix.User.SysUser
 
   @tag :integration
-  test "health endpoints expose liveness and dependency readiness", %{conn: conn} do
+  test "health endpoint exposes liveness", %{conn: conn} do
     assert %{"success" => true, "data" => "is alive"} =
              conn |> get("/api/v1/health") |> json_response(200)
-
-    assert %{
-             "success" => true,
-             "data" => %{
-               "status" => "READY",
-               "database" => "UP",
-               "cache" => "UP",
-               "storage" => "UP"
-             }
-           } = conn |> get("/api/v1/health/ready") |> json_response(200)
   end
 
   @tag :integration

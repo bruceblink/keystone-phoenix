@@ -89,6 +89,43 @@ defmodule KeystonePhoenix.Auth do
   def login_api(_username, _password, _force_login, _captcha_code, _captcha_key, _client_id),
     do: {:error, :invalid_credentials}
 
+  @doc "Verifies the initial password and replaces it through the self scope."
+  @spec change_initial_password(String.t(), String.t(), String.t()) ::
+          {:ok, map()} | {:error, atom() | term()}
+  def change_initial_password(username, current_password, new_password)
+      when is_binary(username) and is_binary(current_password) and is_binary(new_password) do
+    case User.get_user_by_username(username) do
+      {:ok, user} ->
+        cond do
+          not Bcrypt.verify_pass(current_password, user.password || "") ->
+            {:error, :invalid_credentials}
+
+          not user.must_change_password ->
+            {:error, :password_change_not_required}
+
+          Bcrypt.verify_pass(new_password, user.password || "") ->
+            {:error, :same_password}
+
+          true ->
+            User.update_password(
+              user.user_id,
+              %{"oldPassword" => current_password, "newPassword" => new_password},
+              authorization: %{principal: %{user_id: user.user_id}}
+            )
+            |> case do
+              {:ok, _updated} -> {:ok, %{"updated" => true}}
+              other -> other
+            end
+        end
+
+      {:error, :not_found} ->
+        {:error, :invalid_credentials}
+    end
+  end
+
+  def change_initial_password(_username, _current_password, _new_password),
+    do: {:error, :validation_failed}
+
   @doc "Completes a login MFA challenge and creates the authenticated session."
   @spec complete_mfa_login(String.t(), String.t(), String.t(), String.t(), boolean(), tuple()) ::
           {:ok, map()} | {:error, atom()}

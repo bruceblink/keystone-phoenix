@@ -28,6 +28,7 @@ defmodule KeystonePhoenix.User.SysUser do
     field :updater_id, :binary_id
     field :remark, :string
     field :deleted, :boolean, default: false
+    field :must_change_password, :boolean, default: false
     field :permission_version, :integer, default: 1
 
     # MFA 策略只表示是否要求二次认证；只有已启用的 TOTP 因子才能设为 true。

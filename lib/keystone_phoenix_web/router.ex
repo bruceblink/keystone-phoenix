@@ -65,25 +65,24 @@ defmodule KeystonePhoenixWeb.Router do
     get "/auth/oidc/callback", OidcController, :callback
   end
 
-  scope "/api/v1/auth/passkey", KeystonePhoenixWeb do
+  scope "/api/v1/auth/webauthn", KeystonePhoenixWeb do
     pipe_through :passkey_public
 
-    post "/authentication/challenge", PasskeyController, :authentication_challenge
-    post "/authentication", PasskeyController, :authentication
+    get "/login/options", PasskeyController, :authentication_challenge
+    post "/login", PasskeyController, :authentication
   end
 
-  scope "/api/v1/auth/passkey", KeystonePhoenixWeb do
+  scope "/api/v1/auth/webauthn", KeystonePhoenixWeb do
     pipe_through [:passkey_public, :passkey_registration]
 
-    post "/registration/challenge", PasskeyController, :registration_challenge
-    post "/registration", PasskeyController, :registration
+    get "/register/options", PasskeyController, :registration_challenge
+    post "/register", PasskeyController, :registration
   end
 
   scope "/api/v1", KeystonePhoenixWeb do
     pipe_through :api
 
     get "/health", HealthController, :show
-    get "/health/ready", HealthController, :readiness
     get "/file/download", FileController, :download
     post "/file/upload", FileController, :upload
     post "/file/uploads", FileController, :uploads
@@ -103,15 +102,10 @@ defmodule KeystonePhoenixWeb.Router do
     post "/jobs/:job_id/trigger", JobController, :run
     delete "/jobs", JobController, :delete
     get "/auth/rsa-public-key", AuthController, :public_key
-    get "/auth/config", AuthController, :config
-    get "/auth/captcha", AuthController, :captcha
     post "/auth/login", AuthController, :login
     post "/auth/refresh", AuthController, :refresh
     post "/auth/logout", AuthController, :logout
-    post "/auth/logout-refresh-token", AuthController, :logout_refresh_token
-    post "/auth/register", AuthController, :register
-    get "/auth/me", AuthController, :current_user
-    get "/auth/routers", AuthController, :routers
+    post "/auth/change-initial-password", AuthController, :change_initial_password
     post "/auth/mfa/verify", AuthController, :verify_mfa
     post "/auth/mfa/enroll", AuthController, :begin_mfa_enrollment
     post "/auth/mfa/enroll/verify", AuthController, :verify_mfa_enrollment
@@ -182,6 +176,7 @@ defmodule KeystonePhoenixWeb.Router do
     put "/menus/:menu_id", MenuController, :update
     delete "/menus/:menu_id", MenuController, :delete
     get "/notices", NoticeController, :list
+    get "/notices/manage", NoticeController, :list
     get "/notices/:notice_id", NoticeController, :show
     post "/notices", NoticeController, :create
     put "/notices/:notice_id", NoticeController, :update
@@ -197,12 +192,6 @@ defmodule KeystonePhoenixWeb.Router do
     put "/profile", ProfileController, :update
     put "/profile/password", ProfileController, :update_password
     put "/profile/avatar", ProfileController, :update_avatar
-  end
-
-  scope "/api/v1", KeystonePhoenixWeb do
-    pipe_through :event_stream
-
-    get "/monitor/networkStatus/stream", MonitorController, :network_status_stream
   end
 
   scope "/api", KeystonePhoenixWeb do

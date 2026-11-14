@@ -55,6 +55,36 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert get_in(json_response(conn, 409), ["error", "code"]) == "validation_failed"
   end
 
+  test "changes a flagged initial password and revokes the requirement", %{user: user} do
+    user = Repo.update!(Ecto.Changeset.change(user, must_change_password: true))
+
+    response =
+      build_conn()
+      |> post("/api/v1/auth/change-initial-password", %{
+        "username" => user.username,
+        "currentPassword" => "Strong!123",
+        "newPassword" => "Changed!456"
+      })
+      |> json_response(200)
+
+    assert response["data"] == %{"updated" => true}
+
+    assert {:ok, _tokens} = Auth.login_plaintext(user.username, "Changed!456")
+  end
+
+  test "rejects initial password change when the flag is not set", %{conn: conn, user: user} do
+    response =
+      conn
+      |> post("/api/v1/auth/change-initial-password", %{
+        "username" => user.username,
+        "currentPassword" => "Strong!123",
+        "newPassword" => "Changed!456"
+      })
+      |> json_response(409)
+
+    assert get_in(response, ["error", "code"]) == "validation_failed"
+  end
+
   test "uses the shared token response schema for login and refresh", %{user: user} do
     login =
       build_conn()

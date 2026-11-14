@@ -107,7 +107,7 @@ defmodule KeystonePhoenixWeb.MfaContractTest do
     old_access_response =
       build_conn()
       |> put_req_header("authorization", "Bearer #{post_enrollment_tokens.token}")
-      |> get("/api/v1/auth/me")
+      |> get("/api/v1/profile")
 
     assert old_access_response.status == 401
 

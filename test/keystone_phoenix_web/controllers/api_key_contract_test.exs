@@ -40,7 +40,7 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
     conn = Plug.Conn.put_req_header(conn, "authorization", "ApiKey #{issued.api_key}")
 
     for response <- [
-          get(conn, "/api/v1/auth/me"),
+          get(conn, "/api/v1/profile"),
           get(conn, "/api/v1/auth/oidc/authorize"),
           post(conn, "/api/v1/auth/login", %{}),
           post(conn, "/api/v1/api-keys", %{}),

@@ -6,13 +6,6 @@ defmodule KeystonePhoenixWeb.MonitorControllerTest do
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
 
-  test "network status stream requires monitor server permission", %{conn: conn} do
-    response = get(conn, "/api/v1/monitor/networkStatus/stream")
-
-    assert response.status == 401
-    assert get_in(json_response(response, 401), ["error", "code"]) == "session_revoked"
-  end
-
   test "security metrics and report use the audit permission and stable response shape" do
     role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
 

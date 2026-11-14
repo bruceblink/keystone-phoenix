@@ -3,7 +3,7 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   plug KeystonePhoenixWeb.Plugs.RejectApiKey
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:current_user, :routers, :logout]
+  plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:logout]
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
        [
@@ -34,71 +34,20 @@ defmodule KeystonePhoenixWeb.AuthController do
             ]
 
   plug KeystonePhoenixWeb.Plugs.RateLimit,
-       [key: "getConfig", limit: 5, window: 10, scope: :global]
-       when action in [:config]
-
-  plug KeystonePhoenixWeb.Plugs.RateLimit,
-       [key: "captchaImage", limit: 10, window: 10, scope: :ip]
-       when action in [:captcha]
-
-  plug KeystonePhoenixWeb.Plugs.RateLimit,
        [key: "rsa-public-key", limit: 60, window: 60, scope: :ip]
        when action in [:public_key]
 
   alias KeystonePhoenix.Auth
-  alias KeystonePhoenix.Auth.Captcha
   alias KeystonePhoenix.Auth.LoginLimiter
   alias KeystonePhoenix.Auth.Mfa
   alias KeystonePhoenix.Auth.Token
-  alias KeystonePhoenix.Config
-  alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Log
-  alias KeystonePhoenix.Menu
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.AuthTokenResponse
 
   @doc "Returns the public key used to verify RS256 access tokens."
   def public_key(conn, _params) do
     json(conn, ApiResponse.ok(%{"publicKey" => Token.public_key_base64()}))
-  end
-
-  @doc "Returns public login configuration and dictionary data."
-  def config(conn, _params) do
-    json(
-      conn,
-      ApiResponse.ok(%{
-        "isCaptchaOn" => Config.get_config_value_by_key("sys.account.captchaOnOff") == "true",
-        "dictionary" => %{
-          "common.yesOrNo" => Dictionary.list_dict_data_by_type("common.yesOrNo"),
-          "common.status" => Dictionary.list_dict_data_by_type("common.status")
-        }
-      })
-    )
-  end
-
-  @doc "Returns a one-time captcha image when the database switch is enabled."
-  def captcha(conn, _params) do
-    case Captcha.generate() do
-      {:ok, captcha} ->
-        json(
-          conn,
-          ApiResponse.ok(%{
-            "isCaptchaOn" => Captcha.enabled?(),
-            "captchaCodeKey" => captcha.captcha_code_key,
-            "captchaCodeImg" => captcha.captcha_code_img
-          })
-        )
-
-      {:error, reason} when reason in [:capacity, :unavailable] ->
-        render_error(conn, :unavailable)
-    end
-  end
-
-  @doc "Registration remains disabled until an explicit registration policy is added."
-  def register(conn, _params) do
-    conn
-    |> put_status(:not_implemented)
-    |> json(ApiResponse.error(:validation_failed, "暂不支持用户注册"))
   end
 
   @doc "Authenticates a local username and password."
@@ -179,6 +128,48 @@ defmodule KeystonePhoenixWeb.AuthController do
   end
 
   def login(conn, _params), do: render_error(conn, :invalid_credentials)
+
+  @doc "Changes a flagged initial password without creating an authenticated session."
+  def change_initial_password(
+        conn,
+        %{
+          "username" => username,
+          "currentPassword" => current_password,
+          "newPassword" => new_password
+        }
+      )
+      when is_binary(username) and is_binary(current_password) and is_binary(new_password) do
+    case Auth.change_initial_password(username, current_password, new_password) do
+      {:ok, data} ->
+        json(conn, ApiResponse.ok(data))
+
+      {:error, :invalid_credentials} ->
+        render_error(conn, :invalid_credentials)
+
+      {:error, :password_change_not_required} ->
+        conn
+        |> put_status(:conflict)
+        |> json(ApiResponse.error(:validation_failed, "密码不需要初始化修改"))
+
+      {:error, :same_password} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(ApiResponse.error(:validation_failed, "新密码不能与当前密码相同"))
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
+
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(ApiResponse.error(:validation_failed, "密码格式无效", errors))
+
+      {:error, _reason} ->
+        render_error(conn, :unavailable)
+    end
+  end
+
+  def change_initial_password(conn, _params),
+    do: render_error(conn, :validation_failed)
 
   @doc "Completes a public login MFA challenge and creates a session."
   def verify_mfa(
@@ -350,14 +341,6 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   def refresh(conn, _params), do: render_error(conn, :invalid_refresh_token)
 
-  @doc "Revokes a refresh token session."
-  def logout_refresh_token(conn, %{"refreshToken" => refresh_token}) do
-    Auth.logout(refresh_token)
-    json(conn, ApiResponse.ok())
-  end
-
-  def logout_refresh_token(conn, _params), do: json(conn, ApiResponse.ok())
-
   @doc "Revokes the current access token's refresh session."
   def logout(conn, _params) do
     case get_req_header(conn, "authorization") do
@@ -366,16 +349,6 @@ defmodule KeystonePhoenixWeb.AuthController do
     end
 
     json(conn, ApiResponse.ok())
-  end
-
-  @doc "Returns the current authenticated user."
-  def current_user(conn, _params) do
-    json(conn, ApiResponse.ok(Auth.current_login_user(conn.assigns.current_user)))
-  end
-
-  @doc "Returns the authenticated user's menu router tree."
-  def routers(conn, _params) do
-    json(conn, ApiResponse.ok(Menu.routers_for_user(conn.assigns.current_user)))
   end
 
   defp token_to_map(tokens), do: AuthTokenResponse.to_map(tokens)

@@ -7,7 +7,6 @@ defmodule KeystonePhoenixWeb.MonitorController do
       server_info: "server:read",
       online_users: "online-session:read",
       logout_online_user: "online-session:revoke",
-      network_status_stream: "server:read",
       security_metrics: "audit:read",
       security_report: "audit:read"
     }
@@ -52,30 +51,6 @@ defmodule KeystonePhoenixWeb.MonitorController do
       :ok -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, :unavailable} -> render_error(conn, :unavailable)
-    end
-  end
-
-  @doc "Streams one network status snapshot; the frontend reconnects for updates."
-  def network_status_stream(conn, _params) do
-    case Monitor.network_status(authorization: %{principal: conn.assigns.current_user}) do
-      {:error, reason} ->
-        render_error(conn, reason)
-
-      network_status ->
-        payload =
-          "event: network-status\ndata: " <> Jason.encode!(network_status) <> "\n\n"
-
-        conn =
-          conn
-          |> put_resp_content_type("text/event-stream")
-          |> put_resp_header("cache-control", "no-cache")
-          |> put_resp_header("connection", "keep-alive")
-          |> send_chunked(200)
-
-        case chunk(conn, payload) do
-          {:ok, conn} -> conn
-          {:error, _reason} -> conn
-        end
     end
   end
 

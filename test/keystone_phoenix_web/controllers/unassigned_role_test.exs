@@ -1,7 +1,7 @@
 defmodule KeystonePhoenixWeb.UnassignedRoleTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
-  alias KeystonePhoenix.{Auth, Menu, Repo}
+  alias KeystonePhoenix.{Menu, Repo}
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.User.SysUser
@@ -15,17 +15,7 @@ defmodule KeystonePhoenixWeb.UnassignedRoleTest do
         status: 1
       })
 
-    assert {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
-    assert tokens.current_user["permissions"] == []
     assert Menu.menus_for_user(user) == []
-
-    conn =
-      build_conn()
-      |> put_req_header("authorization", "Bearer #{tokens.token}")
-      |> get("/api/v1/auth/routers")
-
-    assert %{"success" => true, "data" => [], "message" => "OK", "error" => nil} =
-             json_response(conn, 200)
   end
 
   test "an unassigned role cannot expose menus" do
