@@ -2,9 +2,9 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
-更新日期：2026-11-14。本次文档审查基于已推送代码基线 `8736c1a`。认证会话、MFA、API Key、标准 JWK Set、持久化 JWK 注册表、入口级资源范围矩阵、运行时 HTTPS 检查、OIDC Authorization Code + PKCE 和 Phoenix Passkey 已完成代码实现及本地数据库测试；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1。当前默认测试为 294 项通过、25 项排除，集成测试为 319 项通过；test/dev/prod 严格编译、格式和源码行数检查通过。OIDC 使用服务端生成的 state、nonce 和 verifier，Passkey 使用一次性 challenge、受控 RP/origin、公钥和签名计数器。PostgreSQL 18 迁移、重复迁移、认证 HTTP 链路、并发边界、单进程崩溃重启后的旧访问令牌恢复、非用户资源入口范围矩阵、本地 OIDC provider 实际重定向链、临时 TLS 终止代理和最新镜像 release smoke 已有真实验收。六个资源范围切片已将 `post`、`menu`、`config`、`dictionary`、`notice`、`job`、`audit/log`、`session`、`file` 和 `api_key` 的查询与命令入口接入显式授权上下文。当前未完成的是真实公网 IdP、浏览器 Passkey/硬件仪式、浏览器 CSRF/Cookie 实际行为、多节点恢复、真实 owner/member 数据过滤、导出/批量/异步范围和跨项目生产端到端一致性验收。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
+更新日期：2026-11-14。本次文档审查基于已推送代码基线 `68d693f`。认证会话、MFA、API Key、标准 JWK Set、持久化 JWK 注册表、入口级资源范围矩阵、运行时 HTTPS 检查、OIDC Authorization Code + PKCE 和 Phoenix Passkey 已完成代码实现及本地数据库测试；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1。当前默认测试为 298 项通过、25 项排除，集成测试为 323 项通过；test/dev/prod 严格编译、格式和源码行数检查通过。OIDC 使用服务端生成的 state、nonce 和 verifier，Passkey 使用一次性 challenge、受控 RP/origin、公钥和签名计数器。PostgreSQL 18 迁移、重复迁移、认证 HTTP 链路、并发边界、单进程崩溃重启后的旧访问令牌恢复、非用户资源入口范围矩阵、本地 OIDC provider 实际重定向链、临时 TLS 终止代理和最新镜像 release smoke 已有真实验收。最新 owner 切片已为公告和任务增加 `OWNER/SELF` 过滤，覆盖越界读取、更新、执行和混合删除回滚。当前未完成的是真实公网 IdP、浏览器 Passkey/硬件仪式、浏览器 CSRF/Cookie 实际行为、多节点恢复、全部资源的真实 owner/member 数据过滤、导出/批量/异步范围和跨项目生产端到端一致性验收。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
 
-当前结论：核心功能已完成，开发计划尚未全部完成，不能据此声明生产发布验收通过。服务层已完成 `post`、`menu`、`config`、`dictionary`、`notice`、`job`、`audit/log`、`session`、`file` 和 `api_key` 的显式主体边界，但真实 owner/member 数据过滤、导出、批量和异步范围仍未闭环。浏览器 CSRF/Cookie 实际行为、浏览器或硬件 Passkey、多节点恢复、真实生产 IdP 与真实生产 TLS 链路也仍未完成。提交 `02c45b2` 已明确 `HttpOnly`、`SameSite=Lax` 和生产 `Secure` Cookie 配置，提交 `dc2e24f` 已清理业务 ID 的整数兼容规格和根节点哨兵测试，提交 `8736c1a` 已完成 API Key 管理服务命令范围切片，独立 prod 进程重启验收已证明旧访问令牌可恢复。Phoenix 应用代码在 dev/test/prod 严格编译中无 warning；`x509`、`asn1_compiler`、`cbor` 和 `wax_` 的 13 条依赖 warning 来自当前上游版本，已确认没有可用的正式升级修复，发布记录必须单独说明。
+当前结论：核心功能已完成，开发计划尚未全部完成，不能据此声明生产发布验收通过。服务层已完成主要资源的显式主体边界；`68d693f` 又完成公告和任务的 `OWNER/SELF` 查询、详情、更新、执行和混合删除回滚。全部资源的真实 owner/member 数据过滤、完整导出/批量/异步范围仍未闭环。浏览器 CSRF/Cookie 实际行为、浏览器或硬件 Passkey、多节点恢复、真实生产 IdP 与真实生产 TLS 链路也仍未完成。提交 `02c45b2` 已明确 `HttpOnly`、`SameSite=Lax` 和生产 `Secure` Cookie 配置，提交 `dc2e24f` 已清理业务 ID 的整数兼容规格和根节点哨兵测试，独立 prod 进程重启验收已证明旧访问令牌可恢复。Phoenix 应用代码在 dev/test/prod 严格编译中无 warning；`x509`、`asn1_compiler`、`cbor` 和 `wax_` 的 13 条依赖 warning 来自当前上游版本，已确认没有可用的正式升级修复，发布记录必须单独说明。
 
 本文较早的功能和验收记录只用于识别需要替换的范围，不代表新系统已经完成。一次性重构从 U0 阶段重新实现和验收；现有实体、迁移、接口和测试只有在符合统一架构后才能继续使用。
 
@@ -40,7 +40,7 @@
 - OIDC Authorization Code + PKCE：服务端保存短期 state、nonce 和 verifier；回调校验 JWKS、RS256、issuer、audience、`azp`、nonce、时间窗口和完整 issuer/subject 映射。
 - Passkey：Ithibati/Wax 校验注册与认证数据，数据库保存账户映射、凭据、公钥和签名计数器；注册要求 step-up，登录签发 AAL2 会话，challenge 单次消费并定期清理。
 
-2026-11-14 服务层授权切片：`40e8a37` 将岗位列表、详情、创建、更新和删除接入显式授权上下文；`5f2b898` 将菜单和配置的查询、写入及缓存刷新接入同一边界；`4a939ee` 将字典类型、字典数据和公告的查询、写入及缓存刷新接入同一边界；`6973751` 将任务、任务日志、登录日志和操作日志的查询、导出、执行、取消及删除接入同一边界；`0e8c0b8` 将会话和文件操作接入同一边界；`8736c1a` 将 API Key 签发、列表、轮换和撤销接入同一边界。每个切片都包含缺失主体、部门范围拒绝和租户范围成功测试。真实 owner/member 关系、导出、批量和异步任务范围仍需落实到查询层。
+2026-11-14 服务层授权切片：`40e8a37` 将岗位列表、详情、创建、更新和删除接入显式授权上下文；`5f2b898` 将菜单和配置的查询、写入及缓存刷新接入同一边界；`4a939ee` 将字典类型、字典数据和公告的查询、写入及缓存刷新接入同一边界；`6973751` 将任务、任务日志、登录日志和操作日志的查询、导出、执行、取消及删除接入同一边界；`0e8c0b8` 将会话和文件操作接入同一边界；`8736c1a` 将 API Key 签发、列表、轮换和撤销接入同一边界；`68d693f` 为公告和任务增加真实 owner 字段、`OWNER/SELF` 查询过滤和混合删除回滚。全部资源的真实 owner/member 关系、导出、批量和异步任务范围仍需落实到查询层。
 
 这些实现的主要功能范围已覆盖。较早测试数字和镜像结果只作为历史证据；它们不替代 clean-break 后的当前验证。当前验收必须分别记录：编译和格式、非集成测试、集成测试、PostgreSQL 迁移与重复迁移、认证 HTTP 链路、管理页面真实窗口、生产镜像 smoke。功能清单已经合并到本节“已有实现”和“后续执行顺序”，不再维护单独的 Java parity 文档。
 
