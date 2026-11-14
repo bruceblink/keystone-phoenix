@@ -50,6 +50,36 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     end
   end
 
+  @tag :integration
+  test "export endpoints enforce scope and render an authorized workbook" do
+    export_cases = export_cases()
+    {department_token, _ids} = authenticated_scope_user("DEPARTMENT")
+
+    for {label, method, path} <- export_cases do
+      response = request(authorized(build_conn(), department_token), method, path, %{})
+
+      assert response.status == 403, "#{label} returned #{response.status}"
+      assert json_response(response, 403)["error"]["code"] == "data_scope_denied", label
+    end
+
+    {tenant_token, _ids} = authenticated_scope_user("TENANT")
+
+    for {label, method, path} <- export_cases do
+      response = request(authorized(build_conn(), tenant_token), method, path, %{})
+
+      assert response.status == 200, "#{label} returned #{response.status}"
+
+      assert [content_type] = get_resp_header(response, "content-type")
+
+      assert String.starts_with?(
+               content_type,
+               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+             )
+
+      assert byte_size(response.resp_body) > 100, label
+    end
+  end
+
   defp authorized(conn, token), do: put_req_header(conn, "authorization", "Bearer #{token}")
 
   defp authenticated_scope_user(data_scope) do
@@ -70,11 +100,12 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
   defp resource_permissions do
     ~w(
       role:read role:export
-      post:read post:create post:update post:delete
+      post:read post:export post:create post:update post:delete
       menu:read menu:create menu:update menu:delete
       config:read config:create config:update config:refresh
       dictionary:read dictionary:create dictionary:update dictionary:delete dictionary:refresh
-      login-log:read login-log:delete operation-log:read operation-log:delete
+      login-log:read login-log:export login-log:delete
+      operation-log:read operation-log:export operation-log:delete
       cache:refresh server:read online-session:read online-session:revoke
       job:read job:create job:update job:update-status job:run job:delete
       notice:read notice:create notice:update notice:delete
@@ -119,6 +150,15 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
       {"file detail", :get, "/api/v1/file/download?fileName=#{file_name}", %{}},
       {"file write", :post, "/api/v1/file/upload", %{}},
       {"file batch write", :post, "/api/v1/file/uploads", %{}}
+    ]
+  end
+
+  defp export_cases do
+    [
+      {"post export", :get, "/api/v1/system/post/excel"},
+      {"role export", :post, "/api/v1/system/role/export"},
+      {"login log export", :get, "/api/v1/logs/loginLogs/excel"},
+      {"operation log export", :get, "/api/v1/logs/operationLogs/excel"}
     ]
   end
 
