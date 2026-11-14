@@ -303,25 +303,29 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   @impl true
   def handle_info({:admin_job_finished, _job_id, result}, socket) do
-    if AdminSupport.admin_socket?(socket) do
-      feedback =
-        case result do
-          :ok -> "任务已执行并写入运行日志"
-          {:skipped, :already_running} -> "任务正在执行，本次触发已跳过"
-          {:error, :not_found} -> "找不到指定任务"
-          {:error, reason} -> "任务执行失败：#{inspect(reason)}"
-          _ -> "任务状态未知，请检查运行日志"
-        end
+    feedback =
+      case result do
+        :ok -> "任务已执行并写入运行日志"
+        {:skipped, :already_running} -> "任务正在执行，本次触发已跳过"
+        {:error, :not_found} -> "找不到指定任务"
+        {:error, reason} -> "任务执行失败：#{inspect(reason)}"
+        _ -> "任务状态未知，请检查运行日志"
+      end
 
-      {:noreply,
-       assign(socket,
-         job_rows: AdminSupport.load_jobs(),
-         job_log_rows: AdminSupport.load_job_logs(),
-         job_feedback: feedback
-       )}
-    else
-      {:noreply, socket}
-    end
+    reload =
+      if AdminSupport.admin_socket?(socket) do
+        [
+          job_rows: AdminSupport.load_jobs(),
+          job_log_rows: AdminSupport.load_job_logs()
+        ]
+      else
+        [
+          job_rows: AdminSupport.load_jobs_for_socket(socket),
+          job_log_rows: AdminSupport.load_job_logs_for_socket(socket)
+        ]
+      end
+
+    {:noreply, assign(socket, Keyword.put(reload, :job_feedback, feedback))}
   end
 
   defp login_error(socket, username, message) do

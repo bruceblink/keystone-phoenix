@@ -259,6 +259,53 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
   end
 
   @tag :integration
+  test "owner task log HTTP queries only return logs for owned tasks" do
+    {owner_token, _owner_ids} = authenticated_scope_user("OWNER")
+    {other_token, _other_ids} = authenticated_scope_user("OWNER")
+
+    owner_job_id = create_http_job(owner_token, "owner_log_job")
+    other_job_id = create_http_job(other_token, "other_log_job")
+
+    assert json_response(
+             post(
+               authorized(build_conn(), owner_token),
+               "/api/v1/system/jobs/#{owner_job_id}/run",
+               %{}
+             ),
+             200
+           )["success"]
+
+    assert json_response(
+             post(
+               authorized(build_conn(), other_token),
+               "/api/v1/system/jobs/#{other_job_id}/run",
+               %{}
+             ),
+             200
+           )["success"]
+
+    assert %{
+             "success" => true,
+             "data" => %{"rows" => [%{"jobId" => ^owner_job_id}], "total" => 1}
+           } =
+             json_response(
+               get(authorized(build_conn(), owner_token), "/api/v1/system/jobs/logs", %{}),
+               200
+             )
+
+    assert %{
+             "success" => true,
+             "data" => %{"rows" => [], "total" => 0}
+           } =
+             json_response(
+               get(authorized(build_conn(), owner_token), "/api/v1/system/jobs/logs", %{
+                 "jobId" => other_job_id
+               }),
+               200
+             )
+  end
+
+  @tag :integration
   test "export endpoints enforce scope and render an authorized workbook" do
     export_cases = export_cases()
     {department_token, _ids} = authenticated_scope_user("DEPARTMENT")
@@ -378,6 +425,24 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
              json_response(response, 200)
 
     id
+  end
+
+  defp create_http_job(token, name_prefix) do
+    name = "#{name_prefix}_#{System.unique_integer([:positive])}"
+
+    assert json_response(
+             post(authorized(build_conn(), token), "/api/v1/system/jobs", %{
+               "jobName" => name,
+               "jobGroup" => "owner-log-http",
+               "invokeTarget" => "demoJobTask.printHeartbeat()",
+               "cronExpression" => "*/5 * * * * *",
+               "concurrent" => 0,
+               "status" => 1
+             }),
+             200
+           )["success"]
+
+    owner_id(token, "/api/v1/system/jobs", %{"jobName" => name}, "jobId")
   end
 
   defp list_cases(%{file_name: file_name}) do

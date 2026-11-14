@@ -7,6 +7,8 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   alias KeystonePhoenix.Auth.Captcha
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Session
+  alias KeystonePhoenix.Authz.{PolicyCache, SysPermission, SysRolePermission}
+  alias KeystonePhoenix.Job
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRoleMenu
   alias KeystonePhoenix.User
@@ -350,6 +352,47 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     assert_expired(view, html)
   end
 
+  @tag :integration
+  test "owner async job completion reloads scoped task logs", %{conn: conn} do
+    disable_captcha()
+    {owner, role} = create_scoped_user()
+    Repo.update!(Ecto.Changeset.change(role, data_scope: "OWNER"))
+
+    permissions = ["job:read", "job:create", "job:run"]
+    grant_permissions(role.role_id, permissions)
+
+    {:ok, view, _html} = login_view(conn, owner)
+    render_click(view, "show-panel", %{"panel" => "jobs"})
+
+    job_name = "Live OWNER 任务 #{System.unique_integer([:positive])}"
+
+    render_submit(view, "save-job", %{
+      "jobId" => "",
+      "jobName" => job_name,
+      "jobGroup" => "OWNER",
+      "invokeTarget" => "demoJobTask.printHeartbeat()",
+      "jobParams" => "",
+      "cronExpression" => "* * * * * *",
+      "concurrent" => "0",
+      "status" => "1",
+      "remark" => ""
+    })
+
+    assert render(view) =~ "任务已创建"
+    job = Job.list_jobs(%{"jobName" => job_name, "pageSize" => 10}).rows |> List.first()
+    assert job["jobId"]
+
+    render_click(view, "run-job", %{"job-id" => to_string(job["jobId"])})
+    assert render(view) =~ "任务已提交"
+
+    assert_eventually(fn ->
+      html = render(view)
+
+      html =~ "任务已执行并写入运行日志" and
+        Enum.any?(live_socket(view).assigns.job_log_rows, &(&1["jobId"] == job["jobId"]))
+    end)
+  end
+
   test "Phoenix logger filters credentials, tokens, secrets, and captcha fields recursively" do
     values = %{
       "username" => "visible",
@@ -371,4 +414,30 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
       assert filtered[key] == "[FILTERED]"
     end
   end
+
+  defp grant_permissions(role_id, permissions) do
+    Enum.each(permissions, fn permission ->
+      permission = Repo.get_by!(SysPermission, permission: permission)
+
+      Repo.insert!(%SysRolePermission{
+        role_id: role_id,
+        permission_id: permission.permission_id
+      })
+    end)
+
+    PolicyCache.invalidate()
+  end
+
+  defp assert_eventually(fun, attempts \\ 100)
+
+  defp assert_eventually(fun, attempts) when attempts > 0 do
+    if fun.() do
+      :ok
+    else
+      Process.sleep(20)
+      assert_eventually(fun, attempts - 1)
+    end
+  end
+
+  defp assert_eventually(_fun, 0), do: flunk("expected LiveView event to complete")
 end
