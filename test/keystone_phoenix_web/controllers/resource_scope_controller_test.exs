@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Authz.{PolicyCache, SysPermission, SysRolePermission}
   alias KeystonePhoenix.Identity
+  alias KeystonePhoenix.Log.{SysLoginInfo, SysOperationLog}
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
@@ -338,6 +339,44 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
                }),
                200
              )
+  end
+
+  @tag :integration
+  test "audit deletion rolls back through HTTP when one id is missing" do
+    {token, _ids} = authenticated_scope_user("TENANT")
+    login_id = Identity.v7()
+    operation_id = Identity.v7()
+    missing_id = Identity.v7()
+    now = DateTime.utc_now()
+
+    Repo.insert!(%SysLoginInfo{info_id: login_id, username: "http-mixed-delete", login_time: now})
+
+    Repo.insert!(%SysOperationLog{
+      operation_id: operation_id,
+      operation_time: now
+    })
+
+    login_response =
+      delete(
+        authorized(build_conn(), token),
+        "/api/v1/logs/loginLogs?ids=#{login_id},#{missing_id}",
+        %{}
+      )
+
+    assert login_response.status == 404
+    assert json_response(login_response, 404)["error"]["code"] == "validation_failed"
+    assert Repo.get!(SysLoginInfo, login_id).deleted == false
+
+    operation_response =
+      delete(
+        authorized(build_conn(), token),
+        "/api/v1/logs/operationLogs?operationIds=#{operation_id},#{missing_id}",
+        %{}
+      )
+
+    assert operation_response.status == 404
+    assert json_response(operation_response, 404)["error"]["code"] == "validation_failed"
+    assert Repo.get!(SysOperationLog, operation_id).deleted == false
   end
 
   @tag :integration
