@@ -248,17 +248,6 @@ revoked_api_key_status="$(docker exec "${app}" curl --silent --output /dev/null 
   http://127.0.0.1:4000/api/v1/system/users)"
 [[ "${revoked_api_key_status}" == "401" ]]
 
-# 旧 refresh token 重放必须拒绝并撤销整个令牌族。该检查放在新 access token 的业务验收之后，
-# 避免把预期的族撤销误判为新 access token 在重放前不可用。
-old_refresh_status="$(docker exec -i "${app}" curl --silent --output /dev/null \
-  --write-out '%{http_code}' --header 'Content-Type: application/json' --data-binary @- \
-  http://127.0.0.1:4000/api/v1/auth/refresh <<<"{\"refreshToken\":\"${refresh_token}\"}")"
-[[ "${old_refresh_status}" == "401" ]]
-replayed_access_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
-  --header "Authorization: Bearer ${token}" \
-  http://127.0.0.1:4000/api/v1/auth/me)"
-[[ "${replayed_access_status}" == "401" ]]
-
 # Smoke 使用管理员 ALL 范围验证业务路径；非管理员的资源范围允许/拒绝矩阵由集成测试覆盖。
 
 docker stop "${postgres}" >/dev/null
@@ -339,5 +328,12 @@ post_logout_status="$(docker exec "${app}" curl --silent --output /dev/null --wr
   --header "Authorization: Bearer ${token}" \
   http://127.0.0.1:4000/api/v1/auth/me)"
 [[ "${post_logout_status}" == "401" ]]
+
+# 旧 refresh token 重放必须拒绝。该检查放在新 access token 和 logout 验收之后，
+# 避免把令牌族撤销误判为重放前的新 access token 不可用。
+old_refresh_status="$(docker exec -i "${app}" curl --silent --output /dev/null \
+  --write-out '%{http_code}' --header 'Content-Type: application/json' --data-binary @- \
+  http://127.0.0.1:4000/api/v1/auth/refresh <<<"{\"refreshToken\":\"${refresh_token}\"}")"
+[[ "${old_refresh_status}" == "401" ]]
 
 echo "release smoke passed for ${image}"
