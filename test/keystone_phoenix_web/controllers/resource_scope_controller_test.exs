@@ -27,7 +27,122 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     assert json_response(response, 200)["success"] == true
   end
 
+  @tag :integration
+  test "non-global scopes reject read, detail, write and delete resource entrances" do
+    {token, ids} = authenticated_scope_user("DEPARTMENT")
+
+    for {label, method, path, params} <- operation_cases(ids) do
+      response = request(authorized(build_conn(), token), method, path, params)
+
+      assert response.status == 403, "#{label} returned #{response.status}"
+      assert json_response(response, 403)["error"]["code"] == "data_scope_denied", label
+    end
+  end
+
+  @tag :integration
+  test "tenant scope passes every non-user resource gate" do
+    {token, ids} = authenticated_scope_user("TENANT")
+
+    for {label, path, params} <- list_cases(ids) do
+      response = get(authorized(build_conn(), token), path, params)
+
+      refute data_scope_denied?(response), "#{label} was rejected by the resource scope gate"
+    end
+  end
+
   defp authorized(conn, token), do: put_req_header(conn, "authorization", "Bearer #{token}")
+
+  defp authenticated_scope_user(data_scope) do
+    permissions = resource_permissions()
+    role = insert_role(data_scope)
+    Enum.each(permissions, &link_permission(role.role_id, &1))
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+
+    ids = %{
+      uuid: Identity.v7(),
+      file_name: "missing-scope-#{System.unique_integer([:positive])}.txt"
+    }
+
+    {tokens.token, ids}
+  end
+
+  defp resource_permissions do
+    ~w(
+      post:read post:create post:update post:delete
+      menu:read menu:create menu:update menu:delete
+      config:read config:create config:update config:refresh
+      dictionary:read dictionary:create dictionary:update dictionary:delete dictionary:refresh
+      login-log:read login-log:delete operation-log:read operation-log:delete
+      cache:refresh server:read online-session:read online-session:revoke
+      job:read job:create job:update job:update-status job:run job:delete
+      notice:read notice:create notice:update notice:delete
+      file:read file:write
+    )
+  end
+
+  defp operation_cases(%{uuid: uuid, file_name: file_name}) do
+    [
+      {"post list", :get, "/api/v1/system/post/list", %{}},
+      {"post detail", :get, "/api/v1/system/post/#{uuid}", %{}},
+      {"post write", :post, "/api/v1/system/post", %{}},
+      {"post delete", :delete, "/api/v1/system/post?ids=#{uuid}", %{}},
+      {"menu list", :get, "/api/v1/system/menus", %{}},
+      {"menu detail", :get, "/api/v1/system/menus/#{uuid}", %{}},
+      {"menu write", :post, "/api/v1/system/menus", %{}},
+      {"menu delete", :delete, "/api/v1/system/menus/#{uuid}", %{}},
+      {"config list", :get, "/api/v1/system/configs", %{}},
+      {"config detail", :get, "/api/v1/system/config/#{uuid}", %{}},
+      {"config write", :post, "/api/v1/system/config", %{}},
+      {"config update", :put, "/api/v1/system/config/#{uuid}", %{}},
+      {"dictionary list", :get, "/api/v1/system/dict/types", %{}},
+      {"dictionary detail", :get, "/api/v1/system/dict/type/#{uuid}", %{}},
+      {"dictionary write", :post, "/api/v1/system/dict/type", %{}},
+      {"dictionary delete", :delete, "/api/v1/system/dict/type/#{uuid}", %{}},
+      {"audit list", :get, "/api/v1/logs/loginLogs", %{}},
+      {"audit detail", :get, "/api/v1/logs/operationLogs", %{}},
+      {"audit delete", :delete, "/api/v1/logs/loginLogs?ids=#{uuid}", %{}},
+      {"session list", :get, "/api/v1/monitor/onlineUsers", %{}},
+      {"session detail", :get, "/api/v1/monitor/serverInfo", %{}},
+      {"session write", :get, "/api/v1/monitor/cacheInfo", %{}},
+      {"session delete", :delete, "/api/v1/monitor/onlineUser/#{uuid}", %{}},
+      {"job list", :get, "/api/v1/system/jobs", %{}},
+      {"job detail", :get, "/api/v1/system/jobs/#{uuid}", %{}},
+      {"job write", :post, "/api/v1/system/jobs", %{}},
+      {"job delete", :delete, "/api/v1/system/jobs?jobIds=#{uuid}", %{}},
+      {"notice list", :get, "/api/v1/system/notices", %{}},
+      {"notice detail", :get, "/api/v1/system/notices/#{uuid}", %{}},
+      {"notice write", :post, "/api/v1/system/notices", %{}},
+      {"notice delete", :delete, "/api/v1/system/notices?notice_ids=#{uuid}", %{}},
+      {"file detail", :get, "/api/v1/file/download?fileName=#{file_name}", %{}},
+      {"file write", :post, "/api/v1/file/upload", %{}},
+      {"file batch write", :post, "/api/v1/file/uploads", %{}}
+    ]
+  end
+
+  defp list_cases(%{file_name: file_name}) do
+    [
+      {"post", "/api/v1/system/post/list", %{}},
+      {"menu", "/api/v1/system/menus", %{}},
+      {"config", "/api/v1/system/configs", %{}},
+      {"dictionary", "/api/v1/system/dict/types", %{}},
+      {"audit", "/api/v1/logs/loginLogs", %{}},
+      {"session", "/api/v1/monitor/onlineUsers", %{}},
+      {"job", "/api/v1/system/jobs", %{}},
+      {"notice", "/api/v1/system/notices", %{}},
+      {"file", "/api/v1/file/download?fileName=#{file_name}", %{}}
+    ]
+  end
+
+  defp request(conn, :get, path, params), do: get(conn, path, params)
+  defp request(conn, :post, path, params), do: post(conn, path, params)
+  defp request(conn, :put, path, params), do: put(conn, path, params)
+  defp request(conn, :delete, path, params), do: delete(conn, path, params)
+
+  defp data_scope_denied?(%Plug.Conn{status: 403} = conn),
+    do: json_response(conn, 403)["error"]["code"] == "data_scope_denied"
+
+  defp data_scope_denied?(_conn), do: false
 
   defp insert_role(data_scope) do
     %SysRole{}
