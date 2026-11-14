@@ -18,6 +18,11 @@ defmodule KeystonePhoenix.ExcelTest do
              Excel.rows_to_maps([["用户名", "状态"], ["alice", 1]])
   end
 
+  test "rejects legacy or non-Excel export filenames" do
+    assert {:error, :invalid_export_filename} = Excel.export(["用户名"], [["alice"]], "users.xls")
+    assert {:error, :invalid_export_filename} = Excel.export(["用户名"], [["alice"]], "users.csv")
+  end
+
   test "fetches every page for an export" do
     fetcher = fn %{"pageNum" => page, "pageSize" => 500} ->
       rows = if page == 1, do: [%{id: 1}, %{id: 2}], else: [%{id: 3}]

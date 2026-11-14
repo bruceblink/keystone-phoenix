@@ -39,16 +39,18 @@ defmodule KeystonePhoenix.Excel do
   @doc "Builds an XLSX workbook in memory from a header row and data rows."
   @spec export([term()], [[term()]], String.t()) :: {:ok, binary()} | {:error, term()}
   def export(headers, rows, filename) when is_list(headers) and is_list(rows) do
-    sheet = %Elixlsx.Sheet{
-      name: "Sheet1",
-      rows: [headers | rows] |> Enum.map(&normalize_export_row/1)
-    }
+    with :ok <- validate_export_filename(filename) do
+      sheet = %Elixlsx.Sheet{
+        name: "Sheet1",
+        rows: [headers | rows] |> Enum.map(&normalize_export_row/1)
+      }
 
-    workbook = Elixlsx.Workbook.append_sheet(%Elixlsx.Workbook{}, sheet)
+      workbook = Elixlsx.Workbook.append_sheet(%Elixlsx.Workbook{}, sheet)
 
-    case Elixlsx.write_to_memory(workbook, filename) do
-      {:ok, {_generated_name, binary}} -> {:ok, binary}
-      {:error, reason} -> {:error, reason}
+      case Elixlsx.write_to_memory(workbook, filename) do
+        {:ok, {_generated_name, binary}} -> {:ok, binary}
+        {:error, reason} -> {:error, reason}
+      end
     end
   rescue
     error -> {:error, {:write_failed, error}}
@@ -166,6 +168,19 @@ defmodule KeystonePhoenix.Excel do
       {:error, _reason} -> {:error, :invalid_workbook}
     end
   end
+
+  # 输出内容始终是 Open XML 工作簿，文件名也必须使用 .xlsx，避免产生错误格式标识。
+  defp validate_export_filename(filename) when is_binary(filename) do
+    extension = filename |> Path.extname() |> String.downcase()
+
+    if filename != "" and extension == ".xlsx" do
+      :ok
+    else
+      {:error, :invalid_export_filename}
+    end
+  end
+
+  defp validate_export_filename(_filename), do: {:error, :invalid_export_filename}
 
   defp normalize_export_row(row), do: Enum.map(row, &export_value/1)
 
