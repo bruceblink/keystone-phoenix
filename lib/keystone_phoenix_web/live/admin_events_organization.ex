@@ -7,6 +7,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Role
+  alias KeystonePhoenix.Role.Permissions
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
@@ -282,16 +283,18 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           {:noreply, assign(socket, role_feedback: Feedback.error("找不到指定角色"))}
 
         role ->
-          case Role.menu_ids_for_role(role_id, Support.authorization_options(socket, "role:read")) do
-            {:ok, menu_ids} ->
-              form =
-                Support.empty_role_form()
-                |> Map.merge(role)
-                |> Map.put("menuIds", Enum.join(menu_ids, ","))
+          authorization = Support.authorization_options(socket, "role:read")
 
-              {:noreply,
-               assign(socket, role_form: form, role_feedback: nil, active_modal: "role")}
+          with {:ok, menu_ids} <- Role.menu_ids_for_role(role_id, authorization),
+               {:ok, permissions} <- Permissions.list_for_role(role_id, authorization) do
+            form =
+              Support.empty_role_form()
+              |> Map.merge(role)
+              |> Map.put("menuIds", Enum.join(menu_ids, ","))
+              |> Map.put("permissions", Enum.join(permissions, ","))
 
+            {:noreply, assign(socket, role_form: form, role_feedback: nil, active_modal: "role")}
+          else
             {:error, _reason} ->
               {:noreply, assign(socket, role_feedback: Feedback.error("找不到指定角色"))}
           end
@@ -306,7 +309,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           Support.permission_socket?(socket, "role:update")) and
          Authz.role_metadata_allowed?(socket.assigns.current_user, params) do
       role_id = String.trim(params["roleId"] || "")
-      params = Map.update(params, "menuIds", "", &String.trim/1)
+
+      params =
+        params
+        |> Map.update("menuIds", "", &String.trim/1)
+        |> Map.update("permissions", "", &String.trim/1)
 
       result =
         if role_id == "",

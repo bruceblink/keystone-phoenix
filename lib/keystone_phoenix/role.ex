@@ -11,6 +11,7 @@ defmodule KeystonePhoenix.Role do
   alias KeystonePhoenix.Authz.PolicyCache
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
+  alias KeystonePhoenix.Role.Permissions
   alias KeystonePhoenix.Role.Authorization
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
@@ -98,6 +99,7 @@ defmodule KeystonePhoenix.Role do
 
   defp do_create_role(attrs, actor_id) when is_map(attrs) do
     menu_ids = menu_ids_from(attrs) || []
+    permissions = Permissions.from_attrs(attrs)
     attrs = normalize_attrs(attrs)
 
     Repo.transaction(fn ->
@@ -110,6 +112,7 @@ defmodule KeystonePhoenix.Role do
         end
 
       replace_menu_ids(role.role_id, menu_ids)
+      if is_list(permissions), do: Permissions.replace_in_transaction(role.role_id, permissions)
       role
     end)
     |> invalidate_policy_cache()
@@ -118,7 +121,12 @@ defmodule KeystonePhoenix.Role do
   def update_role(id, attrs, options)
 
   def update_role(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize_write(options, "role:update", attrs) do
+    with :ok <-
+           Authorization.authorize_write(
+             options,
+             Keyword.get(options, :permission, "role:update"),
+             attrs
+           ) do
       do_update_role(id, attrs, Authorization.actor_id(options))
     end
   end
@@ -128,6 +136,7 @@ defmodule KeystonePhoenix.Role do
   defp do_update_role(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, role} <- get_role(id) do
       menu_ids = menu_ids_from(attrs)
+      permissions = Permissions.from_attrs(attrs)
       attrs = normalize_attrs(attrs)
 
       Repo.transaction(fn ->
@@ -140,6 +149,10 @@ defmodule KeystonePhoenix.Role do
           end
 
         if is_list(menu_ids), do: replace_menu_ids(updated.role_id, menu_ids)
+
+        if is_list(permissions),
+          do: Permissions.replace_in_transaction(updated.role_id, permissions)
+
         bump_role_user_permission_versions(updated.role_id)
         updated
       end)
@@ -415,7 +428,6 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
-  # 角色权限、状态或数据范围变化后，旧角色成员的访问令牌必须立即失效。
   defp bump_role_user_permission_versions(role_id) do
     Repo.update_all(
       from(u in SysUser, where: u.deleted == false and u.role_id == ^role_id),
@@ -506,15 +518,15 @@ defmodule KeystonePhoenix.Role do
 
   defp menu_ids_from(attrs) do
     cond do
-      Map.has_key?(attrs, "menuIds") -> normalize_menu_ids(Map.get(attrs, "menuIds"))
-      Map.has_key?(attrs, :menu_ids) -> normalize_menu_ids(Map.get(attrs, :menu_ids))
+      Map.has_key?(attrs, "menuIds") -> normalize_ids(Map.get(attrs, "menuIds"))
+      Map.has_key?(attrs, :menu_ids) -> normalize_ids(Map.get(attrs, :menu_ids))
       true -> nil
     end
   end
 
   defp normalize_ids(ids) when is_list(ids) do
     ids
-    |> Enum.map(&parse_menu_id/1)
+    |> Enum.map(&parse_uuid/1)
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
   end
@@ -526,8 +538,6 @@ defmodule KeystonePhoenix.Role do
   end
 
   defp normalize_ids(_ids), do: []
-
-  defp normalize_menu_ids(ids), do: normalize_ids(ids)
 
   defp parse_id_set(ids) when is_binary(ids) do
     ids
@@ -543,13 +553,6 @@ defmodule KeystonePhoenix.Role do
   defp parse_id_set(_ids), do: []
 
   defp parse_uuid(value) do
-    case Params.parse_uuid(value) do
-      {:ok, uuid} -> uuid
-      :error -> nil
-    end
-  end
-
-  defp parse_menu_id(value) do
     case Params.parse_uuid(value) do
       {:ok, uuid} -> uuid
       :error -> nil

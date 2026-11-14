@@ -11,6 +11,7 @@ defmodule KeystonePhoenixWeb.RoleController do
       delete: "role:delete",
       change_status: "role:update",
       data_scope: "role:manage",
+      permissions: "role:manage",
       allocated_users: "role:read",
       unallocated_users: "role:read",
       assign_users: "role:update",
@@ -22,6 +23,7 @@ defmodule KeystonePhoenixWeb.RoleController do
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Role
+  alias KeystonePhoenix.Role.Permissions
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.ExcelResponse
 
@@ -76,13 +78,15 @@ defmodule KeystonePhoenixWeb.RoleController do
     authorization = [authorization: %{principal: conn.assigns.current_user}]
 
     with {:ok, role} <- Role.get_role(role_id, authorization),
-         {:ok, menu_ids} <- Role.menu_ids_for_role(role.role_id, authorization) do
+         {:ok, menu_ids} <- Role.menu_ids_for_role(role.role_id, authorization),
+         {:ok, permissions} <- Permissions.list_for_role(role.role_id, authorization) do
       data =
         role
         |> Role.role_to_map()
         |> Map.merge(%{
           "menuIds" => menu_ids,
           "selectedMenuList" => menu_ids,
+          "permissions" => permissions,
           "selectedDeptList" => Role.dept_ids_for_role(role)
         })
 
@@ -96,7 +100,7 @@ defmodule KeystonePhoenixWeb.RoleController do
     end
   end
 
-  @doc "Creates a role and assigns its menus."
+  @doc "Creates a role and assigns its display menus and explicit permissions."
   def create(conn, params) do
     if Authz.role_metadata_allowed?(conn.assigns.current_user, params) do
       case Role.create_role(params,
@@ -113,7 +117,7 @@ defmodule KeystonePhoenixWeb.RoleController do
     end
   end
 
-  @doc "Updates a role and optionally replaces its menu assignments."
+  @doc "Updates a role and optionally replaces its display menus and explicit permissions."
   def update(conn, params) do
     if Authz.role_metadata_allowed?(conn.assigns.current_user, params) do
       case Role.update_role(
@@ -182,9 +186,27 @@ defmodule KeystonePhoenixWeb.RoleController do
            authorization: %{
              principal: conn.assigns.current_user,
              permission: "role:manage"
-           }
+           },
+           permission: "role:manage"
          ) do
       {:ok, _role} -> json(conn, ApiResponse.ok())
+      {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, changeset} -> render_error(conn, changeset)
+    end
+  end
+
+  @doc "Replaces a role's explicit permission bindings."
+  def permissions(conn, %{"role_id" => role_id} = params) do
+    case Role.update_role(
+           role_id,
+           %{"permissions" => params["permissions"] || params[:permissions]},
+           authorization: %{
+             principal: conn.assigns.current_user,
+             permission: "role:manage"
+           },
+           permission: "role:manage"
+         ) do
+      {:ok, _role} -> json(conn, ApiResponse.ok(%{"updated" => true}))
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
     end
@@ -294,6 +316,12 @@ defmodule KeystonePhoenixWeb.RoleController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "菜单不存在"))
+  end
+
+  defp render_error(conn, :permission_not_found) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "权限不存在或已停用"))
   end
 
   defp render_error(conn, :invalid_ids) do

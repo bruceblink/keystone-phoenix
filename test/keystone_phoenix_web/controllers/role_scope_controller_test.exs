@@ -1,12 +1,42 @@
 defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
+  import Ecto.Query
+
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Authz.{PolicyCache, SysPermission, SysRolePermission}
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
+
+  @tag :integration
+  test "role permission HTTP replacement updates normalized authorization bindings" do
+    actor_role = create_role("TENANT")
+    grant_permission(actor_role.role_id, "role:manage")
+    target_role = create_role("TENANT")
+    actor = create_user(actor_role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(actor.username, "Strong!123")
+
+    response =
+      put(
+        authorized(tokens.token),
+        "/api/v1/system/role/#{target_role.role_id}/permissions",
+        %{"permissions" => ["user:read", "role:read"]}
+      )
+
+    assert %{"success" => true, "data" => %{"updated" => true}} = json_response(response, 200)
+
+    assert Repo.all(
+             from(binding in SysRolePermission,
+               join: permission in SysPermission,
+               on: permission.permission_id == binding.permission_id,
+               where: binding.role_id == ^target_role.role_id,
+               select: permission.permission,
+               order_by: permission.permission
+             )
+           ) == ["role:read", "user:read"]
+  end
 
   @tag :integration
   test "role user batch HTTP commands roll back mixed targets" do

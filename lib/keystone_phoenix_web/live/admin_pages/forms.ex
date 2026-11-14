@@ -52,6 +52,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Forms do
       "deptIdSet" => "",
       "status" => 1,
       "menuIds" => "",
+      "permissions" => "",
       "remark" => ""
     }
   end

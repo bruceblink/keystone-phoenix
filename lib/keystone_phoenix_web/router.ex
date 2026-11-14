@@ -172,6 +172,7 @@ defmodule KeystonePhoenixWeb.Router do
     delete "/system/role/:role_id", RoleController, :delete
     put "/system/role/:role_id/status", RoleController, :change_status
     put "/system/role/:role_id/dataScope", RoleController, :data_scope
+    put "/system/role/:role_id/permissions", RoleController, :permissions
     get "/system/role/:role_id/allocated/list", RoleController, :allocated_users
     get "/system/role/:role_id/unallocated/list", RoleController, :unallocated_users
     delete "/system/role/users/:user_ids/grant/bulk", RoleController, :unassign_users
