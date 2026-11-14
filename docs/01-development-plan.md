@@ -48,7 +48,7 @@
 
 2026-11-14 发布烟测修正：`e85c2a7` 和 `e4e28c2` 调整 refresh 重放断言顺序。系统在旧 refresh token 重放时会撤销整个令牌族；烟测先完成新 access token 的业务访问、文件持久化和退出登录，再验证旧 refresh token 返回 `401`。最新候选镜像 `sha256:c5ade29d1084a30b29d2866d81465e7f37f7dd5e5c23de700547520eeda63de7` 的完整 release smoke 通过。
 
-2026-11-14 任务与公告范围审计：`owner_resource_scope_test.exs`、`job_audit_scope_test.exs` 和 `dictionary_notice_scope_test.exs` 的集成回归共 11 项通过。任务和公告的批量删除在事务内逐个检查 owner，混合目标越界时整体回滚；任务日志通过任务 owner 关联查询，手动执行、取消、更新和详情读取使用同一范围；自动调度只使用明确的系统主体。当前两个项目的接口契约均未定义任务或公告导出权限和路由，因此没有对应的导出实现可绕过范围；如果后续增加导出入口，必须复用现有 owner 查询条件并增加真实 HTTP 范围回归。
+2026-11-14 任务与公告范围审计：`owner_resource_scope_test.exs`、`job_audit_scope_test.exs` 和 `dictionary_notice_scope_test.exs` 的集成回归共 11 项通过。任务和公告的批量删除在事务内逐个检查 owner，混合目标越界时整体回滚；任务日志通过任务 owner 关联查询，手动执行、取消、更新和详情读取使用同一范围；自动调度只使用明确的系统主体。当前两个项目的接口约定均未定义任务或公告导出权限和路由，因此没有对应的导出实现可绕过范围；如果后续增加导出入口，必须复用现有 owner 查询条件并增加真实 HTTP 范围回归。
 
 ### 2026-11-08 修复进度
 
