@@ -54,6 +54,7 @@ defmodule KeystonePhoenix.Job.Runner do
 
     attrs = %{
       job_id: job.job_id,
+      job_code: job.job_code,
       job_name: job.job_name,
       job_group: job.job_group,
       invoke_target: job.invoke_target,
@@ -83,6 +84,7 @@ defmodule KeystonePhoenix.Job.Runner do
 
     attrs = %{
       job_id: job.job_id,
+      job_code: job.job_code,
       job_name: job.job_name,
       job_group: job.job_group,
       invoke_target: job.invoke_target,
@@ -107,6 +109,7 @@ defmodule KeystonePhoenix.Job.Runner do
 
     attrs = %{
       job_id: job.job_id,
+      job_code: job.job_code,
       job_name: job.job_name,
       job_group: job.job_group,
       invoke_target: job.invoke_target,
@@ -131,6 +134,7 @@ defmodule KeystonePhoenix.Job.Runner do
 
     attrs = %{
       job_id: job.job_id,
+      job_code: job.job_code,
       job_name: job.job_name,
       job_group: job.job_group,
       invoke_target: job.invoke_target,

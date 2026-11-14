@@ -13,30 +13,36 @@ defmodule KeystonePhoenix.Post do
 
   @post_attrs [
     {"postCode", :post_code},
+    {"code", :post_code},
     {"postName", :post_name},
+    {"name", :post_name},
     {"postSort", :post_sort},
+    {"sortOrder", :post_sort},
     {"status", :status},
+    {"enabled", :status},
     {"remark", :remark}
   ]
 
   def list_posts(params \\ %{}) do
-    query =
-      from(p in SysPost,
-        where: p.deleted == false,
-        order_by: [asc: p.post_sort, asc: p.post_id]
-      )
+    Pagination.page(posts_query(params), params, :post_id, &post_to_map/1)
+  end
 
-    query = filter_contains(query, :post_code, params["postCode"] || params[:post_code])
-    query = filter_contains(query, :post_name, params["postName"] || params[:post_name])
-    query = filter_status(query, params["status"] || params[:status])
-
-    Pagination.page(query, params, :post_id, &post_to_map/1)
+  @doc "为 Native 管理资源读取全部岗位，不返回分页元数据。"
+  def list_posts_all(params \\ %{}) do
+    posts_query(params) |> Repo.all() |> Enum.map(&post_to_map/1)
   end
 
   @doc "在检查岗位权限和资源范围后查询岗位。"
   def list_posts(params, options) when is_map(params) and is_list(options) do
     with :ok <- Authorization.authorize_read(options, "post:read") do
       {:ok, list_posts(params)}
+    end
+  end
+
+  @doc "完成授权后为 Native 管理资源读取全部岗位。"
+  def list_posts_all(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "post:read") do
+      {:ok, list_posts_all(params)}
     end
   end
 
@@ -191,6 +197,27 @@ defmodule KeystonePhoenix.Post do
         true -> normalized
       end
     end)
+    |> normalize_status()
+  end
+
+  defp normalize_status(attrs) do
+    case Map.get(attrs, :status) do
+      value when value in [true, "true", "TRUE"] -> Map.put(attrs, :status, 1)
+      value when value in [false, "false", "FALSE"] -> Map.put(attrs, :status, 0)
+      _ -> attrs
+    end
+  end
+
+  defp posts_query(params) do
+    query =
+      from(p in SysPost,
+        where: p.deleted == false,
+        order_by: [asc: p.post_sort, asc: p.post_id]
+      )
+
+    query = filter_contains(query, :post_code, params["postCode"] || params[:post_code])
+    query = filter_contains(query, :post_name, params["postName"] || params[:post_name])
+    filter_status(query, params["status"] || params[:status])
   end
 
   defp parse_uuid(value) do

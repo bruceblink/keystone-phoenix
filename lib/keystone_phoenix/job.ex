@@ -11,6 +11,8 @@ defmodule KeystonePhoenix.Job do
   alias KeystonePhoenix.Repo
 
   @job_attrs [
+    {"code", :job_code},
+    {"jobCode", :job_code},
     {"jobName", :job_name},
     {"jobGroup", :job_group},
     {"invokeTarget", :invoke_target},
@@ -43,6 +45,17 @@ defmodule KeystonePhoenix.Job do
   def list_jobs(params, options) when is_map(params) and is_list(options) do
     with {:ok, scope} <- Authorization.authorize_read(options, "job:read") do
       {:ok, list_jobs_scoped(params, scope)}
+    end
+  end
+
+  def list_jobs_all(params, options) when is_map(params) and is_list(options) do
+    with {:ok, scope} <- Authorization.authorize_read(options, "job:read") do
+      query = from(job in SysJob, order_by: [desc: job.create_time, desc: job.job_id])
+      query = owner_filter(query, scope)
+      query = filter_contains(query, :job_name, params["jobName"] || params[:job_name])
+      query = filter_contains(query, :job_group, params["jobGroup"] || params[:job_group])
+      query = filter_integer(query, :status, params["status"] || params[:status])
+      {:ok, Repo.all(query) |> Enum.map(&job_to_map/1)}
     end
   end
 
@@ -353,6 +366,7 @@ defmodule KeystonePhoenix.Job do
   def job_to_map(job) do
     %{
       "jobId" => job.job_id,
+      "jobCode" => job.job_code || generated_code("job", job.job_id),
       "jobName" => job.job_name,
       "jobGroup" => job.job_group,
       "invokeTarget" => job.invoke_target,
@@ -371,6 +385,7 @@ defmodule KeystonePhoenix.Job do
     %{
       "jobLogId" => log.job_log_id,
       "jobId" => log.job_id,
+      "jobCode" => log.job_code || generated_code("job", log.job_id || log.job_log_id),
       "jobName" => log.job_name,
       "jobGroup" => log.job_group,
       "invokeTarget" => log.invoke_target,
@@ -398,6 +413,8 @@ defmodule KeystonePhoenix.Job do
       end
     end)
   end
+
+  defp generated_code(prefix, id), do: prefix <> "-" <> String.replace(to_string(id), "-", "")
 
   defp positive_status(value) when value in [0, 1], do: {:ok, value}
   defp positive_status(value) when is_binary(value), do: parse_status(value)

@@ -34,26 +34,25 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     assert department["deptId"] == fixtures.department.dept_id
     assert department["statusStr"] == "正常"
 
-    assert %{"success" => true, "data" => %{"rows" => posts}} =
+    assert %{"success" => true, "data" => posts} =
              json_response(get(conn, "/api/v1/posts?pageSize=50"), 200)
 
-    post = Enum.find(posts, &(&1["postId"] == fixtures.post.post_id))
+    post = Enum.find(posts, &(&1["id"] == fixtures.post.post_id))
     assert post["statusStr"] == "正常"
 
-    assert %{"success" => true, "data" => %{"rows" => users}} =
+    assert %{"success" => true, "data" => users_page} =
              json_response(get(conn, "/api/v1/users?userId=#{fixtures.user.user_id}"), 200)
 
-    user = Enum.find(users, &(&1["userId"] == fixtures.user.user_id))
-    assert user["deptName"] == "契约部门"
-    assert user["postName"] == "契约岗位"
-    assert user["roleName"] == "契约角色"
+    user = Enum.find(users_page["items"], &(&1["id"] == fixtures.user.user_id))
+    assert user["displayName"] == "契约用户"
+    assert user["roles"] == [fixtures.role.role_key]
 
     assert %{"success" => true, "data" => profile} =
              json_response(get(conn, "/api/v1/profile"), 200)
 
-    assert profile["user"]["userId"] == fixtures.user.user_id
-    assert profile["roleName"] == "契约角色"
-    assert profile["postName"] == "契约岗位"
+    assert profile["id"] == fixtures.user.user_id
+    assert profile["displayName"] == "契约用户"
+    assert profile["roles"] == [fixtures.role.role_key]
 
     assert %{"success" => true, "data" => dict_data} =
              json_response(get(conn, "/api/v1/dictionaries/contract.status/items"), 200)

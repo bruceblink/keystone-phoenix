@@ -39,14 +39,12 @@ defmodule KeystonePhoenix.Role do
     Pagination.page(query, params, :role_id, &role_to_map/1)
   end
 
-  @doc "在检查角色资源权限和范围后查询角色列表。"
   def list_roles(params, options) when is_map(params) and is_list(options) do
     with :ok <- Authorization.authorize_read(options, "role:read") do
       {:ok, list_roles(params)}
     end
   end
 
-  @doc "在检查角色导出权限和范围后查询导出页。"
   def list_roles_for_export(params, options) when is_map(params) and is_list(options) do
     with :ok <- Authorization.authorize_read(options, "role:export") do
       {:ok, list_roles(params)}
@@ -66,14 +64,21 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
-  @doc "在检查角色资源权限和范围后读取角色详情。"
+  def get_role_by_key(code) when is_binary(code) do
+    case Repo.get_by(SysRole, role_key: String.trim(code), deleted: false) do
+      nil -> {:error, :not_found}
+      role -> {:ok, role}
+    end
+  end
+
+  def get_role_by_key(_code), do: {:error, :not_found}
+
   def get_role(id, options) when is_list(options) do
     with :ok <- Authorization.authorize_read(options, "role:read") do
       get_role(id)
     end
   end
 
-  @doc "Returns active roles keyed by ID with one database query."
   def list_roles_by_ids(ids) when is_list(ids) do
     ids = ids |> Enum.map(&parse_uuid/1) |> Enum.reject(&is_nil/1) |> Enum.uniq()
 
@@ -170,7 +175,6 @@ defmodule KeystonePhoenix.Role do
 
   def delete_role(_id, _options), do: {:error, :authorization_required}
 
-  @doc "在同一事务内软删除一组角色；任一目标无效、缺失或不可删除时全部回滚。"
   def delete_roles(ids, options)
 
   def delete_roles(ids, options) when is_list(options) do
@@ -305,14 +309,12 @@ defmodule KeystonePhoenix.Role do
     |> Repo.all()
   end
 
-  @doc "在检查角色读取范围后读取角色菜单 ID。"
   def menu_ids_for_role(role_id, options) when is_list(options) do
     with :ok <- Authorization.authorize_read(options, "role:read") do
       {:ok, menu_ids_for_role_unchecked(role_id)}
     end
   end
 
-  @doc "Returns the department IDs selected for a role data scope."
   def dept_ids_for_role(%SysRole{dept_id_set: dept_id_set}), do: parse_id_set(dept_id_set)
 
   @doc "Lists users currently assigned to a role."
@@ -323,7 +325,6 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
-  @doc "Lists active users that are not assigned to a role."
   def list_unallocated_users(role_id, params \\ %{}, actor \\ nil) do
     case parse_uuid(role_id) do
       nil -> %{total: 0, rows: []}
@@ -331,7 +332,6 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
-  @doc "Returns active user counts keyed by role ID in one database query."
   def user_counts(role_ids) when is_list(role_ids) do
     role_ids = Enum.filter(role_ids, &is_binary/1)
 

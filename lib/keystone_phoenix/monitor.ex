@@ -1,14 +1,20 @@
 defmodule KeystonePhoenix.Monitor do
   @moduledoc "Monitoring queries for ETS, the BEAM host, and online sessions."
 
+  import Ecto.Query
+
+  alias KeystonePhoenix.Auth.AuthSession
   alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Authz.Command
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Department
+  alias KeystonePhoenix.Log.SysLoginInfo
   alias KeystonePhoenix.Monitor.CpuSampler
   alias KeystonePhoenix.Pagination
+  alias KeystonePhoenix.Repo
   alias KeystonePhoenix.RuntimeStore
   alias KeystonePhoenix.User
+  alias KeystonePhoenix.User.SysUser
 
   @bytes_per_kilobyte 1024
   @bytes_per_megabyte @bytes_per_kilobyte * 1024
@@ -21,7 +27,10 @@ defmodule KeystonePhoenix.Monitor do
      %{
        "backend" => "ets",
        "cacheEntries" => Cache.stats().entries,
-       "captchaEntries" => :ets.info(RuntimeStore.captcha_table(), :size)
+       "captchaEntries" => :ets.info(RuntimeStore.captcha_table(), :size),
+       "activeSessions" => active_session_count(),
+       "loginLogEntries" =>
+         Repo.aggregate(from(log in SysLoginInfo, where: log.deleted == false), :count, :info_id)
      }}
   rescue
     _error -> {:error, :unavailable}
@@ -67,6 +76,47 @@ defmodule KeystonePhoenix.Monitor do
     with :ok <- Command.authorize_resource(options, "online-session:read", :session) do
       online_users(params)
     end
+  end
+
+  @doc "返回 Native 所需的会话字段，保留会话创建和到期时间。"
+  def native_online_users(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Command.authorize_resource(options, "online-session:read", :session) do
+      now = DateTime.utc_now()
+
+      query =
+        from(session in AuthSession,
+          join: user in SysUser,
+          on: user.user_id == session.user_id,
+          where:
+            session.active == true and is_nil(session.revoked_at) and
+              session.refresh_expires_at > ^now and session.idle_expires_at > ^now and
+              user.deleted == false,
+          order_by: [desc: session.inserted_at],
+          select: {session, user}
+        )
+
+      rows =
+        query
+        |> Repo.all()
+        |> Enum.map(fn {session, user} ->
+          %{
+            "sessionId" => session.id,
+            "userId" => user.user_id,
+            "username" => user.username,
+            "displayName" => user.nickname,
+            "ipAddress" => user.login_ip,
+            "createdAt" => datetime_to_iso(session.inserted_at),
+            "expiresAt" => datetime_to_iso(session.refresh_expires_at),
+            "accessExpiresAt" => datetime_to_iso(session.expires_at)
+          }
+        end)
+        |> Enum.filter(&matches_native_username?(&1, params["username"] || params[:username]))
+        |> Enum.filter(&matches_native_ip?(&1, params["ipAddress"] || params[:ip_address]))
+
+      {:ok, Pagination.page_list(rows, params, 20)}
+    end
+  rescue
+    _error -> {:error, :unavailable}
   end
 
   @doc "Revokes one online refresh session after authorization."
@@ -150,6 +200,12 @@ defmodule KeystonePhoenix.Monitor do
   defp matches_ip?(_row, value) when value in [nil, ""], do: true
   defp matches_ip?(row, value), do: row["ipAddress"] == to_string(value)
 
+  defp matches_native_username?(_row, value) when value in [nil, ""], do: true
+  defp matches_native_username?(row, value), do: row["username"] == to_string(value)
+
+  defp matches_native_ip?(_row, value) when value in [nil, ""], do: true
+  defp matches_native_ip?(row, value), do: row["ipAddress"] == to_string(value)
+
   defp datetime_to_milliseconds(%DateTime{} = datetime),
     do: DateTime.to_unix(datetime, :millisecond)
 
@@ -160,6 +216,19 @@ defmodule KeystonePhoenix.Monitor do
   end
 
   defp datetime_to_milliseconds(_datetime), do: nil
+
+  defp datetime_to_iso(nil), do: nil
+  defp datetime_to_iso(%DateTime{} = value), do: DateTime.to_iso8601(value)
+
+  defp datetime_to_iso(%NaiveDateTime{} = value),
+    do: value |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_iso8601()
+
+  defp active_session_count do
+    case Session.count_active() do
+      {:ok, count} -> count
+      _ -> 0
+    end
+  end
 
   defp cpu_info, do: CpuSampler.snapshot()
 

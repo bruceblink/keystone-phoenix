@@ -20,19 +20,33 @@ defmodule KeystonePhoenixWeb.JobController do
 
   alias KeystonePhoenix.Job
   alias KeystonePhoenixWeb.ApiResponse
+  alias KeystonePhoenixWeb.NativeContract
 
   @doc "Returns a paginated scheduled job list."
   def list(conn, params) do
-    case Job.list_jobs(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
-      {:error, reason} -> render_error(conn, reason)
+    query_params = NativeContract.pagination_params(params)
+
+    result =
+      if legacy_job_query?(params) do
+        Job.list_jobs(query_params, authorization: %{principal: conn.assigns.current_user})
+      else
+        Job.list_jobs_all(query_params, authorization: %{principal: conn.assigns.current_user})
+      end
+
+    case result do
+      {:ok, page} ->
+        data = if legacy_job_query?(params), do: page, else: NativeContract.jobs(page)
+        json(conn, ApiResponse.ok(data))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
   @doc "Returns one scheduled job."
   def show(conn, %{"job_id" => job_id}) do
     case Job.get_job(job_id, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, job} -> json(conn, ApiResponse.ok(Job.job_to_map(job)))
+      {:ok, job} -> json(conn, ApiResponse.ok(native_job(job)))
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, reason} -> render_error(conn, reason)
     end
@@ -48,34 +62,49 @@ defmodule KeystonePhoenixWeb.JobController do
 
   @doc "Returns a paginated scheduled job execution log list."
   def logs(conn, params) do
-    case Job.list_job_logs(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+    query_params = NativeContract.pagination_params(params)
+
+    case Job.list_job_logs(query_params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, page} -> json(conn, ApiResponse.ok(NativeContract.job_logs_page(page, params)))
       {:error, reason} -> render_error(conn, reason)
     end
   end
 
   @doc "Creates a scheduled job."
   def create(conn, params) do
-    case Job.create_job(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, _job} -> json(conn, ApiResponse.ok())
-      {:error, reason} -> render_error(conn, reason)
+    case Job.create_job(NativeContract.job_create_params(params),
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
+      {:ok, job} ->
+        conn
+        |> put_status(:created)
+        |> json(ApiResponse.ok(native_job(job)))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
   @doc "Updates a scheduled job."
   def update(conn, %{"job_id" => job_id} = params) do
-    case Job.update_job(job_id, params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, _job} -> json(conn, ApiResponse.ok())
+    case Job.update_job(job_id, NativeContract.job_params(params),
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
+      {:ok, job} -> json(conn, ApiResponse.ok(native_job(job)))
       {:error, reason} -> render_error(conn, reason)
     end
   end
 
   @doc "Changes a scheduled job status."
+  def change_status(conn, %{"job_id" => job_id, "enabled" => enabled}) when is_boolean(enabled) do
+    change_status(conn, %{"job_id" => job_id, "status" => if(enabled, do: 1, else: 0)})
+  end
+
   def change_status(conn, %{"job_id" => job_id, "status" => status}) do
     case Job.update_job_status(job_id, status,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      {:ok, _job} -> json(conn, ApiResponse.ok())
+      {:ok, job} -> json(conn, ApiResponse.ok(native_job(job)))
       {:error, reason} -> render_error(conn, reason)
     end
   end
@@ -86,10 +115,10 @@ defmodule KeystonePhoenixWeb.JobController do
   def run(conn, %{"job_id" => job_id}) do
     case Job.run_job(job_id, authorization: %{principal: conn.assigns.current_user}) do
       :ok ->
-        json(conn, ApiResponse.ok())
+        json(conn, ApiResponse.ok(%{"triggered" => true}))
 
       {:skipped, :already_running} ->
-        json(conn, ApiResponse.ok(%{status: 2, message: "任务正在执行，本次触发已跳过"}))
+        json(conn, ApiResponse.ok(%{"triggered" => false}))
 
       {:error, :not_found} ->
         render_error(conn, :not_found)
@@ -102,9 +131,14 @@ defmodule KeystonePhoenixWeb.JobController do
   @doc "Cancels automatic executions currently running for a scheduled job."
   def cancel(conn, %{"job_id" => job_id}) do
     case Job.cancel_job(job_id, authorization: %{principal: conn.assigns.current_user}) do
-      :ok -> json(conn, ApiResponse.ok())
-      {:error, :invalid_id} -> render_error(conn, :invalid_ids)
-      :not_found -> render_error(conn, :not_running)
+      :ok ->
+        json(conn, ApiResponse.ok())
+
+      {:error, :invalid_id} ->
+        render_error(conn, :invalid_ids)
+
+      :not_found ->
+        render_error(conn, :not_running)
     end
   end
 
@@ -120,18 +154,40 @@ defmodule KeystonePhoenixWeb.JobController do
   @doc "Deletes one scheduled job."
   def delete_single(conn, %{"job_id" => job_id}) do
     case Job.delete_jobs([job_id], authorization: %{principal: conn.assigns.current_user}) do
-      :ok -> json(conn, ApiResponse.ok(%{"deleted" => 1}))
+      :ok -> json(conn, ApiResponse.ok(%{"deleted" => true}))
       {:error, reason} -> render_error(conn, reason)
     end
   end
 
   defp delete_jobs(conn, job_ids) do
+    ids = String.split(to_string(job_ids), ",", trim: true)
+
     case Job.delete_jobs(String.split(to_string(job_ids), ","),
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      :ok -> json(conn, ApiResponse.ok())
-      {:error, reason} -> render_error(conn, reason)
+      :ok ->
+        json(
+          conn,
+          ApiResponse.ok(%{
+            "deleted" => ids |> Enum.map(&String.trim/1) |> Enum.uniq() |> length()
+          })
+        )
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
+  end
+
+  defp native_job(job) do
+    legacy = Job.job_to_map(job)
+    Map.merge(NativeContract.job(legacy), legacy)
+  end
+
+  defp legacy_job_query?(params) do
+    Enum.any?(
+      ["jobName", "jobGroup", "status"],
+      &Map.has_key?(params, &1)
+    )
   end
 
   defp render_error(conn, :not_found) do

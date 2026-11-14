@@ -15,43 +15,71 @@ defmodule KeystonePhoenixWeb.ConfigController do
 
   alias KeystonePhoenix.Config
   alias KeystonePhoenixWeb.ApiResponse
+  alias KeystonePhoenixWeb.ManagementContract
 
   @doc "Returns a paginated list of system configuration entries."
   def list(conn, params) do
-    case Config.list_configs(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
-      {:error, reason} -> render_error(conn, reason)
+    case Config.list_configs_all(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} ->
+        json(conn, ApiResponse.ok(Enum.map(rows, &ManagementContract.config/1)))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
   @doc "Returns a system configuration entry."
   def show(conn, %{"config_id" => config_id}) do
     case Config.get_config(config_id, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, config} -> json(conn, ApiResponse.ok(Config.config_to_map(config)))
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, reason} -> render_error(conn, reason)
+      {:ok, config} ->
+        json(conn, ApiResponse.ok(Config.config_to_map(config) |> ManagementContract.config()))
+
+      {:error, :not_found} ->
+        render_error(conn, :not_found)
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
   @doc "Creates a system configuration entry."
   def create(conn, params) do
+    params = params |> ManagementContract.config_params() |> Map.delete("enabled")
+
     case Config.create_config(params,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      {:ok, _config} -> conn |> put_status(:created) |> json(ApiResponse.ok())
-      {:error, changeset} -> render_error(conn, changeset)
+      {:ok, config} ->
+        conn
+        |> put_status(:created)
+        |> json(ApiResponse.ok(Config.config_to_map(config) |> ManagementContract.config()))
+
+      {:error, changeset} ->
+        render_error(conn, changeset)
     end
   end
 
   @doc "Updates the value of a system configuration entry."
   def update(conn, %{"config_id" => config_id} = params) do
-    case Config.update_config(config_id, params,
+    params =
+      params
+      |> ManagementContract.config_params()
+      |> Map.drop(["key", "configKey"])
+
+    case Config.update_native_config(config_id, params,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      {:ok, _config} -> json(conn, ApiResponse.ok())
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, :not_allow_change} -> render_error(conn, :not_allow_change)
-      {:error, changeset} -> render_error(conn, changeset)
+      {:ok, config} ->
+        json(conn, ApiResponse.ok(Config.config_to_map(config) |> ManagementContract.config()))
+
+      {:error, :not_found} ->
+        render_error(conn, :not_found)
+
+      {:error, :not_allow_change} ->
+        render_error(conn, :not_allow_change)
+
+      {:error, changeset} ->
+        render_error(conn, changeset)
     end
   end
 

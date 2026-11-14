@@ -10,6 +10,7 @@ defmodule KeystonePhoenix.Job.SysJob do
   @foreign_key_type :binary_id
 
   schema "sys_job" do
+    field :job_code, :string
     field :job_name, :string
     field :job_group, :string
     field :invoke_target, :string
@@ -26,6 +27,7 @@ defmodule KeystonePhoenix.Job.SysJob do
   end
 
   @fields [
+    :job_code,
     :job_name,
     :job_group,
     :invoke_target,
@@ -40,7 +42,9 @@ defmodule KeystonePhoenix.Job.SysJob do
     job
     |> cast(attrs, @fields)
     |> put_new_id()
+    |> put_default_code()
     |> validate_required([
+      :job_code,
       :job_name,
       :job_group,
       :invoke_target,
@@ -48,6 +52,8 @@ defmodule KeystonePhoenix.Job.SysJob do
       :concurrent,
       :status
     ])
+    |> validate_length(:job_code, max: 64)
+    |> unique_constraint(:job_code, name: :sys_job_job_code_unique_index)
     |> validate_length(:job_name, max: 64)
     |> validate_length(:job_group, max: 64)
     |> validate_length(:invoke_target, max: 255)
@@ -57,6 +63,20 @@ defmodule KeystonePhoenix.Job.SysJob do
     |> validate_inclusion(:status, [0, 1])
     |> validate_cron()
     |> validate_params()
+  end
+
+  defp put_default_code(changeset) do
+    case get_field(changeset, :job_code) do
+      code when is_binary(code) and code != "" ->
+        changeset
+
+      _ ->
+        put_change(
+          changeset,
+          :job_code,
+          "job-" <> String.replace(to_string(get_field(changeset, :job_id)), "-", "")
+        )
+    end
   end
 
   # 新任务 ID 使用 UUIDv7；固定系统任务由 seed 显式提供 UUIDv5。

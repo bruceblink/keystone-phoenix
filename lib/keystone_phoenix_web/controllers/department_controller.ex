@@ -16,39 +16,66 @@ defmodule KeystonePhoenixWeb.DepartmentController do
 
   alias KeystonePhoenix.Department
   alias KeystonePhoenixWeb.ApiResponse
+  alias KeystonePhoenixWeb.ManagementContract
 
   @doc "Returns departments in display order."
   def list(conn, params) do
-    json(conn, ApiResponse.ok(Department.list_depts(params, conn.assigns.current_user)))
+    data =
+      Department.list_depts(params, conn.assigns.current_user)
+      |> Enum.map(&ManagementContract.department/1)
+
+    json(conn, ApiResponse.ok(data))
   end
 
   @doc "Returns the department dropdown source."
   def dropdown(conn, _params) do
-    json(conn, ApiResponse.ok(Department.list_dropdown(conn.assigns.current_user)))
+    data =
+      Department.list_depts(%{}, conn.assigns.current_user)
+      |> Enum.map(&ManagementContract.department/1)
+
+    json(conn, ApiResponse.ok(data))
   end
 
   @doc "Creates a department."
   def create(conn, params) do
+    params = params |> ManagementContract.department_params() |> Map.delete("enabled")
+
     case Department.create_dept(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, _dept} -> conn |> put_status(:created) |> json(ApiResponse.ok())
-      {:error, reason} -> render_error(conn, reason)
+      {:ok, dept} ->
+        conn
+        |> put_status(:created)
+        |> json(ApiResponse.ok(Department.dept_to_map(dept) |> ManagementContract.department()))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
   @doc "Updates a department."
   def update(conn, %{"dept_id" => dept_id} = params) do
+    params =
+      params
+      |> ManagementContract.department_params()
+      |> Map.drop(["code", "deptCode"])
+
     case Department.update_dept(dept_id, params,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      {:ok, _dept} -> json(conn, ApiResponse.ok())
-      {:error, reason} -> render_error(conn, reason)
+      {:ok, dept} ->
+        json(
+          conn,
+          ApiResponse.ok(Department.dept_to_map(dept) |> ManagementContract.department())
+        )
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
   @doc "Soft deletes a department."
   def delete(conn, %{"dept_id" => dept_id}) do
     case Department.delete_dept(dept_id, authorization: %{principal: conn.assigns.current_user}) do
-      :ok -> json(conn, ApiResponse.ok())
+      :ok -> json(conn, ApiResponse.ok(%{"deleted" => true}))
       {:error, reason} -> render_error(conn, reason)
     end
   end

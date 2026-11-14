@@ -24,25 +24,16 @@ Native 作为 HTTP 入口基准，Phoenix 已完成以下路径处理：
 
 Phoenix 证据：`mix phx.routes` 未发现 `/system`、`/logs`、`auth/passkey`、`health/ready`、`monitor/networkStatus` 和用户导入模板旧入口。路由和权限修改已在 `f8d3db9` 提交。
 
-## 当前未通过的 DTO 验收
+## DTO 和数据模型验收结果
 
-以下项目的 HTTP 路径已经存在，但响应或写入字段仍不能作为 Native 的可替换实现：
+Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。用户、角色、部门、岗位、菜单、配置、字典、公告、任务、审计、个人资料和监控均有对应的字段适配和回归测试。列表接口按 Native 约定返回数组或 `items/page/size/total`，创建和更新返回实体，删除返回 `deleted`，任务触发返回 `triggered`。
 
-| 资源 | 当前问题 | 需要完成的验收 |
-| --- | --- | --- |
-| 用户 | Phoenix 使用 `userId`、`nickname`、`status` 和 `rows`；Native 使用 `id`、`displayName`、`enabled` 和 `items`。创建、修改、状态、密码和删除响应也不完全一致。 | 用真实用户读写 HTTP 测试核验字段、页码、删除数量和角色编码。 |
-| 角色 | Phoenix 使用旧角色字段和分页结构；Native 返回角色数组，并要求实体写入响应和角色用户 ID 数组。 | 核验角色数组、写入实体、权限集合和角色成员 ID 数组。 |
-| 部门 | Phoenix 数据表没有 Native 的部门 `code` 字段。只在 HTTP 层生成 `code` 会丢失写入语义。 | 先增加持久化字段和迁移，再核验创建、修改、列表和删除。 |
-| 菜单 | Phoenix 数据表没有 Native 的菜单 `code` 字段，菜单字段和树结构也不同。 | 增加字段映射和持久化迁移，再核验菜单树、下拉列表和角色绑定。 |
-| 岗位 | 字段可以映射，但当前响应和写入仍使用 Phoenix 旧字段。 | 核验 `id/code/name/sortOrder/enabled` 和实体写入响应。 |
-| 配置和字典 | Phoenix 的 `isAllowChange`、`status` 与 Native 的 `enabled` 语义不同，不能直接当作同一字段。 | 明确字段含义后更新模型、响应和写入测试。 |
-| 任务 | 任务定义和执行日志字段仍有旧名称；执行结果和删除数量需要逐项核验。 | 核验任务数组、实体写入、触发结果和日志分页。 |
-| 审计、个人资料和监控 | Phoenix 返回旧日志字段、旧个人资料结构和 BEAM 监控结构；Native 使用不同 DTO。 | 按 admin-web schema 执行真实 HTTP 响应解析和权限测试。 |
+为保存 Native 所需的业务字段，新增并应用了部门编码、菜单编码、菜单排序、配置启用状态、任务编码和字典字符串值迁移。部门和菜单保留旧 LiveView 原始写入的数据库触发器。任务编码另有更高版本修复迁移，覆盖“迁移记录已存在但列未创建”的旧安装状态。
 
-因此，当前提交完成的是接口路径、方法、旧入口清理、公告特殊语义和敏感写权限边界。它还不能证明 Phoenix 可以直接替换 Native 作为 admin-web 的后端。DTO 和 Phoenix 数据模型差异必须完成后，才能给出“所有接口已对齐”的结论。
+仍有三个明确边界：Phoenix 用户表只有一个 `role_id`，HTTP 写入支持零个或一个 `roleCodes`，多个角色编码返回校验错误；Phoenix 任务列表的 `lastStatus` 和 `lastRunAt` 没有独立持久化来源，返回空值；Phoenix 的 BEAM 运行时按 Native 监控字段提供结构化结果，Java 专属含义不适用。以上边界不会静默丢弃请求字段。
 
 ## UI 验收边界
 
-Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 的 `pnpm test:run`、`pnpm typecheck` 和 `pnpm build` 均通过。
+Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 的 `pnpm test:run`、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix `mix test --include integration` 已通过 363 项。
 
 Phoenix LiveView 已覆盖用户、角色、部门、岗位、菜单、配置、字典、公告、日志、任务、监控、个人资料和 API Key 面板。当前没有可用的真实浏览器窗口证据；MFA 登录挑战、OIDC 按钮和 WebAuthn 页面也不是两个前端共同提供的功能，不能作为 Phoenix 单边已完成项。

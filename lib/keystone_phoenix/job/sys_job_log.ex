@@ -9,6 +9,7 @@ defmodule KeystonePhoenix.Job.SysJobLog do
 
   schema "sys_job_log" do
     field :job_id, :binary_id
+    field :job_code, :string
     field :job_name, :string
     field :job_group, :string
     field :invoke_target, :string
@@ -26,6 +27,7 @@ defmodule KeystonePhoenix.Job.SysJobLog do
 
   @fields [
     :job_id,
+    :job_code,
     :job_name,
     :job_group,
     :invoke_target,
@@ -45,7 +47,9 @@ defmodule KeystonePhoenix.Job.SysJobLog do
     log
     |> cast(attrs, @fields)
     |> put_new_id()
+    |> put_default_code()
     |> validate_required([
+      :job_code,
       :job_name,
       :job_group,
       :invoke_target,
@@ -60,6 +64,20 @@ defmodule KeystonePhoenix.Job.SysJobLog do
     |> validate_length(:exception_info, max: 2000)
     |> validate_inclusion(:trigger_type, [1, 2])
     |> validate_inclusion(:status, [0, 1, 2])
+  end
+
+  defp put_default_code(changeset) do
+    case get_field(changeset, :job_code) do
+      code when is_binary(code) and code != "" ->
+        changeset
+
+      _ ->
+        put_change(
+          changeset,
+          :job_code,
+          "job-" <> String.replace(to_string(get_field(changeset, :job_log_id)), "-", "")
+        )
+    end
   end
 
   # 每条执行日志使用独立 UUIDv7，job_id 引用任务 UUID。

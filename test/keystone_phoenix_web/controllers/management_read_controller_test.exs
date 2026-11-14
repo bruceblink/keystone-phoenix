@@ -13,10 +13,10 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
     token = admin_token()
     conn = authorized(build_conn(), token)
 
-    assert %{"success" => true, "data" => %{"rows" => _configs}} =
+    assert %{"success" => true, "data" => _configs} =
              json_response(get(conn, "/api/v1/configs"), 200)
 
-    assert %{"success" => true, "data" => %{"rows" => _types}} =
+    assert %{"success" => true, "data" => _types} =
              json_response(get(authorized(build_conn(), token), "/api/v1/dictionaries"), 200)
 
     assert %{"success" => true, "data" => _notices} =
@@ -42,7 +42,7 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
         "dictType" => dict_type
       })
       |> json_response(200)
-      |> get_in(["data", "rows", Access.at(0), "dictId"])
+      |> get_in(["data", Access.at(0), "id"])
 
     data_response =
       post(authorized(build_conn(), token), "/api/v1/dictionaries/#{dict_type}/items", %{
@@ -90,7 +90,7 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
     config_id =
       get(authorized(build_conn(), token), "/api/v1/configs", %{"configKey" => config_key})
       |> json_response(200)
-      |> get_in(["data", "rows", Access.at(0), "configId"])
+      |> get_in(["data", Access.at(0), "id"])
 
     assert put(authorized(build_conn(), token), "/api/v1/configs/#{config_id}", %{
              "configValue" => "更新值"

@@ -19,7 +19,7 @@ defmodule KeystonePhoenix.User do
   alias KeystonePhoenix.User.Authorization
   alias KeystonePhoenix.User.SysUser
 
-  @empty_relation_names %{departments: %{}, posts: %{}, roles: %{}, users: %{}}
+  @empty_relation_names %{departments: %{}, posts: %{}, roles: %{}, role_keys: %{}, users: %{}}
 
   @user_attrs [
     {"postId", :post_id},
@@ -56,6 +56,7 @@ defmodule KeystonePhoenix.User do
     query
     |> filter_uuid(:user_id, params["userId"] || params[:user_id])
     |> filter_contains(:username, params["username"] || params[:username])
+    |> filter_contains(:nickname, params["displayName"] || params[:display_name])
     |> filter_contains(:phone_number, params["phoneNumber"] || params[:phone_number])
     |> filter_integer(:status, params["status"] || params[:status])
     |> filter_uuid(:dept_id, params["deptId"] || params[:dept_id])
@@ -398,6 +399,7 @@ defmodule KeystonePhoenix.User do
       "deptName" => Map.get(names.departments, user.dept_id, ""),
       "postName" => Map.get(names.posts, user.post_id, ""),
       "roleName" => Map.get(names.roles, user.role_id, ""),
+      "roleKey" => Map.get(names.role_keys, user.role_id, ""),
       "creatorName" => Map.get(names.users, user.creator_id, ""),
       "updaterName" => Map.get(names.users, user.updater_id, ""),
       "creatorId" => user.creator_id,
@@ -527,6 +529,11 @@ defmodule KeystonePhoenix.User do
         |> relation_ids(:role_id)
         |> Role.list_roles_by_ids()
         |> names_by_id(:role_id, :role_name),
+      role_keys:
+        users
+        |> relation_ids(:role_id)
+        |> Role.list_roles_by_ids()
+        |> names_by_id(:role_id, :role_key),
       users:
         (relation_ids(users, :creator_id) ++ relation_ids(users, :updater_id))
         |> Enum.uniq()

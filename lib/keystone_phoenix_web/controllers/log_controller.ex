@@ -36,6 +36,8 @@ defmodule KeystonePhoenixWeb.LogController do
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.ExcelResponse
+  alias KeystonePhoenixWeb.NativeContract
+  alias KeystonePhoenixWeb.NativeObservabilityContract
 
   @login_export_headers ["ID", "用户名", "ip地址", "登录地点", "操作系统", "浏览器", "状态", "描述", "登录时间"]
   @operation_export_headers [
@@ -61,9 +63,14 @@ defmodule KeystonePhoenixWeb.LogController do
 
   @doc "Returns login audit records."
   def login_logs(conn, params) do
-    case Log.list_login_logs(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
-      {:error, reason} -> render_error(conn, reason)
+    query_params = params |> NativeContract.pagination_params() |> normalize_login_filters()
+
+    case Log.list_login_logs(query_params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, page} ->
+        json(conn, ApiResponse.ok(NativeObservabilityContract.login_logs_page(page, params)))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
@@ -72,8 +79,18 @@ defmodule KeystonePhoenixWeb.LogController do
     case Log.delete_login_logs(String.split(ids, ","),
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      :ok -> json(conn, ApiResponse.ok())
-      {:error, reason} -> render_error(conn, reason)
+      :ok ->
+        count =
+          ids
+          |> String.split(",", trim: true)
+          |> Enum.map(&String.trim/1)
+          |> Enum.uniq()
+          |> length()
+
+        json(conn, ApiResponse.ok(%{"deleted" => count}))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
@@ -81,9 +98,16 @@ defmodule KeystonePhoenixWeb.LogController do
 
   @doc "Returns operation audit records."
   def operation_logs(conn, params) do
-    case Log.list_operation_logs(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
-      {:error, reason} -> render_error(conn, reason)
+    query_params = params |> NativeContract.pagination_params() |> normalize_operation_filters()
+
+    case Log.list_operation_logs(query_params,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
+      {:ok, page} ->
+        json(conn, ApiResponse.ok(NativeObservabilityContract.operation_logs_page(page, params)))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
@@ -154,8 +178,18 @@ defmodule KeystonePhoenixWeb.LogController do
     case Log.delete_operation_logs(String.split(ids, ","),
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      :ok -> json(conn, ApiResponse.ok())
-      {:error, reason} -> render_error(conn, reason)
+      :ok ->
+        count =
+          ids
+          |> String.split(",", trim: true)
+          |> Enum.map(&String.trim/1)
+          |> Enum.uniq()
+          |> length()
+
+        json(conn, ApiResponse.ok(%{"deleted" => count}))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
@@ -167,6 +201,22 @@ defmodule KeystonePhoenixWeb.LogController do
       end
     end
   end
+
+  defp normalize_login_filters(params) do
+    case Map.get(params, "status") do
+      status when status in ["SUCCESS", "FAILURE", "LOGOUT", "REGISTER"] ->
+        Map.put(
+          params,
+          "status",
+          %{"SUCCESS" => 1, "FAILURE" => 0, "LOGOUT" => 2, "REGISTER" => 3}[status]
+        )
+
+      _ ->
+        params
+    end
+  end
+
+  defp normalize_operation_filters(params), do: params
 
   defp login_export_row(row) do
     [

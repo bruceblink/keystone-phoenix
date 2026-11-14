@@ -21,30 +21,35 @@ defmodule KeystonePhoenix.Config do
     {"configKey", :config_key},
     {"configOptions", :config_options},
     {"configValue", :config_value},
+    {"key", :config_key},
+    {"value", :config_value},
+    {"description", :remark},
+    {"enabled", :enabled},
     {"isAllowChange", :is_allow_change},
     {"remark", :remark}
   ]
 
   @spec list_configs(map()) :: %{rows: list(), total: non_neg_integer()}
   def list_configs(params \\ %{}) do
-    query =
-      from c in SysConfig,
-        where: c.deleted == false,
-        order_by: [desc: c.config_id]
+    page_query(configs_query(params), params)
+  end
 
-    query =
-      query
-      |> filter_contains(:config_name, params["configName"] || params[:config_name])
-      |> filter_equal(:config_key, params["configKey"] || params[:config_key])
-      |> filter_allow_change(params["isAllowChange"] || params[:is_allow_change])
-
-    page_query(query, params)
+  @doc "为 Native 管理资源读取全部配置，不返回分页元数据。"
+  def list_configs_all(params \\ %{}) do
+    configs_query(params) |> Repo.all() |> Enum.map(&config_to_map/1)
   end
 
   @doc "在检查配置资源范围后查询配置列表。"
   def list_configs(params, options) when is_map(params) and is_list(options) do
     with :ok <- Authorization.authorize_read(options, "config:read") do
       {:ok, list_configs(params)}
+    end
+  end
+
+  @doc "完成授权后为 Native 资源读取全部配置。"
+  def list_configs_all(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "config:read") do
+      {:ok, list_configs_all(params)}
     end
   end
 
@@ -121,6 +126,15 @@ defmodule KeystonePhoenix.Config do
 
   def update_config(_id, _attrs, _options), do: {:error, :authorization_required}
 
+  @doc "按 Native 配置接口更新值、说明和启用状态。"
+  def update_native_config(id, attrs, options) when is_map(attrs) and is_list(options) do
+    with :ok <- Authorization.authorize(options, "config:update") do
+      do_update_native_config(id, attrs, Authorization.actor_id(options))
+    end
+  end
+
+  def update_native_config(_id, _attrs, _options), do: {:error, :authorization_required}
+
   @doc "Soft deletes a configuration entry after checking the update permission."
   def delete_config(id, options) when is_list(options) do
     with :ok <- Authorization.authorize(options, "config:update"),
@@ -165,6 +179,23 @@ defmodule KeystonePhoenix.Config do
     end
   end
 
+  defp do_update_native_config(id, attrs, actor_id) do
+    with {:ok, config} <- get_config(id) do
+      changeset = SysConfig.changeset(config, normalize_attrs(attrs))
+      changeset = Audit.put_actor(changeset, :updater_id, actor_id)
+
+      case Repo.update(changeset) do
+        {:ok, updated} = result ->
+          Cache.delete(config_cache_key(config.config_key))
+          Cache.delete(config_cache_key(updated.config_key))
+          result
+
+        error ->
+          error
+      end
+    end
+  end
+
   def refresh_cache(options) when is_list(options) do
     with :ok <- Authorization.authorize(options, "config:refresh") do
       do_refresh_cache()
@@ -182,6 +213,12 @@ defmodule KeystonePhoenix.Config do
       "configName" => config.config_name,
       "configKey" => config.config_key,
       "configValue" => config.config_value,
+      "id" => config.config_id,
+      "key" => config.config_key,
+      "value" => config.config_value,
+      "description" => config.remark,
+      "enabled" => config.enabled,
+      "updatedAt" => format_datetime(config.update_time),
       "configOptions" => parse_options(config.config_options),
       "isAllowChange" => if(config.is_allow_change, do: 1, else: 0),
       "isAllowChangeStr" => if(config.is_allow_change, do: "是", else: "否"),
@@ -192,6 +229,16 @@ defmodule KeystonePhoenix.Config do
 
   defp page_query(query, params) do
     Pagination.page(query, params, :config_id, &config_to_map/1)
+  end
+
+  defp configs_query(params) do
+    from(c in SysConfig,
+      where: c.deleted == false,
+      order_by: [asc: c.config_key, asc: c.config_id]
+    )
+    |> filter_contains(:config_name, params["configName"] || params[:config_name])
+    |> filter_equal(:config_key, params["configKey"] || params[:config_key])
+    |> filter_allow_change(params["isAllowChange"] || params[:is_allow_change])
   end
 
   defp filter_contains(query, _field, nil), do: query
@@ -233,8 +280,20 @@ defmodule KeystonePhoenix.Config do
       end)
 
     normalized
+    |> ensure_config_name()
     |> normalize_options()
     |> normalize_allow_change()
+  end
+
+  defp ensure_config_name(attrs) do
+    name = Map.get(attrs, :config_name)
+    key = Map.get(attrs, :config_key)
+
+    cond do
+      is_binary(name) and name != "" -> attrs
+      is_binary(key) -> Map.put(attrs, :config_name, key)
+      true -> attrs
+    end
   end
 
   defp normalize_options(attrs) do

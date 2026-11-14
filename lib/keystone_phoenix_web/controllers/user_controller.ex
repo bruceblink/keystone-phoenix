@@ -61,6 +61,7 @@ defmodule KeystonePhoenixWeb.UserController do
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.ExcelResponse
+  alias KeystonePhoenixWeb.NativeContract
 
   @user_export_headers [
     "用户ID",
@@ -106,87 +107,116 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Returns a paginated list of users."
   def list(conn, params) do
-    json(conn, ApiResponse.ok(User.list_users(params, conn.assigns.current_user)))
+    page = User.list_users(NativeContract.pagination_params(params), conn.assigns.current_user)
+    data = NativeContract.users_page(page, params) |> Map.put(:rows, page.rows)
+    json(conn, ApiResponse.ok(data))
   end
 
   @doc "Returns a user without exposing its password."
   def show(conn, %{"user_id" => user_id}) do
     case User.get_user(user_id) do
-      {:ok, user} -> json(conn, ApiResponse.ok(User.user_to_map(user)))
+      {:ok, user} -> json(conn, ApiResponse.ok(native_user(user)))
       {:error, :not_found} -> render_error(conn, :not_found)
     end
   end
 
   @doc "Creates a local user."
   def create(conn, params) do
-    if Authz.role_assignment_allowed?(conn.assigns.current_user, role_id_param(params)) do
-      case User.create_user(params,
-             authorization: %{
-               principal: conn.assigns.current_user,
-               permission: "user:create"
-             }
-           ) do
-        {:ok, _user} -> conn |> put_status(:created) |> json(ApiResponse.ok())
-        {:error, changeset} -> render_error(conn, changeset)
-      end
-    else
-      render_error(conn, :role_assignment_forbidden)
+    case native_user_params(params) do
+      {:ok, attrs} ->
+        if Authz.role_assignment_allowed?(conn.assigns.current_user, role_id_param(attrs)) do
+          case User.create_user(attrs,
+                 authorization: %{
+                   principal: conn.assigns.current_user,
+                   permission: "user:create"
+                 }
+               ) do
+            {:ok, user} ->
+              conn |> put_status(:created) |> json(ApiResponse.ok(native_user(user)))
+
+            {:error, changeset} ->
+              render_error(conn, changeset)
+          end
+        else
+          render_error(conn, :role_assignment_forbidden)
+        end
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
   @doc "Updates editable fields for a local user."
   def update(conn, %{"user_id" => user_id} = params) do
-    if Authz.role_assignment_allowed?(conn.assigns.current_user, role_id_param(params)) do
-      case User.update_user(user_id, params,
-             authorization: %{
-               principal: conn.assigns.current_user,
-               permission: "user:update"
-             }
-           ) do
-        {:ok, _user} -> json(conn, ApiResponse.ok())
-        {:error, :not_found} -> render_error(conn, :not_found)
-        {:error, changeset} -> render_error(conn, changeset)
-      end
-    else
-      render_error(conn, :role_assignment_forbidden)
+    case native_user_params(params) do
+      {:ok, attrs} ->
+        if Authz.role_assignment_allowed?(conn.assigns.current_user, role_id_param(attrs)) do
+          case User.update_user(user_id, attrs,
+                 authorization: %{
+                   principal: conn.assigns.current_user,
+                   permission: "user:update"
+                 }
+               ) do
+            {:ok, user} -> json(conn, ApiResponse.ok(native_user(user)))
+            {:error, :not_found} -> render_error(conn, :not_found)
+            {:error, changeset} -> render_error(conn, changeset)
+          end
+        else
+          render_error(conn, :role_assignment_forbidden)
+        end
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
   @doc "Soft deletes one or more local users."
   def delete(conn, %{"user_ids" => user_ids}) do
-    delete_users(conn, user_ids)
+    delete_users(conn, user_ids, false)
   end
 
-  def delete(conn, %{"ids" => ids}), do: delete_users(conn, ids)
+  def delete(conn, %{"ids" => ids}), do: delete_users(conn, ids, false)
 
-  def delete(conn, %{"user_id" => user_id}), do: delete_users(conn, user_id)
+  def delete(conn, %{"user_id" => user_id}), do: delete_users(conn, user_id, true)
 
-  def delete_single(conn, %{"user_id" => user_id}), do: delete_users(conn, user_id)
+  def delete_single(conn, %{"user_id" => user_id}), do: delete_users(conn, user_id, true)
 
-  defp delete_users(conn, user_ids) do
+  defp delete_users(conn, user_ids, single?) do
     case User.delete_users(String.split(user_ids, ","),
            authorization: %{
              principal: conn.assigns.current_user,
              permission: "user:delete"
            }
          ) do
-      :ok -> json(conn, ApiResponse.ok())
-      {:error, :invalid_ids} -> render_error(conn, :invalid_ids)
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, :protected_user} -> render_error(conn, :protected_user)
-      {:error, :update_failed} -> render_error(conn, :update_failed)
+      :ok ->
+        count =
+          user_ids |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.uniq() |> length()
+
+        json(conn, ApiResponse.ok(%{"deleted" => if(single?, do: true, else: count)}))
+
+      {:error, :invalid_ids} ->
+        render_error(conn, :invalid_ids)
+
+      {:error, :not_found} ->
+        render_error(conn, :not_found)
+
+      {:error, :protected_user} ->
+        render_error(conn, :protected_user)
+
+      {:error, :update_failed} ->
+        render_error(conn, :update_failed)
     end
   end
 
   @doc "Replaces a user's password."
   def reset_password(conn, %{"user_id" => user_id} = params) do
-    case User.reset_password(user_id, params,
+    case User.reset_password(user_id, NativeContract.user_params(params),
            authorization: %{
              principal: conn.assigns.current_user,
              permission: "user:reset-password"
            }
          ) do
-      {:ok, _user} -> json(conn, ApiResponse.ok())
+      {:ok, user} -> json(conn, ApiResponse.ok(native_user(user)))
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, :unavailable} -> render_error(conn, :unavailable)
       {:error, changeset} -> render_error(conn, changeset)
@@ -194,6 +224,11 @@ defmodule KeystonePhoenixWeb.UserController do
   end
 
   @doc "Enables or disables a local user."
+  def change_status(conn, %{"user_id" => user_id, "enabled" => enabled})
+      when is_boolean(enabled) do
+    change_status(conn, %{"user_id" => user_id, "status" => if(enabled, do: 1, else: 0)})
+  end
+
   def change_status(conn, %{"user_id" => user_id, "status" => status}) do
     case User.change_status(user_id, status,
            authorization: %{
@@ -201,7 +236,7 @@ defmodule KeystonePhoenixWeb.UserController do
              permission: "user:update"
            }
          ) do
-      {:ok, _user} -> json(conn, ApiResponse.ok())
+      {:ok, user} -> json(conn, ApiResponse.ok(native_user(user)))
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, changeset} -> render_error(conn, changeset)
     end
@@ -209,6 +244,35 @@ defmodule KeystonePhoenixWeb.UserController do
 
   def change_status(conn, %{"user_id" => _user_id}) do
     render_error(conn, :invalid_status)
+  end
+
+  defp native_user(user) do
+    legacy = User.user_to_map_with_relations(user)
+    Map.merge(NativeContract.user(legacy), legacy)
+  end
+
+  defp native_user_params(params) do
+    attrs = NativeContract.user_params(params)
+
+    case Map.get(params, "roleCodes") do
+      nil ->
+        {:ok, attrs}
+
+      [] ->
+        {:ok, attrs |> Map.put("roleId", nil) |> Map.delete("roleCodes")}
+
+      [code] when is_binary(code) ->
+        case Role.get_role_by_key(code) do
+          {:ok, role} ->
+            {:ok, attrs |> Map.put("roleId", role.role_id) |> Map.delete("roleCodes")}
+
+          {:error, :not_found} ->
+            {:error, :role_codes_unsupported}
+        end
+
+      _ ->
+        {:error, :role_codes_unsupported}
+    end
   end
 
   @doc "Exports all users matching the current filters."
@@ -433,6 +497,12 @@ defmodule KeystonePhoenixWeb.UserController do
     conn
     |> put_status(:forbidden)
     |> json(ApiResponse.error(:permission_denied, "没有角色分配权限"))
+  end
+
+  defp render_error(conn, :role_codes_unsupported) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "Phoenix 用户模型只支持单个 role_id，不能写入 roleCodes"))
   end
 
   defp render_error(conn, reason)

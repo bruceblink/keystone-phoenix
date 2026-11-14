@@ -1,0 +1,30 @@
+defmodule KeystonePhoenix.Repo.Migrations.RepairNativeJobCodes do
+  use Ecto.Migration
+
+  @moduledoc "Repairs installations where the initial Native job-code migration was recorded before its columns were present."
+
+  def up do
+    execute("ALTER TABLE sys_job ADD COLUMN IF NOT EXISTS job_code varchar(64)")
+    execute("ALTER TABLE sys_job_log ADD COLUMN IF NOT EXISTS job_code varchar(64)")
+
+    execute("""
+    UPDATE sys_job
+    SET job_code = 'job-' || replace(job_id::text, '-', '')
+    WHERE job_code IS NULL OR btrim(job_code) = ''
+    """)
+
+    execute("""
+    UPDATE sys_job_log
+    SET job_code = COALESCE((SELECT job_code FROM sys_job WHERE sys_job.job_id = sys_job_log.job_id), 'job-' || replace(job_log_id::text, '-', ''))
+    WHERE job_code IS NULL OR btrim(job_code) = ''
+    """)
+
+    create_if_not_exists unique_index(:sys_job, [:job_code], name: :sys_job_job_code_unique_index)
+  end
+
+  def down do
+    drop_if_exists index(:sys_job, [:job_code], name: :sys_job_job_code_unique_index)
+    execute("ALTER TABLE sys_job_log DROP COLUMN IF EXISTS job_code")
+    execute("ALTER TABLE sys_job DROP COLUMN IF EXISTS job_code")
+  end
+end

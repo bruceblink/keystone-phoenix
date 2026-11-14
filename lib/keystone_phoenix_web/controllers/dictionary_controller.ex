@@ -17,14 +17,18 @@ defmodule KeystonePhoenixWeb.DictionaryController do
 
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenixWeb.ApiResponse
+  alias KeystonePhoenixWeb.ManagementContract
 
   @doc "Returns a paginated list of dictionary types."
   def list_types(conn, params) do
-    case Dictionary.list_dict_types(params,
+    case Dictionary.list_dict_types_all(params,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
-      {:error, reason} -> render_error(conn, reason)
+      {:ok, rows} ->
+        json(conn, ApiResponse.ok(Enum.map(rows, &ManagementContract.dictionary_type/1)))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
@@ -34,27 +38,58 @@ defmodule KeystonePhoenixWeb.DictionaryController do
            dict_type,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
-      {:error, reason} -> render_error(conn, reason)
+      {:ok, rows} ->
+        json(conn, ApiResponse.ok(Enum.map(rows, &ManagementContract.dictionary_item/1)))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
   def create_type(conn, params) do
+    params = params |> ManagementContract.dictionary_type_params() |> Map.delete("enabled")
+
     case Dictionary.create_dict_type(params,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      {:ok, _dict_type} -> conn |> put_status(:created) |> json(ApiResponse.ok())
-      {:error, changeset} -> render_error(conn, changeset)
+      {:ok, dict_type} ->
+        conn
+        |> put_status(:created)
+        |> json(
+          ApiResponse.ok(
+            Dictionary.dict_type_to_map(dict_type)
+            |> ManagementContract.dictionary_type()
+          )
+        )
+
+      {:error, changeset} ->
+        render_error(conn, changeset)
     end
   end
 
   def update_type(conn, %{"dict_id" => dict_id} = params) do
+    params =
+      params
+      |> ManagementContract.dictionary_type_params()
+      |> Map.drop(["code", "dictType"])
+
     case Dictionary.update_dict_type(dict_id, params,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      {:ok, _dict_type} -> json(conn, ApiResponse.ok())
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, changeset} -> render_error(conn, changeset)
+      {:ok, dict_type} ->
+        json(
+          conn,
+          ApiResponse.ok(
+            Dictionary.dict_type_to_map(dict_type)
+            |> ManagementContract.dictionary_type()
+          )
+        )
+
+      {:error, :not_found} ->
+        render_error(conn, :not_found)
+
+      {:error, changeset} ->
+        render_error(conn, changeset)
     end
   end
 
@@ -62,28 +97,60 @@ defmodule KeystonePhoenixWeb.DictionaryController do
     case Dictionary.delete_dict_type(dict_id,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      :ok -> json(conn, ApiResponse.ok())
+      :ok -> json(conn, ApiResponse.ok(%{"deleted" => true}))
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, :has_data} -> render_error(conn, :has_data)
     end
   end
 
-  def create_data(conn, params) do
+  def create_data(conn, %{"dict_type" => dict_type} = params) do
+    params =
+      params
+      |> Map.put_new("dictType", dict_type)
+      |> ManagementContract.dictionary_item_params()
+      |> Map.delete("enabled")
+
     case Dictionary.create_dict_data(params,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      {:ok, _dict_data} -> conn |> put_status(:created) |> json(ApiResponse.ok())
-      {:error, changeset} -> render_error(conn, changeset)
+      {:ok, dict_data} ->
+        conn
+        |> put_status(:created)
+        |> json(
+          ApiResponse.ok(
+            Dictionary.dict_data_to_map(dict_data)
+            |> ManagementContract.dictionary_item()
+          )
+        )
+
+      {:error, changeset} ->
+        render_error(conn, changeset)
     end
   end
 
   def update_data(conn, %{"dict_code" => dict_code} = params) do
+    params =
+      params
+      |> ManagementContract.dictionary_item_params()
+      |> Map.drop(["value", "dictValue", "typeCode", "dictType"])
+
     case Dictionary.update_dict_data(dict_code, params,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      {:ok, _dict_data} -> json(conn, ApiResponse.ok())
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, changeset} -> render_error(conn, changeset)
+      {:ok, dict_data} ->
+        json(
+          conn,
+          ApiResponse.ok(
+            Dictionary.dict_data_to_map(dict_data)
+            |> ManagementContract.dictionary_item()
+          )
+        )
+
+      {:error, :not_found} ->
+        render_error(conn, :not_found)
+
+      {:error, changeset} ->
+        render_error(conn, changeset)
     end
   end
 
@@ -91,7 +158,7 @@ defmodule KeystonePhoenixWeb.DictionaryController do
     case Dictionary.delete_dict_data(dict_code,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      :ok -> json(conn, ApiResponse.ok())
+      :ok -> json(conn, ApiResponse.ok(%{"deleted" => true}))
       {:error, :not_found} -> render_error(conn, :not_found)
     end
   end

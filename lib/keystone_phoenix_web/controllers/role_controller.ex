@@ -26,15 +26,18 @@ defmodule KeystonePhoenixWeb.RoleController do
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Role
+  alias KeystonePhoenix.Role.NativeQuery
+  alias KeystonePhoenix.Role.Permissions
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.ExcelResponse
+  alias KeystonePhoenixWeb.NativeContract
 
   @role_export_headers ["角色ID", "角色名称", "角色标识", "角色排序", "角色状态", "备注", "创建时间", "数据范围"]
 
   @doc "Returns a paginated list of roles."
   def list(conn, params) do
-    case Role.list_roles(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+    case NativeQuery.list_all(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(Enum.map(rows, &native_role_map/1)))
       {:error, reason} -> render_error(conn, reason)
     end
   end
@@ -77,14 +80,16 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Creates a role and assigns its display menus and explicit permissions."
   def create(conn, params) do
-    if Authz.role_metadata_allowed?(conn.assigns.current_user, params) do
-      case Role.create_role(params,
+    attrs = NativeContract.role_params(params)
+
+    if Authz.role_metadata_allowed?(conn.assigns.current_user, attrs) do
+      case Role.create_role(attrs,
              authorization: %{
                principal: conn.assigns.current_user,
                permission: "role:create"
              }
            ) do
-        {:ok, _role} -> conn |> put_status(:created) |> json(ApiResponse.ok())
+        {:ok, role} -> conn |> put_status(:created) |> json(ApiResponse.ok(native_role(role)))
         {:error, changeset} -> render_error(conn, changeset)
       end
     else
@@ -94,16 +99,18 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Updates a role and optionally replaces its display menus and explicit permissions."
   def update(conn, params) do
-    if Authz.role_metadata_allowed?(conn.assigns.current_user, params) do
+    attrs = NativeContract.role_params(params)
+
+    if Authz.role_metadata_allowed?(conn.assigns.current_user, attrs) do
       case Role.update_role(
-             params["roleId"] || params[:role_id],
-             params,
+             params["role_id"] || params["roleId"] || params[:role_id],
+             attrs,
              authorization: %{
                principal: conn.assigns.current_user,
                permission: "role:update"
              }
            ) do
-        {:ok, _role} -> json(conn, ApiResponse.ok())
+        {:ok, role} -> json(conn, ApiResponse.ok(native_role(role)))
         {:error, :not_found} -> render_error(conn, :not_found)
         {:error, changeset} -> render_error(conn, changeset)
       end
@@ -126,7 +133,7 @@ defmodule KeystonePhoenixWeb.RoleController do
              permission: "role:delete"
            }
          ) do
-      {:ok, _} -> json(conn, ApiResponse.ok())
+      {:ok, _} -> json(conn, ApiResponse.ok(%{"deleted" => true}))
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, reason} -> render_error(conn, reason)
     end
@@ -172,17 +179,21 @@ defmodule KeystonePhoenixWeb.RoleController do
   end
 
   def allocated_users(conn, %{"role_id" => role_id} = params) do
+    page = Role.list_allocated_users(role_id, params, conn.assigns.current_user)
+
     json(
       conn,
-      ApiResponse.ok(Role.list_allocated_users(role_id, params, conn.assigns.current_user))
+      ApiResponse.ok(role_users_response(page, params))
     )
   end
 
   @doc "Lists users that are not assigned to a role."
   def unallocated_users(conn, %{"role_id" => role_id} = params) do
+    page = Role.list_unallocated_users(role_id, params, conn.assigns.current_user)
+
     json(
       conn,
-      ApiResponse.ok(Role.list_unallocated_users(role_id, params, conn.assigns.current_user))
+      ApiResponse.ok(role_users_response(page, params))
     )
   end
 
@@ -206,7 +217,7 @@ defmodule KeystonePhoenixWeb.RoleController do
              permission: "role:update"
            }
          ) do
-      :ok -> json(conn, ApiResponse.ok())
+      :ok -> json(conn, ApiResponse.ok(%{"updated" => true}))
       {:error, reason} -> render_error(conn, reason)
     end
   end
@@ -229,7 +240,7 @@ defmodule KeystonePhoenixWeb.RoleController do
              permission: "role:update"
            }
          ) do
-      :ok -> json(conn, ApiResponse.ok())
+      :ok -> json(conn, ApiResponse.ok(%{"updated" => true}))
       {:error, :forbidden} -> render_error(conn, :forbidden)
       {:error, :invalid_ids} -> render_error(conn, :invalid_ids)
       # 混合目标由领域层整体回滚，并按不存在目标返回稳定的 HTTP 错误。
@@ -238,6 +249,31 @@ defmodule KeystonePhoenixWeb.RoleController do
   end
 
   def unassign_users(conn, _params), do: render_error(conn, :invalid_ids)
+
+  defp native_role(role) do
+    role
+    |> Role.role_to_map()
+    |> Map.put("permissions", Permissions.list(role.role_id))
+    |> NativeContract.role()
+  end
+
+  defp native_role_map(row) do
+    row
+    |> Map.put("permissions", Permissions.list(row["roleId"]))
+    |> NativeContract.role()
+  end
+
+  # Native 只查询用户 ID。保留带筛选条件的旧分页响应，供 LiveView 兼容入口使用。
+  defp role_users_response(page, params) do
+    if legacy_role_user_query?(params), do: page, else: NativeContract.role_user_ids(page)
+  end
+
+  defp legacy_role_user_query?(params) do
+    Enum.any?(
+      ["username", "phoneNumber", "page", "pageNum", "pageSize", "size"],
+      &Map.has_key?(params, &1)
+    )
+  end
 
   defp role_export_row(row) do
     [

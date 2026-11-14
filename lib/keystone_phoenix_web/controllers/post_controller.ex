@@ -16,14 +16,18 @@ defmodule KeystonePhoenixWeb.PostController do
   alias KeystonePhoenix.Post
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.ExcelResponse
+  alias KeystonePhoenixWeb.ManagementContract
 
   @post_export_headers ["岗位ID", "岗位编码", "岗位名称", "岗位排序", "备注", "状态", "创建时间"]
 
   @doc "Returns a paginated list of posts."
   def list(conn, params) do
-    case Post.list_posts(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
-      {:error, reason} -> render_error(conn, reason)
+    case Post.list_posts_all(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} ->
+        json(conn, ApiResponse.ok(Enum.map(rows, &ManagementContract.post/1)))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
@@ -65,9 +69,16 @@ defmodule KeystonePhoenixWeb.PostController do
 
   @doc "Creates a post."
   def create(conn, params) do
+    params = params |> ManagementContract.post_params() |> Map.delete("enabled")
+
     case Post.create_post(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, _post} -> conn |> put_status(:created) |> json(ApiResponse.ok())
-      {:error, changeset} -> render_error(conn, changeset)
+      {:ok, post} ->
+        conn
+        |> put_status(:created)
+        |> json(ApiResponse.ok(Post.post_to_map(post) |> ManagementContract.post()))
+
+      {:error, changeset} ->
+        render_error(conn, changeset)
     end
   end
 
@@ -83,10 +94,20 @@ defmodule KeystonePhoenixWeb.PostController do
   def update(conn, _params), do: render_error(conn, :invalid_id)
 
   defp update_post(conn, post_id, params) do
+    params =
+      params
+      |> ManagementContract.post_params()
+      |> Map.drop(["code", "postCode"])
+
     case Post.update_post(post_id, params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, _post} -> json(conn, ApiResponse.ok())
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, changeset} -> render_error(conn, changeset)
+      {:ok, post} ->
+        json(conn, ApiResponse.ok(Post.post_to_map(post) |> ManagementContract.post()))
+
+      {:error, :not_found} ->
+        render_error(conn, :not_found)
+
+      {:error, changeset} ->
+        render_error(conn, changeset)
     end
   end
 
@@ -95,7 +116,7 @@ defmodule KeystonePhoenixWeb.PostController do
     case Post.delete_posts([post_id],
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      :ok -> json(conn, ApiResponse.ok())
+      :ok -> json(conn, ApiResponse.ok(%{"deleted" => true}))
       {:error, :invalid_ids} -> render_error(conn, :invalid_ids)
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, :has_users} -> render_error(conn, :has_users)

@@ -16,20 +16,29 @@ defmodule KeystonePhoenixWeb.MenuController do
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Authz
   alias KeystonePhoenixWeb.ApiResponse
+  alias KeystonePhoenixWeb.ManagementContract
 
   @doc "Returns the menu and permission list."
   def list(conn, params) do
     case Menu.list_menus(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
-      {:error, reason} -> render_error(conn, reason)
+      {:ok, rows} ->
+        rows = visible_rows(rows, conn.assigns.current_user)
+        json(conn, ApiResponse.ok(ManagementContract.menu_tree(rows)))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
   @doc "Returns the menu dropdown source."
   def dropdown(conn, _params) do
-    case Menu.list_dropdown(authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
-      {:error, reason} -> render_error(conn, reason)
+    case Menu.list_menus(%{"status" => 1}, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} ->
+        rows = visible_rows(rows, conn.assigns.current_user)
+        json(conn, ApiResponse.ok(Enum.map(rows, &ManagementContract.menu/1)))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
@@ -46,8 +55,19 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   def assign_roles(conn, _params), do: render_error(conn, :invalid_role_codes)
 
+  defp visible_rows(rows, user) do
+    allowed_ids =
+      user
+      |> Menu.menus_for_user()
+      |> MapSet.new(&(&1["menuId"] || &1["id"]))
+
+    Enum.filter(rows, &MapSet.member?(allowed_ids, &1["menuId"] || &1["id"]))
+  end
+
   @doc "Creates a menu or button permission."
   def create(conn, params) do
+    params = params |> ManagementContract.menu_params() |> Map.delete("enabled")
+
     if Authz.menu_metadata_allowed?(conn.assigns.current_user, params) do
       case Menu.create_menu(params,
              authorization: %{
@@ -55,8 +75,13 @@ defmodule KeystonePhoenixWeb.MenuController do
                permission: "menu:create"
              }
            ) do
-        {:ok, _menu} -> conn |> put_status(:created) |> json(ApiResponse.ok())
-        {:error, reason} -> render_error(conn, reason)
+        {:ok, menu} ->
+          conn
+          |> put_status(:created)
+          |> json(ApiResponse.ok(Menu.menu_to_map(menu) |> ManagementContract.menu()))
+
+        {:error, reason} ->
+          render_error(conn, reason)
       end
     else
       render_error(conn, :permission_denied)
@@ -65,6 +90,11 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   @doc "Updates a menu or button permission."
   def update(conn, %{"menu_id" => menu_id} = params) do
+    params =
+      params
+      |> ManagementContract.menu_params()
+      |> Map.drop(["code", "menuCode"])
+
     if Authz.menu_metadata_allowed?(conn.assigns.current_user, params) do
       case Menu.update_menu(menu_id, params,
              authorization: %{
@@ -72,8 +102,11 @@ defmodule KeystonePhoenixWeb.MenuController do
                permission: "menu:update"
              }
            ) do
-        {:ok, _menu} -> json(conn, ApiResponse.ok())
-        {:error, reason} -> render_error(conn, reason)
+        {:ok, menu} ->
+          json(conn, ApiResponse.ok(Menu.menu_to_map(menu) |> ManagementContract.menu()))
+
+        {:error, reason} ->
+          render_error(conn, reason)
       end
     else
       render_error(conn, :permission_denied)
@@ -88,7 +121,7 @@ defmodule KeystonePhoenixWeb.MenuController do
              permission: "menu:delete"
            }
          ) do
-      :ok -> json(conn, ApiResponse.ok())
+      :ok -> json(conn, ApiResponse.ok(%{"deleted" => true}))
       {:error, reason} -> render_error(conn, reason)
     end
   end

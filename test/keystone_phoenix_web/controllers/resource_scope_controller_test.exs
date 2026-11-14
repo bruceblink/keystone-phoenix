@@ -178,7 +178,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
                "concurrent" => 0,
                "status" => 0
              }),
-             200
+             201
            )["success"]
 
     assert json_response(
@@ -190,7 +190,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
                "concurrent" => 0,
                "status" => 0
              }),
-             200
+             201
            )["success"]
 
     assert json_response(
@@ -509,7 +509,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
                "concurrent" => 0,
                "status" => 1
              }),
-             200
+             201
            )["success"]
 
     owner_id(token, "/api/v1/jobs", %{"jobName" => name}, "jobId")

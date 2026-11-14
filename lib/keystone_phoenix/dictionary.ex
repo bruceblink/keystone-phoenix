@@ -17,20 +17,28 @@ defmodule KeystonePhoenix.Dictionary do
 
   @dict_type_attrs [
     {"dictName", :dict_name},
+    {"name", :dict_name},
     {"dictType", :dict_type},
+    {"code", :dict_type},
     {"status", :status},
+    {"enabled", :status},
     {"remark", :remark}
   ]
 
   @dict_data_attrs [
     {"dictType", :dict_type},
+    {"typeCode", :dict_type},
     {"dictLabel", :dict_label},
+    {"label", :dict_label},
     {"dictValue", :dict_value},
+    {"value", :dict_value},
     {"dictSort", :dict_sort},
+    {"sortOrder", :dict_sort},
     {"isDefault", :is_default},
     {"cssClass", :css_class},
     {"listClass", :list_class},
     {"status", :status},
+    {"enabled", :status},
     {"remark", :remark}
   ]
 
@@ -44,7 +52,10 @@ defmodule KeystonePhoenix.Dictionary do
         end
 
       :error ->
-        {:error, :not_found}
+        case Repo.get_by(DictType, dict_type: id, deleted: false) do
+          nil -> {:error, :not_found}
+          dict_type -> {:ok, dict_type}
+        end
     end
   end
 
@@ -267,24 +278,25 @@ defmodule KeystonePhoenix.Dictionary do
 
   @spec list_dict_types(map()) :: %{rows: list(), total: non_neg_integer()}
   def list_dict_types(params \\ %{}) do
-    query =
-      from d in DictType,
-        where: d.deleted == false,
-        order_by: [desc: d.dict_id]
+    page_query(dict_types_query(params), params, :dict_id, &dict_type_to_map/1)
+  end
 
-    query =
-      query
-      |> filter_contains(:dict_name, params["dictName"] || params[:dict_name])
-      |> filter_contains(:dict_type, params["dictType"] || params[:dict_type])
-      |> filter_status(params["status"] || params[:status])
-
-    page_query(query, params, :dict_id, &dict_type_to_map/1)
+  @doc "为 Native 管理资源读取全部字典类型，不返回分页元数据。"
+  def list_dict_types_all(params \\ %{}) do
+    dict_types_query(params) |> Repo.all() |> Enum.map(&dict_type_to_map/1)
   end
 
   @doc "在检查字典资源范围后查询字典类型列表。"
   def list_dict_types(params, options) when is_map(params) and is_list(options) do
     with :ok <- Command.authorize_resource(options, "dictionary:read", :dictionary) do
       {:ok, list_dict_types(params)}
+    end
+  end
+
+  @doc "完成授权后为 Native 资源读取全部字典类型。"
+  def list_dict_types_all(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Command.authorize_resource(options, "dictionary:read", :dictionary) do
+      {:ok, list_dict_types_all(params)}
     end
   end
 
@@ -314,12 +326,18 @@ defmodule KeystonePhoenix.Dictionary do
   @spec list_dict_data_by_type(String.t()) :: [map()]
   def list_dict_data_by_type(dict_type) when is_binary(dict_type) do
     Cache.fetch(dict_data_cache_key(dict_type), @dict_data_cache_ttl, fn ->
-      from(d in DictData,
-        where: d.deleted == false and d.status == 1 and d.dict_type == ^dict_type,
-        order_by: [asc: d.dict_sort, asc: d.dict_code]
-      )
-      |> Repo.all()
-      |> Enum.map(&dict_data_to_map/1)
+      case Repo.get_by(DictType, dict_type: dict_type, deleted: false, status: 1) do
+        nil ->
+          []
+
+        _dict_type ->
+          from(d in DictData,
+            where: d.deleted == false and d.status == 1 and d.dict_type == ^dict_type,
+            order_by: [asc: d.dict_sort, asc: d.dict_code]
+          )
+          |> Repo.all()
+          |> Enum.map(&dict_data_to_map/1)
+      end
     end)
   end
 
@@ -384,6 +402,10 @@ defmodule KeystonePhoenix.Dictionary do
       "dictId" => dict_type.dict_id,
       "dictName" => dict_type.dict_name,
       "dictType" => dict_type.dict_type,
+      "id" => dict_type.dict_id,
+      "code" => dict_type.dict_type,
+      "name" => dict_type.dict_name,
+      "enabled" => dict_type.status == 1,
       "status" => dict_type.status,
       "remark" => dict_type.remark,
       "createTime" => format_datetime(dict_type.create_time)
@@ -395,7 +417,13 @@ defmodule KeystonePhoenix.Dictionary do
       "dictCode" => dict_data.dict_code,
       "dictType" => dict_data.dict_type,
       "dictLabel" => dict_data.dict_label,
-      "dictValue" => dict_data.dict_value,
+      "dictValue" => legacy_dict_value(dict_data.dict_value),
+      "id" => dict_data.dict_code,
+      "typeCode" => dict_data.dict_type,
+      "value" => to_string(dict_data.dict_value),
+      "label" => dict_data.dict_label,
+      "sortOrder" => dict_data.dict_sort,
+      "enabled" => dict_data.status == 1,
       "dictSort" => dict_data.dict_sort,
       "isDefault" => if(dict_data.is_default, do: 1, else: 0),
       "cssClass" => dict_data.css_class,
@@ -404,6 +432,16 @@ defmodule KeystonePhoenix.Dictionary do
       "remark" => dict_data.remark,
       "createTime" => format_datetime(dict_data.create_time)
     }
+  end
+
+  defp dict_types_query(params) do
+    from(d in DictType,
+      where: d.deleted == false,
+      order_by: [asc: d.dict_type, asc: d.dict_id]
+    )
+    |> filter_contains(:dict_name, params["dictName"] || params[:dict_name])
+    |> filter_contains(:dict_type, params["dictType"] || params[:dict_type])
+    |> filter_status(params["status"] || params[:status])
   end
 
   defp dict_data_cache_key(dict_type), do: "keystone:dictionary:data:#{dict_type}"
@@ -426,7 +464,26 @@ defmodule KeystonePhoenix.Dictionary do
         end
       end)
 
-    normalize_default(attrs)
+    attrs
+    |> normalize_status()
+    |> normalize_dict_value()
+    |> normalize_default()
+  end
+
+  defp normalize_dict_value(attrs) do
+    case Map.get(attrs, :dict_value) do
+      value when is_integer(value) -> Map.put(attrs, :dict_value, Integer.to_string(value))
+      value when is_float(value) -> Map.put(attrs, :dict_value, to_string(value))
+      _ -> attrs
+    end
+  end
+
+  defp normalize_status(attrs) do
+    case Map.get(attrs, :status) do
+      value when value in [true, "true", "TRUE"] -> Map.put(attrs, :status, 1)
+      value when value in [false, "false", "FALSE"] -> Map.put(attrs, :status, 0)
+      _ -> attrs
+    end
   end
 
   defp normalize_default(attrs) do
@@ -435,6 +492,15 @@ defmodule KeystonePhoenix.Dictionary do
       :error -> attrs
     end
   end
+
+  defp legacy_dict_value(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {number, ""} -> number
+      _ -> value
+    end
+  end
+
+  defp legacy_dict_value(value), do: value
 
   defp normalize_default_value(value) when value in [true, 1, "1", "true", "TRUE"], do: true
   defp normalize_default_value(value) when value in [false, 0, "0", "false", "FALSE"], do: false

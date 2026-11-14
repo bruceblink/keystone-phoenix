@@ -18,7 +18,7 @@ defmodule KeystonePhoenixWeb.Plugs.RequireMfaStepUp do
       _ ->
         conn
         |> put_status(:forbidden)
-        |> Phoenix.Controller.json(ApiResponse.error(:permission_denied, "需要二次认证"))
+        |> Phoenix.Controller.json(ApiResponse.error(:permission_denied, "MFA step-up required"))
         |> halt()
     end
   end

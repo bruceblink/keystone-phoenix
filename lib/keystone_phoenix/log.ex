@@ -44,10 +44,21 @@ defmodule KeystonePhoenix.Log do
         order_by: [desc: log.operation_id]
       )
 
-    query = filter_contains(query, :username, params["username"] || params[:username])
+    query =
+      filter_contains(
+        query,
+        :username,
+        params["username"] || params["actor"] || params[:username]
+      )
 
     query =
-      filter_contains(query, :request_module, params["requestModule"] || params[:request_module])
+      filter_contains(
+        query,
+        :request_module,
+        params["requestModule"] || params["resource"] || params[:request_module]
+      )
+
+    query = filter_business_type(query, params["businessType"] || params["action"])
 
     query = filter_integer(query, :status, params["status"] || params[:status])
     paginate(query, params, :operation_id, &operation_log_to_map/1)
@@ -322,6 +333,47 @@ defmodule KeystonePhoenix.Log do
       {number, ""} -> where(query, [log], field(log, ^field) == ^number)
       _ -> query
     end
+  end
+
+  defp filter_business_type(query, value) when is_nil(value) or value == "", do: query
+
+  defp filter_business_type(query, value) do
+    business_type =
+      case String.upcase(to_string(value)) do
+        "CREATE" ->
+          1
+
+        "UPDATE" ->
+          2
+
+        "DELETE" ->
+          3
+
+        "GRANT" ->
+          4
+
+        "EXPORT" ->
+          5
+
+        "IMPORT" ->
+          6
+
+        "FORCE_LOGOUT" ->
+          7
+
+        "CLEAN" ->
+          8
+
+        _ ->
+          case Integer.parse(to_string(value)) do
+            {number, ""} -> number
+            _ -> nil
+          end
+      end
+
+    if is_integer(business_type),
+      do: where(query, [log], log.business_type == ^business_type),
+      else: query
   end
 
   defp login_status_label(1), do: "登录成功"

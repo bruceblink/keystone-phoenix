@@ -17,9 +17,13 @@ defmodule KeystonePhoenix.Menu do
   alias KeystonePhoenix.Tree
 
   @menu_attrs [
+    {"code", :menu_code},
+    {"menuCode", :menu_code},
     {"menuName", :menu_name},
+    {"name", :menu_name},
     {"menuType", :menu_type},
     {"routerName", :router_name},
+    {"component", :router_name},
     {"parentId", :parent_id},
     {"path", :path},
     {"isButton", :is_button},
@@ -27,6 +31,9 @@ defmodule KeystonePhoenix.Menu do
     {"metaInfo", :meta_info},
     {"meta", :meta_info},
     {"status", :status},
+    {"enabled", :status},
+    {"sortOrder", :menu_sort},
+    {"rank", :menu_sort},
     {"remark", :remark}
   ]
 
@@ -34,7 +41,7 @@ defmodule KeystonePhoenix.Menu do
     query =
       from(m in SysMenu,
         where: m.deleted == false,
-        order_by: [asc: m.parent_id, asc: m.menu_id]
+        order_by: [asc: m.parent_id, asc: m.menu_sort, asc: m.menu_id]
       )
 
     query = filter_status(query, params["status"] || params[:status])
@@ -191,7 +198,7 @@ defmodule KeystonePhoenix.Menu do
       where:
         m.deleted == false and m.status == 1 and role.deleted == false and role.status == 1 and
           rm.role_id == ^user.role_id,
-      order_by: [asc: m.parent_id, asc: m.menu_id],
+      order_by: [asc: m.parent_id, asc: m.menu_sort, asc: m.menu_id],
       distinct: true
     )
     |> Repo.all()
@@ -236,7 +243,9 @@ defmodule KeystonePhoenix.Menu do
     %{
       "menuId" => menu.menu_id,
       "id" => menu.menu_id,
+      "code" => menu.menu_code || generated_code("menu", menu.menu_id),
       "menuName" => menu.menu_name,
+      "sortOrder" => menu.menu_sort,
       "menuType" => menu_type,
       "menuTypeStr" => menu_type_label(menu_type, menu.is_button),
       "routerName" => menu.router_name,
@@ -308,7 +317,46 @@ defmodule KeystonePhoenix.Menu do
         end
       end)
 
-    normalize_meta(attrs)
+    attrs
+    |> normalize_menu_type()
+    |> normalize_status()
+    |> normalize_meta()
+  end
+
+  defp normalize_menu_type(attrs) do
+    case Map.get(attrs, :menu_type) do
+      "BUTTON" ->
+        attrs |> Map.put(:menu_type, 0) |> Map.put_new(:is_button, true)
+
+      "DIRECTORY" ->
+        Map.put(attrs, :menu_type, 2)
+
+      "IFRAME" ->
+        Map.put(attrs, :menu_type, 3)
+
+      "LINK" ->
+        Map.put(attrs, :menu_type, 4)
+
+      "MENU" ->
+        Map.put(attrs, :menu_type, 1)
+
+      value when is_binary(value) ->
+        case Integer.parse(value) do
+          {number, ""} -> Map.put(attrs, :menu_type, number)
+          _ -> attrs
+        end
+
+      _ ->
+        attrs
+    end
+  end
+
+  defp normalize_status(attrs) do
+    case Map.get(attrs, :status) do
+      value when value in [true, "true", "TRUE"] -> Map.put(attrs, :status, 1)
+      value when value in [false, "false", "FALSE"] -> Map.put(attrs, :status, 0)
+      _ -> attrs
+    end
   end
 
   defp normalize_meta(attrs) do
@@ -318,6 +366,8 @@ defmodule KeystonePhoenix.Menu do
       _ -> attrs
     end
   end
+
+  defp generated_code(prefix, id), do: prefix <> "-" <> String.replace(to_string(id), "-", "")
 
   defp parent_id(nil), do: {:ok, nil}
   defp parent_id(""), do: {:ok, nil}

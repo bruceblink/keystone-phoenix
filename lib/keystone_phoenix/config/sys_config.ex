@@ -13,6 +13,7 @@ defmodule KeystonePhoenix.Config.SysConfig do
     field :config_options, :string, default: ""
     field :config_value, :string
     field :is_allow_change, :boolean, default: true
+    field :enabled, :boolean, default: true
     field :creator_id, :binary_id
     field :updater_id, :binary_id
     field :remark, :string
@@ -29,6 +30,7 @@ defmodule KeystonePhoenix.Config.SysConfig do
       :config_options,
       :config_value,
       :is_allow_change,
+      :enabled,
       :remark
     ])
     |> put_new_id()

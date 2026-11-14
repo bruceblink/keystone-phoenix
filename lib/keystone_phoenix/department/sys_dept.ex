@@ -9,6 +9,7 @@ defmodule KeystonePhoenix.Department.SysDept do
 
   schema "sys_dept" do
     field :parent_id, :binary_id
+    field :dept_code, :string
     field :ancestors, :string, default: ""
     field :dept_name, :string, default: ""
     field :order_num, :integer, default: 0
@@ -28,6 +29,7 @@ defmodule KeystonePhoenix.Department.SysDept do
     dept
     |> cast(attrs, [
       :parent_id,
+      :dept_code,
       :ancestors,
       :dept_name,
       :order_num,
@@ -38,7 +40,10 @@ defmodule KeystonePhoenix.Department.SysDept do
       :status
     ])
     |> put_new_id()
-    |> validate_required([:dept_name, :status])
+    |> put_default_code()
+    |> validate_required([:dept_code, :dept_name, :status])
+    |> validate_length(:dept_code, max: 64)
+    |> unique_constraint(:dept_code, name: :sys_dept_dept_code_unique_index)
     |> validate_length(:dept_name, max: 64)
     |> validate_length(:ancestors, max: 1024)
     |> validate_length(:leader_name, max: 64)
@@ -52,5 +57,19 @@ defmodule KeystonePhoenix.Department.SysDept do
     if Ecto.Changeset.get_field(changeset, :dept_id),
       do: changeset,
       else: Ecto.Changeset.put_change(changeset, :dept_id, KeystonePhoenix.Identity.v7())
+  end
+
+  defp put_default_code(changeset) do
+    case get_field(changeset, :dept_code) do
+      code when is_binary(code) and code != "" ->
+        changeset
+
+      _ ->
+        put_change(
+          changeset,
+          :dept_code,
+          "dept-" <> String.replace(to_string(get_field(changeset, :dept_id)), "-", "")
+        )
+    end
   end
 end

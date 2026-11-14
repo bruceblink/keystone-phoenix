@@ -14,14 +14,19 @@ defmodule KeystonePhoenix.Department do
 
   @dept_attrs [
     {"parentId", :parent_id},
+    {"code", :dept_code},
+    {"deptCode", :dept_code},
     {"ancestors", :ancestors},
     {"deptName", :dept_name},
+    {"name", :dept_name},
     {"orderNum", :order_num},
+    {"sortOrder", :order_num},
     {"leaderId", :leader_id},
     {"leaderName", :leader_name},
     {"phone", :phone},
     {"email", :email},
-    {"status", :status}
+    {"status", :status},
+    {"enabled", :status}
   ]
 
   def list_depts(params \\ %{}, actor \\ nil) do
@@ -177,6 +182,7 @@ defmodule KeystonePhoenix.Department do
     %{
       "deptId" => dept.dept_id,
       "id" => dept.dept_id,
+      "code" => dept.dept_code || generated_code("dept", dept.dept_id),
       "parentId" => dept.parent_id,
       "ancestors" => dept.ancestors,
       "deptName" => dept.dept_name,
@@ -199,7 +205,18 @@ defmodule KeystonePhoenix.Department do
         true -> normalized
       end
     end)
+    |> normalize_status()
   end
+
+  defp normalize_status(attrs) do
+    case Map.get(attrs, :status) do
+      value when value in [true, "true", "TRUE"] -> Map.put(attrs, :status, 1)
+      value when value in [false, "false", "FALSE"] -> Map.put(attrs, :status, 0)
+      _ -> attrs
+    end
+  end
+
+  defp generated_code(prefix, id), do: prefix <> "-" <> String.replace(to_string(id), "-", "")
 
   defp scope_query(query, nil), do: query
   defp scope_query(query, actor), do: Authz.scope_departments(query, actor)

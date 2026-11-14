@@ -17,11 +17,13 @@ defmodule KeystonePhoenixWeb.MonitorController do
 
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenixWeb.ApiResponse
+  alias KeystonePhoenixWeb.NativeContract
+  alias KeystonePhoenixWeb.NativeObservabilityContract
 
   @doc "Returns ETS cache statistics."
   def cache_info(conn, _params) do
     case Monitor.cache_info(authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, info} -> json(conn, ApiResponse.ok(info))
+      {:ok, info} -> json(conn, ApiResponse.ok(NativeObservabilityContract.cache_info(info)))
       {:error, :unavailable} -> render_error(conn, :unavailable)
       {:error, reason} -> render_error(conn, reason)
     end
@@ -30,7 +32,7 @@ defmodule KeystonePhoenixWeb.MonitorController do
   @doc "Returns host and BEAM runtime information."
   def server_info(conn, _params) do
     case Monitor.server_info(authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, info} -> json(conn, ApiResponse.ok(info))
+      {:ok, info} -> json(conn, ApiResponse.ok(NativeObservabilityContract.server_info(info)))
       {:error, :unavailable} -> render_error(conn, :unavailable)
       {:error, reason} -> render_error(conn, reason)
     end
@@ -38,10 +40,19 @@ defmodule KeystonePhoenixWeb.MonitorController do
 
   @doc "Returns authenticated online refresh sessions."
   def online_users(conn, params) do
-    case Monitor.online_users(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, users} -> json(conn, ApiResponse.ok(users))
-      {:error, :unavailable} -> render_error(conn, :unavailable)
-      {:error, reason} -> render_error(conn, reason)
+    query_params = NativeContract.pagination_params(params)
+
+    case Monitor.native_online_users(query_params,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
+      {:ok, users} ->
+        json(conn, ApiResponse.ok(NativeObservabilityContract.online_users_page(users, params)))
+
+      {:error, :unavailable} ->
+        render_error(conn, :unavailable)
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 

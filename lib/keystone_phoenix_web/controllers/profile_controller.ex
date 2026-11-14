@@ -10,12 +10,16 @@ defmodule KeystonePhoenixWeb.ProfileController do
   alias KeystonePhoenix.Upload
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.ApiResponse
+  alias KeystonePhoenixWeb.NativeObservabilityContract
 
   @doc "Returns the authenticated user's profile."
   def show(conn, _params) do
     case User.profile(conn.assigns.current_user.user_id) do
-      {:ok, profile} -> json(conn, ApiResponse.ok(profile))
-      {:error, :not_found} -> render_error(conn, :not_found)
+      {:ok, %{"user" => user}} ->
+        json(conn, ApiResponse.ok(NativeObservabilityContract.profile(user)))
+
+      {:error, :not_found} ->
+        render_error(conn, :not_found)
     end
   end
 
@@ -26,9 +30,19 @@ defmodule KeystonePhoenixWeb.ProfileController do
            params,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      {:ok, _user} -> json(conn, ApiResponse.ok())
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, changeset} -> render_error(conn, changeset)
+      {:ok, user} ->
+        json(
+          conn,
+          ApiResponse.ok(
+            NativeObservabilityContract.profile(User.user_to_map_with_relations(user))
+          )
+        )
+
+      {:error, :not_found} ->
+        render_error(conn, :not_found)
+
+      {:error, changeset} ->
+        render_error(conn, changeset)
     end
   end
 
@@ -39,7 +53,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
            params,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      {:ok, _user} -> json(conn, ApiResponse.ok())
+      {:ok, _user} -> json(conn, ApiResponse.ok(%{"updated" => true}))
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, :invalid_old_password} -> render_error(conn, :invalid_old_password)
       {:error, :same_password} -> render_error(conn, :same_password)
@@ -59,7 +73,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
            ) do
         {:ok, _user} ->
           delete_previous_avatar(current_user.avatar, avatar_url)
-          json(conn, ApiResponse.ok(%{"imgUrl" => avatar_url}))
+          json(conn, ApiResponse.ok(%{"avatar" => avatar_url}))
 
         {:error, :not_found} ->
           Upload.delete_avatar(avatar_url)
@@ -84,7 +98,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
            ) do
         {:ok, _user} ->
           delete_previous_avatar(current_user.avatar, avatar)
-          json(conn, ApiResponse.ok(%{"imgUrl" => avatar}))
+          json(conn, ApiResponse.ok(%{"avatar" => avatar}))
 
         {:error, :not_found} ->
           render_error(conn, :not_found)
