@@ -162,7 +162,7 @@ read -r token rotated_refresh_token <<<"${rotated_tokens}"
 
 current_user_json="$(docker exec "${app}" curl --fail --silent \
   --header "Authorization: Bearer ${token}" \
-  http://127.0.0.1:4000/api/v1/auth/me)"
+  http://127.0.0.1:4000/api/v1/profile)"
 python -c 'import json, sys; raise SystemExit(0 if json.load(sys.stdin).get("success") is True else 1)' \
   <<<"${current_user_json}"
 
@@ -299,7 +299,6 @@ downloaded="$(docker exec "${app}" curl --fail --silent \
 [[ "${downloaded}" == "smoke" ]]
 
 docker exec "${app}" curl --fail --silent http://127.0.0.1:4000/api/v1/health >/dev/null
-docker exec "${app}" curl --fail --silent http://127.0.0.1:4000/api/v1/health/ready >/dev/null
 docker exec "${app}" curl --fail --silent http://127.0.0.1:4000/api/v1/auth/rsa-public-key >/dev/null
 docker restart "${app}" >/dev/null
 
@@ -326,7 +325,7 @@ logout_status="$(docker exec "${app}" curl --silent --output /dev/null --write-o
 [[ "${logout_status}" == "200" ]]
 post_logout_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
   --header "Authorization: Bearer ${token}" \
-  http://127.0.0.1:4000/api/v1/auth/me)"
+  http://127.0.0.1:4000/api/v1/profile)"
 [[ "${post_logout_status}" == "401" ]]
 
 # 旧 refresh token 重放必须拒绝。该检查放在新 access token 和 logout 验收之后，

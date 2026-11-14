@@ -43,14 +43,13 @@ docker run -d --name keystone-phoenix \
 
 ```bash
 curl --fail http://127.0.0.1:4000/api/v1/health
-curl --fail http://127.0.0.1:4000/api/v1/health/ready
 curl --fail http://127.0.0.1:4000/
 curl --fail --include http://127.0.0.1:4000/api/v1/health | grep -E 'x-content-type-options|x-frame-options|referrer-policy|content-security-policy'
 ```
 
-发布 smoke 还需要在临时环境停止 PostgreSQL，确认 `/api/v1/health/ready` 返回失败且容器健康状态变为 `unhealthy`；恢复 PostgreSQL 后，确认数据库就绪和容器健康状态恢复为 `healthy`。仓库中的 `scripts/release_smoke.sh` 会自动执行这组检查。
+容器健康检查和数据库恢复由部署平台执行；应用接口使用 `/api/v1/health` 验证存活。仓库中的 `scripts/release_smoke.sh` 会在重启后复核容器健康状态和文件持久化。
 
-认证 smoke 流程应覆盖：获取 `/api/v1/auth/rsa-public-key`，使用 RSA 公钥登录，调用 `/api/v1/auth/me` 和 `/api/v1/auth/routers`，刷新 `/api/v1/auth/refresh`，最后调用 `/api/v1/auth/logout`。还必须检查标准 `/api/.well-known/jwks.json` 返回唯一的 RSA JWK，并确认 `kid`、`alg`、`use`、`n` 和 `e` 字段有效。启用验证码时还要先验证 `/api/v1/auth/config` 和 `/api/v1/auth/captcha`。`scripts/release_smoke.sh` 会验证 MFA 管理入口对 API Key 和未认证请求的拒绝；完整 TOTP enrollment、恢复码一次性消费和 step-up 成功链路由集成测试和独立运行验收覆盖。
+认证 smoke 流程应覆盖：获取 `/api/v1/auth/rsa-public-key`，使用 RSA 公钥登录，调用 `/api/v1/profile` 和 `/api/v1/menus`，刷新 `/api/v1/auth/refresh`，最后调用 `/api/v1/auth/logout`。还必须检查标准 `/api/.well-known/jwks.json` 返回唯一的 RSA JWK，并确认 `kid`、`alg`、`use`、`n` 和 `e` 字段有效。`scripts/release_smoke.sh` 会验证 MFA 管理入口对 API Key 和未认证请求的拒绝；完整 TOTP enrollment、恢复码一次性消费和 step-up 成功链路由集成测试和独立运行验收覆盖。
 
 API Key smoke 流程应使用具有 `api-key:create`、`api-key:read`、`api-key:revoke`、`user:read` 和 `mfa:manage` 的 Bearer 用户调用 `/api/v1/api-keys`，确认创建响应只返回一次明文，列表不返回明文或摘要，使用 API Key 的业务用户查询成功，MFA、人类会话和 API Key 管理路径返回 `403 permission_denied`，撤销后认证失败。轮换行为由集成测试和独立运行验收覆盖。
 

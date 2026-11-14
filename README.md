@@ -67,8 +67,8 @@ The workflow validates the Git tag before pushing and keeps BuildKit layers in
 the GitHub Actions cache.
 
 The release reads `DATABASE_URL`, `SECRET_KEY_BASE`, `JWT_PRIVATE_KEY`, and
-`PHX_HOST` at runtime. Use `/health` for liveness and `/health/ready` for
-PostgreSQL readiness; rebuildable cache data is kept in the local ETS store.
+`PHX_HOST` at runtime. Use `/api/v1/health` for liveness; rebuildable cache
+data is kept in the local ETS store.
 Production enables PostgreSQL TLS by default. Set `DATABASE_SSL_ALLOW_INSECURE=true` only for a trusted local test network; optionally set
 `DATABASE_SSL_CA` to a CA bundle path. `POOL_SIZE` and `POOL_COUNT` control
 the PostgreSQL connection pools. `AUTH_SESSION_CLEANUP_INTERVAL_MS` and
@@ -92,7 +92,7 @@ validated option values and cache refresh support. User list/detail queries and
 default local accounts are also available as the foundation for authentication.
 Local login, RS256 access/refresh tokens, refresh rotation, single-account
 session control, and protected user queries are now available through
-`/api/v1/auth/login`, `/api/v1/auth/refresh`, `/api/v1/auth/me`, and
+`/api/v1/auth/login`, `/api/v1/auth/refresh`, `/api/v1/profile`, and
 `/api/v1/users`. The `/api/v1/auth/rsa-public-key` endpoint returns a
 Base64 encoded X.509 public key; clients encrypt the login password with
 RSA/PKCS#1 before sending `/api/v1/auth/login`.
@@ -107,7 +107,7 @@ constrained by their configured data scope.
 
 The organization and permission foundation now includes PostgreSQL-backed
 departments, posts, roles, menus, role-menu assignments, and the authenticated
-`/api/v1/auth/routers` menu tree. Read endpoints are available under
+`/api/v1/menus` menu tree. Read endpoints are available under
 `/api/v1/departments`, `/api/v1/posts`, `/api/v1/roles`, and
 `/api/v1/menus`. Departments and posts also
 support role-permission checked create, update, and soft-delete commands; role
@@ -119,7 +119,7 @@ under the role grant endpoints.
 
 Authenticated users can read and update their own profile under
 `/api/v1/profile`, including old-password-checked password changes and
-avatar URL updates, and `POST /api/v1/profile/avatar` accepts the original
+avatar URL updates, and `PUT /api/v1/profile/avatar` accepts the original
 `avatarfile` multipart upload and stores profile resources under `FILE_BASE_DIR`.
 User create and update commands validate referenced
 departments, posts, and roles before writing.
@@ -127,12 +127,10 @@ departments, posts, and roles before writing.
 Administrators can manage notices through `/api/v1/notices` with paginated
 queries, detail reads, create, update, and soft-delete operations.
 
-Generic file upload/download endpoints, user/post/role/log Excel export, user
-Excel import/template download, and dictionary cache refresh are available
+Generic file upload/download endpoints, user/post/role/log Excel export, and user
+Excel import/template download are available
 under the `/api/v1` prefix. `/api/v1/auth/logout` revokes the current access
-token's PostgreSQL-backed session, while
-`/api/v1/auth/logout-refresh-token` remains available for clients that only
-have a refresh token.
+token's PostgreSQL-backed session.
 
 The log foundation now provides permission-protected login and operation log
 queries and cleanup under `/api/v1/login-logs` and `/api/v1/operation-logs`; authenticated users can submit operation log
@@ -141,12 +139,9 @@ management requests also create an operation record on the server, with
 passwords, tokens, captcha values, and upload paths redacted. Login success and
 failure results are recorded without passwords or tokens.
 
-Public login bootstrap endpoints now include `/api/v1/auth/config` and
-`/api/v1/auth/captcha`. The seeded configuration keeps captcha disabled, and setting
-`sys.account.captchaOnOff` to `true` enables ETS-backed, one-time math or
-character GIF captchas selected with `CAPTCHA_TYPE`. `/api/v1/auth/login` consumes the
-captcha key before checking credentials. `/api/v1/auth/register` returns an explicit
-unsupported response until an open-registration policy is implemented.
+Initial-password recovery uses `/api/v1/auth/change-initial-password`. It verifies
+the current password, requires the stored initial-password flag, updates the password,
+and revokes the user's active sessions.
 
 MFA HTTP endpoints use the same `/api/v1/auth` namespace. A password login for an
 account that requires MFA returns a short-lived challenge; the client completes it
@@ -164,10 +159,7 @@ API Key 管理使用 `/api/v1/api-keys`。创建、读取、轮换和撤销分�
 Administrator monitoring endpoints now cover ETS cache metrics at
 `/api/v1/monitor/cacheInfo`, BEAM host metrics at `/api/v1/monitor/serverInfo`,
 current online sessions backed by PostgreSQL at `/api/v1/monitor/onlineUsers`,
-and forced logout at `DELETE /api/v1/monitor/onlineUser/:tokenId`. The network
-status endpoint emits a server-sent event snapshot at
-`/api/v1/monitor/networkStatus/stream`, which the
-frontend can reconnect to as needed.
+and forced logout at `DELETE /api/v1/monitor/onlineUser/:tokenId`.
 
 Scheduled job management is available through `/api/v1/jobs`, including
 allow-listed invocation targets, job definition CRUD, enable/disable status,
@@ -175,8 +167,8 @@ manual execution, and execution logs at `/api/v1/jobs/logs`. Manual execution
 uses the same persisted log format that the scheduler will use for automatic
 Cron triggers.
 
-Public configuration, captcha, and RSA public-key endpoints use ETS-backed
-per-node rate limits. Notice creation uses a per-user repeat-submission guard;
+RSA public-key endpoints use ETS-backed per-node rate limits. Notice creation uses
+a per-user repeat-submission guard;
 expired authentication sessions are removed by an OTP worker.
 
 The LiveView login page is available at `/`. It keeps the authenticated user
