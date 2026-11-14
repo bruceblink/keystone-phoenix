@@ -219,17 +219,45 @@ defmodule KeystonePhoenix.Auth.Token do
   end
 
   defp verification_jwk(token) do
-    case KeystonePhoenix.Auth.JwtKeyRegistry.public_jwk_for(key_id(token)) do
-      {:ok, jwk_map} ->
-        {:ok, JOSE.JWK.from_map(jwk_map)}
+    key_id = key_id(token)
 
-      {:error, :registry_unavailable} ->
-        if key_id(token) == Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone"),
+    ensure_result =
+      if key_id == Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone") do
+        KeystonePhoenix.Auth.JwtKeyRegistry.ensure_current_runtime_key()
+      else
+        :ok
+      end
+
+    registry_result = KeystonePhoenix.Auth.JwtKeyRegistry.public_jwk_for(key_id)
+
+    case {ensure_result, registry_result} do
+      {{:error, {:registry_unavailable, _reason}}, _} ->
+        if key_id == Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone"),
           do: {:ok, public_jwk()},
           else: :error
 
-      {:error, :unknown_key_id} ->
+      {{:error, _reason}, _} ->
         :error
+
+      {:ok, {:ok, jwk_map}} ->
+        {:ok, JOSE.JWK.from_map(jwk_map)}
+
+      {:ok, {:error, :registry_unavailable}} ->
+        if key_id == Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone"),
+          do: {:ok, public_jwk()},
+          else: :error
+
+      {:ok, {:error, :unknown_key_id}} ->
+        if key_id == Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone") do
+          _ = KeystonePhoenix.Auth.JwtKeyRegistry.ensure_current_runtime_key()
+
+          case KeystonePhoenix.Auth.JwtKeyRegistry.public_jwk_for(key_id) do
+            {:ok, jwk_map} -> {:ok, JOSE.JWK.from_map(jwk_map)}
+            _ -> :error
+          end
+        else
+          :error
+        end
     end
   end
 

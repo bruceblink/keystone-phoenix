@@ -10,6 +10,7 @@ defmodule KeystonePhoenix.Auth.JwtKeyRegistry do
 
   @doc "返回当前仍可验签的 JWK Set；数据库不可用时返回运行时配置的当前公钥。"
   def public_jwk_set do
+    _ = ensure_current_runtime_key()
     now = DateTime.utc_now()
 
     with :ok <- validate_key_id(Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone")) do
@@ -18,6 +19,46 @@ defmodule KeystonePhoenix.Auth.JwtKeyRegistry do
   rescue
     _ -> Token.runtime_public_jwk_set()
   end
+
+  @doc "确保运行时当前签名公钥已经登记；操作可重复执行。"
+  def ensure_current_runtime_key do
+    with {:ok, %{"keys" => [jwk]}} <- Token.runtime_public_jwk_set(),
+         key_id when is_binary(key_id) <-
+           Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone"),
+         existing <- Repo.get_by(JwtKey, key_id: key_id) do
+      ensure_runtime_key(existing, key_id, jwk)
+    else
+      nil -> {:error, :invalid_key_id}
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :bootstrap_failed}
+    end
+  rescue
+    error -> {:error, {:registry_unavailable, error}}
+  end
+
+  defp ensure_runtime_key(nil, key_id, jwk),
+    do: register(key_id, jwk, status: "active") |> result_to_ok()
+
+  defp ensure_runtime_key(%JwtKey{} = key, key_id, jwk) when key.status == "active" do
+    current = key.public_jwk
+
+    if current == jwk or is_nil(Application.get_env(:keystone_phoenix, :jwt_private_key)) do
+      key
+      |> JwtKey.changeset(%{
+        public_jwk: Map.merge(jwk, %{"kid" => key_id, "alg" => "RS256", "use" => "sig"})
+      })
+      |> Repo.update()
+      |> result_to_ok()
+    else
+      {:error, :key_material_mismatch}
+    end
+  end
+
+  defp ensure_runtime_key(%JwtKey{}, _key_id, _jwk), do: :ok
+
+  defp result_to_ok({:ok, _value}), do: :ok
+  defp result_to_ok(:ok), do: :ok
+  defp result_to_ok({:error, reason}), do: {:error, reason}
 
   defp publish_registered_keys(now) do
     case registered_keys(now) do
