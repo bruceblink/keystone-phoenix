@@ -35,6 +35,7 @@ config :keystone_phoenix,
   mfa_recovery_pepper: nil,
   mfa_challenge_lifetime_seconds: 300,
   cors_allowed_origins: [],
+  trusted_proxy_cidrs: [],
   force_ssl_enabled: false
 
 # Configure the endpoint

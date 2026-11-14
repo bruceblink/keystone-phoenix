@@ -206,10 +206,52 @@ if config_env() == :prod do
       end
     end)
 
+  validate_proxy_cidr = fn network, prefix, cidr ->
+    case :inet.parse_address(String.to_charlist(network)) do
+      {:ok, address} ->
+        bits = if tuple_size(address) == 4, do: 32, else: 128
+
+        parsed_prefix =
+          case prefix do
+            nil ->
+              bits
+
+            value ->
+              case Integer.parse(value) do
+                {number, ""} -> number
+                _ -> -1
+              end
+          end
+
+        if parsed_prefix in 0..bits do
+          cidr
+        else
+          raise "TRUSTED_PROXY_CIDRS contains an invalid prefix: #{inspect(cidr)}"
+        end
+
+      {:error, _reason} ->
+        raise "TRUSTED_PROXY_CIDRS contains an invalid address: #{inspect(cidr)}"
+    end
+  end
+
+  trusted_proxy_cidrs =
+    System.get_env("TRUSTED_PROXY_CIDRS", "")
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.uniq()
+    |> Enum.map(fn cidr ->
+      case String.split(cidr, "/", parts: 2) do
+        [network] -> validate_proxy_cidr.(network, nil, cidr)
+        [network, prefix] -> validate_proxy_cidr.(network, prefix, cidr)
+        _ -> raise "TRUSTED_PROXY_CIDRS contains an invalid CIDR: #{inspect(cidr)}"
+      end
+    end)
+
   config :keystone_phoenix, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :keystone_phoenix,
     cors_allowed_origins: cors_allowed_origins,
+    trusted_proxy_cidrs: trusted_proxy_cidrs,
     force_ssl_enabled: force_ssl
 
   config :keystone_phoenix, KeystonePhoenixWeb.Endpoint,
