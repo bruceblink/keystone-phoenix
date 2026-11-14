@@ -31,6 +31,7 @@ defmodule KeystonePhoenix.Job.AuditTest do
              )
 
     assert job.creator_id == actor.user_id
+    assert job.created_by == actor.user_id
 
     assert {:ok, job} =
              Job.update_job(

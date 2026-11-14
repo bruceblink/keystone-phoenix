@@ -97,7 +97,10 @@ defmodule KeystonePhoenix.Job do
     attrs = normalize_attrs(attrs)
 
     with :ok <- Invoke.validate_target(attrs[:invoke_target], attrs[:job_params]),
-         changeset = SysJob.changeset(%SysJob{}, attrs) |> Audit.put_actor(:creator_id, actor_id),
+         changeset =
+           SysJob.changeset(%SysJob{}, attrs)
+           |> Audit.put_actor(:creator_id, actor_id)
+           |> Ecto.Changeset.put_change(:created_by, actor_id),
          true <- changeset.valid? do
       Repo.insert(changeset)
     else
@@ -439,12 +442,12 @@ defmodule KeystonePhoenix.Job do
   defp owner_filter(query, :all), do: query
 
   defp owner_filter(query, {:owner, owner_id}),
-    do: where(query, [job], job.creator_id == ^owner_id)
+    do: where(query, [job], job.created_by == ^owner_id)
 
   defp owner_filter(query, :all, _joined_resource), do: query
 
   defp owner_filter(query, {:owner, owner_id}, :job),
-    do: where(query, [_log, job], job.creator_id == ^owner_id)
+    do: where(query, [_log, job], job.created_by == ^owner_id)
 
   defp parse_uuid(value) do
     case Params.parse_uuid(value) do

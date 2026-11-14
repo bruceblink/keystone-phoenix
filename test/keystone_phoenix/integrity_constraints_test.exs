@@ -11,6 +11,6 @@ defmodule KeystonePhoenix.IntegrityConstraintsTest do
       WHERE contype = 'f'
       """)
 
-    assert result.rows == [[43]]
+    assert result.rows == [[44]]
   end
 end

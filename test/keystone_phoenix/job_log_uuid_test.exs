@@ -38,13 +38,13 @@ defmodule KeystonePhoenix.JobLogUuidTest do
       SELECT table_name, column_name, data_type
       FROM information_schema.columns
       WHERE table_schema = current_schema()
-        AND ((table_name = 'sys_job' AND column_name IN ('job_id', 'creator_id', 'updater_id'))
+        AND ((table_name = 'sys_job' AND column_name IN ('job_id', 'creator_id', 'created_by', 'updater_id'))
           OR (table_name = 'sys_job_log' AND column_name IN ('job_log_id', 'job_id'))
           OR (table_name = 'sys_login_info' AND column_name = 'info_id')
           OR (table_name = 'sys_operation_log' AND column_name IN ('operation_id', 'user_id', 'dept_id')))
       """)
 
-    assert length(rows) == 9
+    assert length(rows) == 10
     assert Enum.all?(rows, &(Enum.at(&1, 2) == "uuid"))
     assert %SysLoginInfo{}
     assert %SysOperationLog{}

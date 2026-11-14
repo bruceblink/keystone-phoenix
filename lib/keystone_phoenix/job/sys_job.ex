@@ -19,6 +19,7 @@ defmodule KeystonePhoenix.Job.SysJob do
     field :status, :integer, default: 0
     field :remark, :string
     field :creator_id, :binary_id
+    field :created_by, :binary_id
     field :updater_id, :binary_id
 
     timestamps(inserted_at: :create_time, updated_at: :update_time, type: :utc_datetime_usec)
