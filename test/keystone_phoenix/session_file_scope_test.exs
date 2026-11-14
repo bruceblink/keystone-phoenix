@@ -48,13 +48,16 @@ defmodule KeystonePhoenix.SessionFileScopeTest do
   test "file service commands enforce file scope and safe download paths", %{directory: directory} do
     permissions = ["file:read", "file:write"]
     blocked = [authorization: %{principal: principal("DEPARTMENT", permissions)}]
-    allowed = [authorization: %{principal: principal("TENANT", permissions)}]
     owner_id = Identity.v7()
+    other_owner_id = Identity.v7()
+    allowed = [authorization: %{principal: principal("TENANT", permissions, owner_id)}]
     upload_path = temporary_file("scope.txt", "scope data")
     upload = %Plug.Upload{path: upload_path, filename: "scope.txt", content_type: "text/plain"}
 
     assert {:error, :data_scope_denied} = Upload.store_file(upload, owner_id, blocked)
     assert {:error, :data_scope_denied} = Upload.store_files([upload], nil, blocked)
+    assert {:error, :data_scope_denied} = Upload.store_file(upload, other_owner_id, allowed)
+    assert {:error, :data_scope_denied} = Upload.store_files([upload], other_owner_id, allowed)
     assert {:error, :data_scope_denied} = Upload.resolve_download_path("../secret.txt", blocked)
 
     assert {:ok, stored} = Upload.store_file(upload, owner_id, allowed)
@@ -75,7 +78,13 @@ defmodule KeystonePhoenix.SessionFileScopeTest do
     assert {:error, :authorization_required} = Upload.resolve_download_path("report.txt", [])
   end
 
-  defp principal(data_scope, permissions), do: %{data_scope: data_scope, permissions: permissions}
+  defp principal(data_scope, permissions, user_id \\ nil) do
+    %{data_scope: data_scope, permissions: permissions}
+    |> maybe_put_user_id(user_id)
+  end
+
+  defp maybe_put_user_id(principal, nil), do: principal
+  defp maybe_put_user_id(principal, user_id), do: Map.put(principal, :user_id, user_id)
 
   defp temporary_file(filename, content) do
     path =

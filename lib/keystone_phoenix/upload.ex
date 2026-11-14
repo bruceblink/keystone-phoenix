@@ -1,7 +1,9 @@
 defmodule KeystonePhoenix.Upload do
   @moduledoc "Local file storage boundary for profile uploads."
 
+  alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Authz.Command
+  alias KeystonePhoenix.Params
 
   @max_file_size 50 * 1024 * 1024
   @max_batch_size 100 * 1024 * 1024
@@ -14,7 +16,8 @@ defmodule KeystonePhoenix.Upload do
   @spec store_file(Plug.Upload.t(), String.t() | nil, keyword()) ::
           {:ok, map()} | {:error, atom()}
   def store_file(%Plug.Upload{} = upload, owner_id, options) when is_list(options) do
-    with :ok <- Command.authorize_resource(options, "file:write", :file) do
+    with :ok <- Command.authorize_resource(options, "file:write", :file),
+         :ok <- authorize_owner_namespace(options, owner_id) do
       do_store_file(upload, owner_id)
     end
   end
@@ -51,6 +54,7 @@ defmodule KeystonePhoenix.Upload do
   def store_files(uploads, owner_id, options)
       when is_list(uploads) and is_list(options) do
     with :ok <- Command.authorize_resource(options, "file:write", :file),
+         :ok <- authorize_owner_namespace(options, owner_id),
          :ok <- validate_batch(uploads) do
       Enum.reduce_while(uploads, {:ok, []}, fn upload, {:ok, stored} ->
         case do_store_file(upload, owner_id) do
@@ -70,6 +74,24 @@ defmodule KeystonePhoenix.Upload do
   end
 
   def store_files(_uploads, _owner_id, _options), do: {:error, :authorization_required}
+
+  # 有 owner 目录的文件必须同时满足规范 UUID 和当前主体的 OWNER 关系；nil
+  # 继续表示通用文件目录，不附带用户资源关系。
+  defp authorize_owner_namespace(_options, nil), do: :ok
+
+  defp authorize_owner_namespace(options, owner_id) when is_binary(owner_id) do
+    with {:ok, ^owner_id} <- Params.parse_uuid(owner_id),
+         {:ok, principal} <- Command.principal(options),
+         true <- Authz.resource_scope_allowed?(principal, :owned, %{owner_id: owner_id}) do
+      :ok
+    else
+      false -> {:error, :data_scope_denied}
+      :error -> {:error, :data_scope_denied}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp authorize_owner_namespace(_options, _owner_id), do: {:error, :data_scope_denied}
 
   defp validate_batch([]), do: {:error, :empty_upload}
 

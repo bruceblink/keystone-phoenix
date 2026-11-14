@@ -51,6 +51,41 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
   end
 
   @tag :integration
+  test "owner-scoped file upload uses the authenticated user namespace" do
+    directory =
+      Path.join(System.tmp_dir!(), "keystone-http-upload-#{System.unique_integer([:positive])}")
+
+    old_directory = Application.get_env(:keystone_phoenix, :file_base_dir)
+    Application.put_env(:keystone_phoenix, :file_base_dir, directory)
+
+    on_exit(fn ->
+      if old_directory,
+        do: Application.put_env(:keystone_phoenix, :file_base_dir, old_directory),
+        else: Application.delete_env(:keystone_phoenix, :file_base_dir)
+
+      File.rm_rf!(directory)
+    end)
+
+    {token, ids} = authenticated_scope_user("TENANT")
+
+    source =
+      Path.join(
+        System.tmp_dir!(),
+        "keystone-http-upload-#{System.unique_integer([:positive])}.txt"
+      )
+
+    File.write!(source, "http upload")
+    on_exit(fn -> File.rm(source) end)
+
+    upload = %Plug.Upload{path: source, filename: "http.txt", content_type: "text/plain"}
+    response = post(authorized(build_conn(), token), "/api/v1/file/upload", %{"file" => upload})
+
+    assert %{"data" => %{"newFileName" => filename, "url" => url}} = json_response(response, 200)
+    assert url == "/profile/upload/#{ids.user_id}/#{filename}"
+    assert File.exists?(Path.join([directory, "upload", ids.user_id, filename]))
+  end
+
+  @tag :integration
   test "export endpoints enforce scope and render an authorized workbook" do
     export_cases = export_cases()
     {department_token, _ids} = authenticated_scope_user("DEPARTMENT")
@@ -91,7 +126,8 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
 
     ids = %{
       uuid: Identity.v7(),
-      file_name: "missing-scope-#{System.unique_integer([:positive])}.txt"
+      file_name: "missing-scope-#{System.unique_integer([:positive])}.txt",
+      user_id: user.user_id
     }
 
     {tokens.token, ids}
