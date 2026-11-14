@@ -84,6 +84,42 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
            } = json_response(unallocated_response, 200)
   end
 
+  @tag :integration
+  test "role batch delete rolls back missing targets and deduplicates IDs" do
+    actor_role = create_role("TENANT")
+    grant_permission(actor_role.role_id, "role:delete")
+    first_role = create_role("TENANT")
+    second_role = create_role("TENANT")
+    missing_id = Identity.v7()
+    actor = create_user(actor_role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(actor.username, "Strong!123")
+
+    rejected =
+      delete(
+        authorized(tokens.token),
+        "/api/v1/system/roles",
+        %{"role_ids" => Enum.join([first_role.role_id, missing_id, second_role.role_id], ",")}
+      )
+
+    assert get_in(json_response(rejected, 404), ["error", "code"]) == "validation_failed"
+    assert Repo.get!(SysRole, first_role.role_id).deleted == false
+    assert Repo.get!(SysRole, second_role.role_id).deleted == false
+
+    success =
+      delete(
+        authorized(tokens.token),
+        "/api/v1/system/roles",
+        %{
+          "role_ids" =>
+            Enum.join([first_role.role_id, first_role.role_id, second_role.role_id], ",")
+        }
+      )
+
+    assert get_in(json_response(success, 200), ["data", "deleted"]) == 2
+    assert Repo.get!(SysRole, first_role.role_id).deleted == true
+    assert Repo.get!(SysRole, second_role.role_id).deleted == true
+  end
+
   defp authorized(token), do: put_req_header(build_conn(), "authorization", "Bearer #{token}")
 
   defp create_role(data_scope) do

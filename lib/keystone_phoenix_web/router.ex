@@ -166,6 +166,7 @@ defmodule KeystonePhoenixWeb.Router do
     get "/system/role/:role_id", RoleController, :show
     post "/system/role", RoleController, :create
     put "/system/role", RoleController, :update
+    delete "/system/roles", RoleController, :delete
     delete "/system/role/:role_id", RoleController, :delete
     put "/system/role/:role_id/status", RoleController, :change_status
     put "/system/role/:role_id/dataScope", RoleController, :data_scope

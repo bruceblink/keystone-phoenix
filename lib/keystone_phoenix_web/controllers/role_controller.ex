@@ -134,6 +134,19 @@ defmodule KeystonePhoenixWeb.RoleController do
   end
 
   @doc "Soft deletes a role."
+  def delete(conn, %{"role_ids" => role_ids}) do
+    case Role.delete_roles(String.split(to_string(role_ids), ","),
+           authorization: %{
+             principal: conn.assigns.current_user,
+             permission: "role:delete"
+           }
+         ) do
+      {:ok, deleted} -> json(conn, ApiResponse.ok(%{"deleted" => deleted}))
+      {:error, :invalid_ids} -> render_error(conn, :invalid_role_ids)
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
   def delete(conn, %{"role_id" => role_id}) do
     case Role.delete_role(role_id,
            authorization: %{
@@ -287,6 +300,12 @@ defmodule KeystonePhoenixWeb.RoleController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "用户编号无效"))
+  end
+
+  defp render_error(conn, :invalid_role_ids) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "角色编号无效"))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do

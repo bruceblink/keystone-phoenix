@@ -157,6 +157,17 @@ defmodule KeystonePhoenix.Role do
 
   def delete_role(_id, _options), do: {:error, :authorization_required}
 
+  @doc "在同一事务内软删除一组角色；任一目标无效、缺失或不可删除时全部回滚。"
+  def delete_roles(ids, options)
+
+  def delete_roles(ids, options) when is_list(options) do
+    with :ok <- Authorization.authorize_write(options, "role:delete") do
+      do_delete_roles(ids, Authorization.actor_id(options))
+    end
+  end
+
+  def delete_roles(_ids, _options), do: {:error, :authorization_required}
+
   defp do_delete_role(id, actor_id) do
     with {:ok, role} <- get_role(id) do
       cond do
@@ -180,6 +191,57 @@ defmodule KeystonePhoenix.Role do
           end)
           |> invalidate_policy_cache()
       end
+    end
+  end
+
+  defp do_delete_roles(ids, actor_id) when is_list(ids) do
+    ids = ids |> Enum.map(&parse_uuid/1) |> Enum.uniq()
+
+    if ids == [] or Enum.any?(ids, &is_nil/1) do
+      {:error, :invalid_ids}
+    else
+      Repo.transaction(fn -> delete_roles_in_transaction(ids, actor_id) end)
+      |> case do
+        {:ok, deleted} -> invalidate_policy_cache({:ok, deleted})
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  defp delete_roles_in_transaction(ids, actor_id) do
+    roles =
+      from(role in SysRole,
+        where: role.deleted == false and role.role_id in ^ids,
+        lock: "FOR UPDATE"
+      )
+      |> Repo.all()
+
+    if length(roles) != length(ids) do
+      Repo.rollback(:not_found)
+    else
+      Enum.each(roles, fn role ->
+        cond do
+          role.role_key == "admin" ->
+            Repo.rollback(:protected_role)
+
+          user_count(role.role_id) > 0 ->
+            Repo.rollback(:has_users)
+
+          true ->
+            Repo.delete_all(from(rm in SysRoleMenu, where: rm.role_id == ^role.role_id))
+
+            role
+            |> Ecto.Changeset.change(deleted: true)
+            |> Audit.put_actor(:updater_id, actor_id)
+            |> Repo.update()
+            |> case do
+              {:ok, _deleted} -> :ok
+              {:error, _changeset} -> Repo.rollback(:update_failed)
+            end
+        end
+      end)
+
+      length(roles)
     end
   end
 
