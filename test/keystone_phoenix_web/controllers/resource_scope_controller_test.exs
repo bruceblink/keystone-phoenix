@@ -69,6 +69,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
 
   defp resource_permissions do
     ~w(
+      role:read role:export
       post:read post:create post:update post:delete
       menu:read menu:create menu:update menu:delete
       config:read config:create config:update config:refresh
@@ -83,6 +84,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
 
   defp operation_cases(%{uuid: uuid, file_name: file_name}) do
     [
+      {"role export", :post, "/api/v1/system/role/export", %{}},
       {"post list", :get, "/api/v1/system/post/list", %{}},
       {"post detail", :get, "/api/v1/system/post/#{uuid}", %{}},
       {"post write", :post, "/api/v1/system/post", %{}},

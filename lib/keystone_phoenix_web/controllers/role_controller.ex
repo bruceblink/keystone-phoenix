@@ -38,14 +38,22 @@ defmodule KeystonePhoenixWeb.RoleController do
   @doc "Exports all roles matching the current filters."
   def export(conn, params) do
     authorization = [authorization: %{principal: conn.assigns.current_user}]
-    rows = Excel.all_rows(export_fetcher(&Role.list_roles_for_export/2, authorization), params)
 
-    ExcelResponse.send_xlsx(
-      conn,
-      "roles.xlsx",
-      @role_export_headers,
-      Enum.map(rows, &role_export_row/1)
-    )
+    case Role.Authorization.authorize_read(authorization, "role:export") do
+      :ok ->
+        rows =
+          Excel.all_rows(export_fetcher(&Role.list_roles_for_export/2, authorization), params)
+
+        ExcelResponse.send_xlsx(
+          conn,
+          "roles.xlsx",
+          @role_export_headers,
+          Enum.map(rows, &role_export_row/1)
+        )
+
+      {:error, reason} ->
+        render_error(conn, reason)
+    end
   end
 
   defp export_fetcher(fetcher, authorization) do
@@ -251,6 +259,16 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   defp render_error(conn, :permission_denied) do
     conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "没有操作权限"))
+  end
+
+  defp render_error(conn, :data_scope_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
+  end
+
+  defp render_error(conn, :authorization_required) do
+    conn
+    |> put_status(:unauthorized)
+    |> json(ApiResponse.error(:authentication_required, "需要登录"))
   end
 
   defp render_error(conn, :menu_not_found) do
