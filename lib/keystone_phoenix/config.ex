@@ -41,6 +41,13 @@ defmodule KeystonePhoenix.Config do
     page_query(query, params)
   end
 
+  @doc "在检查配置资源范围后查询配置列表。"
+  def list_configs(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "config:read") do
+      {:ok, list_configs(params)}
+    end
+  end
+
   @spec get_config(String.t()) :: {:ok, SysConfig.t()} | {:error, :not_found}
   def get_config(id) do
     case Params.parse_uuid(id) do
@@ -52,6 +59,13 @@ defmodule KeystonePhoenix.Config do
 
       :error ->
         {:error, :not_found}
+    end
+  end
+
+  @doc "在检查配置资源范围后查询单个配置。"
+  def get_config(id, options) when is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "config:read") do
+      get_config(id)
     end
   end
 

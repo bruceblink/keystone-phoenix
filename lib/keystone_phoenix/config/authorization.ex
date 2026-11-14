@@ -1,17 +1,16 @@
 defmodule KeystonePhoenix.Config.Authorization do
   @moduledoc "Principal authorization checks for configuration commands."
 
-  alias KeystonePhoenix.Authz
+  alias KeystonePhoenix.Authz.Command
+  alias KeystonePhoenix.Authz.Principal
 
-  def authorize(options, permission) do
-    with {:ok, principal} <- principal(options),
-         true <- Authz.allowed?(principal, permission) do
-      :ok
-    else
-      false -> {:error, :permission_denied}
-      {:error, reason} -> {:error, reason}
-    end
-  end
+  # 配置命令统一检查操作权限和配置资源范围。
+  def authorize(options, permission),
+    do: Command.authorize_resource(options, permission, :config)
+
+  # 配置查询入口使用与写入相同的授权上下文。
+  def authorize_read(options, permission),
+    do: Command.authorize_resource(options, permission, :config)
 
   def actor_id(options) do
     authorization = Keyword.fetch!(options, :authorization)
@@ -20,18 +19,7 @@ defmodule KeystonePhoenix.Config.Authorization do
     actor_id ||
       authorization
       |> Map.get(:principal, Map.get(authorization, "principal"))
-      |> Authz.Principal.from_user()
+      |> Principal.from_user()
       |> Map.get(:subject_id)
-  end
-
-  defp principal(options) do
-    case Keyword.get(options, :authorization) do
-      authorization when is_map(authorization) ->
-        principal = Map.get(authorization, :principal, Map.get(authorization, "principal"))
-        if is_map(principal), do: {:ok, principal}, else: {:error, :authorization_required}
-
-      _ ->
-        {:error, :authorization_required}
-    end
   end
 end

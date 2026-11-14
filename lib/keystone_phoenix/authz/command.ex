@@ -13,7 +13,7 @@ defmodule KeystonePhoenix.Authz.Command do
     end
   end
 
-  @doc "Checks a command permission and the registered resource data scope."
+  @doc "检查命令权限和已登记资源的数据范围。"
   def authorize_resource(options, permission, resource, context \\ %{})
 
   def authorize_resource(options, permission, resource, context)

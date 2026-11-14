@@ -43,8 +43,22 @@ defmodule KeystonePhoenix.Menu do
     Repo.all(query) |> Enum.map(&menu_to_map/1)
   end
 
+  @doc "在检查菜单权限和资源范围后查询菜单。"
+  def list_menus(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Command.authorize_resource(options, "menu:read", :menu) do
+      {:ok, list_menus(params)}
+    end
+  end
+
   def list_dropdown do
     Tree.nest(list_menus(%{"status" => 1}), "parentId", "menuId", nil)
+  end
+
+  @doc "在检查菜单资源范围后生成菜单下拉数据。"
+  def list_dropdown(options) when is_list(options) do
+    with :ok <- Command.authorize_resource(options, "menu:read", :menu) do
+      {:ok, list_dropdown()}
+    end
   end
 
   def get_menu(id) do
@@ -60,10 +74,17 @@ defmodule KeystonePhoenix.Menu do
     end
   end
 
+  @doc "在检查菜单权限和资源范围后查询单个菜单。"
+  def get_menu(id, options) when is_list(options) do
+    with :ok <- Command.authorize_resource(options, "menu:read", :menu) do
+      get_menu(id)
+    end
+  end
+
   def create_menu(attrs, options)
 
   def create_menu(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "menu:create") do
+    with :ok <- Command.authorize_resource(options, "menu:create", :menu) do
       do_create_menu(attrs, Command.actor_id(options))
     end
   end
@@ -94,7 +115,7 @@ defmodule KeystonePhoenix.Menu do
   def update_menu(id, attrs, options)
 
   def update_menu(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "menu:update") do
+    with :ok <- Command.authorize_resource(options, "menu:update", :menu) do
       do_update_menu(id, attrs, Command.actor_id(options))
     end
   end
@@ -126,7 +147,7 @@ defmodule KeystonePhoenix.Menu do
   end
 
   def delete_menu(id, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "menu:delete") do
+    with :ok <- Command.authorize_resource(options, "menu:delete", :menu) do
       do_delete_menu(id, Command.actor_id(options))
     end
   end

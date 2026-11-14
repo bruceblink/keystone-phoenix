@@ -9,7 +9,9 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
   alias KeystonePhoenix.User.SysUser
 
   setup do
-    Config.refresh_cache(authorization: %{principal: %{permissions: ["config:refresh"]}})
+    Config.refresh_cache(
+      authorization: %{principal: %{data_scope: "TENANT", permissions: ["config:refresh"]}}
+    )
 
     _captcha_config =
       Repo.get_by(SysConfig, config_key: "sys.account.captchaOnOff") ||
@@ -32,7 +34,9 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       |> Repo.insert!()
 
     on_exit(fn ->
-      Config.refresh_cache(authorization: %{principal: %{permissions: ["config:refresh"]}})
+      Config.refresh_cache(
+        authorization: %{principal: %{data_scope: "TENANT", permissions: ["config:refresh"]}}
+      )
     end)
 
     {:ok, user: user}
@@ -162,7 +166,9 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       |> Ecto.Changeset.change(config_value: if(enabled?, do: "true", else: "false"))
       |> Repo.update()
 
-    Config.refresh_cache(authorization: %{principal: %{permissions: ["config:refresh"]}})
+    Config.refresh_cache(
+      authorization: %{principal: %{data_scope: "TENANT", permissions: ["config:refresh"]}}
+    )
   end
 
   defp store_captcha(ttl \\ 120) do

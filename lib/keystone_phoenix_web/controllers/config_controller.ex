@@ -17,14 +17,18 @@ defmodule KeystonePhoenixWeb.ConfigController do
 
   @doc "Returns a paginated list of system configuration entries."
   def list(conn, params) do
-    json(conn, ApiResponse.ok(Config.list_configs(params)))
+    case Config.list_configs(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
   end
 
   @doc "Returns a system configuration entry."
   def show(conn, %{"config_id" => config_id}) do
-    case Config.get_config(config_id) do
+    case Config.get_config(config_id, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, config} -> json(conn, ApiResponse.ok(Config.config_to_map(config)))
       {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
@@ -68,6 +72,14 @@ defmodule KeystonePhoenixWeb.ConfigController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "该配置不允许修改"))
+  end
+
+  defp render_error(conn, :permission_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "没有操作权限"))
+  end
+
+  defp render_error(conn, :data_scope_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
   end
 
   defp render_error(conn, changeset) do

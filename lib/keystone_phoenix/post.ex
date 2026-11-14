@@ -33,7 +33,7 @@ defmodule KeystonePhoenix.Post do
     Pagination.page(query, params, :post_id, &post_to_map/1)
   end
 
-  @doc "Lists posts after checking the caller's permission and resource scope."
+  @doc "在检查岗位权限和资源范围后查询岗位。"
   def list_posts(params, options) when is_map(params) and is_list(options) do
     with :ok <- Authorization.authorize_read(options, "post:read") do
       {:ok, list_posts(params)}
@@ -53,7 +53,7 @@ defmodule KeystonePhoenix.Post do
     end
   end
 
-  @doc "Returns one post after checking the caller's resource scope."
+  @doc "在检查岗位资源范围后查询单个岗位。"
   def get_post(id, options) when is_list(options) do
     with :ok <- Authorization.authorize_read(options, "post:read") do
       get_post(id)

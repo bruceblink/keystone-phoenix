@@ -19,20 +19,27 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   @doc "Returns the menu and permission list."
   def list(conn, params) do
-    json(conn, ApiResponse.ok(Menu.list_menus(params)))
+    case Menu.list_menus(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
   end
 
   @doc "Returns a menu."
   def show(conn, %{"menu_id" => menu_id}) do
-    case Menu.get_menu(menu_id) do
+    case Menu.get_menu(menu_id, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, menu} -> json(conn, ApiResponse.ok(Menu.menu_to_map(menu)))
       {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
   @doc "Returns the menu dropdown source."
   def dropdown(conn, _params) do
-    json(conn, ApiResponse.ok(Menu.list_dropdown()))
+    case Menu.list_dropdown(authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
   end
 
   @doc "Creates a menu or button permission."
@@ -90,6 +97,10 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   defp render_error(conn, :permission_denied) do
     conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "没有操作权限"))
+  end
+
+  defp render_error(conn, :data_scope_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
   end
 
   defp render_error(conn, reason)
