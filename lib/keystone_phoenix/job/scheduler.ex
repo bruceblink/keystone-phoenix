@@ -11,7 +11,7 @@ defmodule KeystonePhoenix.Job.Scheduler do
   import Ecto.Query
   require Logger
 
-  alias KeystonePhoenix.Job.{Cron, Runner, SysJob}
+  alias KeystonePhoenix.Job.{Authorization, Cron, Runner, SysJob}
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Params
 
@@ -37,13 +37,14 @@ defmodule KeystonePhoenix.Job.Scheduler do
     state = expire_running_jobs(state)
 
     state =
-      case Repo.all(from job in SysJob, where: job.status == 1) do
-        jobs when is_list(jobs) ->
+      case enabled_jobs() do
+        {:ok, jobs} ->
           state
           |> prune_last_triggers(jobs)
           |> trigger_due_jobs(jobs, now)
 
-        _ ->
+        {:error, reason} ->
+          Logger.error("scheduled job authorization failed: #{inspect(reason)}")
           state
       end
 
@@ -98,6 +99,21 @@ defmodule KeystonePhoenix.Job.Scheduler do
         {:reply, :ok, state}
     end
   end
+
+  @doc "Returns enabled jobs after applying the scheduler's explicit system authorization."
+  def enabled_jobs(options \\ Authorization.system_options())
+
+  def enabled_jobs(options) when is_list(options) do
+    with {:ok, :all} <- Authorization.authorize_read(options, "job:read"),
+         {:ok, :all} <- Authorization.authorize(options, "job:run") do
+      {:ok, Repo.all(from job in SysJob, where: job.status == 1)}
+    else
+      {:ok, _scope} -> {:error, :data_scope_denied}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def enabled_jobs(_options), do: {:error, :authorization_required}
 
   @doc "Drops trigger timestamps for jobs that are no longer enabled."
   def prune_last_triggers(state, jobs) when is_map(state) and is_list(jobs) do

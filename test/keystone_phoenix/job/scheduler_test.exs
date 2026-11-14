@@ -5,6 +5,29 @@ defmodule KeystonePhoenix.Job.SchedulerTest do
 
   alias KeystonePhoenix.Job.Scheduler
 
+  test "automatic polling requires the explicit scheduler permissions and all scope" do
+    assert {:error, :permission_denied} =
+             Scheduler.enabled_jobs(
+               authorization: %{principal: %{data_scope: "ALL", permissions: ["job:read"]}}
+             )
+
+    assert {:error, :data_scope_denied} =
+             Scheduler.enabled_jobs(
+               authorization: %{
+                 principal: %{
+                   data_scope: "OWNER",
+                   subject_id: "018f2a7e-5d3c-7b01-8a11-000000000110",
+                   permissions: ["job:read", "job:run"]
+                 }
+               }
+             )
+
+    assert [authorization: authorization] = KeystonePhoenix.Job.Authorization.system_options()
+    assert :scheduler = authorization[:source]
+    assert %{data_scope: "ALL", permissions: permissions} = authorization[:principal]
+    assert Enum.sort(permissions) == ["job:read", "job:run"]
+  end
+
   test "prunes trigger timestamps for disabled or deleted jobs" do
     first_id = "018f2a7e-5d3c-7b01-8a11-000000000111"
     second_id = "018f2a7e-5d3c-7b01-8a11-000000000112"
