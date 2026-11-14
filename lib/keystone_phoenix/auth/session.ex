@@ -24,6 +24,51 @@ defmodule KeystonePhoenix.Auth.Session do
         client_id \\ @default_client_id,
         refresh_token \\ nil
       ) do
+    occupy_with_access_token(
+      user_id,
+      jti,
+      jti,
+      ttl,
+      force_login,
+      session_id,
+      client_id,
+      refresh_token
+    )
+  end
+
+  @doc "创建同时绑定 refresh jti 和 access token id 的会话。"
+  def occupy(
+        user_id,
+        jti,
+        access_token_id,
+        ttl,
+        force_login,
+        session_id,
+        client_id,
+        refresh_token
+      ) do
+    occupy_with_access_token(
+      user_id,
+      jti,
+      access_token_id,
+      ttl,
+      force_login,
+      session_id,
+      client_id,
+      refresh_token
+    )
+  end
+
+  defp occupy_with_access_token(
+         user_id,
+         jti,
+         access_token_id,
+         ttl,
+         force_login,
+         session_id,
+         client_id,
+         refresh_token
+       ) do
     now = DateTime.utc_now()
     session_id = session_id || new_session_id()
     expires_at = DateTime.add(now, ttl, :second)
@@ -35,14 +80,33 @@ defmodule KeystonePhoenix.Auth.Session do
 
       case active_session(user_id, now) do
         nil ->
-          activate_session(user_id, jti, session_id, client_id, expires_at, now, refresh_token)
+          activate_session(
+            user_id,
+            jti,
+            access_token_id,
+            session_id,
+            client_id,
+            expires_at,
+            now,
+            refresh_token
+          )
 
         %{jti: ^jti, id: ^session_id} ->
           :ok
 
         _session when force_login ->
           revoke_user_sessions(user_id, now)
-          activate_session(user_id, jti, session_id, client_id, expires_at, now, refresh_token)
+
+          activate_session(
+            user_id,
+            jti,
+            access_token_id,
+            session_id,
+            client_id,
+            expires_at,
+            now,
+            refresh_token
+          )
 
         _session ->
           Repo.rollback(:already_logged_in)
@@ -150,6 +214,16 @@ defmodule KeystonePhoenix.Auth.Session do
 
   def active?(user_id, target), do: valid?(target, user_id)
 
+  defdelegate active_access?(user_id, access_token_id), to: KeystonePhoenix.Auth.SessionAccess
+
+  defdelegate replace_access_token(
+                user_id,
+                session_id,
+                current_access_token_id,
+                replacement_access_token_id
+              ),
+              to: KeystonePhoenix.Auth.SessionAccess
+
   @doc "撤销指定用户的当前会话。"
   def release(user_id, target), do: revoke_target(user_id, target)
   def revoke(user_id, target), do: release(user_id, target)
@@ -181,76 +255,9 @@ defmodule KeystonePhoenix.Auth.Session do
 
   def delete(jti), do: revoke_target(nil, jti)
 
-  @doc "删除绝对到期或空闲到期的会话和刷新令牌。"
-  def cleanup_expired do
-    now = DateTime.utc_now()
-
-    {count, _} =
-      Repo.update_all(
-        from(session in AuthSession,
-          where:
-            (session.active == true or is_nil(session.revoked_at)) and
-              (session.refresh_expires_at <= ^now or session.idle_expires_at <= ^now)
-        ),
-        set: [active: false, revoked_at: now]
-      )
-
-    Repo.update_all(
-      from(token in RefreshToken,
-        where:
-          is_nil(token.revoked_at) and (token.expires_at <= ^now or token.idle_expires_at <= ^now)
-      ),
-      set: [revoked_at: now]
-    )
-
-    {:ok, count}
-  rescue
-    _error -> {:error, :unavailable}
-  end
-
-  def list_active do
-    now = DateTime.utc_now()
-
-    sessions =
-      from(session in AuthSession,
-        where:
-          session.active == true and is_nil(session.revoked_at) and
-            session.refresh_expires_at > ^now and session.idle_expires_at > ^now,
-        order_by: [desc: session.inserted_at]
-      )
-      |> Repo.all()
-
-    {:ok,
-     Enum.map(sessions, fn session ->
-       %{
-         jti: session.jti,
-         user_id: session.user_id,
-         session_id: session.id,
-         refresh_family_id: session.refresh_family_id
-       }
-     end)}
-  rescue
-    _error -> {:error, :unavailable}
-  end
-
-  def count_active do
-    now = DateTime.utc_now()
-
-    count =
-      Repo.aggregate(
-        from(session in AuthSession,
-          where:
-            session.active == true and is_nil(session.revoked_at) and
-              session.refresh_expires_at > ^now and session.idle_expires_at > ^now
-        ),
-        :count,
-        :id
-      )
-
-    {:ok, count}
-  rescue
-    _error -> {:error, :unavailable}
-  end
+  defdelegate cleanup_expired(), to: KeystonePhoenix.Auth.SessionMetrics
+  defdelegate list_active(), to: KeystonePhoenix.Auth.SessionMetrics
+  defdelegate count_active(), to: KeystonePhoenix.Auth.SessionMetrics
 
   def revoke_token(target) when is_binary(target) and target != "" do
     case find_session(target) do
@@ -307,7 +314,10 @@ defmodule KeystonePhoenix.Auth.Session do
     idle_expires_at =
       min_datetime(DateTime.add(now, @idle_lifetime, :second), session.refresh_expires_at)
 
-    if not Identity.canonical?(new_jti) or new_jti == old_jti do
+    access_token_id = Map.get(tokens, :access_token_id)
+
+    if not Identity.canonical?(new_jti) or new_jti == old_jti or
+         not Identity.canonical?(access_token_id) do
       Repo.rollback(:invalid_refresh_token)
     end
 
@@ -332,6 +342,7 @@ defmodule KeystonePhoenix.Auth.Session do
       session
       |> Ecto.Changeset.change(
         jti: new_jti,
+        access_token_id: access_token_id,
         refresh_expires_at: refresh_expires_at,
         idle_expires_at: idle_expires_at,
         last_seen_at: now,
@@ -353,7 +364,16 @@ defmodule KeystonePhoenix.Auth.Session do
     Ecto.NoResultsError -> Repo.rollback(:unavailable)
   end
 
-  defp activate_session(user_id, jti, session_id, client_id, expires_at, now, refresh_token) do
+  defp activate_session(
+         user_id,
+         jti,
+         access_token_id,
+         session_id,
+         client_id,
+         expires_at,
+         now,
+         refresh_token
+       ) do
     family_id = Identity.v7()
     idle_expires_at = min_datetime(DateTime.add(now, @idle_lifetime, :second), expires_at)
 
@@ -362,6 +382,7 @@ defmodule KeystonePhoenix.Auth.Session do
       user_id: user_id,
       client_id: client_id,
       jti: jti,
+      access_token_id: access_token_id,
       refresh_family_id: family_id,
       refresh_expires_at: expires_at,
       idle_expires_at: idle_expires_at,
@@ -559,7 +580,6 @@ defmodule KeystonePhoenix.Auth.Session do
     do: {:error, reason}
 
   defp occupy_result({:error, _reason}), do: {:error, :unavailable}
-
   defp rotate_result({:ok, tokens}) when is_map(tokens), do: {:ok, tokens}
 
   defp rotate_result({:ok, {:error, reason}}), do: {:error, reason}

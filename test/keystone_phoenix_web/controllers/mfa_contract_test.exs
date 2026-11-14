@@ -93,11 +93,51 @@ defmodule KeystonePhoenixWeb.MfaContractTest do
       })
       |> json_response(200)
 
+    assert MapSet.new(Map.keys(step_up_challenge["data"])) ==
+             MapSet.new(["challengeId", "clientId", "expiresAt"])
+
     assert step_up["data"]["authenticationLevel"] == "AAL2"
+
+    assert {:ok, step_up_claims} =
+             Token.verify(step_up["data"]["accessToken"], Token.access_type())
+
+    assert step_up_claims["aal"] == "AAL2"
+    assert step_up_claims["amr"] == ["otp"]
+
+    old_access_response =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{post_enrollment_tokens.token}")
+      |> get("/api/v1/auth/me")
+
+    assert old_access_response.status == 401
+
+    refresh_response =
+      build_conn()
+      |> post("/api/v1/auth/refresh", %{
+        "refreshToken" => post_enrollment_tokens.refresh_token
+      })
+
+    assert refresh_response.status == 200
+    refresh_data = json_response(refresh_response, 200)["data"]
+
+    refreshed_challenge =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{refresh_data["accessToken"]}")
+      |> post("/api/v1/auth/mfa/step-up", %{})
+      |> json_response(201)
+
+    refreshed_step_up =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{refresh_data["accessToken"]}")
+      |> post("/api/v1/auth/mfa/step-up/verify", %{
+        "challengeId" => refreshed_challenge["data"]["challengeId"],
+        "code" => List.last(verified["data"]["recoveryCodes"])
+      })
+      |> json_response(200)
 
     policy =
       build_conn()
-      |> put_req_header("authorization", "Bearer #{step_up["data"]["accessToken"]}")
+      |> put_req_header("authorization", "Bearer #{refreshed_step_up["data"]["accessToken"]}")
       |> put("/api/v1/auth/mfa/policy/#{user.user_id}", %{"required" => true})
       |> json_response(200)
 

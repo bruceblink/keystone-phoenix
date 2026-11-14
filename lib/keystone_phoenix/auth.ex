@@ -141,11 +141,22 @@ defmodule KeystonePhoenix.Auth do
          {:ok, user_id} <- parse_user_id(claims["sub"]),
          session_id when is_binary(session_id) <- claims["sid"],
          client_id when is_binary(client_id) <- claims["client_id"],
+         access_token_id when is_binary(access_token_id) <- claims["jti"],
          {:ok, user} <- User.get_user(user_id),
+         true <- Session.active_access?(user_id, access_token_id),
          {:ok, verification} <-
            Mfa.verify_step_up(user_id, challenge_id, client_id, session_id, code, ip_address),
          {:ok, access} <-
-           Token.issue(user, Token.access_type(), session_id, nil, "AAL2", client_id) do
+           Token.issue_with_amr(
+             user,
+             Token.access_type(),
+             session_id,
+             nil,
+             "AAL2",
+             client_id,
+             [verification.amr]
+           ),
+         :ok <- Session.replace_access_token(user_id, session_id, access_token_id, access.jti) do
       {:ok,
        %{
          token: access.token,
@@ -344,9 +355,9 @@ defmodule KeystonePhoenix.Auth do
   def authenticate_access_token(token) do
     with {:ok, claims} <- Token.verify(token, Token.access_type()),
          {:ok, user_id} <- parse_user_id(claims["sub"]),
-         session_id when is_binary(session_id) <- claims["sid"],
+         access_token_id when is_binary(access_token_id) <- claims["jti"],
          permission_version when is_integer(permission_version) <- claims["permission_version"],
-         true <- Session.active?(user_id, session_id),
+         true <- Session.active_access?(user_id, access_token_id),
          {:ok, user} <- User.get_user(user_id),
          true <- user.status == 1 and user.permission_version == permission_version do
       {:ok, user}
@@ -379,17 +390,27 @@ defmodule KeystonePhoenix.Auth do
              authentication_level,
              client_id
            ),
+         {:ok, access} <-
+           Token.issue(
+             user,
+             Token.access_type(),
+             session_id,
+             nil,
+             authentication_level,
+             client_id
+           ),
          :ok <-
            Session.occupy(
              user.user_id,
              refresh.jti,
+             access.jti,
              refresh.expires_in,
              force_login,
              session_id,
              client_id,
              refresh.token
            ) do
-      issue_access_pair(user, refresh, session_id, authentication_level, client_id)
+      issue_access_pair(refresh, access, session_id, client_id)
     else
       {:error, :already_logged_in} -> {:error, :already_logged_in}
       {:error, {:token_configuration, _reason}} -> {:error, :token_configuration}
@@ -397,24 +418,18 @@ defmodule KeystonePhoenix.Auth do
     end
   end
 
-  defp issue_access_pair(user, refresh, session_id, authentication_level, client_id) do
-    case Token.issue(user, Token.access_type(), session_id, nil, authentication_level, client_id) do
-      {:ok, access} ->
-        {:ok,
-         %{
-           token: access.token,
-           refresh_token: refresh.token,
-           expires_in: access.expires_in,
-           refresh_expires_in: refresh.expires_in,
-           refresh_jti: refresh.jti,
-           session_id: session_id,
-           client_id: client_id
-         }}
-
-      {:error, {:token_configuration, _reason}} ->
-        Session.revoke_session(session_id)
-        {:error, :token_configuration}
-    end
+  defp issue_access_pair(refresh, access, session_id, client_id) do
+    {:ok,
+     %{
+       token: access.token,
+       refresh_token: refresh.token,
+       expires_in: access.expires_in,
+       refresh_expires_in: refresh.expires_in,
+       refresh_jti: refresh.jti,
+       access_token_id: access.jti,
+       session_id: session_id,
+       client_id: client_id
+     }}
   end
 
   defp issue_pair_for_session(user, session) do
@@ -441,6 +456,7 @@ defmodule KeystonePhoenix.Auth do
            expires_in: access.expires_in,
            refresh_expires_in: refresh.expires_in,
            refresh_jti: refresh.jti,
+           access_token_id: access.jti,
            session_id: session.id,
            client_id: session.client_id
          }}

@@ -406,10 +406,7 @@ defmodule KeystonePhoenixWeb.AuthController do
   defp challenge_to_map(challenge) do
     %{
       "challengeId" => Map.get(challenge, :challenge_id) || Map.get(challenge, :id),
-      "purpose" => Map.get(challenge, :purpose),
       "clientId" => Map.get(challenge, :client_id),
-      "sessionId" => Map.get(challenge, :session_id),
-      "contextHash" => Map.get(challenge, :context_hash),
       "expiresAt" => Map.get(challenge, :expires_at) |> DateTime.to_iso8601()
     }
     |> Enum.reject(fn {_key, value} -> is_nil(value) end)

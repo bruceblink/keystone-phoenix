@@ -12,6 +12,7 @@ defmodule KeystonePhoenix.Auth.AuthSession do
     field :client_id, :string
     field :approved_scope, :string
     field :jti, :binary_id
+    field :access_token_id, :binary_id
     field :refresh_family_id, :binary_id
     field :refresh_expires_at, :utc_datetime_usec
     field :idle_expires_at, :utc_datetime_usec
@@ -31,6 +32,7 @@ defmodule KeystonePhoenix.Auth.AuthSession do
       :client_id,
       :approved_scope,
       :jti,
+      :access_token_id,
       :refresh_family_id,
       :refresh_expires_at,
       :idle_expires_at,
@@ -39,8 +41,16 @@ defmodule KeystonePhoenix.Auth.AuthSession do
       :active,
       :revoked_at
     ])
-    |> validate_required([:user_id, :client_id, :jti, :refresh_family_id, :refresh_expires_at])
+    |> validate_required([
+      :user_id,
+      :client_id,
+      :jti,
+      :access_token_id,
+      :refresh_family_id,
+      :refresh_expires_at
+    ])
     |> validate_length(:client_id, max: 128)
     |> unique_constraint(:jti, name: :auth_sessions_jti_unique_index)
+    |> unique_constraint(:access_token_id, name: :auth_sessions_access_token_id_unique_index)
   end
 end

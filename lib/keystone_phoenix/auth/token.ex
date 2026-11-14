@@ -29,10 +29,46 @@ defmodule KeystonePhoenix.Auth.Token do
         client_id \\ "web"
       )
       when token_type in [@access_type, @refresh_type] do
+    issue_with_amr(
+      user,
+      token_type,
+      session_id,
+      ttl_override,
+      authentication_level,
+      client_id,
+      nil
+    )
+  end
+
+  @doc "签发带指定认证方法的令牌；step-up 使用单独的 otp 或 recovery 方法。"
+  @spec issue_with_amr(
+          map(),
+          String.t(),
+          String.t() | nil,
+          pos_integer() | nil,
+          String.t(),
+          String.t(),
+          [String.t()] | nil
+        ) :: {:ok, map()} | {:error, term()}
+  def issue_with_amr(
+        user,
+        token_type,
+        session_id,
+        ttl_override,
+        authentication_level,
+        client_id,
+        amr_override
+      )
+      when token_type in [@access_type, @refresh_type] do
     now = System.system_time(:second)
     ttl = token_ttl(token_type, ttl_override)
     jti = KeystonePhoenix.Identity.v7()
     permission_version = Map.get(user, :permission_version, 1)
+
+    amr =
+      normalize_authentication_methods(
+        amr_override || authentication_methods(authentication_level)
+      )
 
     claims = %{
       "iss" => Application.get_env(:keystone_phoenix, :jwt_issuer, "keystone"),
@@ -43,7 +79,7 @@ defmodule KeystonePhoenix.Auth.Token do
       "jti" => jti,
       "permission_version" => permission_version,
       "aal" => normalize_authentication_level(authentication_level),
-      "amr" => authentication_methods(authentication_level),
+      "amr" => amr,
       "client_id" => normalize_client_id(client_id),
       "iat" => now,
       "exp" => now + ttl
@@ -111,6 +147,18 @@ defmodule KeystonePhoenix.Auth.Token do
 
   defp authentication_methods("AAL2"), do: ["pwd", "otp"]
   defp authentication_methods("AAL1"), do: ["pwd"]
+
+  defp normalize_authentication_methods(methods) when is_list(methods) and methods != [] do
+    if Enum.all?(methods, &is_binary/1) and
+         Enum.all?(methods, &Regex.match?(~r/^[a-z][a-z0-9._:-]{0,31}$/, &1)) do
+      methods
+    else
+      raise ArgumentError, "invalid authentication methods"
+    end
+  end
+
+  defp normalize_authentication_methods(_methods),
+    do: raise(ArgumentError, "authentication methods are required")
 
   defp normalize_client_id(value) when is_binary(value) do
     normalized = String.trim(value)
