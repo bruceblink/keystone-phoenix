@@ -5,12 +5,9 @@ defmodule KeystonePhoenixWeb.RoleController do
     permissions: %{
       list: "role:read",
       export: "role:export",
-      show: "role:read",
       create: "role:create",
       update: "role:update",
       delete: "role:delete",
-      change_status: "role:update",
-      data_scope: "role:manage",
       permissions: "role:manage",
       users: "role:read",
       allocated_users: "role:read",
@@ -20,12 +17,15 @@ defmodule KeystonePhoenixWeb.RoleController do
       unassign_users: "role:update"
     }
 
+  # 角色和角色成员写操作改变授权结果，必须使用 AAL2 会话。
+  plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp
+       when action in [:create, :update, :delete, :permissions, :assign_users, :revoke_users]
+
   plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :role
 
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Role
-  alias KeystonePhoenix.Role.Permissions
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.ExcelResponse
 
@@ -72,33 +72,6 @@ defmodule KeystonePhoenixWeb.RoleController do
         {:ok, page} -> {:ok, page}
         {:error, reason} -> {:error, reason}
       end
-    end
-  end
-
-  @doc "Returns a role."
-  def show(conn, %{"role_id" => role_id}) do
-    authorization = [authorization: %{principal: conn.assigns.current_user}]
-
-    with {:ok, role} <- Role.get_role(role_id, authorization),
-         {:ok, menu_ids} <- Role.menu_ids_for_role(role.role_id, authorization),
-         {:ok, permissions} <- Permissions.list_for_role(role.role_id, authorization) do
-      data =
-        role
-        |> Role.role_to_map()
-        |> Map.merge(%{
-          "menuIds" => menu_ids,
-          "selectedMenuList" => menu_ids,
-          "permissions" => permissions,
-          "selectedDeptList" => Role.dept_ids_for_role(role)
-        })
-
-      json(conn, ApiResponse.ok(data))
-    else
-      {:error, :not_found} ->
-        render_error(conn, :not_found)
-
-      {:error, reason} ->
-        render_error(conn, reason)
     end
   end
 
@@ -169,37 +142,6 @@ defmodule KeystonePhoenixWeb.RoleController do
       {:ok, deleted} -> json(conn, ApiResponse.ok(%{"deleted" => deleted}))
       {:error, :invalid_ids} -> render_error(conn, :invalid_role_ids)
       {:error, reason} -> render_error(conn, reason)
-    end
-  end
-
-  @doc "Changes a role's enabled status."
-  def change_status(conn, %{"role_id" => role_id} = params) do
-    case Role.change_status(
-           role_id,
-           params["status"] || params[:status],
-           authorization: %{
-             principal: conn.assigns.current_user,
-             permission: "role:update"
-           }
-         ) do
-      {:ok, _role} -> json(conn, ApiResponse.ok())
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, changeset} -> render_error(conn, changeset)
-    end
-  end
-
-  @doc "Changes a role's data scope and department set."
-  def data_scope(conn, %{"role_id" => role_id} = params) do
-    case Role.update_data_scope(role_id, params,
-           authorization: %{
-             principal: conn.assigns.current_user,
-             permission: "role:manage"
-           },
-           permission: "role:manage"
-         ) do
-      {:ok, _role} -> json(conn, ApiResponse.ok())
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, changeset} -> render_error(conn, changeset)
     end
   end
 

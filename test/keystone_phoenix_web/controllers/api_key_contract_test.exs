@@ -1,7 +1,6 @@
 defmodule KeystonePhoenixWeb.ApiKeyContractTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
-  alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.ApiKey
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Identity
@@ -55,8 +54,8 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
   test "human session completes API Key create, list, rotate and revoke lifecycle", %{conn: conn} do
     # 使用真实 HTTP 管理入口验证凭据明文只在签发和轮换响应中返回。
     user = create_user(["api-key:create", "api-key:read", "api-key:rotate", "api-key:revoke"])
-    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
-    authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
+    token = step_up_token(user)
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{token}")
 
     create_response =
       post(authorized_conn, "/api/v1/api-keys", %{

@@ -124,11 +124,14 @@ avatar URL updates, and `PUT /api/v1/profile/avatar` accepts the original
 User create and update commands validate referenced
 departments, posts, and roles before writing.
 
-Administrators can manage notices through `/api/v1/notices` with paginated
-queries, detail reads, create, update, and soft-delete operations.
+Public clients read published and enabled notices from `/api/v1/notices`.
+Administrators read scoped notice metadata from `/api/v1/notices/manage` and
+use `/api/v1/notices`, `/api/v1/notices/{id}`, and
+`/api/v1/notices/{id}/publish` for create, update, publish, and delete
+operations.
 
 Generic file upload/download endpoints, user/post/role/log Excel export, and user
-Excel import/template download are available
+Excel import are available
 under the `/api/v1` prefix. `/api/v1/auth/logout` revokes the current access
 token's PostgreSQL-backed session.
 

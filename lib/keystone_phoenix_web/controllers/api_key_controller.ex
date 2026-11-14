@@ -3,6 +3,10 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
 
   plug KeystonePhoenixWeb.Plugs.RejectApiKey
   plug KeystonePhoenixWeb.Plugs.Authenticate
+  # API Key 的签发、轮换和撤销必须使用当前人类会话的 AAL2 证明。
+  plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp
+       when action in [:create, :rotate, :delete]
+
   plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :api_key
 
   alias KeystonePhoenix.Auth.ApiKey

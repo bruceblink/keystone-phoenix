@@ -40,12 +40,6 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     post = Enum.find(posts, &(&1["postId"] == fixtures.post.post_id))
     assert post["statusStr"] == "正常"
 
-    assert %{"success" => true, "data" => role} =
-             json_response(get(conn, "/api/v1/roles/#{fixtures.role.role_id}"), 200)
-
-    assert fixtures.page_menu.menu_id in role["selectedMenuList"]
-    assert role["selectedDeptList"] == [fixtures.department.dept_id]
-
     assert %{"success" => true, "data" => %{"rows" => users}} =
              json_response(get(conn, "/api/v1/users?userId=#{fixtures.user.user_id}"), 200)
 
@@ -61,20 +55,17 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     assert profile["roleName"] == "契约角色"
     assert profile["postName"] == "契约岗位"
 
-    assert %{"success" => true, "data" => %{"rows" => dict_data}} =
-             json_response(
-               get(conn, "/api/v1/dictionaries/items?dictType=contract.status"),
-               200
-             )
+    assert %{"success" => true, "data" => dict_data} =
+             json_response(get(conn, "/api/v1/dictionaries/contract.status/items"), 200)
 
     dict = Enum.find(dict_data, &(&1["dictCode"] == fixtures.dict_data.dict_code))
     assert dict["isDefault"] == 1
 
-    assert %{"success" => true, "data" => %{"rows" => notices}} =
-             json_response(get(conn, "/api/v1/notices?pageSize=10"), 200)
+    assert %{"success" => true, "data" => notices} =
+             json_response(get(build_conn(), "/api/v1/notices"), 200)
 
-    notice = Enum.find(notices, &(&1["noticeId"] == fixtures.notice.notice_id))
-    assert notice["creatorName"] == fixtures.user.username
+    notice = Enum.find(notices, &(&1["id"] == fixtures.notice.notice_id))
+    assert notice["createdBy"] == fixtures.user.username
   end
 
   defp fixtures do
@@ -134,6 +125,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
         notice_content: "契约内容",
         status: 1
       })
+      |> Ecto.Changeset.change(published: true, publish_at: DateTime.utc_now())
       |> Ecto.Changeset.put_change(:creator_id, user.user_id)
       |> Ecto.Changeset.put_change(:owner_id, user.user_id)
       |> Repo.insert!()

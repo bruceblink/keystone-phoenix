@@ -12,6 +12,8 @@ defmodule KeystonePhoenixWeb.MonitorController do
     }
 
   plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :session
+  # 强制下线会话会立即撤销访问能力，必须使用 AAL2 会话。
+  plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp when action in [:logout_online_user]
 
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenixWeb.ApiResponse

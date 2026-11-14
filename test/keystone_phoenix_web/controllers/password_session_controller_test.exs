@@ -50,9 +50,7 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
       })
       |> Repo.insert!()
 
-    assert {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
-
-    {:ok, user: user, token: tokens.token}
+    {:ok, user: user, token: step_up_token(user)}
   end
 
   test "returns service unavailable when an administrator password reset fails", %{

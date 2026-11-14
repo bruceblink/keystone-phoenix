@@ -3,6 +3,8 @@ defmodule KeystonePhoenixWeb.ProfileController do
 
   plug KeystonePhoenixWeb.Plugs.RejectApiKey
   plug KeystonePhoenixWeb.Plugs.Authenticate
+  # 修改个人密码会撤销现有会话，必须使用 AAL2 会话。
+  plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp when action in [:update_password]
   plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :profile
 
   alias KeystonePhoenix.Upload

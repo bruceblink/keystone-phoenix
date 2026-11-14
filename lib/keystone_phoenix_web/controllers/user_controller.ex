@@ -1,10 +1,20 @@
 defmodule KeystonePhoenixWeb.UserController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.RejectApiKey when action in [:create, :import, :reset_password]
+  plug KeystonePhoenixWeb.Plugs.RejectApiKey
+       when action in [:create, :import, :delete, :delete_single, :reset_password]
 
-  # 用户批量导入会创建多个身份记录，必须使用已完成二次认证的会话。
-  plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp when action in [:import]
+  # 用户创建、修改、删除和密码操作会改变身份或权限，必须使用 AAL2 会话。
+  plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp
+       when action in [
+              :create,
+              :update,
+              :delete,
+              :delete_single,
+              :reset_password,
+              :change_status,
+              :import
+            ]
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
        [
@@ -18,8 +28,7 @@ defmodule KeystonePhoenixWeb.UserController do
            reset_password: "user:reset-password",
            change_status: "user:update",
            export: "user:export",
-           import: "user:import",
-           template: "user:import"
+           import: "user:import"
          },
          data_scope: %{
            show: {:user, "user_id"},
@@ -41,8 +50,7 @@ defmodule KeystonePhoenixWeb.UserController do
               :reset_password,
               :change_status,
               :export,
-              :import,
-              :template
+              :import
             ]
 
   alias KeystonePhoenix.Department
@@ -239,14 +247,6 @@ defmodule KeystonePhoenixWeb.UserController do
     with {:ok, rows} <- Excel.import_rows(path, filename),
          {:ok, records} <- Excel.rows_to_maps(rows) do
       {:ok, import_records(records, actor)}
-    end
-  end
-
-  @doc "Downloads the blank user import template."
-  def template(conn, _params) do
-    case template_workbook() do
-      {:ok, binary} -> ExcelResponse.send_xlsx(conn, "user-import-template.xlsx", binary)
-      {:error, _reason} -> ExcelResponse.render_error(conn, "Excel 导出失败")
     end
   end
 

@@ -164,10 +164,10 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
 
   @tag :integration
   test "writes check both the original user and the destination department", ctx do
-    {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
+    token = step_up_token(ctx.actor)
 
     response =
-      put(authorized(tokens.token), "/api/v1/users/#{ctx.oldest.user_id}", %{
+      put(authorized(token), "/api/v1/users/#{ctx.oldest.user_id}", %{
         "deptId" => ctx.outside.dept_id,
         "nickname" => "不应写入"
       })
@@ -177,14 +177,14 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     refute Repo.get!(SysUser, ctx.oldest.user_id).nickname == "不应写入"
 
     response =
-      put(authorized(tokens.token), "/api/v1/users/#{hd(ctx.outside_ids)}", %{
+      put(authorized(token), "/api/v1/users/#{hd(ctx.outside_ids)}", %{
         "deptId" => ctx.parent.dept_id
       })
 
     assert get_in(json_response(response, 403), ["error", "code"]) == "data_scope_denied"
 
     response =
-      put(authorized(tokens.token), "/api/v1/users/#{ctx.oldest.user_id}", %{
+      put(authorized(token), "/api/v1/users/#{ctx.oldest.user_id}", %{
         "deptId" => ctx.child.dept_id
       })
 
@@ -194,7 +194,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     denied_name = unique("denied_create")
 
     response =
-      post(authorized(tokens.token), "/api/v1/users", %{
+      post(authorized(token), "/api/v1/users", %{
         "username" => denied_name,
         "password" => "Strong!123",
         "deptId" => ctx.outside.dept_id
@@ -206,7 +206,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     allowed_name = unique("allowed_create")
 
     response =
-      post(authorized(tokens.token), "/api/v1/users", %{
+      post(authorized(token), "/api/v1/users", %{
         "username" => allowed_name,
         "password" => "Strong!123",
         "deptId" => ctx.child.dept_id
@@ -220,13 +220,13 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
   @tag :integration
   test "self scope can list and edit itself but cannot move to another department", ctx do
     Repo.update!(Ecto.Changeset.change(ctx.role, data_scope: "SELF"))
-    {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
-    response = get(authorized(tokens.token), "/api/v1/users")
+    token = step_up_token(ctx.actor)
+    response = get(authorized(token), "/api/v1/users")
     assert %{"data" => %{"total" => 1, "rows" => [row]}} = json_response(response, 200)
     assert row["userId"] == ctx.actor.user_id
 
     response =
-      put(authorized(tokens.token), "/api/v1/users/#{ctx.actor.user_id}", %{
+      put(authorized(token), "/api/v1/users/#{ctx.actor.user_id}", %{
         "nickname" => "本人已更新",
         "deptId" => ctx.actor.dept_id
       })
@@ -234,7 +234,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert json_response(response, 200)["success"] == true
 
     response =
-      put(authorized(tokens.token), "/api/v1/users/#{ctx.actor.user_id}", %{
+      put(authorized(token), "/api/v1/users/#{ctx.actor.user_id}", %{
         "deptId" => ctx.child.dept_id
       })
 
@@ -245,13 +245,13 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
   @tag :integration
   test "HTTP user batch delete rolls back invalid targets and revokes only committed sessions",
        ctx do
-    {:ok, actor_tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
+    actor_token = step_up_token(ctx.actor)
     {:ok, target_tokens} = Auth.login_plaintext(ctx.oldest.username, "Strong!123")
     missing_id = Identity.v7()
 
     response =
       delete(
-        authorized(actor_tokens.token),
+        authorized(actor_token),
         "/api/v1/users?ids=#{ctx.oldest.user_id},#{missing_id}",
         %{}
       )
@@ -263,7 +263,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
 
     response =
       delete(
-        authorized(actor_tokens.token),
+        authorized(actor_token),
         "/api/v1/users?ids=#{ctx.oldest.user_id},#{hd(ctx.outside_ids)}",
         %{}
       )
@@ -274,7 +274,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
 
     response =
       delete(
-        authorized(actor_tokens.token),
+        authorized(actor_token),
         "/api/v1/users/#{ctx.oldest.user_id}",
         %{}
       )
@@ -297,10 +297,10 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
       })
       |> Repo.insert!()
 
-    {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
+    token = step_up_token(ctx.actor)
 
     response =
-      post(authorized(tokens.token), "/api/v1/users", %{
+      post(authorized(token), "/api/v1/users", %{
         "username" => unique("role_denied_create"),
         "password" => "Strong!123",
         "deptId" => ctx.child.dept_id,
@@ -310,7 +310,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
 
     response =
-      put(authorized(tokens.token), "/api/v1/users/#{ctx.actor.user_id}", %{
+      put(authorized(token), "/api/v1/users/#{ctx.actor.user_id}", %{
         "nickname" => "角色不应改变",
         "deptId" => ctx.actor.dept_id,
         "roleId" => elevated_role.role_id

@@ -19,8 +19,8 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
     assert %{"success" => true, "data" => %{"rows" => _types}} =
              json_response(get(authorized(build_conn(), token), "/api/v1/dictionaries"), 200)
 
-    assert %{"success" => true, "data" => %{"rows" => _notices}} =
-             json_response(get(authorized(build_conn(), token), "/api/v1/notices"), 200)
+    assert %{"success" => true, "data" => _notices} =
+             json_response(get(authorized(build_conn(), token), "/api/v1/notices/manage"), 200)
   end
 
   @tag :integration
@@ -101,27 +101,28 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
            |> get_in(["data", "configValue"]) == "更新值"
 
     assert post(authorized(build_conn(), token), "/api/v1/notices", %{
-             "noticeTitle" => notice_title,
-             "noticeType" => 1,
-             "noticeContent" => "HTTP 写入内容",
-             "status" => 1
+             "title" => notice_title,
+             "noticeType" => "notification",
+             "content" => "HTTP 写入内容",
+             "enabled" => true
            }).status == 201
 
     notice_id =
-      get(authorized(build_conn(), token), "/api/v1/notices", %{
-        "noticeTitle" => notice_title
+      get(authorized(build_conn(), token), "/api/v1/notices/manage", %{
+        "title" => notice_title
       })
       |> json_response(200)
-      |> get_in(["data", "rows", Access.at(0), "noticeId"])
+      |> get_in(["data", Access.at(0), "id"])
 
     assert put(authorized(build_conn(), token), "/api/v1/notices/#{notice_id}", %{
-             "status" => 0
+             "enabled" => false
+           }).status == 200
+
+    assert post(authorized(build_conn(), token), "/api/v1/notices/#{notice_id}/publish", %{
+             "published" => true
            }).status == 200
 
     assert delete(authorized(build_conn(), token), "/api/v1/notices/#{notice_id}").status == 200
-
-    assert get(authorized(build_conn(), token), "/api/v1/notices/#{notice_id}").status ==
-             404
 
     assert delete(authorized(build_conn(), token), "/api/v1/configs/#{config_key}").status == 200
 

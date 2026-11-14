@@ -218,21 +218,9 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     other_job_id =
       owner_id(other_token, "/api/v1/jobs", %{"jobName" => job_name <> "_other"}, "jobId")
 
-    owner_notice_id =
-      owner_id(
-        owner_token,
-        "/api/v1/notices",
-        %{"noticeTitle" => notice_title},
-        "noticeId"
-      )
+    owner_notice_id = owner_notice_id(owner_token, %{"title" => notice_title})
 
-    other_notice_id =
-      owner_id(
-        other_token,
-        "/api/v1/notices",
-        %{"noticeTitle" => notice_title <> "_other"},
-        "noticeId"
-      )
+    other_notice_id = owner_notice_id(other_token, %{"title" => notice_title <> "_other"})
 
     assert %{
              "success" => true,
@@ -247,11 +235,11 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
 
     assert %{
              "success" => true,
-             "data" => %{"rows" => [%{"noticeId" => ^owner_notice_id}], "total" => 1}
+             "data" => [%{"id" => ^owner_notice_id}]
            } =
              json_response(
-               get(authorized(build_conn(), owner_token), "/api/v1/notices", %{
-                 "noticeTitle" => "owner_http_notice"
+               get(authorized(build_conn(), owner_token), "/api/v1/notices/manage", %{
+                 "title" => "owner_http_notice"
                }),
                200
              )
@@ -262,10 +250,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
            )["error"]["code"] == "validation_failed"
 
     assert json_response(
-             get(
-               authorized(build_conn(), owner_token),
-               "/api/v1/notices/#{other_notice_id}"
-             ),
+             delete(authorized(build_conn(), owner_token), "/api/v1/notices/#{other_notice_id}"),
              404
            )["error"]["code"] == "validation_failed"
 
@@ -290,8 +275,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     assert get(authorized(build_conn(), owner_token), "/api/v1/jobs/#{owner_job_id}").status ==
              200
 
-    assert get(authorized(build_conn(), owner_token), "/api/v1/notices/#{owner_notice_id}").status ==
-             200
+    assert get(authorized(build_conn(), owner_token), "/api/v1/notices/manage").status == 200
   end
 
   @tag :integration
@@ -425,7 +409,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     role = insert_role(data_scope)
     Enum.each(permissions, &link_permission(role.role_id, &1))
     user = insert_user(role.role_id)
-    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+    token = step_up_token(user)
 
     ids = %{
       uuid: Identity.v7(),
@@ -433,7 +417,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
       user_id: user.user_id
     }
 
-    {tokens.token, ids}
+    {token, ids}
   end
 
   defp resource_permissions do
@@ -456,11 +440,9 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     [
       {"role export", :get, "/api/v1/roles/export", %{}},
       {"post list", :get, "/api/v1/posts", %{}},
-      {"post detail", :get, "/api/v1/posts/#{uuid}", %{}},
       {"post write", :post, "/api/v1/posts", %{}},
       {"post delete", :delete, "/api/v1/posts/#{uuid}", %{}},
       {"menu list", :get, "/api/v1/menus", %{}},
-      {"menu detail", :get, "/api/v1/menus/#{uuid}", %{}},
       {"menu write", :post, "/api/v1/menus", %{}},
       {"menu delete", :delete, "/api/v1/menus/#{uuid}", %{}},
       {"config list", :get, "/api/v1/configs", %{}},
@@ -468,7 +450,6 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
       {"config write", :post, "/api/v1/configs", %{}},
       {"config update", :put, "/api/v1/configs/#{uuid}", %{}},
       {"dictionary list", :get, "/api/v1/dictionaries", %{}},
-      {"dictionary detail", :get, "/api/v1/dictionaries/types/#{uuid}", %{}},
       {"dictionary write", :post, "/api/v1/dictionaries", %{}},
       {"dictionary delete", :delete, "/api/v1/dictionaries/types/#{uuid}", %{}},
       {"audit list", :get, "/api/v1/login-logs", %{}},
@@ -482,8 +463,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
       {"job detail", :get, "/api/v1/jobs/#{uuid}", %{}},
       {"job write", :post, "/api/v1/jobs", %{}},
       {"job delete", :delete, "/api/v1/jobs?jobIds=#{uuid}", %{}},
-      {"notice list", :get, "/api/v1/notices", %{}},
-      {"notice detail", :get, "/api/v1/notices/#{uuid}", %{}},
+      {"notice list", :get, "/api/v1/notices/manage", %{}},
       {"notice write", :post, "/api/v1/notices", %{}},
       {"notice delete", :delete, "/api/v1/notices?notice_ids=#{uuid}", %{}},
       {"file detail", :get, "/api/v1/file/download?fileName=#{file_name}", %{}},
@@ -507,6 +487,13 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     assert %{"data" => %{"rows" => [%{^field => id}], "total" => 1}} =
              json_response(response, 200)
 
+    id
+  end
+
+  defp owner_notice_id(token, params) do
+    response = get(authorized(build_conn(), token), "/api/v1/notices/manage", params)
+
+    assert %{"data" => [%{"id" => id}]} = json_response(response, 200)
     id
   end
 
@@ -537,7 +524,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
       {"audit", "/api/v1/login-logs", %{}},
       {"session", "/api/v1/monitor/onlineUsers", %{}},
       {"job", "/api/v1/jobs", %{}},
-      {"notice", "/api/v1/notices", %{}},
+      {"notice", "/api/v1/notices/manage", %{}},
       {"file", "/api/v1/file/download?fileName=#{file_name}", %{}}
     ]
   end

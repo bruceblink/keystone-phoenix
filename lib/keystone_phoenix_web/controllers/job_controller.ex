@@ -12,7 +12,8 @@ defmodule KeystonePhoenixWeb.JobController do
       change_status: "job:update-status",
       run: "job:run",
       cancel: "job:run",
-      delete: "job:delete"
+      delete: "job:delete",
+      delete_single: "job:delete"
     }
 
   plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :job, defer_owner: true
@@ -115,6 +116,14 @@ defmodule KeystonePhoenixWeb.JobController do
   def delete(conn, %{"ids" => ids}), do: delete_jobs(conn, ids)
 
   def delete(conn, _params), do: render_error(conn, :invalid_ids)
+
+  @doc "Deletes one scheduled job."
+  def delete_single(conn, %{"job_id" => job_id}) do
+    case Job.delete_jobs([job_id], authorization: %{principal: conn.assigns.current_user}) do
+      :ok -> json(conn, ApiResponse.ok(%{"deleted" => 1}))
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
 
   defp delete_jobs(conn, job_ids) do
     case Job.delete_jobs(String.split(to_string(job_ids), ","),

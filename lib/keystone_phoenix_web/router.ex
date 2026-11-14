@@ -100,6 +100,7 @@ defmodule KeystonePhoenixWeb.Router do
     put "/jobs/:job_id", JobController, :update
     put "/jobs/:job_id/status", JobController, :change_status
     post "/jobs/:job_id/trigger", JobController, :run
+    delete "/jobs/:job_id", JobController, :delete_single
     delete "/jobs", JobController, :delete
     get "/auth/rsa-public-key", AuthController, :public_key
     post "/auth/login", AuthController, :login
@@ -118,9 +119,6 @@ defmodule KeystonePhoenixWeb.Router do
     post "/api-keys/:id/rotate", ApiKeyController, :rotate
     delete "/api-keys/:id", ApiKeyController, :delete
     get "/dictionaries", DictionaryController, :list_types
-    get "/dictionaries/types/:dict_id", DictionaryController, :show_type
-    get "/dictionaries/items", DictionaryController, :list_data
-    get "/dictionaries/items/:dict_code", DictionaryController, :show_data
     get "/dictionaries/:dict_type/items", DictionaryController, :list_data_by_type
     post "/dictionaries", DictionaryController, :create_type
     put "/dictionaries/types/:dict_id", DictionaryController, :update_type
@@ -136,7 +134,6 @@ defmodule KeystonePhoenixWeb.Router do
     get "/users", UserController, :list
     get "/users/export", UserController, :export
     post "/users/import", UserController, :import
-    get "/users/import-template", UserController, :template
     get "/users/:user_id", UserController, :show
     post "/users", UserController, :create
     put "/users/:user_id", UserController, :update
@@ -146,40 +143,35 @@ defmodule KeystonePhoenixWeb.Router do
     put "/users/:user_id/status", UserController, :change_status
     get "/departments", DepartmentController, :list
     get "/departments/dropdown", DepartmentController, :dropdown
-    get "/departments/:dept_id", DepartmentController, :show
     post "/departments", DepartmentController, :create
     put "/departments/:dept_id", DepartmentController, :update
     delete "/departments/:dept_id", DepartmentController, :delete
     get "/posts", PostController, :list
     get "/posts/export", PostController, :export
-    get "/posts/:post_id", PostController, :show
     post "/posts", PostController, :create
     put "/posts/:post_id", PostController, :update
     delete "/posts/:post_id", PostController, :delete
     get "/roles", RoleController, :list
     get "/roles/export", RoleController, :export
-    get "/roles/:role_id", RoleController, :show
     post "/roles", RoleController, :create
     put "/roles/:role_id", RoleController, :update
     delete "/roles", RoleController, :delete
     delete "/roles/:role_id", RoleController, :delete
-    put "/roles/:role_id/status", RoleController, :change_status
-    put "/roles/:role_id/data-scope", RoleController, :data_scope
     put "/roles/:role_id/permissions", RoleController, :permissions
     get "/roles/:role_id/users", RoleController, :users
     put "/roles/:role_id/users", RoleController, :assign_users
     delete "/roles/:role_id/users", RoleController, :revoke_users
     get "/menus", MenuController, :list
     get "/menus/dropdown", MenuController, :dropdown
-    get "/menus/:menu_id", MenuController, :show
     post "/menus", MenuController, :create
     put "/menus/:menu_id", MenuController, :update
+    put "/menus/:menu_id/roles", MenuController, :assign_roles
     delete "/menus/:menu_id", MenuController, :delete
-    get "/notices", NoticeController, :list
-    get "/notices/manage", NoticeController, :list
-    get "/notices/:notice_id", NoticeController, :show
+    get "/notices", NoticeController, :public_list
+    get "/notices/manage", NoticeController, :manage_list
     post "/notices", NoticeController, :create
     put "/notices/:notice_id", NoticeController, :update
+    post "/notices/:notice_id/publish", NoticeController, :publish
     delete "/notices", NoticeController, :delete
     delete "/notices/:notice_id", NoticeController, :delete
     get "/login-logs", LogController, :login_logs

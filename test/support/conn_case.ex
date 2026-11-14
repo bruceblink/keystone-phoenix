@@ -35,4 +35,61 @@ defmodule KeystonePhoenixWeb.ConnCase do
     KeystonePhoenix.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
+  @doc "为 HTTP 测试用户完成一次 enrollment 和当前会话 step-up。"
+  def step_up_token(user, password \\ "Strong!123") do
+    {:ok, initial} = KeystonePhoenix.Auth.login_plaintext(user.username, password, true)
+
+    {:ok, claims} =
+      KeystonePhoenix.Auth.Token.verify(
+        initial.token,
+        KeystonePhoenix.Auth.Token.access_type()
+      )
+
+    {:ok, enrollment} =
+      KeystonePhoenix.Auth.Mfa.begin_enrollment(
+        user.user_id,
+        user.username,
+        claims["client_id"],
+        claims["sid"]
+      )
+
+    secret = enrollment.secret
+    now = System.system_time(:second)
+
+    {:ok, _verification} =
+      KeystonePhoenix.Auth.Mfa.verify_enrollment(
+        user.user_id,
+        enrollment.challenge_id,
+        claims["client_id"],
+        claims["sid"],
+        KeystonePhoenix.Auth.Mfa.Totp.code(secret, now),
+        nil
+      )
+
+    {:ok, fresh} = KeystonePhoenix.Auth.login_plaintext(user.username, password, true)
+
+    {:ok, fresh_claims} =
+      KeystonePhoenix.Auth.Token.verify(fresh.token, KeystonePhoenix.Auth.Token.access_type())
+
+    {:ok, challenge} =
+      KeystonePhoenix.Auth.Mfa.begin_step_up(
+        user.user_id,
+        fresh_claims["client_id"],
+        fresh_claims["sid"]
+      )
+
+    {:ok, result} =
+      KeystonePhoenix.Auth.complete_mfa_step_up(
+        fresh.token,
+        challenge.id,
+        KeystonePhoenix.Auth.Mfa.Totp.code(
+          secret,
+          now + KeystonePhoenix.Auth.Mfa.Totp.step_seconds()
+        ),
+        nil
+      )
+
+    result.token
+  end
 end

@@ -141,15 +141,6 @@ defmodule KeystonePhoenixWeb.LogController do
     end
   end
 
-  defp export_fetcher(fetcher, authorization) do
-    fn params ->
-      case fetcher.(params, authorization) do
-        {:ok, page} -> {:ok, page}
-        {:error, reason} -> {:error, reason}
-      end
-    end
-  end
-
   @doc "Soft deletes operation audit records."
   def delete_operation_logs(conn, %{"operationIds" => ids}) do
     delete_operation_logs_by_ids(conn, ids)
@@ -165,6 +156,15 @@ defmodule KeystonePhoenixWeb.LogController do
          ) do
       :ok -> json(conn, ApiResponse.ok())
       {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
+  defp export_fetcher(fetcher, authorization) do
+    fn params ->
+      case fetcher.(params, authorization) do
+        {:ok, page} -> {:ok, page}
+        {:error, reason} -> {:error, reason}
+      end
     end
   end
 

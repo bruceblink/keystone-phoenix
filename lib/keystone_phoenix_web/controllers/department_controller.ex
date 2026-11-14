@@ -4,14 +4,12 @@ defmodule KeystonePhoenixWeb.DepartmentController do
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
       list: "department:read",
-      show: "department:read",
       dropdown: "department:read",
       create: "department:create",
       update: "department:update",
       delete: "department:delete"
     },
     data_scope: %{
-      show: {:dept, "dept_id"},
       update: {:dept, "dept_id"},
       delete: {:dept, "dept_id"}
     }
@@ -22,14 +20,6 @@ defmodule KeystonePhoenixWeb.DepartmentController do
   @doc "Returns departments in display order."
   def list(conn, params) do
     json(conn, ApiResponse.ok(Department.list_depts(params, conn.assigns.current_user)))
-  end
-
-  @doc "Returns a department."
-  def show(conn, %{"dept_id" => dept_id}) do
-    case Department.get_dept(dept_id, conn.assigns.current_user) do
-      {:ok, dept} -> json(conn, ApiResponse.ok(Department.dept_to_map(dept)))
-      {:error, :not_found} -> render_error(conn, :not_found)
-    end
   end
 
   @doc "Returns the department dropdown source."

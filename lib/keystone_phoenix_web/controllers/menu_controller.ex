@@ -4,8 +4,8 @@ defmodule KeystonePhoenixWeb.MenuController do
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
       list: "menu:read",
-      show: "menu:read",
       dropdown: "menu:read",
+      assign_roles: "menu:manage",
       create: "menu:create",
       update: "menu:update",
       delete: "menu:delete"
@@ -25,15 +25,6 @@ defmodule KeystonePhoenixWeb.MenuController do
     end
   end
 
-  @doc "Returns a menu."
-  def show(conn, %{"menu_id" => menu_id}) do
-    case Menu.get_menu(menu_id, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, menu} -> json(conn, ApiResponse.ok(Menu.menu_to_map(menu)))
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, reason} -> render_error(conn, reason)
-    end
-  end
-
   @doc "Returns the menu dropdown source."
   def dropdown(conn, _params) do
     case Menu.list_dropdown(authorization: %{principal: conn.assigns.current_user}) do
@@ -41,6 +32,19 @@ defmodule KeystonePhoenixWeb.MenuController do
       {:error, reason} -> render_error(conn, reason)
     end
   end
+
+  @doc "Replaces the role codes assigned to a menu."
+  def assign_roles(conn, %{"menu_id" => menu_id, "roleCodes" => role_codes})
+      when is_list(role_codes) do
+    case Menu.RoleAssignment.replace(menu_id, role_codes,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
+      :ok -> json(conn, ApiResponse.ok(%{"updated" => true}))
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
+  def assign_roles(conn, _params), do: render_error(conn, :invalid_role_codes)
 
   @doc "Creates a menu or button permission."
   def create(conn, params) do
@@ -101,6 +105,12 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   defp render_error(conn, :data_scope_denied) do
     conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
+  end
+
+  defp render_error(conn, reason) when reason in [:invalid_role_codes, :role_not_found] do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "角色编码无效"))
   end
 
   defp render_error(conn, reason)

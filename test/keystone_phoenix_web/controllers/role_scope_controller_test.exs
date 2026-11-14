@@ -3,7 +3,6 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
 
   import Ecto.Query
 
-  alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Authz.{PolicyCache, SysPermission, SysRolePermission}
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Repo
@@ -16,11 +15,11 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     grant_permission(actor_role.role_id, "role:manage")
     target_role = create_role("TENANT")
     actor = create_user(actor_role.role_id)
-    {:ok, tokens} = Auth.login_plaintext(actor.username, "Strong!123")
+    token = step_up_token(actor)
 
     response =
       put(
-        authorized(tokens.token),
+        authorized(token),
         "/api/v1/roles/#{target_role.role_id}/permissions",
         %{"permissions" => ["user:read", "role:read"]}
       )
@@ -47,12 +46,12 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     actor = create_user(actor_role.role_id)
     target = create_user(nil)
     missing_id = Identity.v7()
-    {:ok, tokens} = Auth.login_plaintext(actor.username, "Strong!123")
+    token = step_up_token(actor)
 
     assign_path = "/api/v1/roles/#{target_role.role_id}/users"
 
     response =
-      put(authorized(tokens.token), assign_path, %{"userIds" => [target.user_id, missing_id]})
+      put(authorized(token), assign_path, %{"userIds" => [target.user_id, missing_id]})
 
     assert get_in(json_response(response, 404), ["error", "code"]) == "validation_failed"
     assert Repo.get!(SysUser, target.user_id).role_id == nil
@@ -60,7 +59,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     assert %{"success" => true} =
              json_response(
                put(
-                 authorized(tokens.token),
+                 authorized(token),
                  assign_path,
                  %{"userIds" => [target.user_id]}
                ),
@@ -72,7 +71,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     unassign_path = "/api/v1/roles/#{target_role.role_id}/users"
 
     response =
-      delete(authorized(tokens.token), unassign_path, %{"userIds" => [target.user_id, missing_id]})
+      delete(authorized(token), unassign_path, %{"userIds" => [target.user_id, missing_id]})
 
     assert get_in(json_response(response, 404), ["error", "code"]) == "validation_failed"
     assert Repo.get!(SysUser, target.user_id).role_id == target_role.role_id
@@ -88,12 +87,12 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     unallocated = create_user(nil)
     allocated_id = allocated.user_id
     unallocated_id = unallocated.user_id
-    {:ok, tokens} = Auth.login_plaintext(actor.username, "Strong!123")
+    token = step_up_token(actor)
 
     # 查询接口必须通过真实路由返回 UUID 用户记录，并保持筛选条件生效。
     allocated_response =
       get(
-        authorized(tokens.token),
+        authorized(token),
         "/api/v1/roles/#{target_role.role_id}/users",
         %{"allocated" => "true", "username" => allocated.username}
       )
@@ -105,7 +104,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
 
     unallocated_response =
       get(
-        authorized(tokens.token),
+        authorized(token),
         "/api/v1/roles/#{target_role.role_id}/users",
         %{"allocated" => "false", "username" => unallocated.username}
       )
@@ -124,11 +123,11 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     second_role = create_role("TENANT")
     missing_id = Identity.v7()
     actor = create_user(actor_role.role_id)
-    {:ok, tokens} = Auth.login_plaintext(actor.username, "Strong!123")
+    token = step_up_token(actor)
 
     rejected =
       delete(
-        authorized(tokens.token),
+        authorized(token),
         "/api/v1/roles",
         %{"role_ids" => Enum.join([first_role.role_id, missing_id, second_role.role_id], ",")}
       )
@@ -139,7 +138,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
 
     success =
       delete(
-        authorized(tokens.token),
+        authorized(token),
         "/api/v1/roles",
         %{
           "role_ids" =>

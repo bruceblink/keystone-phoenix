@@ -5,7 +5,6 @@ defmodule KeystonePhoenixWeb.PostController do
     permissions: %{
       list: "post:read",
       export: "post:export",
-      show: "post:read",
       create: "post:create",
       update: "post:update",
       delete: "post:delete"
@@ -61,15 +60,6 @@ defmodule KeystonePhoenixWeb.PostController do
         {:ok, page} -> {:ok, page}
         {:error, reason} -> {:error, reason}
       end
-    end
-  end
-
-  @doc "Returns a post."
-  def show(conn, %{"post_id" => post_id}) do
-    case Post.get_post(post_id, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, post} -> json(conn, ApiResponse.ok(Post.post_to_map(post)))
-      {:error, :not_found} -> render_error(conn, :not_found)
-      {:error, reason} -> render_error(conn, reason)
     end
   end
 

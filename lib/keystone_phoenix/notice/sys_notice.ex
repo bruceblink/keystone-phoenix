@@ -12,6 +12,8 @@ defmodule KeystonePhoenix.Notice.SysNotice do
     field :notice_type, :integer
     field :notice_content, :string
     field :status, :integer, default: 1
+    field :published, :boolean, default: false
+    field :publish_at, :utc_datetime_usec
     field :creator_id, :binary_id
     field :owner_id, :binary_id
     field :updater_id, :binary_id

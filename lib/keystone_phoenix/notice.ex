@@ -13,9 +13,12 @@ defmodule KeystonePhoenix.Notice do
   alias KeystonePhoenix.User
 
   @attrs [
+    {"title", :notice_title},
     {"noticeTitle", :notice_title},
+    {"content", :notice_content},
     {"noticeType", :notice_type},
     {"noticeContent", :notice_content},
+    {"enabled", :status},
     {"status", :status},
     {"remark", :remark}
   ]
@@ -33,6 +36,39 @@ defmodule KeystonePhoenix.Notice do
     paged = Pagination.page_rows(query, params, :notice_id)
     creator_names = creator_names(paged.rows)
     %{paged | rows: Enum.map(paged.rows, &notice_to_map(&1, creator_names))}
+  end
+
+  @doc "Returns only published and enabled notices for the public Native endpoint."
+  def list_public_notices do
+    now = DateTime.utc_now()
+
+    from(n in SysNotice,
+      where:
+        n.deleted == false and n.status == 1 and n.published == true and
+          (is_nil(n.publish_at) or n.publish_at <= ^now),
+      order_by: [desc: fragment("coalesce(?, ?)", n.publish_at, n.create_time), desc: n.notice_id]
+    )
+    |> Repo.all()
+    |> native_notice_rows()
+  end
+
+  @doc "Returns all notices in the authenticated scope using the Native DTO."
+  def list_managed_notices(params, options) when is_map(params) and is_list(options) do
+    with {:ok, scope} <- Authorization.authorize_owner(options, "notice:read") do
+      query =
+        from(n in SysNotice,
+          where: n.deleted == false,
+          order_by: [desc: n.notice_id]
+        )
+        |> owner_filter(scope)
+        |> filter_contains(
+          :notice_title,
+          params["title"] || params[:title] || params["noticeTitle"]
+        )
+        |> filter_integer(:notice_type, params["noticeType"] || params[:notice_type])
+
+      {:ok, query |> Repo.all() |> native_notice_rows()}
+    end
   end
 
   @doc "在检查公告权限和资源范围后查询公告列表。"
@@ -88,15 +124,50 @@ defmodule KeystonePhoenix.Notice do
 
   def update_notice(_id, _attrs, _options), do: {:error, :authorization_required}
 
+  @doc "Publishes or unpublishes a notice in the authenticated owner scope."
+  def publish_notice(id, published, options)
+
+  def publish_notice(id, published, options)
+      when is_boolean(published) and is_list(options) do
+    with {:ok, scope} <- Authorization.authorize_owner(options, "notice:update"),
+         {:ok, notice} <- get_notice_scoped(id, scope) do
+      changeset =
+        notice
+        |> Ecto.Changeset.change(%{
+          published: published,
+          publish_at: if(published, do: DateTime.utc_now(), else: nil)
+        })
+        |> Audit.put_actor(:updater_id, Command.actor_id(options))
+
+      Repo.update(changeset)
+    end
+  end
+
+  def publish_notice(_id, _published, _options), do: {:error, :authorization_required}
+
   def delete_notices(ids, options)
 
   def delete_notices(ids, options) when is_list(options) do
+    with {:ok, scope} <- Authorization.authorize_owner(options, "notice:delete") do
+      case do_delete_notices(ids, scope) do
+        {:ok, _count} -> :ok
+        error -> error
+      end
+    end
+  end
+
+  def delete_notices(_ids, _options), do: {:error, :authorization_required}
+
+  @doc "Deletes notices and returns the number of records removed."
+  def delete_notices_count(ids, options)
+
+  def delete_notices_count(ids, options) when is_list(options) do
     with {:ok, scope} <- Authorization.authorize_owner(options, "notice:delete") do
       do_delete_notices(ids, scope)
     end
   end
 
-  def delete_notices(_ids, _options), do: {:error, :authorization_required}
+  def delete_notices_count(_ids, _options), do: {:error, :authorization_required}
 
   defp list_notices_scoped(params, scope) do
     query =
@@ -152,11 +223,11 @@ defmodule KeystonePhoenix.Notice do
           Repo.rollback(:not_found)
         else
           Repo.update_all(scoped, set: [deleted: true, update_time: DateTime.utc_now()])
-          :ok
+          count
         end
       end)
       |> case do
-        {:ok, :ok} -> :ok
+        {:ok, count} -> {:ok, count}
         {:error, reason} -> {:error, reason}
       end
     end
@@ -184,15 +255,69 @@ defmodule KeystonePhoenix.Notice do
     }
   end
 
+  @doc "Maps an internal notice to the Native notice DTO."
+  def native_notice_to_map(notice, creator_names \\ %{}) do
+    %{
+      "id" => notice.notice_id,
+      "title" => notice.notice_title,
+      "content" => notice.notice_content,
+      "noticeType" => native_notice_type(notice.notice_type),
+      "published" => notice.published,
+      "enabled" => notice.status == 1,
+      "publishAt" => format_native_datetime(notice.publish_at),
+      "createdBy" => Map.get(creator_names, notice.creator_id, notice.creator_id || ""),
+      "createdAt" => format_native_datetime(notice.create_time)
+    }
+  end
+
   defp normalize_attrs(attrs) do
     Enum.reduce(@attrs, %{}, fn {json_key, atom_key}, normalized ->
       cond do
-        Map.has_key?(attrs, json_key) -> Map.put(normalized, atom_key, Map.get(attrs, json_key))
-        Map.has_key?(attrs, atom_key) -> Map.put(normalized, atom_key, Map.get(attrs, atom_key))
-        true -> normalized
+        Map.has_key?(attrs, json_key) ->
+          Map.put(normalized, atom_key, normalize_attr(atom_key, Map.get(attrs, json_key)))
+
+        Map.has_key?(attrs, atom_key) ->
+          Map.put(normalized, atom_key, normalize_attr(atom_key, Map.get(attrs, atom_key)))
+
+        true ->
+          normalized
       end
     end)
   end
+
+  defp normalize_attr(:notice_type, value) when is_binary(value) do
+    case String.downcase(String.trim(value)) do
+      "notification" ->
+        1
+
+      "notice" ->
+        1
+
+      "announcement" ->
+        2
+
+      "bulletin" ->
+        2
+
+      value ->
+        case Integer.parse(value) do
+          {number, ""} -> number
+          _ -> value
+        end
+    end
+  end
+
+  defp normalize_attr(:status, value) when is_boolean(value), do: if(value, do: 1, else: 0)
+  defp normalize_attr(_key, value), do: value
+
+  defp native_notice_rows(notices) do
+    names = creator_names(notices)
+    Enum.map(notices, &native_notice_to_map(&1, names))
+  end
+
+  defp native_notice_type(1), do: "notification"
+  defp native_notice_type(2), do: "announcement"
+  defp native_notice_type(type), do: to_string(type)
 
   defp creator_names(notices) do
     notices
@@ -235,4 +360,10 @@ defmodule KeystonePhoenix.Notice do
 
   defp format_datetime(%NaiveDateTime{} = datetime),
     do: Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
+
+  defp format_native_datetime(nil), do: nil
+  defp format_native_datetime(%DateTime{} = datetime), do: DateTime.to_iso8601(datetime)
+
+  defp format_native_datetime(%NaiveDateTime{} = datetime),
+    do: datetime |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_iso8601()
 end
