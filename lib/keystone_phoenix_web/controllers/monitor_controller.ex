@@ -7,7 +7,9 @@ defmodule KeystonePhoenixWeb.MonitorController do
       server_info: "server:read",
       online_users: "online-session:read",
       logout_online_user: "online-session:revoke",
-      network_status_stream: "server:read"
+      network_status_stream: "server:read",
+      security_metrics: "audit:read",
+      security_report: "audit:read"
     }
 
   plug KeystonePhoenixWeb.Plugs.RequireResourceScope, resource: :session
@@ -77,6 +79,39 @@ defmodule KeystonePhoenixWeb.MonitorController do
     end
   end
 
+  @doc "Returns security operation metrics and a redacted audit report."
+  def security_metrics(conn, _params) do
+    case KeystonePhoenix.Security.metrics(authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, metrics} -> json(conn, ApiResponse.ok(metrics))
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
+  def security_report(conn, params) do
+    case KeystonePhoenix.Security.report(
+           params,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
+      {:ok, report} ->
+        json(conn, ApiResponse.ok(report))
+
+      {:error, :invalid_horizon} ->
+        render_error(conn, :validation_failed, "horizonDays 无效")
+
+      {:error, :invalid_window} ->
+        render_error(conn, :validation_failed, "时间范围无效")
+
+      {:error, :invalid_time} ->
+        render_error(conn, :validation_failed, "时间格式无效")
+
+      {:error, :unsupported_credential_filter} ->
+        render_error(conn, :validation_failed, "当前报告不支持凭据筛选")
+
+      {:error, reason} ->
+        render_error(conn, reason)
+    end
+  end
+
   defp render_error(conn, :not_found) do
     conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "找不到在线会话"))
   end
@@ -93,5 +128,11 @@ defmodule KeystonePhoenixWeb.MonitorController do
 
   defp render_error(conn, :data_scope_denied) do
     conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
+  end
+
+  defp render_error(conn, :validation_failed, message) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, message))
   end
 end
