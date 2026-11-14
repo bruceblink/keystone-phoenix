@@ -24,6 +24,18 @@ Native 作为 HTTP 入口基准，Phoenix 已完成以下路径处理：
 
 Phoenix 证据：`mix phx.routes` 未发现 `/system`、`/logs`、`auth/passkey`、`health/ready`、`monitor/networkStatus` 和用户导入模板旧入口。路由和权限修改已在 `f8d3db9` 提交。
 
+### 路由集合验收
+
+2026-11-15 对两个后端的业务路由做了静态集合核对。Native 的 JAX-RS 类级路径与
+`quarkus.http.root-path=/api` 合并后，再与 Phoenix 的 `mix phx.routes` 结果比较；参数
+占位符 `{id}` 与 `:id` 先归一为同一形状。两边均有 109 条业务路由，方法分布均为
+`GET 41`、`POST 29`、`PUT 20`、`DELETE 19`。归一化后 Native-only 和 Phoenix-only
+业务路由均为 0，也没有重复的 `HTTP method + path`。Phoenix 额外的 3 条 GET 路由是
+LiveView 页面和头像资源，不属于后端业务接口。
+
+Native 还有 `/api/openapi` 和 `/api/swagger` 文档入口。它们由 Quarkus 生成，不纳入
+业务接口集合。参数占位符的语言差异不表示接口缺失。
+
 ## DTO 和数据模型验收结果
 
 Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。用户、角色、部门、岗位、菜单、配置、字典、公告、任务、审计、个人资料和监控均有对应的字段适配和回归测试。列表接口按 Native 约定返回数组或 `items/page/size/total`，创建和更新返回实体，删除返回 `deleted`，任务触发返回 `triggered`。
@@ -34,6 +46,6 @@ Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。�
 
 ## UI 验收边界
 
-Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 的 `pnpm test:run`、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix `mix test --include integration` 已通过 363 项。
+Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 的 `pnpm test:run`、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix `mix test --include integration` 已通过 365 项。
 
 Phoenix LiveView 已覆盖用户、角色、部门、岗位、菜单、配置、字典、公告、日志、任务、监控、个人资料和 API Key 面板。当前没有可用的真实浏览器窗口证据；MFA 登录挑战、OIDC 按钮和 WebAuthn 页面也不是两个前端共同提供的功能，不能作为 Phoenix 单边已完成项。

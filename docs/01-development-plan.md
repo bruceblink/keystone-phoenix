@@ -28,7 +28,7 @@
 
 本轮补充基线（2026-11-14）。用户批量删除增加真实 PostgreSQL HTTP 回归：混合有效与缺失 UUID 时返回 `404 validation_failed` 并保持原记录及会话不变；混合本范围与越权用户时返回 `403 data_scope_denied` 并保持原记录不变；单目标删除成功后，目标用户的活动会话被撤销。集成测试为 349 项通过，默认测试为 308 项通过，开发和生产严格编译、源码行数和差异检查通过。
 
-本轮补充基线为 `df6bf51`。角色新增 `DELETE /api/v1/roless?role_ids=...` 批量删除入口；领域层先去重并在事务中锁定全部目标，任一 UUID 无效、角色缺失、管理员角色或仍有用户时整体回滚，成功响应返回实际删除数量。`RoleScopeControllerTest` 已通过真实 PostgreSQL HTTP 验证混合缺失目标回滚和重复 ID 去重；默认测试、集成测试、开发和生产严格编译、源码行数及差异检查均通过。
+本轮补充基线为 `df6bf51`。角色新增 `DELETE /api/v1/roles?role_ids=...` 批量删除入口；历史记录中的 `roless` 是路径拼写错误。领域层先去重并在事务中锁定全部目标，任一 UUID 无效、角色缺失、管理员角色或仍有用户时整体回滚，成功响应返回实际删除数量。`RoleScopeControllerTest` 已通过真实 PostgreSQL HTTP 验证混合缺失目标回滚和重复 ID 去重；默认测试、集成测试、开发和生产严格编译、源码行数及差异检查均通过。
 
 本地功能验收基线（2026-11-14）：Phoenix 当前 `main` 已完成用户、角色、岗位、部门、菜单、配置、字典、公告、任务、登录日志、操作日志、API Key、会话和文件管理的统一权限入口。用户、部门和个人资料使用主体查询范围；公告和任务使用 `OWNER` 字段；角色、岗位、菜单、配置、字典、审计、会话等没有稳定 owner/member 关系的全局资源要求 `ALL` 或 `TENANT`。`mix test --include integration` 当前通过 350 项，开发/生产严格编译、源码行数和差异检查通过。生产公网 IdP、浏览器/硬件 Passkey、多节点、生产代理链和发布窗口继续作为外部运维验收，不阻塞本地功能完成。
 
@@ -265,7 +265,7 @@
 
 验收条件：记录提交、镜像摘要、数据库版本、端口、启动与清理步骤、测试结果和回滚步骤。实际镜像及数据恢复检查未通过时，不创建 `v0.3.0` 标签或声称发布成功。`9457759` 的实际镜像、重复迁移、文件卷重启持久化和数据库备份恢复已通过；当前镜像的认证上传下载、HTTP RSA 登录、refresh token 轮换、旧 token 拒绝、新 access token 访问和 logout 撤销检查已通过。本机 macOS Chrome 已完成本地开发服务窗口验收；当前生产镜像已在独立 PostgreSQL 18 容器和 `localhost:4001` 端口完成真实 Chrome 窗口验收，健康检查、正式登录页、管理员概览、部门查询与模态框、运行监控、退出登录以及 `390×844` 窄屏无横向溢出均通过。
 
-2026-11-09 验收结果：提交 `492205d` 的 `MIX_ENV=prod` release 通过严格编译。使用临时 PostgreSQL 18 数据库完成空库迁移和重复迁移。运行时镜像通过 `/health`、`/health/ready`、RSA 登录、refresh token 刷新、退出、通用文件 multipart 上传、下载和路径遍历拒绝。上传目录使用独立 Docker volume，容器重启后文件仍存在。数据库使用 `pg_dump` 和 `pg_restore` 完成恢复，恢复库包含 9 个 migration 记录。临时数据库、容器和 volume 已清理；验证镜像摘要为 `sha256:1fd3131867e03b6d0ee718dd9c9546576fe1d1a0213d39c30b4c855368db8227`，大小为 160873155 字节。
+2026-11-09 历史验收结果：提交 `492205d` 的 `MIX_ENV=prod` release 通过严格编译。使用临时 PostgreSQL 18 数据库完成空库迁移和重复迁移。运行时镜像当时通过 `/health`、`/health/ready`、RSA 登录、refresh token 刷新、退出、通用文件 multipart 上传、下载和路径遍历拒绝。当前健康接口已统一为 `/api/v1/health`，历史 `/health/ready` 结果不作为当前接口证据。上传目录使用独立 Docker volume，容器重启后文件仍存在。数据库使用 `pg_dump` 和 `pg_restore` 完成恢复，恢复库包含 9 个 migration 记录。临时数据库、容器和 volume 已清理；验证镜像摘要为 `sha256:1fd3131867e03b6d0ee718dd9c9546576fe1d1a0213d39c30b4c855368db8227`，大小为 160873155 字节。
 
 标准 `Dockerfile` 已在 `3568a95` 中默认使用 `repo.hex.pm`，并设置 `HEX_CACERTS_PATH`、`LC_ALL` 和 `ELIXIR_ERL_OPTIONS`。历史记录中的本机 Docker 构建仅作为旧验收证据保留；当前生产镜像统一由 GitHub Actions 构建，本机不执行生产 Docker 构建。历史候选镜像 `keystone-phoenix:acceptance-e4e28c2` 的 digest 为 `sha256:c5ade29d1084a30b29d2866d81465e7f37f7dd5e5c23de700547520eeda63de7`。`scripts/release_smoke.sh` 已通过空库迁移、重复迁移、RSA 登录、refresh 轮换、旧 refresh 重放拒绝、API Key 业务访问和撤销、数据库停止/恢复、文件上传下载、卷持久化、容器重启和退出登录检查。生产镜像窗口验收仍需使用真实浏览器完成。
 
