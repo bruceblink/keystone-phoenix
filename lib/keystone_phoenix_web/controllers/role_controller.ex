@@ -219,6 +219,8 @@ defmodule KeystonePhoenixWeb.RoleController do
       :ok -> json(conn, ApiResponse.ok())
       {:error, :forbidden} -> render_error(conn, :forbidden)
       {:error, :invalid_ids} -> render_error(conn, :invalid_ids)
+      # 混合目标由领域层整体回滚，并按不存在目标返回稳定的 HTTP 错误。
+      {:error, :not_found} -> render_error(conn, :not_found)
     end
   end
 
