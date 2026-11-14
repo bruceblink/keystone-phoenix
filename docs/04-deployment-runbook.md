@@ -30,7 +30,7 @@ docker build --build-arg IMAGE_REGISTRY= --build-arg HEX_MIRROR=https://repo.hex
   -t keystone-phoenix:0.3.0 .
 ```
 
-准备生产环境文件，至少包含 `DATABASE_URL`、`SECRET_KEY_BASE`、`JWT_PRIVATE_KEY`、`PHX_HOST` 和 `FILE_BASE_DIR`。生产默认启用数据库 SSL；只有在可信本地网络测试时才显式设置 `DATABASE_SSL_ALLOW_INSECURE=true`。应用启动前会检查 `FILE_BASE_DIR` 可创建、可写和可删除。PostgreSQL 已经可用后，先执行迁移：
+准备生产环境文件，至少包含 `DATABASE_URL`、`SECRET_KEY_BASE`、`JWT_PRIVATE_KEY`、`PHX_HOST` 和 `FILE_BASE_DIR`。生产默认启用数据库 SSL；只有在可信本地网络测试时才显式设置 `DATABASE_SSL_ALLOW_INSECURE=true`。生产运行时默认要求 `PHX_FORCE_SSL=true`，并使用反向代理传入 `x-forwarded-proto`。如果必须在本地使用 HTTP，必须同时设置 `PHX_FORCE_SSL=false` 和 `PHX_ALLOW_INSECURE_HTTP=true`；这两个设置不能用于生产流量。`CORS_ALLOWED_ORIGINS` 使用逗号分隔的完整来源地址，生产来源必须使用 `https://`，留空表示不允许跨域读取。应用启动前会检查 `FILE_BASE_DIR` 可创建、可写和可删除，也会拒绝无效的 CORS 来源和不安全的 HTTP 配置。PostgreSQL 已经可用后，先执行迁移：
 
 ```bash
 docker run --rm \
@@ -53,19 +53,22 @@ docker run -d --name keystone-phoenix \
   keystone-phoenix:0.3.0 start
 ```
 
-依次检查存活、数据库就绪和 LiveView 首页：
+依次检查存活、数据库就绪、LiveView 首页和安全响应头：
 
 ```bash
 curl --fail http://127.0.0.1:4000/api/v1/health
 curl --fail http://127.0.0.1:4000/api/v1/health/ready
 curl --fail http://127.0.0.1:4000/
+curl --fail --include http://127.0.0.1:4000/api/v1/health | grep -E 'x-content-type-options|x-frame-options|referrer-policy|content-security-policy'
 ```
 
 发布 smoke 还需要在临时环境停止 PostgreSQL，确认 `/api/v1/health/ready` 返回失败且容器健康状态变为 `unhealthy`；恢复 PostgreSQL 后，确认数据库就绪和容器健康状态恢复为 `healthy`。仓库中的 `scripts/release_smoke.sh` 会自动执行这组检查。
 
-认证 smoke 流程应覆盖：获取 `/api/v1/auth/rsa-public-key`，使用 RSA 公钥登录，调用 `/api/v1/auth/me` 和 `/api/v1/auth/routers`，刷新 `/api/v1/auth/refresh`，最后调用 `/api/v1/auth/logout`。启用验证码时还要先验证 `/api/v1/auth/config` 和 `/api/v1/auth/captcha`。启用 MFA 的用户还要验证 `/api/v1/auth/mfa/verify`、enrollment、恢复码和 step-up 的失败边界。
+认证 smoke 流程应覆盖：获取 `/api/v1/auth/rsa-public-key`，使用 RSA 公钥登录，调用 `/api/v1/auth/me` 和 `/api/v1/auth/routers`，刷新 `/api/v1/auth/refresh`，最后调用 `/api/v1/auth/logout`。还必须检查标准 `/api/.well-known/jwks.json` 返回唯一的 RSA JWK，并确认 `kid`、`alg`、`use`、`n` 和 `e` 字段有效。启用验证码时还要先验证 `/api/v1/auth/config` 和 `/api/v1/auth/captcha`。`scripts/release_smoke.sh` 会验证 MFA 管理入口对 API Key 和未认证请求的拒绝；完整 TOTP enrollment、恢复码一次性消费和 step-up 成功链路由集成测试和独立运行验收覆盖。
 
-API Key smoke 流程应使用具有 `api-key:create`、`api-key:read`、`api-key:rotate` 和 `api-key:revoke` 的 Bearer 用户调用 `/api/v1/api-keys`，确认创建响应只返回一次明文，列表不返回明文或摘要，轮换后旧密钥立即拒绝，撤销后认证失败。
+API Key smoke 流程应使用具有 `api-key:create`、`api-key:read`、`api-key:revoke`、`user:read` 和 `mfa:manage` 的 Bearer 用户调用 `/api/v1/api-keys`，确认创建响应只返回一次明文，列表不返回明文或摘要，使用 API Key 的业务用户查询成功，MFA、人类会话和 API Key 管理路径返回 `403 permission_denied`，撤销后认证失败。轮换行为由集成测试和独立运行验收覆盖。
+
+资源范围 smoke 使用管理员的 `ALL` 范围验证一条允许的业务路径。管理员 smoke 不代表非管理员拒绝规则已经通过镜像链路验证；`data_scope_denied` 的 `SELF`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM` 和资源组合矩阵由集成测试和真实 HTTP 验收覆盖。
 
 文件 smoke 流程应上传一个允许的头像和一个普通文本/PDF 文件，确认头像可以通过 `/profile/...` 内联返回，普通文件可以下载，并确认不存在路径穿越。
 

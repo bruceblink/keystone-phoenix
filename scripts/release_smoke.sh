@@ -80,6 +80,9 @@ common_env=(
   --env "MFA_RECOVERY_PEPPER=${mfa_recovery_pepper}"
   --env "MFA_CHALLENGE_LIFETIME_SECONDS=300"
   --env PHX_HOST=localhost
+  # 烟测容器只监听内部 HTTP；生产默认由运行时配置强制 HTTPS。
+  --env PHX_FORCE_SSL=false
+  --env PHX_ALLOW_INSECURE_HTTP=true
   --env JOB_SCHEDULER_ENABLED=false
   --env FILE_BASE_DIR=/var/lib/keystone/resources
 )
@@ -89,6 +92,10 @@ docker run --rm --network "${network}" "${common_env[@]}" "${image}" eval \
 
 docker run --rm --network "${network}" "${common_env[@]}" "${image}" eval \
   "KeystonePhoenix.Release.migrate()"
+
+# 烟测数据库从空库启动；只在临时数据库建立最小管理员角色，避免依赖外部种子状态。
+docker run --rm --network "${network}" "${common_env[@]}" "${image}" eval \
+  'Application.ensure_all_started(:keystone_phoenix); alias KeystonePhoenix.{Identity, Repo}; alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}; alias KeystonePhoenix.Role.SysRole; role_id = Identity.v5(Identity.permission_namespace(), "system:role:admin"); now = DateTime.utc_now(); Repo.insert_all(SysRole, [%{role_id: role_id, role_name: "Smoke administrator", role_key: "admin", role_sort: 1, data_scope: "ALL", dept_id_set: "", status: 1, deleted: false, create_time: now, update_time: now}], on_conflict: :nothing, conflict_target: [:role_id]); permissions = Repo.all(SysPermission) |> Enum.map(& &1.permission_id); Repo.insert_all(SysRolePermission, Enum.map(permissions, &%{role_id: role_id, permission_id: &1}), on_conflict: :nothing, conflict_target: [:role_id, :permission_id])' >/dev/null
 
 docker exec "${postgres}" pg_dump -U postgres --format=custom "${database}" >"${dump_file}"
 restore_database="keystone_phoenix_smoke_restore"
@@ -162,6 +169,90 @@ current_user_json="$(docker exec "${app}" curl --fail --silent \
   http://127.0.0.1:4000/api/v1/auth/me)"
 python -c 'import json, sys; raise SystemExit(0 if json.load(sys.stdin).get("success") is True else 1)' \
   <<<"${current_user_json}"
+
+# 标准 JWK Set 必须与 RSA 登录使用同一组公钥，并返回可轮换的 kid、alg、use 字段。
+jwks_json="$(docker exec "${app}" curl --fail --silent \
+  http://127.0.0.1:4000/api/.well-known/jwks.json)"
+python -c '
+import json
+import sys
+
+response = json.load(sys.stdin)
+keys = response.get("keys")
+if not isinstance(keys, list) or len(keys) != 1:
+    raise SystemExit(1)
+key = keys[0]
+required = {"alg", "e", "kid", "kty", "n", "use"}
+if key.get("kty") != "RSA" or key.get("alg") != "RS256" or key.get("use") != "sig":
+    raise SystemExit(1)
+if not required.issubset(key) or not all(isinstance(key[name], str) and key[name] for name in required):
+    raise SystemExit(1)
+' <<<"${jwks_json}"
+
+# API Key 只允许访问已批准的业务资源；MFA、人类会话和 API Key 管理入口必须拒绝。
+api_key_payload='{"name":"release-smoke-worker","scopes":["user:read","mfa:manage"]}'
+api_key_json="$(docker exec -i "${app}" curl --fail --silent --request POST \
+  --header "Authorization: Bearer ${token}" --header 'Content-Type: application/json' \
+  --data-binary @- http://127.0.0.1:4000/api/v1/api-keys <<<"${api_key_payload}")"
+read -r api_key_id api_key <<<"$(python -c '
+import json
+import sys
+
+response = json.load(sys.stdin)
+data = response.get("data", {})
+if response.get("success") is not True:
+    raise SystemExit(1)
+key_id = data.get("id")
+value = data.get("apiKey")
+if not isinstance(key_id, str) or not isinstance(value, str):
+    raise SystemExit(1)
+if not value.startswith("ks_live_"):
+    raise SystemExit(1)
+print(key_id, value)
+' <<<"${api_key_json}")"
+
+api_key_business_json="$(docker exec "${app}" curl --fail --silent \
+  --header "Authorization: ApiKey ${api_key}" \
+  http://127.0.0.1:4000/api/v1/system/users)"
+python -c 'import json, sys; raise SystemExit(0 if json.load(sys.stdin).get("success") is True else 1)' \
+  <<<"${api_key_business_json}"
+
+api_key_metadata_json="$(docker exec "${app}" curl --fail --silent \
+  --header "Authorization: Bearer ${token}" \
+  http://127.0.0.1:4000/api/v1/api-keys)"
+python -c '
+import json
+import sys
+
+response = json.load(sys.stdin)
+if response.get("success") is not True:
+    raise SystemExit(1)
+for key in response.get("data", []):
+    if any(field in key for field in ("apiKey", "keyHash", "secret")):
+        raise SystemExit(1)
+' <<<"${api_key_metadata_json}"
+
+api_key_mfa_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
+  --request POST --header "Authorization: ApiKey ${api_key}" \
+  --header 'Content-Type: application/json' --data '{}' \
+  http://127.0.0.1:4000/api/v1/auth/mfa/enroll)"
+[[ "${api_key_mfa_status}" == "403" ]]
+api_key_management_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
+  --header "Authorization: ApiKey ${api_key}" \
+  http://127.0.0.1:4000/api/v1/api-keys)"
+[[ "${api_key_management_status}" == "403" ]]
+
+api_key_revoke_json="$(docker exec "${app}" curl --fail --silent --request DELETE \
+  --header "Authorization: Bearer ${token}" \
+  http://127.0.0.1:4000/api/v1/api-keys/${api_key_id})"
+python -c 'import json, sys; raise SystemExit(0 if json.load(sys.stdin).get("success") is True else 1)' \
+  <<<"${api_key_revoke_json}"
+revoked_api_key_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
+  --header "Authorization: ApiKey ${api_key}" \
+  http://127.0.0.1:4000/api/v1/system/users)"
+[[ "${revoked_api_key_status}" == "401" ]]
+
+# Smoke 使用管理员 ALL 范围验证业务路径；非管理员的资源范围允许/拒绝矩阵由集成测试覆盖。
 
 docker stop "${postgres}" >/dev/null
 for _attempt in $(seq 1 60); do

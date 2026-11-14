@@ -32,6 +32,16 @@ parse_integer_env = fn name, default, min, max ->
   end
 end
 
+parse_boolean_env = fn name, default ->
+  raw = System.get_env(name, to_string(default))
+
+  case raw do
+    value when value in ["true", "1"] -> true
+    value when value in ["false", "0"] -> false
+    _ -> raise "environment variable #{name} must be true or false"
+  end
+end
+
 config :keystone_phoenix, KeystonePhoenixWeb.Endpoint,
   http: [port: parse_integer_env.("PORT", 4000, 1, 65_535)]
 
@@ -158,9 +168,47 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host =
+    System.get_env("PHX_HOST") ||
+      raise "environment variable PHX_HOST is missing"
+
+  force_ssl = parse_boolean_env.("PHX_FORCE_SSL", true)
+  allow_insecure_http = parse_boolean_env.("PHX_ALLOW_INSECURE_HTTP", false)
+
+  if not force_ssl and not allow_insecure_http do
+    raise "PHX_FORCE_SSL=false requires PHX_ALLOW_INSECURE_HTTP=true"
+  end
+
+  cors_allowed_origins =
+    System.get_env("CORS_ALLOWED_ORIGINS", "")
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.uniq()
+    |> Enum.map(fn origin ->
+      uri = URI.parse(origin)
+
+      local_http? = uri.scheme == "http" and uri.host in ["localhost", "127.0.0.1", "::1"]
+
+      valid? =
+        uri.scheme == "https" or local_http?
+
+      valid? =
+        valid? and is_binary(uri.host) and uri.host != "" and
+          uri.path in [nil, ""] and is_nil(uri.query) and is_nil(uri.fragment) and
+          is_nil(uri.userinfo)
+
+      if valid? do
+        origin
+      else
+        raise "CORS_ALLOWED_ORIGINS contains an invalid or insecure origin: #{inspect(origin)}"
+      end
+    end)
 
   config :keystone_phoenix, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
+
+  config :keystone_phoenix,
+    cors_allowed_origins: cors_allowed_origins,
+    force_ssl_enabled: force_ssl
 
   config :keystone_phoenix, KeystonePhoenixWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
@@ -172,6 +220,13 @@ if config_env() == :prod do
       ip: {0, 0, 0, 0, 0, 0, 0, 0}
     ],
     secret_key_base: secret_key_base
+
+  if force_ssl do
+    config :keystone_phoenix, KeystonePhoenixWeb.Endpoint,
+      force_ssl: [hsts: true, rewrite_on: [:x_forwarded_proto]]
+  else
+    config :keystone_phoenix, KeystonePhoenixWeb.Endpoint, force_ssl: false
+  end
 
   # ## SSL Support
   #

@@ -1,6 +1,9 @@
 defmodule KeystonePhoenixWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :keystone_phoenix
 
+  # 该 Plug 位于静态资源和路由之前，确保静态响应、错误响应和 API 响应使用同一组安全头。
+  plug KeystonePhoenixWeb.Plugs.SecurityHeaders
+
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.

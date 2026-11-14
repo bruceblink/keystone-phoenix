@@ -1,3 +1,27 @@
+# Keystone Phoenix 当前主线
+
+## [Unreleased]
+
+### 修复 / Bug Fixes
+
+- 生产运行时拒绝未明确允许的 HTTP 配置、无效的 CORS 来源和缺失的 `PHX_HOST`。
+- 统一 API、LiveView、静态资源和错误响应的安全头；未登记的跨域来源不返回 CORS 授权头。
+
+### 新增 / Features
+
+- 增加标准 `/api/.well-known/jwks.json` smoke 校验，确认 RSA JWK 的 `kid`、`alg`、`use`、`n` 和 `e` 字段。
+- 增加 API Key 的业务访问、元数据脱敏、MFA/人类会话入口拒绝和撤销后失效检查。
+- 增加生产 HTTPS、HSTS、CORS 来源和安全头的运行时启动检查。
+
+### 优化 / Performance
+
+- 将跨域预检处理限制在显式允许的来源，避免为跨域请求启用凭据。
+
+### 维护、文档与测试 / Maintenance, Docs & Tests
+
+- 补充 release smoke 的 MFA、JWK、API Key 和资源范围验收边界；非管理员范围矩阵继续由集成测试和真实 HTTP 验收覆盖。
+- 更新部署手册、环境变量示例和当前主线发布记录；本节不对应 Git tag 或 GitHub Release。
+
 # Keystone Phoenix 0.3.0
 
 对比范围：`v0.2.0..v0.3.0`　发布日期：2026-11-12

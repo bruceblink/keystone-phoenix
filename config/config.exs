@@ -32,7 +32,9 @@ config :keystone_phoenix,
   mfa_master_key: nil,
   mfa_master_key_version: 1,
   mfa_recovery_pepper: nil,
-  mfa_challenge_lifetime_seconds: 300
+  mfa_challenge_lifetime_seconds: 300,
+  cors_allowed_origins: [],
+  force_ssl_enabled: false
 
 # Configure the endpoint
 config :keystone_phoenix, KeystonePhoenixWeb.Endpoint,
