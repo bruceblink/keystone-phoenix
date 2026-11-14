@@ -7,14 +7,31 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
   alias KeystonePhoenix.Role
 
   # 加载部门列表并补充页面需要的层级信息。
-  def load_depts do
-    Department.list_depts()
+  def load_depts(actor \\ nil) do
+    Department.list_depts(%{}, actor)
     |> Enum.map(fn dept -> Map.put(dept, "depth", dept_depth(dept["ancestors"])) end)
   end
 
   # 加载角色列表并补充数据范围、状态和用户数量。
-  def load_roles do
-    roles = Excel.all_rows(&Role.list_roles/1)
+  def load_roles([]), do: load_roles_full()
+
+  def load_roles(options) when is_list(options) do
+    roles =
+      Excel.all_rows(fn params ->
+        case Role.list_roles(params, options) do
+          {:ok, page} -> page
+          {:error, _reason} -> %{rows: [], total: 0}
+        end
+      end)
+
+    enrich_roles(roles)
+  end
+
+  defp load_roles_full do
+    enrich_roles(Excel.all_rows(&Role.list_roles/1))
+  end
+
+  defp enrich_roles(roles) do
     user_counts = Role.user_counts(Enum.map(roles, & &1["roleId"]))
 
     roles
@@ -37,8 +54,23 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
   def data_scope_label(_scope), do: "未知"
 
   # 加载菜单列表并补充树深度、类型和状态文字。
-  def load_menus do
-    menus = Menu.list_menus()
+  def load_menus([]), do: load_menus_full()
+
+  def load_menus(options) when is_list(options) do
+    menus =
+      case Menu.list_menus(%{}, options) do
+        {:ok, rows} -> rows
+        {:error, _reason} -> []
+      end
+
+    enrich_menus(menus)
+  end
+
+  defp load_menus_full do
+    enrich_menus(Menu.list_menus())
+  end
+
+  defp enrich_menus(menus) do
     by_id = Map.new(menus, &{&1["menuId"], &1})
 
     Enum.map(menus, fn menu ->

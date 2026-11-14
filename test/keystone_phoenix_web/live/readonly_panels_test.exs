@@ -76,6 +76,18 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     refute outside_dept.user_id in refreshed_ids
   end
 
+  test "a scoped user cannot load global role data through LiveView", %{conn: conn} do
+    role = insert_role(%{data_scope: "DEPARTMENT", permission: "role:read"})
+    user = create_user(%{role_id: role.role_id})
+    {:ok, view, _html} = login_view(conn, user)
+
+    assert live_socket(view).assigns.role_rows == []
+    refute live_socket(view).assigns.panel_access["roles"]
+
+    render_click(view, "show-panel", %{"panel" => "roles"})
+    assert live_socket(view).assigns.active_panel == "overview"
+  end
+
   test "an ordinary user without list permission cannot select or refresh panels", %{conn: conn} do
     user = create_user()
     {:ok, view, _html} = login_view(conn, user)

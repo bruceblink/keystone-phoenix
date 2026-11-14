@@ -9,27 +9,29 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
 
   # 各监控项独立检查权限，避免一个权限缺失时加载其他受保护数据。
-  def load(admin?, permissions, page_num, page_size) do
-    {server_info, server_error} = load_server(admin?, permissions)
-    {cache_info, cache_error} = load_cache(admin?, permissions)
+  def load(admin?, permissions, page_num, page_size, options \\ []) do
+    {server_info, server_error} = load_server(admin?, permissions, options)
+    {cache_info, cache_error} = load_cache(admin?, permissions, options)
 
     {online_users, online_user_total, online_error} =
-      load_online_users(admin?, permissions, page_num, page_size)
+      load_online_users(admin?, permissions, page_num, page_size, options)
 
     %{
       server_info: server_info,
       cache_info: cache_info,
       online_users: online_users,
       online_user_total: online_user_total,
-      network_status: load_network_status(admin?, permissions),
+      network_status: load_network_status(admin?, permissions, options),
       feedback:
         [server_error, cache_error, online_error] |> Enum.find(&is_binary/1) |> error_feedback()
     }
   end
 
-  defp load_server(admin?, permissions) do
+  defp load_server(admin?, permissions, options) do
     if admin? or "server:read" in permissions do
-      case Monitor.server_info() do
+      result = if options == [], do: Monitor.server_info(), else: Monitor.server_info(options)
+
+      case result do
         {:ok, info} -> {info, nil}
         {:error, :unavailable} -> {%{}, "主机监控数据暂不可用"}
       end
@@ -38,9 +40,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
     end
   end
 
-  defp load_cache(admin?, permissions) do
+  defp load_cache(admin?, permissions, options) do
     if admin? or "cache:refresh" in permissions do
-      case Monitor.cache_info() do
+      result = if options == [], do: Monitor.cache_info(), else: Monitor.cache_info(options)
+
+      case result do
         {:ok, info} -> {info, nil}
         _ -> {%{}, "ETS 缓存数据暂不可用"}
       end
@@ -49,9 +53,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
     end
   end
 
-  defp load_online_users(admin?, permissions, page_num, page_size) do
+  defp load_online_users(admin?, permissions, page_num, page_size, options) do
     if admin? or "online-session:read" in permissions do
-      case Monitor.online_users(%{"pageNum" => page_num, "pageSize" => page_size}) do
+      params = %{"pageNum" => page_num, "pageSize" => page_size}
+
+      result =
+        if options == [],
+          do: Monitor.online_users(params),
+          else: Monitor.online_users(params, options)
+
+      case result do
         {:ok, %{rows: rows, total: total}} -> {rows, total, nil}
         _ -> {[], 0, "在线会话数据暂不可用"}
       end
@@ -60,9 +71,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
     end
   end
 
-  defp load_network_status(admin?, permissions) do
+  defp load_network_status(admin?, permissions, options) do
     if admin? or "server:read" in permissions,
-      do: Monitor.network_status(),
+      do: if(options == [], do: Monitor.network_status(), else: Monitor.network_status(options)),
       else: %{}
   end
 

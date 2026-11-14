@@ -16,7 +16,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
       {:noreply,
        assign(socket,
-         config_rows: Support.load_configs(),
+         config_rows: Support.load_configs_for_socket(socket),
          config_form: Support.empty_config_form(),
          config_feedback: if(can_refresh?, do: "配置缓存已刷新", else: nil),
          active_modal: nil
@@ -78,7 +78,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
         {:ok, _config} ->
           {:noreply,
            assign(socket,
-             config_rows: Support.load_configs(),
+             config_rows: Support.load_configs_for_socket(socket),
              config_form: Support.empty_config_form(),
              active_modal: nil,
              config_feedback: if(config_id == "", do: "配置已创建", else: "配置已更新")
@@ -96,7 +96,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     if Support.panel_allowed?(socket, "notices") do
       {:noreply,
        assign(socket,
-         notice_rows: Support.load_notices(),
+         notice_rows: Support.load_notices_for_socket(socket),
          notice_feedback: nil,
          active_modal: nil
        )}
@@ -107,7 +107,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("refresh-dicts", _params, socket) do
     if Support.panel_allowed?(socket, "dicts") do
-      dictionary = Support.load_dictionary(socket.assigns.selected_dict_type)
+      dictionary = Support.load_dictionary_for_socket(socket, socket.assigns.selected_dict_type)
 
       {:noreply,
        assign(socket,
@@ -187,7 +187,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
       case result do
         {:ok, _dict_type} ->
-          dictionary = Support.load_dictionary(socket.assigns.selected_dict_type)
+          dictionary =
+            Support.load_dictionary_for_socket(socket, socket.assigns.selected_dict_type)
 
           {:noreply,
            assign(socket,
@@ -211,7 +212,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     if Support.permission_socket?(socket, "dictionary:delete") do
       case Dictionary.delete_dict_type(dict_id, authorization: self_authorization(socket)) do
         :ok ->
-          dictionary = Support.load_dictionary("")
+          dictionary = Support.load_dictionary_for_socket(socket, "")
 
           {:noreply,
            assign(socket,
@@ -283,7 +284,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
           {:noreply,
            assign(socket,
              selected_dict_type: dict_type,
-             dict_data_rows: Support.load_dict_data(dict_type),
+             dict_data_rows:
+               Support.load_dict_data(dict_type, Support.authorization_options(socket)),
              dict_data_form: Support.empty_dict_data_form(dict_type),
              active_modal: nil,
              dict_feedback: if(dict_code == "", do: "字典数据已创建", else: "字典数据已更新")
@@ -303,7 +305,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
         :ok ->
           {:noreply,
            assign(socket,
-             dict_data_rows: Support.load_dict_data(socket.assigns.selected_dict_type),
+             dict_data_rows:
+               Support.load_dict_data(
+                 socket.assigns.selected_dict_type,
+                 Support.authorization_options(socket)
+               ),
              dict_data_form: Support.empty_dict_data_form(socket.assigns.selected_dict_type),
              active_modal: nil,
              dict_feedback: "字典数据已删除"
@@ -393,7 +399,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
         {:ok, _notice} ->
           {:noreply,
            assign(socket,
-             notice_rows: Support.load_notices(),
+             notice_rows: Support.load_notices_for_socket(socket),
              notice_form: Support.empty_notice_form(),
              active_modal: nil,
              notice_feedback: if(notice_id == "", do: "公告已创建", else: "公告已更新")
@@ -418,7 +424,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
            ) do
         {:ok, _notice} ->
           {:noreply,
-           assign(socket, notice_rows: Support.load_notices(), notice_feedback: "公告状态已更新")}
+           assign(socket,
+             notice_rows: Support.load_notices_for_socket(socket),
+             notice_feedback: "公告状态已更新"
+           )}
 
         {:error, :not_found} ->
           {:noreply, assign(socket, notice_feedback: Feedback.error("找不到指定公告"))}
@@ -437,7 +446,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
         :ok ->
           {:noreply,
            assign(socket,
-             notice_rows: Support.load_notices(),
+             notice_rows: Support.load_notices_for_socket(socket),
              notice_feedback: "公告已删除",
              active_modal: nil
            )}
@@ -459,7 +468,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
         :ok ->
           {:noreply,
            assign(socket,
-             login_log_rows: Support.load_logs().login_log_rows,
+             login_log_rows: Support.load_logs_for_socket(socket).login_log_rows,
              log_feedback: "登录日志已删除"
            )}
 
@@ -477,7 +486,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
         :ok ->
           {:noreply,
            assign(socket,
-             operation_log_rows: Support.load_logs().operation_log_rows,
+             operation_log_rows: Support.load_logs_for_socket(socket).operation_log_rows,
              log_feedback: "操作日志已删除"
            )}
 

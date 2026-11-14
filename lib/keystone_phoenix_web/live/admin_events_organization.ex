@@ -14,7 +14,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.panel_allowed?(socket, "depts") do
       {:noreply,
        assign(socket,
-         dept_rows: Support.load_depts(),
+         dept_rows: Support.load_depts_for_socket(socket),
          dept_form: Support.empty_dept_form(),
          dept_feedback: nil,
          active_modal: nil
@@ -71,7 +71,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         {:ok, _dept} ->
           {:noreply,
            assign(socket,
-             dept_rows: Support.load_depts(),
+             dept_rows: Support.load_depts_for_socket(socket),
              dept_form: Support.empty_dept_form(),
              active_modal: nil,
              dept_feedback: if(dept_id == "", do: "部门已创建", else: "部门已更新")
@@ -93,7 +93,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
              authorization(socket, "department:update")
            ) do
         {:ok, _dept} ->
-          {:noreply, assign(socket, dept_rows: Support.load_depts(), dept_feedback: "部门状态已更新")}
+          {:noreply,
+           assign(socket,
+             dept_rows: Support.load_depts_for_socket(socket),
+             dept_feedback: "部门状态已更新"
+           )}
 
         error ->
           {:noreply, assign(socket, dept_feedback: Support.form_error(error))}
@@ -109,7 +113,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         :ok ->
           {:noreply,
            assign(socket,
-             dept_rows: Support.load_depts(),
+             dept_rows: Support.load_depts_for_socket(socket),
              dept_form: Support.empty_dept_form(),
              active_modal: nil,
              dept_feedback: "部门已删除"
@@ -127,7 +131,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.panel_allowed?(socket, "posts") do
       {:noreply,
        assign(socket,
-         post_rows: Support.load_posts(),
+         post_rows: Support.load_posts_for_socket(socket),
          post_form: Support.empty_post_form(),
          post_feedback: nil,
          active_modal: nil
@@ -183,7 +187,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         {:ok, _post} ->
           {:noreply,
            assign(socket,
-             post_rows: Support.load_posts(),
+             post_rows: Support.load_posts_for_socket(socket),
              post_form: Support.empty_post_form(),
              active_modal: nil,
              post_feedback: if(post_id == "", do: "岗位已创建", else: "岗位已更新")
@@ -205,7 +209,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
              authorization(socket, "post:update")
            ) do
         {:ok, _post} ->
-          {:noreply, assign(socket, post_rows: Support.load_posts(), post_feedback: "岗位状态已更新")}
+          {:noreply,
+           assign(socket,
+             post_rows: Support.load_posts_for_socket(socket),
+             post_feedback: "岗位状态已更新"
+           )}
 
         error ->
           {:noreply, assign(socket, post_feedback: Support.form_error(error))}
@@ -221,7 +229,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         :ok ->
           {:noreply,
            assign(socket,
-             post_rows: Support.load_posts(),
+             post_rows: Support.load_posts_for_socket(socket),
              post_form: Support.empty_post_form(),
              active_modal: nil,
              post_feedback: "岗位已删除"
@@ -239,7 +247,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.panel_allowed?(socket, "roles") do
       {:noreply,
        assign(socket,
-         role_rows: Support.load_roles(),
+         role_rows: Support.load_roles_for_socket(socket),
          role_form: Support.empty_role_form(),
          role_feedback: nil,
          active_modal: nil,
@@ -299,7 +307,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         {:ok, _role} ->
           socket =
             assign(socket,
-              role_rows: Support.load_roles(),
+              role_rows: Support.load_roles_for_socket(socket),
               role_form: Support.empty_role_form(),
               active_modal: nil,
               role_feedback: if(role_id == "", do: "角色已创建", else: "角色已更新")
@@ -319,7 +327,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.permission_socket?(socket, "role:update") do
       case Role.change_status(role_id, status, authorization(socket, "role:update")) do
         {:ok, _role} ->
-          socket = assign(socket, role_rows: Support.load_roles(), role_feedback: "角色状态已更新")
+          socket =
+            assign(socket,
+              role_rows: Support.load_roles_for_socket(socket),
+              role_feedback: "角色状态已更新"
+            )
+
           {:noreply, clear_role_selection(socket)}
 
         error ->
@@ -336,7 +349,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         {:ok, _} ->
           {:noreply,
            assign(socket,
-             role_rows: Support.load_roles(),
+             role_rows: Support.load_roles_for_socket(socket),
              role_form: Support.empty_role_form(),
              active_modal: nil,
              role_feedback: "角色已删除",
@@ -350,7 +363,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         :ok ->
           {:noreply,
            assign(socket,
-             role_rows: Support.load_roles(),
+             role_rows: Support.load_roles_for_socket(socket),
              role_form: Support.empty_role_form(),
              active_modal: nil,
              role_feedback: "角色已删除",
@@ -412,7 +425,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.panel_allowed?(socket, "menus") do
       {:noreply,
        assign(socket,
-         menu_rows: Support.load_menus(),
+         menu_rows: Support.load_menus_for_socket(socket),
          menu_form: Support.empty_menu_form(),
          menu_feedback: nil,
          active_modal: nil
@@ -470,7 +483,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         {:ok, _menu} ->
           {:noreply,
            assign(socket,
-             menu_rows: Support.load_menus(),
+             menu_rows: Support.load_menus_for_socket(socket),
              menu_form: Support.empty_menu_form(),
              active_modal: nil,
              menu_feedback: if(menu_id == "", do: "菜单已创建", else: "菜单已更新")
@@ -492,7 +505,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
              authorization(socket, "menu:update")
            ) do
         {:ok, _menu} ->
-          {:noreply, assign(socket, menu_rows: Support.load_menus(), menu_feedback: "菜单状态已更新")}
+          {:noreply,
+           assign(socket,
+             menu_rows: Support.load_menus_for_socket(socket),
+             menu_feedback: "菜单状态已更新"
+           )}
 
         error ->
           {:noreply, assign(socket, menu_feedback: Support.form_error(error))}
@@ -508,7 +525,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         :ok ->
           {:noreply,
            assign(socket,
-             menu_rows: Support.load_menus(),
+             menu_rows: Support.load_menus_for_socket(socket),
              menu_form: Support.empty_menu_form(),
              active_modal: nil,
              menu_feedback: "菜单已删除"
@@ -531,7 +548,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         :ok ->
           {:noreply,
            assign(socket,
-             role_rows: Support.load_roles(),
+             role_rows: Support.load_roles_for_socket(socket),
              role_feedback: "角色用户已更新",
              role_user_feedback: "角色用户已更新"
            )

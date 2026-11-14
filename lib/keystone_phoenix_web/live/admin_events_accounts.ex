@@ -92,7 +92,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           {:noreply,
            assign(socket,
              user_rows: Support.load_users_for_socket(socket),
-             role_rows: Support.load_roles(),
+             role_rows: Support.load_roles_for_socket(socket),
              user_form: Support.empty_user_form(),
              active_modal: nil,
              user_feedback: if(user_id == "", do: "用户已创建", else: "用户已更新")
@@ -154,7 +154,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           {:noreply,
            assign(socket,
              user_rows: Support.load_users_for_socket(socket),
-             role_rows: Support.load_roles(),
+             role_rows: Support.load_roles_for_socket(socket),
              user_form: Support.empty_user_form(),
              active_modal: nil,
              user_feedback: "用户已删除"

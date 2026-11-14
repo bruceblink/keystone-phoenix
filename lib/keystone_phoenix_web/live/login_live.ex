@@ -74,7 +74,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
             do: AdminSupport.load_dashboard(),
             else: AdminSupport.load_dashboard_for_permissions(current_user, permissions)
 
-        panel_access = AdminSupport.panel_access(permissions)
+        panel_access = AdminSupport.panel_access(permissions, current_user)
 
         {:noreply,
          assign(socket,
@@ -213,7 +213,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
         panel == "job-logs" ->
           {:noreply,
-           assign(socket, active_panel: panel, job_log_rows: AdminSupport.load_job_logs())}
+           assign(socket,
+             active_panel: panel,
+             job_log_rows: AdminSupport.load_job_logs_for_socket(socket)
+           )}
 
         panel == "logs" ->
           logs = AdminSupport.load_logs_for_socket(socket)

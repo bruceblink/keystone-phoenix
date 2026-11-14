@@ -36,6 +36,19 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     "monitor" => ["cache:refresh", "server:read", "online-session:read"]
   }
 
+  @panel_resources %{
+    "posts" => :post,
+    "roles" => :role,
+    "menus" => :menu,
+    "configs" => :config,
+    "dicts" => :dictionary,
+    "notices" => :notice,
+    "logs" => :audit,
+    "jobs" => :job,
+    "job-logs" => :job,
+    "monitor" => :session
+  }
+
   def load_dashboard do
     logs = load_logs()
     dictionary = load_dictionary("")
@@ -90,30 +103,33 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def load_dashboard_for_permissions(user, permissions) do
     access = panel_access(permissions)
     dashboard = empty_dashboard()
-    dictionary = if access["dicts"], do: load_dictionary(""), else: empty_dictionary()
-    logs = logs_for_permissions(permissions)
+    options = [authorization: %{principal: Map.put(user, :permissions, permissions)}]
+    dictionary = if access["dicts"], do: load_dictionary("", options), else: empty_dictionary()
+    logs = logs_for_permissions(permissions, options)
 
     dashboard
-    |> Map.put(:dept_rows, if(access["depts"], do: load_depts(), else: []))
-    |> Map.put(:post_rows, if(access["posts"], do: load_posts(), else: []))
-    |> Map.put(:role_rows, if(access["roles"], do: load_roles(), else: []))
-    |> Map.put(:menu_rows, if(access["menus"], do: load_menus(), else: []))
+    |> Map.put(:dept_rows, if(access["depts"], do: load_depts_for_user(user), else: []))
+    |> Map.put(:post_rows, if(access["posts"], do: load_posts(options), else: []))
+    |> Map.put(:role_rows, if(access["roles"], do: load_roles(options), else: []))
+    |> Map.put(:menu_rows, if(access["menus"], do: load_menus(options), else: []))
     |> Map.put(:user_rows, if(access["users"], do: load_users_for_user(user), else: []))
-    |> Map.put(:config_rows, if(access["configs"], do: load_configs(), else: []))
+    |> Map.put(:config_rows, if(access["configs"], do: load_configs(options), else: []))
     |> Map.put(:dict_type_rows, dictionary.types)
     |> Map.put(:dict_data_rows, dictionary.data)
     |> Map.put(:selected_dict_type, dictionary.selected)
-    |> Map.put(:notice_rows, if(access["notices"], do: load_notices(), else: []))
-    |> Map.put(:job_rows, if(access["jobs"], do: load_jobs(), else: []))
-    |> Map.put(:job_log_rows, if(access["job-logs"], do: load_job_logs(), else: []))
+    |> Map.put(:notice_rows, if(access["notices"], do: load_notices(options), else: []))
+    |> Map.put(:job_rows, if(access["jobs"], do: load_jobs(options), else: []))
+    |> Map.put(:job_log_rows, if(access["job-logs"], do: load_job_logs(options), else: []))
     |> Map.put(:login_log_rows, logs.login_log_rows)
     |> Map.put(:operation_log_rows, logs.operation_log_rows)
   end
 
   @doc "Returns panel visibility for a permission list."
-  def panel_access(permissions) do
+  def panel_access(permissions, user \\ nil) do
     Enum.into(@panel_permissions, %{}, fn {panel, required} ->
-      {panel, Enum.any?(required, &(&1 in List.wrap(permissions)))}
+      {panel,
+       Enum.any?(required, &(&1 in List.wrap(permissions))) and
+         scope_panel_allowed?(user, panel, permissions)}
     end)
     |> Map.put("overview", true)
     |> Map.put("profile", true)
@@ -132,11 +148,30 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   def load_posts, do: load_all(&Post.list_posts/1)
+  def load_posts(options) when is_list(options), do: load_authorized(&Post.list_posts/2, options)
+  def load_posts_for_socket(socket), do: load_posts(authorization_options(socket))
   def load_configs, do: load_all(&Config.list_configs/1)
+
+  def load_configs(options) when is_list(options),
+    do: load_authorized(&Config.list_configs/2, options)
+
+  def load_configs_for_socket(socket), do: load_configs(authorization_options(socket))
   def load_jobs, do: load_all(&Job.list_jobs/1)
+  def load_jobs(options) when is_list(options), do: load_authorized(&Job.list_jobs/2, options)
+  def load_jobs_for_socket(socket), do: load_jobs(authorization_options(socket))
   def load_job_logs, do: load_all(&Job.list_job_logs/1)
 
+  def load_job_logs(options) when is_list(options),
+    do: load_authorized(&Job.list_job_logs/2, options)
+
+  def load_job_logs_for_socket(socket), do: load_job_logs(authorization_options(socket))
+
   def load_notices, do: load_all(&Notice.list_notices/1)
+
+  def load_notices(options) when is_list(options),
+    do: load_authorized(&Notice.list_notices/2, options)
+
+  def load_notices_for_socket(socket), do: load_notices(authorization_options(socket))
 
   def page_rows(rows, page_num, page_size), do: Pagination.page_rows(rows, page_num, page_size)
 
@@ -145,8 +180,15 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def load_dict_data(dict_type),
     do: load_all(&Dictionary.list_dict_data/1, %{"dictType" => dict_type})
 
+  def load_dict_data("", _options), do: []
+
+  def load_dict_data(dict_type, options) when is_list(options),
+    do: load_authorized(&Dictionary.list_dict_data/2, options, %{"dictType" => dict_type})
+
   def load_dict_data_for_socket(socket, dict_type) do
-    if dict_type_allowed?(socket, dict_type), do: load_dict_data(dict_type), else: []
+    if dict_type_allowed?(socket, dict_type),
+      do: load_dict_data(dict_type, authorization_options(socket)),
+      else: []
   end
 
   def dict_type_allowed?(socket, dict_type) when is_binary(dict_type) do
@@ -157,44 +199,63 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def dict_type_allowed?(_socket, _dict_type), do: false
 
-  def load_dictionary(selected) do
-    types = load_all(&Dictionary.list_dict_types/1)
+  def load_dictionary(selected), do: load_dictionary(selected, [])
+
+  def load_dictionary_for_socket(socket, selected),
+    do: load_dictionary(selected, authorization_options(socket))
+
+  def load_dictionary(selected, options) when is_list(options) do
+    types =
+      if options == [],
+        do: load_all(&Dictionary.list_dict_types/1),
+        else: load_authorized(&Dictionary.list_dict_types/2, options)
 
     selected =
       if selected != "" and Enum.any?(types, &(&1["dictType"] == selected)),
         do: selected,
         else: List.first(types, %{})["dictType"] || ""
 
-    %{types: types, selected: selected, data: load_dict_data(selected)}
+    data = if options == [], do: load_dict_data(selected), else: load_dict_data(selected, options)
+    %{types: types, selected: selected, data: data}
   end
 
-  def load_logs do
+  def load_logs, do: load_logs([])
+
+  def load_logs(options) when is_list(options) do
     %{
-      login_log_rows: load_all(&Log.list_login_logs/1),
-      operation_log_rows: load_all(&Log.list_operation_logs/1)
+      login_log_rows:
+        if(options == [],
+          do: load_all(&Log.list_login_logs/1),
+          else: load_authorized(&Log.list_login_logs/2, options)
+        ),
+      operation_log_rows:
+        if(options == [],
+          do: load_all(&Log.list_operation_logs/1),
+          else: load_authorized(&Log.list_operation_logs/2, options)
+        )
     }
   end
 
   def load_logs_for_socket(socket) do
     if admin_socket?(socket) do
-      load_logs()
+      load_logs(authorization_options(socket))
     else
-      logs_for_permissions(socket.assigns.permissions)
+      logs_for_permissions(socket.assigns.permissions, authorization_options(socket))
     end
   end
 
-  defp logs_for_permissions(permissions) do
+  defp logs_for_permissions(permissions, options) do
     permissions = List.wrap(permissions)
 
     %{
       login_log_rows:
         if("login-log:read" in permissions,
-          do: load_all(&Log.list_login_logs/1),
+          do: load_authorized(&Log.list_login_logs/2, options),
           else: []
         ),
       operation_log_rows:
         if("operation-log:read" in permissions,
-          do: load_all(&Log.list_operation_logs/1),
+          do: load_authorized(&Log.list_operation_logs/2, options),
           else: []
         )
     }
@@ -203,6 +264,13 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   defp empty_dictionary, do: %{types: [], selected: "", data: []}
 
   defp load_all(fetcher, params \\ %{}), do: Excel.all_rows(fetcher, params)
+
+  defp load_authorized(fetcher, options, params \\ %{}) do
+    case Excel.all_rows_result(fn page -> fetcher.(page, options) end, params) do
+      {:ok, rows} -> rows
+      {:error, _reason} -> []
+    end
+  end
 
   def empty_notice_form, do: Forms.empty_notice_form()
   def empty_dept_form, do: Forms.empty_dept_form()
@@ -224,13 +292,24 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     |> inspect()
   end
 
+  def load_depts_for_user(user) do
+    OrganizationData.load_depts(user)
+  end
+
+  def load_depts_for_socket(socket) do
+    if admin_socket?(socket),
+      do: load_depts(),
+      else: load_depts_for_user(socket.assigns.current_user)
+  end
+
   def load_depts do
     OrganizationData.load_depts()
   end
 
-  def load_roles do
-    OrganizationData.load_roles()
-  end
+  def load_roles, do: OrganizationData.load_roles([])
+  def load_roles(options) when is_list(options), do: OrganizationData.load_roles(options)
+
+  def load_roles_for_socket(socket), do: load_roles(authorization_options(socket))
 
   def load_role_users(role_id, actor \\ nil) do
     %{
@@ -247,9 +326,9 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def data_scope_label(scope), do: OrganizationData.data_scope_label(scope)
 
-  def load_menus do
-    OrganizationData.load_menus()
-  end
+  def load_menus, do: OrganizationData.load_menus([])
+  def load_menus(options) when is_list(options), do: OrganizationData.load_menus(options)
+  def load_menus_for_socket(socket), do: load_menus(authorization_options(socket))
 
   def menu_depth(parent_id, menus, seen), do: OrganizationData.menu_depth(parent_id, menus, seen)
 
@@ -263,7 +342,15 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     permissions = List.wrap(socket.assigns[:permissions])
     page_num = get_in(socket.assigns, [:page_nums, "online-users"]) || 1
     page_size = get_in(socket.assigns, [:page_sizes, "online-users"]) || 50
-    monitor = MonitorSnapshot.load(admin?, permissions, page_num, page_size)
+
+    monitor =
+      MonitorSnapshot.load(
+        admin?,
+        permissions,
+        page_num,
+        page_size,
+        authorization_options(socket)
+      )
 
     assign(socket,
       active_panel: "monitor",
@@ -356,6 +443,22 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def authenticated_socket?(socket), do: is_map(socket.assigns.current_user)
 
+  @doc "Returns the current LiveView principal as service-layer authorization options."
+  def authorization_options(socket, permission \\ nil) do
+    principal =
+      (socket.assigns[:current_user] || %{})
+      |> Map.put(:permissions, List.wrap(socket.assigns[:permissions]))
+
+    authorization = %{principal: principal}
+
+    authorization =
+      if is_binary(permission),
+        do: Map.put(authorization, :permission, permission),
+        else: authorization
+
+    [authorization: authorization]
+  end
+
   @doc "Checks a permission retained by the authenticated LiveView session."
   def permission_socket?(socket, permission) when is_binary(permission) do
     case socket.assigns[:current_user] do
@@ -377,8 +480,38 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     admin_socket?(socket) or
       (authenticated_socket?(socket) and
          (panel in ["overview", "profile"] or
-            Enum.any?(Map.get(@panel_permissions, panel, []), &permission_socket?(socket, &1))))
+            (Enum.any?(Map.get(@panel_permissions, panel, []), &permission_socket?(socket, &1)) and
+               scope_panel_allowed?(
+                 socket.assigns.current_user,
+                 panel,
+                 socket.assigns[:permissions]
+               ))))
   end
+
+  defp scope_panel_allowed?(nil, _panel, _permissions), do: true
+
+  defp scope_panel_allowed?(user, panel, permissions) when is_map(user) do
+    if is_nil(Map.get(user, :user_id, Map.get(user, "userId"))) do
+      true
+    else
+      principal = Map.put(user, :permissions, List.wrap(permissions))
+
+      case Map.get(@panel_resources, panel) do
+        nil ->
+          true
+
+        resource ->
+          Authz.resource_scope_allowed?(principal, resource, panel_scope_context(resource))
+      end
+    end
+  end
+
+  defp scope_panel_allowed?(_user, _panel, _permissions), do: false
+
+  defp panel_scope_context(resource) when resource in [:job, :notice],
+    do: %{defer_owner: true}
+
+  defp panel_scope_context(_resource), do: %{}
 
   def expire_authentication(socket, message) do
     Auth.logout(socket.assigns.refresh_token)

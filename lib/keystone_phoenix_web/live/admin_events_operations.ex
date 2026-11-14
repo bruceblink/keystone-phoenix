@@ -11,7 +11,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
     if Support.panel_allowed?(socket, "jobs") do
       {:noreply,
        assign(socket,
-         job_rows: Support.load_jobs(),
+         job_rows: Support.load_jobs_for_socket(socket),
          page_nums: Map.put(socket.assigns.page_nums, "jobs", 1),
          job_form: Support.empty_job_form(),
          job_feedback: nil,
@@ -64,7 +64,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
         {:ok, _job} ->
           {:noreply,
            assign(socket,
-             job_rows: Support.load_jobs(),
+             job_rows: Support.load_jobs_for_socket(socket),
              job_form: Support.empty_job_form(),
              active_modal: nil,
              job_feedback: if(job_id == "", do: "任务已创建", else: "任务已更新")
@@ -84,7 +84,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
         :ok ->
           {:noreply,
            assign(socket,
-             job_rows: Support.load_jobs(),
+             job_rows: Support.load_jobs_for_socket(socket),
              job_form: Support.empty_job_form(),
              active_modal: nil,
              job_feedback: "任务已删除"
@@ -100,7 +100,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("run-job", %{"job-id" => job_id}, socket) do
     if Support.permission_socket?(socket, "job:run") do
-      case Job.get_job(job_id) do
+      case Job.get_job(job_id, Support.authorization_options(socket, "job:read")) do
         {:ok, _job} ->
           live_view = self()
 
@@ -118,6 +118,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
         {:error, :not_found} ->
           {:noreply, assign(socket, job_feedback: Feedback.error("找不到指定任务"))}
+
+        {:error, :data_scope_denied} ->
+          {:noreply, assign(socket, job_feedback: Feedback.error("找不到指定任务"))}
+
+        {:error, :permission_denied} ->
+          {:noreply, assign(socket, job_feedback: Feedback.error("找不到指定任务"))}
       end
     else
       {:noreply, socket}
@@ -133,7 +139,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
           :not_found -> Feedback.error("没有正在运行的任务")
         end
 
-      {:noreply, assign(socket, job_rows: Support.load_jobs(), job_feedback: feedback)}
+      {:noreply,
+       assign(socket, job_rows: Support.load_jobs_for_socket(socket), job_feedback: feedback)}
     else
       {:noreply, socket}
     end
@@ -151,7 +158,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
           {:error, reason} -> Feedback.error("任务状态更新失败：#{inspect(reason)}")
         end
 
-      {:noreply, assign(socket, job_rows: Support.load_jobs(), job_feedback: feedback)}
+      {:noreply,
+       assign(socket, job_rows: Support.load_jobs_for_socket(socket), job_feedback: feedback)}
     else
       {:noreply, socket}
     end
@@ -161,7 +169,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
     if Support.panel_allowed?(socket, "job-logs") do
       {:noreply,
        assign(socket,
-         job_log_rows: Support.load_job_logs(),
+         job_log_rows: Support.load_job_logs_for_socket(socket),
          page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
          job_log_feedback: nil
        )}
