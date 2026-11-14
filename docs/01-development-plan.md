@@ -32,6 +32,8 @@
 
 本地功能验收基线（2026-11-14）：Phoenix 当前 `main` 已完成用户、角色、岗位、部门、菜单、配置、字典、公告、任务、登录日志、操作日志、API Key、会话和文件管理的统一权限入口。用户、部门和个人资料使用主体查询范围；公告和任务使用 `OWNER` 字段；角色、岗位、菜单、配置、字典、审计、会话等没有稳定 owner/member 关系的全局资源要求 `ALL` 或 `TENANT`。`mix test --include integration` 当前通过 350 项，开发/生产严格编译、源码行数和差异检查通过。生产公网 IdP、浏览器/硬件 Passkey、多节点、生产代理链和发布窗口继续作为外部运维验收，不阻塞本地功能完成。
 
+本轮跨项目对齐基线（2026-11-14）：`7c01765` 统一登录和刷新响应字段为 `accessToken`、`refreshToken`、`tokenType`、`sessionId` 和 `clientId`，并删除旧 `token`、`currentUser` 字段；`79e5a11` 使 OIDC 入口拒绝 API Key；`98165af`、`aeecab5` 将角色写入和权限元数据保护统一到规范 `resource:action` 权限码；`37b5598` 对齐 USER/PASSWORD 与 SERVICE_SUBJECT/API_KEY 的 Principal 字段；`9234e0a`、`a86b530` 和 `b6000aa` 增加安全指标、脱敏事件报告、API Key 生命周期统计和非法筛选校验，入口为 `GET /api/v1/monitor/security` 与 `GET /api/v1/monitor/security/report`；`fb6806b` 增加跨项目响应字段、错误分类、权限码和角色权限路由契约回归。安全报告当前使用 Phoenix 操作日志作为用户会话事件来源，API Key 只返回生命周期统计；Phoenix 尚未持久化与 Native 完全相同的 API Key 安全事件明细，因此 `credentialType` 和 `credentialId` 筛选明确返回 `validation_failed`。
+
 本轮补充基线为 `25c6c7e`。公告新增独立 `owner_id` 字段和外键，创建者审计字段继续使用 `creator_id`；OWNER 查询改用 `owner_id`，并通过真实集成测试和约束基线检查。当前 Phoenix 全量普通测试为 308 项通过、30 项排除，集成测试为 338 项通过；严格编译和源码行数检查通过。
 
 本轮任务范围基线为 `d6a584e`。任务新增独立 `created_by` 字段和外键，创建审计字段继续保留，任务及任务日志 OWNER 查询统一使用 `created_by`，与 Native 约定一致。普通测试、集成测试、严格编译、源码行数和差异检查均通过。
