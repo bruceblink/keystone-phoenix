@@ -3,6 +3,9 @@ defmodule KeystonePhoenixWeb.UserController do
 
   plug KeystonePhoenixWeb.Plugs.RejectApiKey when action in [:create, :import, :reset_password]
 
+  # 用户批量导入会创建多个身份记录，必须使用已完成二次认证的会话。
+  plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp when action in [:import]
+
   plug KeystonePhoenixWeb.Plugs.Authenticate,
        [
          permissions: %{

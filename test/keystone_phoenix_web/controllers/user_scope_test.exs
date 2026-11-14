@@ -313,6 +313,14 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     }
 
     response = post(authorized(tokens.token), "/api/v1/system/users/excel", %{"file" => upload})
+    assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
+
+    :ok = Auth.logout(tokens.refresh_token)
+    {:ok, aal2_tokens} = Auth.login_passkey_user(ctx.actor.user_id)
+
+    response =
+      post(authorized(aal2_tokens.token), "/api/v1/system/users/excel", %{"file" => upload})
+
     assert %{"data" => %{"success" => 1, "failed" => [failure]}} = json_response(response, 200)
     assert failure["reason"] == "没有数据权限"
   end
