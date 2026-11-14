@@ -10,7 +10,19 @@ defmodule KeystonePhoenix.Authz.DataScope do
   @resource_scopes %{
     user: ~w(ALL TENANT SELF DEPARTMENT DEPARTMENT_AND_CHILDREN CUSTOM),
     department: ~w(ALL TENANT DEPARTMENT DEPARTMENT_AND_CHILDREN CUSTOM),
-    owned: ~w(ALL OWNER MEMBER)
+    profile: ~w(SELF),
+    api_key: ~w(SELF),
+    owned: ~w(OWNER MEMBER),
+    role: ~w(ALL TENANT),
+    post: ~w(ALL TENANT),
+    menu: ~w(ALL TENANT),
+    config: ~w(ALL TENANT),
+    dictionary: ~w(ALL TENANT),
+    audit: ~w(ALL TENANT),
+    session: ~w(ALL TENANT),
+    job: ~w(ALL TENANT),
+    notice: ~w(ALL TENANT),
+    file: ~w(ALL TENANT)
   }
 
   @doc "Returns all cross-project data scope names in their canonical order."
@@ -19,11 +31,26 @@ defmodule KeystonePhoenix.Authz.DataScope do
   @doc "Checks whether a scope name is registered."
   def registered?(scope), do: normalize(scope) in @scopes
 
-  @doc "Checks whether a scope is defined for a resource family."
-  def supported?(resource, scope) when is_atom(resource),
-    do: normalize(scope) in Map.get(@resource_scopes, resource, [])
+  @doc "Returns the registered scopes for a resource family."
+  def scopes_for(resource) when is_atom(resource), do: Map.get(@resource_scopes, resource, [])
 
-  def supported?(_resource, _scope), do: false
+  def scopes_for(resource) when is_binary(resource) do
+    resource
+    |> String.trim()
+    |> String.replace("-", "_")
+    |> String.to_existing_atom()
+    |> scopes_for()
+  rescue
+    ArgumentError -> []
+  end
+
+  def scopes_for(_resource), do: []
+
+  @doc "Checks whether a scope is defined for a resource family."
+  def supported?(resource, scope), do: normalize(scope) in scopes_for(resource)
+
+  @doc "Returns all registered resource families."
+  def resources, do: Map.keys(@resource_scopes)
 
   @doc "Normalizes a scope name without accepting unknown values."
   def normalize(scope) when is_binary(scope), do: scope |> String.trim() |> String.upcase()
