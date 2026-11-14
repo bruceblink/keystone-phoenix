@@ -284,12 +284,22 @@ defmodule KeystonePhoenix.Log do
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}
     else
-      case Repo.update_all(
-             from(log in schema, where: field(log, ^field) in ^ids and log.deleted == false),
-             set: [deleted: true]
-           ) do
-        {count, _} when count == length(ids) -> :ok
-        _ -> {:error, :not_found}
+      Repo.transaction(fn ->
+        {count, _} =
+          Repo.update_all(
+            from(log in schema, where: field(log, ^field) in ^ids and log.deleted == false),
+            set: [deleted: true]
+          )
+
+        if count == length(ids) do
+          :ok
+        else
+          Repo.rollback(:not_found)
+        end
+      end)
+      |> case do
+        {:ok, :ok} -> :ok
+        {:error, reason} -> {:error, reason}
       end
     end
   end
