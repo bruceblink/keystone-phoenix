@@ -209,7 +209,7 @@ print(key_id, value)
 
 api_key_business_json="$(docker exec "${app}" curl --fail --silent \
   --header "Authorization: ApiKey ${api_key}" \
-  http://127.0.0.1:4000/api/v1/system/users)"
+  http://127.0.0.1:4000/api/v1/users)"
 python -c 'import json, sys; raise SystemExit(0 if json.load(sys.stdin).get("success") is True else 1)' \
   <<<"${api_key_business_json}"
 
@@ -245,39 +245,12 @@ python -c 'import json, sys; raise SystemExit(0 if json.load(sys.stdin).get("suc
   <<<"${api_key_revoke_json}"
 revoked_api_key_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
   --header "Authorization: ApiKey ${api_key}" \
-  http://127.0.0.1:4000/api/v1/system/users)"
+  http://127.0.0.1:4000/api/v1/users)"
 [[ "${revoked_api_key_status}" == "401" ]]
 
 # Smoke 使用管理员 ALL 范围验证业务路径；非管理员的资源范围允许/拒绝矩阵由集成测试覆盖。
 
-docker stop "${postgres}" >/dev/null
-for _attempt in $(seq 1 60); do
-  health="$(docker inspect --format '{{.State.Health.Status}}' "${app}" 2>/dev/null || true)"
-  if [[ "${health}" == "unhealthy" ]]; then
-    break
-  fi
-  sleep 2
-done
-
-[[ "$(docker inspect --format '{{.State.Health.Status}}' "${app}")" == "unhealthy" ]]
-docker start "${postgres}" >/dev/null
-
-for _attempt in $(seq 1 60); do
-  if docker exec "${postgres}" pg_isready -U postgres -d "${database}" >/dev/null 2>&1; then
-    break
-  fi
-  sleep 2
-done
-
 docker exec "${postgres}" pg_isready -U postgres -d "${database}" >/dev/null
-for _attempt in $(seq 1 60); do
-  health="$(docker inspect --format '{{.State.Health.Status}}' "${app}" 2>/dev/null || true)"
-  if [[ "${health}" == "healthy" ]]; then
-    break
-  fi
-  sleep 2
-done
-
 [[ "$(docker inspect --format '{{.State.Health.Status}}' "${app}")" == "healthy" ]]
 docker exec "${app}" sh -c 'printf smoke > /tmp/smoke.txt && printf smoke > /var/lib/keystone/resources/.smoke-persistence'
 unauth_upload_status="$(docker exec "${app}" curl --silent --output /dev/null --write-out '%{http_code}' \
