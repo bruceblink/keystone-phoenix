@@ -165,9 +165,7 @@ defmodule KeystonePhoenix.Security do
       "expiring" => expiring,
       "horizonDays" => horizon_days,
       "generatedAt" => DateTime.to_iso8601(now),
-      "horizonAt" => DateTime.to_iso8601(horizon),
-      "windowFrom" => DateTime.to_iso8601(window.from),
-      "windowTo" => DateTime.to_iso8601(window.to)
+      "horizonAt" => DateTime.to_iso8601(horizon)
     }
   end
 
