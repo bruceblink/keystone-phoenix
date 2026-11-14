@@ -86,6 +86,138 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
   end
 
   @tag :integration
+  test "owner job and notice HTTP commands filter and roll back mixed deletes" do
+    {owner_token, _owner_ids} = authenticated_scope_user("OWNER")
+    {other_token, _other_ids} = authenticated_scope_user("OWNER")
+    job_name = "owner_http_job_#{System.unique_integer([:positive])}"
+    notice_title = "owner_http_notice_#{System.unique_integer([:positive])}"
+
+    assert json_response(
+             post(authorized(build_conn(), owner_token), "/api/v1/system/jobs", %{
+               "jobName" => job_name,
+               "jobGroup" => "owner-http",
+               "invokeTarget" => "demoJobTask.printHeartbeat()",
+               "cronExpression" => "*/5 * * * * *",
+               "concurrent" => 0,
+               "status" => 0
+             }),
+             200
+           )["success"]
+
+    assert json_response(
+             post(authorized(build_conn(), other_token), "/api/v1/system/jobs", %{
+               "jobName" => job_name <> "_other",
+               "jobGroup" => "owner-http",
+               "invokeTarget" => "demoJobTask.printHeartbeat()",
+               "cronExpression" => "*/5 * * * * *",
+               "concurrent" => 0,
+               "status" => 0
+             }),
+             200
+           )["success"]
+
+    assert json_response(
+             post(authorized(build_conn(), owner_token), "/api/v1/system/notices", %{
+               "noticeTitle" => notice_title,
+               "noticeType" => 1,
+               "noticeContent" => "owner http notice",
+               "status" => 1
+             }),
+             201
+           )["success"]
+
+    assert json_response(
+             post(authorized(build_conn(), other_token), "/api/v1/system/notices", %{
+               "noticeTitle" => notice_title <> "_other",
+               "noticeType" => 1,
+               "noticeContent" => "other owner http notice",
+               "status" => 1
+             }),
+             201
+           )["success"]
+
+    owner_job_id = owner_id(owner_token, "/api/v1/system/jobs", %{"jobName" => job_name}, "jobId")
+
+    other_job_id =
+      owner_id(other_token, "/api/v1/system/jobs", %{"jobName" => job_name <> "_other"}, "jobId")
+
+    owner_notice_id =
+      owner_id(
+        owner_token,
+        "/api/v1/system/notices",
+        %{"noticeTitle" => notice_title},
+        "noticeId"
+      )
+
+    other_notice_id =
+      owner_id(
+        other_token,
+        "/api/v1/system/notices",
+        %{"noticeTitle" => notice_title <> "_other"},
+        "noticeId"
+      )
+
+    assert %{
+             "success" => true,
+             "data" => %{"rows" => [%{"jobId" => ^owner_job_id}], "total" => 1}
+           } =
+             json_response(
+               get(authorized(build_conn(), owner_token), "/api/v1/system/jobs", %{
+                 "jobName" => "owner_http_job"
+               }),
+               200
+             )
+
+    assert %{
+             "success" => true,
+             "data" => %{"rows" => [%{"noticeId" => ^owner_notice_id}], "total" => 1}
+           } =
+             json_response(
+               get(authorized(build_conn(), owner_token), "/api/v1/system/notices", %{
+                 "noticeTitle" => "owner_http_notice"
+               }),
+               200
+             )
+
+    assert json_response(
+             get(authorized(build_conn(), owner_token), "/api/v1/system/jobs/#{other_job_id}"),
+             404
+           )["error"]["code"] == "validation_failed"
+
+    assert json_response(
+             get(
+               authorized(build_conn(), owner_token),
+               "/api/v1/system/notices/#{other_notice_id}"
+             ),
+             404
+           )["error"]["code"] == "validation_failed"
+
+    assert json_response(
+             delete(
+               authorized(build_conn(), owner_token),
+               "/api/v1/system/jobs?jobIds=#{owner_job_id},#{other_job_id}",
+               %{}
+             ),
+             404
+           )["error"]["code"] == "validation_failed"
+
+    assert json_response(
+             delete(
+               authorized(build_conn(), owner_token),
+               "/api/v1/system/notices?notice_ids=#{owner_notice_id},#{other_notice_id}",
+               %{}
+             ),
+             404
+           )["error"]["code"] == "validation_failed"
+
+    assert get(authorized(build_conn(), owner_token), "/api/v1/system/jobs/#{owner_job_id}").status ==
+             200
+
+    assert get(authorized(build_conn(), owner_token), "/api/v1/system/notices/#{owner_notice_id}").status ==
+             200
+  end
+
+  @tag :integration
   test "export endpoints enforce scope and render an authorized workbook" do
     export_cases = export_cases()
     {department_token, _ids} = authenticated_scope_user("DEPARTMENT")
@@ -196,6 +328,15 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
       {"login log export", :get, "/api/v1/logs/loginLogs/excel"},
       {"operation log export", :get, "/api/v1/logs/operationLogs/excel"}
     ]
+  end
+
+  defp owner_id(token, path, params, field) do
+    response = get(authorized(build_conn(), token), path, params)
+
+    assert %{"data" => %{"rows" => [%{^field => id}], "total" => 1}} =
+             json_response(response, 200)
+
+    id
   end
 
   defp list_cases(%{file_name: file_name}) do
