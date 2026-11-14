@@ -33,7 +33,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     "logs" => ["login-log:read", "operation-log:read"],
     "jobs" => ["job:read"],
     "job-logs" => ["job:read"],
-    "monitor" => ["cache:refresh", "server:read", "online-session:read"]
+    "monitor" => ["cache:refresh", "server:read", "online-session:read", "audit:read"]
   }
 
   @panel_resources %{
@@ -359,6 +359,11 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       online_user_rows: monitor.online_users,
       online_user_total: monitor.online_user_total,
       network_status: monitor.network_status,
+      security_access: monitor.security_access,
+      security_metrics: monitor.security_metrics,
+      security_api_keys: monitor.security_api_keys,
+      security_event_rows: monitor.security_event_rows,
+      security_event_total: monitor.security_event_total,
       monitor_feedback: feedback || monitor.feedback
     )
   end
@@ -366,7 +371,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def monitor_access?(socket) do
     admin_socket?(socket) or
       Enum.any?(
-        ["cache:refresh", "server:read", "online-session:read"],
+        ["cache:refresh", "server:read", "online-session:read", "audit:read"],
         &permission_socket?(socket, &1)
       )
   end

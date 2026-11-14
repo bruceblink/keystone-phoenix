@@ -78,6 +78,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       |> assign_new(:online_user_page_num, fn -> 1 end)
       |> assign_new(:online_user_page_size, fn -> 50 end)
       |> assign_new(:online_user_total, fn -> length(assigns[:online_user_rows] || []) end)
+      |> assign_new(:security_access, fn -> false end)
+      |> assign_new(:security_metrics, fn -> %{} end)
+      |> assign_new(:security_api_keys, fn -> %{} end)
+      |> assign_new(:security_event_rows, fn -> [] end)
+      |> assign_new(:security_event_total, fn -> 0 end)
 
     ~H"""
     <div class="monitor-workspace">
@@ -163,6 +168,26 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
               </article>
             </div>
             <.pagination panel="online-users" page_num={@online_user_page_num} page_size={@online_user_page_size} total={@online_user_total} />
+          </section>
+
+          <section :if={@security_access} class="monitor-session-panel" aria-labelledby="security-report-title">
+            <header class="monitor-section-heading">
+              <div><span class="monitor-kicker">Security operations</span><h4 id="security-report-title">安全运营报告</h4></div>
+              <span class="monitor-count"><%= @security_event_total %> 个事件</span>
+            </header>
+            <div class="monitor-health-strip" aria-label="安全运营指标">
+              <div class="monitor-health-stat"><span>登录失败</span><strong><%= @security_metrics["loginFailures"] || 0 %></strong><small>当前保留窗口</small></div>
+              <div class="monitor-health-stat"><span>操作失败</span><strong><%= @security_metrics["operationFailures"] || 0 %></strong><small>审计事件</small></div>
+              <div class="monitor-health-stat"><span>API Key 轮换</span><strong><%= @security_api_keys["rotated"] || 0 %></strong><small>当前报告</small></div>
+            </div>
+            <p :if={@security_event_rows == []} class="table-empty" role="status">暂无安全事件</p>
+            <div :if={@security_event_rows != []} class="table-scroll" role="region" tabindex="0" aria-label="安全事件列表">
+              <table><caption class="sr-only">安全事件列表</caption><thead><tr><th scope="col">发生时间</th><th scope="col">主体</th><th scope="col">操作者</th><th scope="col">凭据</th><th scope="col">操作</th><th scope="col">结果</th></tr></thead><tbody>
+                <%= for event <- @security_event_rows do %>
+                  <tr><td><%= event["occurredAt"] || "" %></td><td><%= event["subjectId"] || "" %></td><td><%= event["actor"] || "" %></td><td><%= event["credentialType"] || "" %></td><td><%= event["operation"] || "" %></td><td><%= event["outcome"] || "" %></td></tr>
+                <% end %>
+              </tbody></table>
+            </div>
           </section>
         </section>
 

@@ -6,6 +6,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
   """
 
   alias KeystonePhoenix.Monitor
+  alias KeystonePhoenix.Security
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
 
   # 各监控项独立检查权限，避免一个权限缺失时加载其他受保护数据。
@@ -16,14 +17,24 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
     {online_users, online_user_total, online_error} =
       load_online_users(admin?, permissions, page_num, page_size, options)
 
+    {security_metrics, security_api_keys, security_events, security_event_total, security_error} =
+      load_security(admin?, permissions, options)
+
     %{
       server_info: server_info,
       cache_info: cache_info,
       online_users: online_users,
       online_user_total: online_user_total,
       network_status: load_network_status(admin?, permissions, options),
+      security_access: admin? or "audit:read" in permissions,
+      security_metrics: security_metrics,
+      security_api_keys: security_api_keys,
+      security_event_rows: security_events,
+      security_event_total: security_event_total,
       feedback:
-        [server_error, cache_error, online_error] |> Enum.find(&is_binary/1) |> error_feedback()
+        [server_error, cache_error, online_error, security_error]
+        |> Enum.find(&is_binary/1)
+        |> error_feedback()
     }
   end
 
@@ -75,6 +86,21 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
     if admin? or "server:read" in permissions,
       do: if(options == [], do: Monitor.network_status(), else: Monitor.network_status(options)),
       else: %{}
+  end
+
+  defp load_security(admin?, permissions, options) do
+    if admin? or "audit:read" in permissions do
+      with {:ok, metrics} <- Security.metrics(options),
+           {:ok, report} <- Security.report(%{"pageNum" => 1, "pageSize" => 20}, options) do
+        events = get_in(report, ["securityEvents", "page"]) || []
+        total = get_in(report, ["securityEvents", "total"]) || 0
+        {metrics, report["apiKeys"] || %{}, events, total, nil}
+      else
+        {:error, _reason} -> {%{}, %{}, [], 0, "安全运营数据暂不可用"}
+      end
+    else
+      {%{}, %{}, [], 0, nil}
+    end
   end
 
   defp error_feedback(nil), do: nil

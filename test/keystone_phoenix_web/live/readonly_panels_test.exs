@@ -110,6 +110,9 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     assert assigns.monitor_cache_info == %{}
     assert assigns.online_user_rows == []
     assert assigns.network_status == %{}
+    assert assigns.security_access == false
+    assert assigns.security_api_keys == %{}
+    assert assigns.security_event_rows == []
   end
 
   test "a read-only user cannot submit a management write", %{conn: conn} do
@@ -211,6 +214,21 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     assert online.monitor_server_info == %{}
     assert online.monitor_cache_info == %{}
     assert online.network_status == %{}
+  end
+
+  test "audit readers see the redacted security report in the monitor panel", %{conn: conn} do
+    audit_user = create_monitor_user("audit:read")
+    {:ok, view, _html} = login_view(conn, audit_user)
+
+    render_click(view, "show-panel", %{"panel" => "monitor"})
+    assigns = live_socket(view).assigns
+
+    assert assigns.security_access
+    assert is_integer(assigns.security_metrics["loginFailures"])
+    assert assigns.security_api_keys["rotated"] == 0
+    assert is_integer(assigns.security_event_total)
+    assert render(view) =~ "安全运营报告"
+    assert render(view) =~ "安全运营指标"
   end
 
   defp login_view(conn, user) do

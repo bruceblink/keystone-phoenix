@@ -464,7 +464,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "job-logs" -> %>
                       <.job_logs job_log_rows={@job_log_rows} job_log_feedback={@job_log_feedback} page_num={@page_nums["job-logs"]} page_size={@page_sizes["job-logs"]} read_only={@read_only} />
                     <% "monitor" -> %>
-                      <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} online_user_total={@online_user_total} online_user_page_num={@page_nums["online-users"]} online_user_page_size={@page_sizes["online-users"]} network_status={@network_status} monitor_feedback={@monitor_feedback} read_only={@read_only} />
+                      <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} online_user_total={@online_user_total} online_user_page_num={@page_nums["online-users"]} online_user_page_size={@page_sizes["online-users"]} network_status={@network_status} security_access={@security_access} security_metrics={@security_metrics} security_api_keys={@security_api_keys} security_event_rows={@security_event_rows} security_event_total={@security_event_total} monitor_feedback={@monitor_feedback} read_only={@read_only} />
                     <% "profile" -> %>
                       <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} avatar_upload={@uploads.avatar} />
                     <% _ -> %>
