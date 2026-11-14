@@ -20,7 +20,10 @@ defmodule KeystonePhoenixWeb.NoticeController do
 
   @doc "Returns a paginated list of notices."
   def list(conn, params) do
-    json(conn, ApiResponse.ok(Notice.list_notices(params)))
+    case Notice.list_notices(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
   end
 
   @doc "Compatibility alias for the original read-replica demonstration route."
@@ -28,9 +31,10 @@ defmodule KeystonePhoenixWeb.NoticeController do
 
   @doc "Returns a notice."
   def show(conn, %{"notice_id" => notice_id}) do
-    case Notice.get_notice(notice_id) do
+    case Notice.get_notice(notice_id, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, notice} -> json(conn, ApiResponse.ok(Notice.notice_to_map(notice)))
       {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
@@ -74,6 +78,14 @@ defmodule KeystonePhoenixWeb.NoticeController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "公告编号无效"))
+  end
+
+  defp render_error(conn, :permission_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "没有操作权限"))
+  end
+
+  defp render_error(conn, :data_scope_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do

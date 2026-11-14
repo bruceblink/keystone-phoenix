@@ -45,6 +45,7 @@ defmodule KeystonePhoenix.NoticeAuditTest do
     %{
       principal: %{
         user_id: actor.user_id,
+        data_scope: "TENANT",
         permissions: ["permission:manage", "notice:create", "notice:update"]
       }
     }

@@ -24,30 +24,48 @@ defmodule KeystonePhoenixWeb.DictionaryController do
 
   @doc "Returns a paginated list of dictionary types."
   def list_types(conn, params) do
-    json(conn, ApiResponse.ok(Dictionary.list_dict_types(params)))
+    case Dictionary.list_dict_types(params,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
   end
 
   @doc "Returns a paginated list of dictionary items."
   def list_data(conn, params) do
-    json(conn, ApiResponse.ok(Dictionary.list_dict_data(params)))
+    case Dictionary.list_dict_data(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
   end
 
   @doc "Returns active dictionary items for a select component."
   def list_data_by_type(conn, %{"dict_type" => dict_type}) do
-    json(conn, ApiResponse.ok(Dictionary.list_dict_data_by_type(dict_type)))
+    case Dictionary.list_dict_data_by_type(
+           dict_type,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
   end
 
   def show_type(conn, %{"dict_id" => dict_id}) do
-    case Dictionary.get_dict_type(dict_id) do
+    case Dictionary.get_dict_type(dict_id, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, dict_type} -> json(conn, ApiResponse.ok(Dictionary.dict_type_to_map(dict_type)))
       {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
   def show_data(conn, %{"dict_code" => dict_code}) do
-    case Dictionary.get_dict_data(dict_code) do
+    case Dictionary.get_dict_data(dict_code,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
       {:ok, dict_data} -> json(conn, ApiResponse.ok(Dictionary.dict_data_to_map(dict_data)))
       {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
@@ -132,6 +150,14 @@ defmodule KeystonePhoenixWeb.DictionaryController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "字典类型不存在或已停用"))
+  end
+
+  defp render_error(conn, :permission_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "没有操作权限"))
+  end
+
+  defp render_error(conn, :data_scope_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
   end
 
   defp render_error(conn, changeset) do

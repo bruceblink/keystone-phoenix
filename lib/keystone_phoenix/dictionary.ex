@@ -48,6 +48,13 @@ defmodule KeystonePhoenix.Dictionary do
     end
   end
 
+  @doc "在检查字典资源范围后查询字典类型。"
+  def get_dict_type(id, options) when is_list(options) do
+    with :ok <- Command.authorize_resource(options, "dictionary:read", :dictionary) do
+      get_dict_type(id)
+    end
+  end
+
   @spec get_dict_data(String.t()) :: {:ok, DictData.t()} | {:error, :not_found}
   def get_dict_data(id) do
     case Params.parse_uuid(id) do
@@ -62,11 +69,18 @@ defmodule KeystonePhoenix.Dictionary do
     end
   end
 
+  @doc "在检查字典资源范围后查询字典数据。"
+  def get_dict_data(id, options) when is_list(options) do
+    with :ok <- Command.authorize_resource(options, "dictionary:read", :dictionary) do
+      get_dict_data(id)
+    end
+  end
+
   @spec create_dict_type(map(), keyword()) :: {:ok, DictType.t()} | {:error, term()}
   def create_dict_type(attrs, options)
 
   def create_dict_type(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "dictionary:create") do
+    with :ok <- Command.authorize_resource(options, "dictionary:create", :dictionary) do
       do_create_dict_type(attrs, Command.actor_id(options))
     end
   end
@@ -83,7 +97,7 @@ defmodule KeystonePhoenix.Dictionary do
   def update_dict_type(id, attrs, options)
 
   def update_dict_type(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "dictionary:update") do
+    with :ok <- Command.authorize_resource(options, "dictionary:update", :dictionary) do
       do_update_dict_type(id, attrs, Command.actor_id(options))
     end
   end
@@ -134,7 +148,7 @@ defmodule KeystonePhoenix.Dictionary do
   def delete_dict_type(id, options)
 
   def delete_dict_type(id, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "dictionary:delete") do
+    with :ok <- Command.authorize_resource(options, "dictionary:delete", :dictionary) do
       do_delete_dict_type(id)
     end
   end
@@ -168,7 +182,7 @@ defmodule KeystonePhoenix.Dictionary do
   def create_dict_data(attrs, options)
 
   def create_dict_data(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "dictionary:create") do
+    with :ok <- Command.authorize_resource(options, "dictionary:create", :dictionary) do
       do_create_dict_data(attrs, Command.actor_id(options))
     end
   end
@@ -198,7 +212,7 @@ defmodule KeystonePhoenix.Dictionary do
   def update_dict_data(id, attrs, options)
 
   def update_dict_data(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "dictionary:update") do
+    with :ok <- Command.authorize_resource(options, "dictionary:update", :dictionary) do
       do_update_dict_data(id, attrs, Command.actor_id(options))
     end
   end
@@ -231,7 +245,7 @@ defmodule KeystonePhoenix.Dictionary do
   def delete_dict_data(id, options)
 
   def delete_dict_data(id, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "dictionary:delete") do
+    with :ok <- Command.authorize_resource(options, "dictionary:delete", :dictionary) do
       do_delete_dict_data(id)
     end
   end
@@ -267,6 +281,13 @@ defmodule KeystonePhoenix.Dictionary do
     page_query(query, params, :dict_id, &dict_type_to_map/1)
   end
 
+  @doc "在检查字典资源范围后查询字典类型列表。"
+  def list_dict_types(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Command.authorize_resource(options, "dictionary:read", :dictionary) do
+      {:ok, list_dict_types(params)}
+    end
+  end
+
   @spec list_dict_data(map()) :: %{rows: list(), total: non_neg_integer()}
   def list_dict_data(params \\ %{}) do
     query =
@@ -283,6 +304,13 @@ defmodule KeystonePhoenix.Dictionary do
     page_query(query, params, :dict_code, &dict_data_to_map/1)
   end
 
+  @doc "在检查字典资源范围后查询字典数据列表。"
+  def list_dict_data(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Command.authorize_resource(options, "dictionary:read", :dictionary) do
+      {:ok, list_dict_data(params)}
+    end
+  end
+
   @spec list_dict_data_by_type(String.t()) :: [map()]
   def list_dict_data_by_type(dict_type) when is_binary(dict_type) do
     Cache.fetch(dict_data_cache_key(dict_type), @dict_data_cache_ttl, fn ->
@@ -293,6 +321,13 @@ defmodule KeystonePhoenix.Dictionary do
       |> Repo.all()
       |> Enum.map(&dict_data_to_map/1)
     end)
+  end
+
+  @doc "在检查字典资源范围后读取指定类型的可用数据。"
+  def list_dict_data_by_type(dict_type, options) when is_binary(dict_type) and is_list(options) do
+    with :ok <- Command.authorize_resource(options, "dictionary:read", :dictionary) do
+      {:ok, list_dict_data_by_type(dict_type)}
+    end
   end
 
   defp validate_dict_type(dict_type) when is_binary(dict_type) do
@@ -306,7 +341,7 @@ defmodule KeystonePhoenix.Dictionary do
 
   @doc "Clears all cached dictionary data values."
   def refresh_cache(options) when is_list(options) do
-    with :ok <- Command.authorize(options, "dictionary:refresh") do
+    with :ok <- Command.authorize_resource(options, "dictionary:refresh", :dictionary) do
       do_refresh_cache()
     end
   end

@@ -34,6 +34,13 @@ defmodule KeystonePhoenix.Notice do
     %{paged | rows: Enum.map(paged.rows, &notice_to_map(&1, creator_names))}
   end
 
+  @doc "在检查公告权限和资源范围后查询公告列表。"
+  def list_notices(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Command.authorize_resource(options, "notice:read", :notice) do
+      {:ok, list_notices(params)}
+    end
+  end
+
   def get_notice(id) do
     case Params.parse_uuid(id) do
       {:ok, id} ->
@@ -47,10 +54,17 @@ defmodule KeystonePhoenix.Notice do
     end
   end
 
+  @doc "在检查公告权限和资源范围后查询单个公告。"
+  def get_notice(id, options) when is_list(options) do
+    with :ok <- Command.authorize_resource(options, "notice:read", :notice) do
+      get_notice(id)
+    end
+  end
+
   def create_notice(attrs, options)
 
   def create_notice(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "notice:create") do
+    with :ok <- Command.authorize_resource(options, "notice:create", :notice) do
       do_create_notice(attrs, Command.actor_id(options))
     end
   end
@@ -65,7 +79,7 @@ defmodule KeystonePhoenix.Notice do
   def update_notice(id, attrs, options)
 
   def update_notice(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize(options, "notice:update") do
+    with :ok <- Command.authorize_resource(options, "notice:update", :notice) do
       do_update_notice(id, attrs, Command.actor_id(options))
     end
   end
@@ -82,7 +96,7 @@ defmodule KeystonePhoenix.Notice do
   def delete_notices(ids, options)
 
   def delete_notices(ids, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "notice:delete") do
+    with :ok <- Command.authorize_resource(options, "notice:delete", :notice) do
       do_delete_notices(ids)
     end
   end
