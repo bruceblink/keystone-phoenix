@@ -217,7 +217,7 @@
 
 范围：
 
-- 运行全量测试和生产严格编译，构建实际 release 镜像。
+- 运行全量测试和生产严格编译；生产 release 镜像只由 GitHub Actions 构建，本机不执行生产 Docker 构建。
 - 使用独立 PostgreSQL 18 测试容器执行空库迁移、重复迁移、受控初始化和升级验证；不要向已有开发库或生产库直接写开发种子账号。
 - 完成就绪检查、登录、重复登录、刷新、退出、普通角色权限、LiveView 失效会话和文件上传下载检查。
 - 验证上传目录的持久化挂载、运行用户写权限，以及数据库和文件备份恢复。
@@ -227,7 +227,7 @@
 
 2026-11-09 验收结果：提交 `492205d` 的 `MIX_ENV=prod` release 通过严格编译。使用临时 PostgreSQL 18 数据库完成空库迁移和重复迁移。运行时镜像通过 `/health`、`/health/ready`、RSA 登录、refresh token 刷新、退出、通用文件 multipart 上传、下载和路径遍历拒绝。上传目录使用独立 Docker volume，容器重启后文件仍存在。数据库使用 `pg_dump` 和 `pg_restore` 完成恢复，恢复库包含 9 个 migration 记录。临时数据库、容器和 volume 已清理；验证镜像摘要为 `sha256:1fd3131867e03b6d0ee718dd9c9546576fe1d1a0213d39c30b4c855368db8227`，大小为 160873155 字节。
 
-标准 `Dockerfile` 已在 `3568a95` 中默认使用 `repo.hex.pm`，并设置 `HEX_CACERTS_PATH`、`LC_ALL` 和 `ELIXIR_ERL_OPTIONS`。本机 Docker 构建已在无额外镜像源参数的环境中成功完成；最新候选镜像 `keystone-phoenix:acceptance-e4e28c2` 的 digest 为 `sha256:c5ade29d1084a30b29d2866d81465e7f37f7dd5e5c23de700547520eeda63de7`。`scripts/release_smoke.sh` 已通过空库迁移、重复迁移、RSA 登录、refresh 轮换、旧 refresh 重放拒绝、API Key 业务访问和撤销、数据库停止/恢复、文件上传下载、卷持久化、容器重启和退出登录检查。生产镜像窗口验收仍需使用真实浏览器完成。
+标准 `Dockerfile` 已在 `3568a95` 中默认使用 `repo.hex.pm`，并设置 `HEX_CACERTS_PATH`、`LC_ALL` 和 `ELIXIR_ERL_OPTIONS`。历史记录中的本机 Docker 构建仅作为旧验收证据保留；当前生产镜像统一由 GitHub Actions 构建，本机不执行生产 Docker 构建。历史候选镜像 `keystone-phoenix:acceptance-e4e28c2` 的 digest 为 `sha256:c5ade29d1084a30b29d2866d81465e7f37f7dd5e5c23de700547520eeda63de7`。`scripts/release_smoke.sh` 已通过空库迁移、重复迁移、RSA 登录、refresh 轮换、旧 refresh 重放拒绝、API Key 业务访问和撤销、数据库停止/恢复、文件上传下载、卷持久化、容器重启和退出登录检查。生产镜像窗口验收仍需使用真实浏览器完成。
 
 用户已要求评估并发布本阶段版本。对已知 P1 问题及未完成的验收，不得因取得发布请求而隐去或标记为通过。发布工作流执行后应核验对应标签、镜像和发布记录；非发布任务不监测 GitHub CI。
 

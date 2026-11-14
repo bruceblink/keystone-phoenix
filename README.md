@@ -61,9 +61,10 @@ docker run --rm --env-file .env -p 4000:4000 ghcr.io/bruceblink/keystone-phoenix
 
 GitHub Actions publishes release images to
 `ghcr.io/bruceblink/keystone-phoenix` only for stable semantic version tags
-such as `v0.3.0`. The image keeps the same `vX.Y.Z` tag and does not create
-branch, commit, `latest`, or unprefixed semver aliases. The workflow validates
-the tag before pushing and keeps BuildKit layers in the GitHub Actions cache.
+such as `v0.3.0`. The image uses the unprefixed `X.Y.Z` tag, for example
+`0.3.0`, and does not create branch, commit, `latest`, or `v`-prefixed aliases.
+The workflow validates the Git tag before pushing and keeps BuildKit layers in
+the GitHub Actions cache.
 
 The release reads `DATABASE_URL`, `SECRET_KEY_BASE`, `JWT_PRIVATE_KEY`, and
 `PHX_HOST` at runtime. Use `/health` for liveness and `/health/ready` for

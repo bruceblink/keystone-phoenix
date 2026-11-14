@@ -54,8 +54,9 @@ jobs:
         uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5.8.0
         with:
           images: ghcr.io/${{ github.repository }}
+          flavor: latest=false
           tags: |
-            type=ref,event=tag
+            type=semver,pattern={{version}},value=${{ github.ref_name }}
 
       - name: Build and push release image
         id: build
@@ -81,10 +82,10 @@ jobs:
 
       - name: Pull release image for smoke test
         env:
-          IMAGE_REF: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          IMAGE_REF: ghcr.io/${{ github.repository }}:${{ steps.metadata.outputs.version }}
         run: docker pull "${IMAGE_REF}"
 
       - name: Run release smoke test
         env:
-          IMAGE_REF: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          IMAGE_REF: ghcr.io/${{ github.repository }}:${{ steps.metadata.outputs.version }}
         run: ./scripts/release_smoke.sh "${IMAGE_REF}"
