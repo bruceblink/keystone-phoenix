@@ -55,6 +55,29 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert get_in(json_response(conn, 409), ["error", "code"]) == "validation_failed"
   end
 
+  test "uses the same response for an unknown username and a wrong password", %{user: user} do
+    wrong_password =
+      build_conn()
+      |> post("/api/v1/auth/login", %{
+        "username" => user.username,
+        "password" => encrypted_password("Wrong!123")
+      })
+      |> json_response(401)
+
+    unknown_username =
+      build_conn()
+      |> post("/api/v1/auth/login", %{
+        "username" => "missing_#{System.unique_integer([:positive])}",
+        "password" => encrypted_password("Wrong!123")
+      })
+      |> json_response(401)
+
+    assert get_in(wrong_password, ["error", "code"]) == "invalid_credential"
+    assert get_in(unknown_username, ["error", "code"]) == "invalid_credential"
+    assert wrong_password["message"] == unknown_username["message"]
+    assert wrong_password["data"] == unknown_username["data"]
+  end
+
   test "limits repeated HTTP login attempts", %{user: user} do
     params = %{
       "username" => user.username,
