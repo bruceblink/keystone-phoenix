@@ -2,7 +2,7 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
-更新日期：2026-11-14。本次文档审查基于已推送代码基线 `fb2e20a`。认证会话、MFA 领域与 HTTP 接口、API Key 领域与业务 HTTP PEP、标准 JWK Set、持久化 JWK 注册表、入口级资源范围矩阵和运行时 HTTPS 检查已完成；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1。当前默认测试为 258 项通过、23 项排除，集成测试为 281 项通过；test/dev/prod 严格编译、格式和源码行数检查通过。PostgreSQL 18 开发库迁移、重复迁移、健康检查、RSA 登录、刷新令牌重放撤销、API Key 业务访问、敏感路径拒绝、资源范围拒绝和最新镜像 release smoke 已完成真实验收。镜像验收使用 `keystone-phoenix:acceptance-20261114@sha256:89a7fc2e1972b671f7ca0b5e8808e5ad922928d8a94c96478a4e595948b132c8`。跨项目并发、数据库故障演练、真实 TLS 终止链和 OIDC/WebAuthn 仍不属于本轮已完成范围。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
+更新日期：2026-11-14。本次文档审查基于已推送代码基线 `389fa62`。认证会话、MFA 领域与 HTTP 接口、API Key 领域与业务 HTTP PEP、标准 JWK Set、持久化 JWK 注册表、入口级资源范围矩阵和运行时 HTTPS 检查已完成；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1。当前默认测试为 259 项通过、23 项排除，集成测试为 282 项通过；test/dev/prod 严格编译、格式和源码行数检查通过。PostgreSQL 18 开发库迁移、重复迁移、健康检查、RSA 登录、刷新令牌重放撤销、API Key 业务访问、敏感路径拒绝、资源范围拒绝和最新镜像 release smoke 已完成真实验收。最新镜像验收使用 `keystone-phoenix:acceptance-20261114@sha256:9141e4cb23607f7f5bd7101ec1c4c17f443a6e445575e580c244d9f4e7442e43`。运行时只信任配置的 `TRUSTED_PROXY_CIDRS` 代理来源提供的 `x-forwarded-proto`。跨项目并发、数据库故障演练、真实 TLS 终止链和 OIDC/WebAuthn 仍不属于本轮已完成范围。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
 
 本文较早的功能和验收记录只用于识别需要替换的范围，不代表新系统已经完成。一次性重构从 U0 阶段重新实现和验收；现有实体、迁移、接口和测试只有在符合统一架构后才能继续使用。
 
