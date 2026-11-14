@@ -78,7 +78,7 @@ defmodule KeystonePhoenix.Dictionary do
     Repo.insert(Audit.put_actor(changeset, :creator_id, actor_id))
   end
 
-  @spec update_dict_type(integer() | String.t(), map(), keyword()) ::
+  @spec update_dict_type(String.t(), map(), keyword()) ::
           {:ok, DictType.t()} | {:error, term()}
   def update_dict_type(id, attrs, options)
 
@@ -130,7 +130,7 @@ defmodule KeystonePhoenix.Dictionary do
     end
   end
 
-  @spec delete_dict_type(integer() | String.t(), keyword()) :: :ok | {:error, term()}
+  @spec delete_dict_type(String.t(), keyword()) :: :ok | {:error, term()}
   def delete_dict_type(id, options)
 
   def delete_dict_type(id, options) when is_list(options) do
@@ -193,7 +193,7 @@ defmodule KeystonePhoenix.Dictionary do
     end
   end
 
-  @spec update_dict_data(integer() | String.t(), map(), keyword()) ::
+  @spec update_dict_data(String.t(), map(), keyword()) ::
           {:ok, DictData.t()} | {:error, term()}
   def update_dict_data(id, attrs, options)
 
@@ -227,7 +227,7 @@ defmodule KeystonePhoenix.Dictionary do
     end
   end
 
-  @spec delete_dict_data(integer() | String.t(), keyword()) :: :ok | {:error, term()}
+  @spec delete_dict_data(String.t(), keyword()) :: :ok | {:error, term()}
   def delete_dict_data(id, options)
 
   def delete_dict_data(id, options) when is_list(options) do

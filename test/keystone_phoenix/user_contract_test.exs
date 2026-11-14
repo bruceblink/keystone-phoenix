@@ -60,16 +60,16 @@ defmodule KeystonePhoenix.UserContractTest do
     assert profile["postName"] == "合同岗位"
   end
 
-  test "normalizes empty relation identifiers and ignores invalid integer filters" do
+  test "normalizes empty relation identifiers and rejects integer IDs" do
     assert {:ok, user} =
              User.create_user(
                %{
                  "username" => unique("normalized_user"),
                  "password" => "Strong!123",
                  "nickname" => "参数用户",
-                 "deptId" => "0",
+                 "deptId" => "",
                  "postId" => "",
-                 "roleId" => "0",
+                 "roleId" => "",
                  "status" => "1"
                },
                authorization: %{
@@ -89,6 +89,7 @@ defmodule KeystonePhoenix.UserContractTest do
     assert result.total >= 1
     assert user.user_id in Enum.map(result.rows, & &1["userId"])
     assert {:error, :not_found} = User.get_user("0")
+    assert {:error, :not_found} = User.get_user(0)
 
     assert {:error, :data_scope_denied} =
              User.reset_password("invalid", %{"password" => "Strong!123"},

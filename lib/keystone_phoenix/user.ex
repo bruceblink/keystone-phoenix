@@ -124,7 +124,7 @@ defmodule KeystonePhoenix.User do
   end
 
   @doc "Updates editable user fields and revokes a disabled user's session."
-  @spec update_user(integer() | String.t(), map(), keyword()) ::
+  @spec update_user(String.t(), map(), keyword()) ::
           {:ok, SysUser.t()} | {:error, :not_found | Ecto.Changeset.t()}
   def update_user(id, attrs, options)
 
@@ -195,7 +195,7 @@ defmodule KeystonePhoenix.User do
   end
 
   @doc "Replaces a user's password and invalidates the active refresh session."
-  @spec reset_password(integer() | String.t(), map(), keyword()) ::
+  @spec reset_password(String.t(), map(), keyword()) ::
           {:ok, SysUser.t()} | {:error, :not_found | :unavailable | Ecto.Changeset.t()}
   def reset_password(id, attrs, options)
 
@@ -223,7 +223,7 @@ defmodule KeystonePhoenix.User do
   end
 
   @doc "Changes a user's enabled status and invalidates disabled sessions."
-  @spec change_status(integer() | String.t(), term(), keyword()) ::
+  @spec change_status(String.t(), term(), keyword()) ::
           {:ok, SysUser.t()} | {:error, :not_found | Ecto.Changeset.t()}
   def change_status(id, status, options)
 
@@ -264,7 +264,7 @@ defmodule KeystonePhoenix.User do
     do: user |> List.wrap() |> user_maps() |> List.first() || user_to_map(user)
 
   @doc "Updates editable profile fields without allowing account privilege changes."
-  @spec update_profile(integer() | String.t(), map(), keyword()) ::
+  @spec update_profile(String.t(), map(), keyword()) ::
           {:ok, SysUser.t()} | {:error, term()}
   def update_profile(id, attrs, options)
 
@@ -288,7 +288,7 @@ defmodule KeystonePhoenix.User do
   end
 
   @doc "Changes a password after checking the current password."
-  @spec update_password(integer() | String.t(), map(), keyword()) ::
+  @spec update_password(String.t(), map(), keyword()) ::
           {:ok, SysUser.t()} | {:error, term()}
   def update_password(id, attrs, options)
 
@@ -479,9 +479,6 @@ defmodule KeystonePhoenix.User do
         nil
 
       "" ->
-        nil
-
-      "0" ->
         nil
 
       value when is_binary(value) ->

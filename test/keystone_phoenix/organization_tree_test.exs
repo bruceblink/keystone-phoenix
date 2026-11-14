@@ -12,10 +12,10 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
 
   test "department moves recompute descendants and reject invalid parents" do
-    old_parent = insert_dept(201, 0, "0", "旧部门")
-    new_parent = insert_dept(202, 0, "0", "新部门")
-    child = insert_dept(203, old_parent.dept_id, "0,201", "子部门")
-    grandchild = insert_dept(204, child.dept_id, "0,201,203", "孙部门")
+    old_parent = insert_dept(201, nil, "", "旧部门")
+    new_parent = insert_dept(202, nil, "", "新部门")
+    child = insert_dept(203, old_parent.dept_id, "201", "子部门")
+    grandchild = insert_dept(204, child.dept_id, "201,203", "孙部门")
 
     assert {:ok, _updated} =
              Department.update_dept(old_parent.dept_id, %{"parentId" => new_parent.dept_id},
@@ -46,7 +46,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
                authorization: %{principal: admin_principal()}
              )
 
-    disabled = insert_dept(205, 0, "0", "停用部门", 0)
+    disabled = insert_dept(205, nil, "", "停用部门", 0)
 
     assert {:error, :parent_disabled} =
              Department.create_dept(
@@ -65,7 +65,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
   end
 
   test "menu rules prevent invalid trees and deleting assigned menus" do
-    root = insert_menu(301, 0, 2, false, "目录")
+    root = insert_menu(301, nil, 2, false, "目录")
     page = insert_menu(302, root.menu_id, 1, false, "页面")
 
     assert {:error, :invalid_parent} =
@@ -146,7 +146,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
       })
       |> Repo.insert!()
 
-    button = insert_menu(402, 0, 0, true, "前端按钮")
+    button = insert_menu(402, nil, 0, true, "前端按钮")
     rows = Menu.list_menus()
     page_row = Enum.find(rows, &(&1["menuId"] == page.menu_id))
     button_row = Enum.find(rows, &(&1["menuId"] == button.menu_id))
@@ -168,7 +168,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
   end
 
   test "department and post maps expose frontend identifiers and labels" do
-    dept = insert_dept(403, 0, "0", "前端部门")
+    dept = insert_dept(403, nil, "", "前端部门")
     dept_id = dept.dept_id
 
     assert %{
@@ -195,8 +195,6 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
   end
 
   defp insert_dept(_id, parent_id, _ancestors, name, status \\ 1) do
-    parent_id = normalize_parent(parent_id)
-
     ancestors =
       case parent_id do
         nil ->
@@ -219,7 +217,6 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
 
   defp insert_menu(id, parent_id, menu_type, is_button, name) do
     menu_id = Identity.v7()
-    parent_id = normalize_parent(parent_id)
 
     %SysMenu{menu_id: menu_id}
     |> SysMenu.changeset(%{
@@ -232,9 +229,6 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
     })
     |> Repo.insert!()
   end
-
-  defp normalize_parent(value) when value in [0, "0"], do: nil
-  defp normalize_parent(value), do: value
 
   defp admin_principal do
     %{

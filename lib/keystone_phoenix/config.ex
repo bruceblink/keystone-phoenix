@@ -92,7 +92,7 @@ defmodule KeystonePhoenix.Config do
     end
   end
 
-  @spec update_config(integer() | String.t(), map(), keyword()) ::
+  @spec update_config(String.t(), map(), keyword()) ::
           {:ok, SysConfig.t()} | {:error, term()}
   def update_config(id, attrs, options)
 

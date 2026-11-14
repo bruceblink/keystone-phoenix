@@ -140,7 +140,6 @@ defmodule KeystonePhoenix.PermissionTest do
   end
 
   defp insert_dept(legacy_id, parent_id, ancestors) do
-    parent_id = if parent_id in [0, "0"], do: nil, else: parent_id
     ancestors = if parent_id, do: to_string(parent_id), else: ancestors
 
     %SysDept{}
