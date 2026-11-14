@@ -49,12 +49,14 @@ mix ecto.rollback
 MIX_ENV=prod mix release
 ```
 
-Production releases can be built with the included multi-stage Dockerfile:
+Production images are built by the GitHub Actions release workflow. Do not build
+the production image on the development machine. After a formal `vX.Y.Z` tag is
+published, pull the CI-built image and run its migration and release commands:
 
 ```bash
-docker build -t keystone-phoenix:latest .
-docker run --rm --env-file .env --entrypoint /app/bin/migrate keystone-phoenix:latest
-docker run --rm --env-file .env -p 4000:4000 keystone-phoenix:latest start
+docker pull ghcr.io/bruceblink/keystone-phoenix:0.3.0
+docker run --rm --env-file .env --entrypoint /app/bin/migrate ghcr.io/bruceblink/keystone-phoenix:0.3.0
+docker run --rm --env-file .env -p 4000:4000 ghcr.io/bruceblink/keystone-phoenix:0.3.0 start
 ```
 
 GitHub Actions publishes release images to

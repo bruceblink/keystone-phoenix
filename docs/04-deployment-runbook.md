@@ -4,31 +4,17 @@
 
 ## 构建和迁移
 
-在项目根目录构建镜像：
+生产镜像由 GitHub Actions 的正式版本工作流构建并发布。不要在本机执行生产 Docker 构建。创建并推送 `vX.Y.Z` 标签后，先从 GHCR 拉取与标签对应的无 `v` 镜像：
 
 ```bash
-docker build -t keystone-phoenix:0.3.0 .
+docker pull ghcr.io/bruceblink/keystone-phoenix:0.3.0
 ```
 
 默认从 Docker Hub 官方地址读取 Elixir 和 Debian 基础镜像，从 Hex 官方地址读取依赖，并在两个阶段从 Debian 官方软件源读取软件包。Hex 包继续按 `mix.lock` 校验，Debian 软件包继续验证软件源签名。
 
 Excel 依赖使用已固定提交的兼容版本；`vendor/xlsxir` 只保留必要的编译 warning 修正。构建阶段使用 `mix compile --warnings-as-errors`，不会通过关闭全局 warning 检查来隐藏依赖问题。
 
-本地网络需要国内镜像时，可以显式切换基础镜像和 Debian 软件源；这些参数不写入默认配置：
-
-```bash
-docker build \
-  --build-arg IMAGE_REGISTRY=m.daocloud.io/docker.io/library/ \
-  --build-arg DEBIAN_MIRROR=http://mirrors.tuna.tsinghua.edu.cn \
-  -t keystone-phoenix:0.3.0 .
-```
-
-如果国内基础镜像或 Hex 镜像不可用，可显式使用 Docker Hub 和官方 Hex 地址：
-
-```bash
-docker build --build-arg IMAGE_REGISTRY= --build-arg HEX_MIRROR=https://repo.hex.pm \
-  -t keystone-phoenix:0.3.0 .
-```
+GitHub Actions 默认使用 Docker Hub、Hex 和 Debian 官方源。只有 CI runner 的组织级配置明确要求国内镜像时，才在工作流参数中切换镜像源；本机不执行生产镜像构建。
 
 准备生产环境文件，至少包含 `DATABASE_URL`、`SECRET_KEY_BASE`、`JWT_PRIVATE_KEY`、`PHX_HOST` 和 `FILE_BASE_DIR`。生产默认启用数据库 SSL；只有在可信本地网络测试时才显式设置 `DATABASE_SSL_ALLOW_INSECURE=true`。生产运行时默认要求 `PHX_FORCE_SSL=true`。如果通过反向代理传入 `x-forwarded-proto`，必须同时配置 `TRUSTED_PROXY_CIDRS`，应用只信任这些来源地址。直接使用 HTTPS 时不需要配置代理来源。如果必须在本地使用 HTTP，必须同时设置 `PHX_FORCE_SSL=false` 和 `PHX_ALLOW_INSECURE_HTTP=true`；这两个设置不能用于生产流量。`CORS_ALLOWED_ORIGINS` 使用逗号分隔的完整来源地址，生产来源必须使用 `https://`，留空表示不允许跨域读取。应用启动前会检查 `FILE_BASE_DIR` 可创建、可写和可删除，也会拒绝无效的 CORS 来源、代理 CIDR 和不安全的 HTTP 配置。PostgreSQL 已经可用后，先执行迁移：
 
