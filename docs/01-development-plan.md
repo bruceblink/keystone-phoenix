@@ -2,9 +2,9 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
-更新日期：2026-11-14。本次文档审查基于已推送代码基线 `68d693f`。认证会话、MFA、API Key、标准 JWK Set、持久化 JWK 注册表、入口级资源范围矩阵、运行时 HTTPS 检查、OIDC Authorization Code + PKCE 和 Phoenix Passkey 已完成代码实现及本地数据库测试；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1。当前默认测试为 298 项通过、25 项排除，集成测试为 323 项通过；test/dev/prod 严格编译、格式和源码行数检查通过。OIDC 使用服务端生成的 state、nonce 和 verifier，Passkey 使用一次性 challenge、受控 RP/origin、公钥和签名计数器。PostgreSQL 18 迁移、重复迁移、认证 HTTP 链路、并发边界、单进程崩溃重启后的旧访问令牌恢复、非用户资源入口范围矩阵、本地 OIDC provider 实际重定向链、临时 TLS 终止代理和最新镜像 release smoke 已有真实验收。最新 owner 切片已为公告和任务增加 `OWNER/SELF` 过滤，覆盖越界读取、更新、执行和混合删除回滚。当前未完成的是真实公网 IdP、浏览器 Passkey/硬件仪式、浏览器 CSRF/Cookie 实际行为、多节点恢复、全部资源的真实 owner/member 数据过滤、导出/批量/异步范围和跨项目生产端到端一致性验收。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
+更新日期：2026-11-14。本次文档审查基于已推送代码基线 `dc11b6a`。认证会话、MFA、API Key、标准 JWK Set、持久化 JWK 注册表、入口级资源范围矩阵、运行时 HTTPS 检查、OIDC Authorization Code + PKCE 和 Phoenix Passkey 已完成代码实现及本地数据库测试；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1。当前默认测试为 299 项通过、25 项排除，集成测试为 324 项通过；test/dev/prod 严格编译、格式和源码行数检查通过。OIDC 使用服务端生成的 state、nonce 和 verifier，Passkey 使用一次性 challenge、受控 RP/origin、公钥和签名计数器。PostgreSQL 18 迁移、重复迁移、认证 HTTP 链路、并发边界、单进程崩溃重启后的旧访问令牌恢复、非用户资源入口范围矩阵、本地 OIDC provider 实际重定向链、临时 TLS 终止代理和最新镜像 release smoke 已有真实验收。`b60a7fe` 又将角色、岗位、登录日志、操作日志和岗位导出查询接入显式授权上下文；公告和任务继续使用真实 `OWNER/SELF` 过滤并覆盖越界读取、更新、执行和混合删除回滚。当前未完成的是真实公网 IdP、浏览器 Passkey/硬件仪式、浏览器 CSRF/Cookie 实际行为、多节点恢复、全部资源的真实 owner/member 数据过滤、全部批量/异步范围、导出控制器回归和跨项目生产端到端一致性验收。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
 
-当前结论：核心功能已完成，开发计划尚未全部完成，不能据此声明生产发布验收通过。服务层已完成主要资源的显式主体边界；`68d693f` 又完成公告和任务的 `OWNER/SELF` 查询、详情、更新、执行和混合删除回滚。全部资源的真实 owner/member 数据过滤、完整导出/批量/异步范围仍未闭环。macOS 真实浏览器已完成新的登录会话、LiveView CSRF handshake、管理概览和退出登录；生产边缘代理下的 CSRF/Cookie 全链路、浏览器或硬件 Passkey、多节点恢复、真实生产 IdP 与真实生产 TLS 链路仍未完成。提交 `02c45b2` 已明确 `HttpOnly`、`SameSite=Lax` 和生产 `Secure` Cookie 配置，提交 `dc2e24f` 已清理业务 ID 的整数兼容规格和根节点哨兵测试，独立 prod 进程重启验收已证明旧访问令牌可恢复。Phoenix 应用代码在 dev/test/prod 严格编译中无 warning；`x509`、`asn1_compiler`、`cbor` 和 `wax_` 的 13 条依赖 warning 来自当前上游版本，已确认没有可用的正式升级修复，发布记录必须单独说明。
+当前结论：核心功能已完成，开发计划尚未全部完成，不能据此声明生产发布验收通过。服务层已完成主要资源的显式主体边界；`68d693f` 完成公告和任务的 `OWNER/SELF` 查询、详情、更新、执行和混合删除回滚，`b60a7fe` 补齐角色、岗位和审计日志的授权查询入口，`dc11b6a` 修复角色导出和详情授权错误的 HTTP 返回。全部资源的真实 owner/member 数据过滤、完整批量/异步范围和导出控制器回归仍未闭环。macOS 真实浏览器已完成新的登录会话、LiveView CSRF handshake、管理概览和退出登录；生产边缘代理下的 CSRF/Cookie 全链路、浏览器或硬件 Passkey、多节点恢复、真实生产 IdP 与真实生产 TLS 链路仍未完成。提交 `02c45b2` 已明确 `HttpOnly`、`SameSite=Lax` 和生产 `Secure` Cookie 配置，提交 `dc2e24f` 已清理业务 ID 的整数兼容规格和根节点哨兵测试，独立 prod 进程重启验收已证明旧访问令牌可恢复。Phoenix 应用代码在 dev/test/prod 严格编译中无 warning；`x509`、`asn1_compiler`、`cbor` 和 `wax_` 的 13 条依赖 warning 来自当前上游版本，已确认没有可用的正式升级修复，发布记录必须单独说明。
 
 本文较早的功能和验收记录只用于识别需要替换的范围，不代表新系统已经完成。一次性重构从 U0 阶段重新实现和验收；现有实体、迁移、接口和测试只有在符合统一架构后才能继续使用。
 
@@ -40,7 +40,7 @@
 - OIDC Authorization Code + PKCE：服务端保存短期 state、nonce 和 verifier；回调校验 JWKS、RS256、issuer、audience、`azp`、nonce、时间窗口和完整 issuer/subject 映射。
 - Passkey：Ithibati/Wax 校验注册与认证数据，数据库保存账户映射、凭据、公钥和签名计数器；注册要求 step-up，登录签发 AAL2 会话，challenge 单次消费并定期清理。
 
-2026-11-14 服务层授权切片：`40e8a37` 将岗位列表、详情、创建、更新和删除接入显式授权上下文；`5f2b898` 将菜单和配置的查询、写入及缓存刷新接入同一边界；`4a939ee` 将字典类型、字典数据和公告的查询、写入及缓存刷新接入同一边界；`6973751` 将任务、任务日志、登录日志和操作日志的查询、导出、执行、取消及删除接入同一边界；`0e8c0b8` 将会话和文件操作接入同一边界；`8736c1a` 将 API Key 签发、列表、轮换和撤销接入同一边界；`68d693f` 为公告和任务增加真实 owner 字段、`OWNER/SELF` 查询过滤和混合删除回滚。全部资源的真实 owner/member 关系、导出、批量和异步任务范围仍需落实到查询层。
+2026-11-14 服务层授权切片：`40e8a37` 将岗位列表、详情、创建、更新和删除接入显式授权上下文；`5f2b898` 将菜单和配置的查询、写入及缓存刷新接入同一边界；`4a939ee` 将字典类型、字典数据和公告的查询、写入及缓存刷新接入同一边界；`6973751` 将任务、任务日志、登录日志和操作日志的查询、导出、执行、取消及删除接入同一边界；`0e8c0b8` 将会话和文件操作接入同一边界；`8736c1a` 将 API Key 签发、列表、轮换和撤销接入同一边界；`68d693f` 为公告和任务增加真实 owner 字段、`OWNER/SELF` 查询过滤和混合删除回滚；`b60a7fe` 将角色、岗位、登录日志和操作日志的列表、详情及导出查询接入授权上下文。全部资源的真实 owner/member 关系、批量和异步任务范围，以及导出控制器回归仍需落实到查询层和 HTTP 验收。
 
 这些实现的主要功能范围已覆盖。较早测试数字和镜像结果只作为历史证据；它们不替代 clean-break 后的当前验证。当前验收必须分别记录：编译和格式、非集成测试、集成测试、PostgreSQL 迁移与重复迁移、认证 HTTP 链路、管理页面真实窗口、生产镜像 smoke。功能清单已经合并到本节“已有实现”和“后续执行顺序”，不再维护单独的 Java parity 文档。
 
@@ -415,7 +415,7 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 
 ### 阶段五：资源范围矩阵
 
-Phoenix 已实现控制器入口的统一资源范围检查。`user` 和 `department` 保留现有查询、详情、写入和导出范围过滤；`profile` 和 `api_key` 使用 `SELF`；具有明确关系的资源使用 `OWNER/MEMBER`；`role`、`post`、`menu`、`config`、`dictionary`、`audit`、`session`、`job`、`notice` 和通用 `file` 入口只接受 `ALL/TENANT`，缺少角色范围或关系时默认拒绝。管理员仍通过 `permission:manage` 保持原有能力，API Key 继续由人类管理入口拒绝。
+Phoenix 已实现控制器入口的统一资源范围检查。`user` 和 `department` 保留现有查询、详情、写入和导出范围过滤；`profile` 和 `api_key` 使用 `SELF`；具有明确关系的资源使用 `OWNER/MEMBER`；`role`、`post`、`menu`、`config`、`dictionary`、`audit`、`session` 和通用 `file` 入口只接受 `ALL/TENANT`，`job` 和 `notice` 的领域查询另有真实 `OWNER/SELF` 过滤。缺少角色范围或关系时默认拒绝。管理员仍通过 `permission:manage` 保持原有能力，API Key 继续由人类管理入口拒绝。
 
 实现位置：`KeystonePhoenix.Authz.ResourceScope`、`KeystonePhoenixWeb.Plugs.RequireResourceScope` 和各资源控制器。矩阵单元测试位于 `test/keystone_phoenix/authz/resource_scope_test.exs`，控制器入口集成测试位于 `test/keystone_phoenix_web/controllers/resource_scope_controller_test.exs`。定向测试命令为 `mix test --include integration test/keystone_phoenix/authz/resource_scope_test.exs test/keystone_phoenix_web/controllers/resource_scope_controller_test.exs`；当前结果为 6 项通过。未知资源、缺少主体、非法范围和缺少 owner/member 上下文均有默认拒绝断言。
 
@@ -476,7 +476,7 @@ Phoenix 已实现控制器入口的统一资源范围检查。`user` 和 `depart
 
 ### 2026-11-14 服务层范围复核
 
-当前主线已推进到 `8736c1a`。`40e8a37`、`5f2b898`、`4a939ee`、`6973751`、`0e8c0b8` 和 `8736c1a` 分别补齐岗位、菜单/配置、字典/公告、任务/审计日志、会话/文件以及 API Key 的服务命令授权上下文。该证据证明这些资源在绕过 Controller 的领域调用中也会拒绝缺失主体和越界范围，但不证明真实 owner/member 关系、导出、批量和异步任务已经完成。后续验收必须继续使用真实 PostgreSQL 数据和服务层调用，不得只依据入口注解。
+当前主线已推进到 `dc11b6a`。`40e8a37`、`5f2b898`、`4a939ee`、`6973751`、`0e8c0b8` 和 `8736c1a` 分别补齐岗位、菜单/配置、字典/公告、任务/审计日志、会话/文件以及 API Key 的服务命令授权上下文，`b60a7fe` 又补齐角色、岗位、登录日志和操作日志的列表、详情及导出查询授权。该证据证明这些资源在绕过 Controller 的领域调用中也会拒绝缺失主体和越界范围，但不证明真实 owner/member 关系、导出控制器回归、批量和异步任务已经完成。后续验收必须继续使用真实 PostgreSQL 数据和服务层调用，不得只依据入口注解。
 
 ### 2026-11-12 授权架构复核（历史记录）
 
