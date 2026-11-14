@@ -34,6 +34,8 @@
 
 本轮跨项目对齐基线（2026-11-14）：`7c01765` 统一登录和刷新响应字段为 `accessToken`、`refreshToken`、`tokenType`、`sessionId` 和 `clientId`，并删除旧 `token`、`currentUser` 字段；`79e5a11` 使 OIDC 入口拒绝 API Key；`98165af`、`aeecab5` 将角色写入和权限元数据保护统一到规范 `resource:action` 权限码；`37b5598` 对齐 USER/PASSWORD 与 SERVICE_SUBJECT/API_KEY 的 Principal 字段；`9234e0a`、`a86b530` 和 `b6000aa` 增加安全指标、脱敏事件报告、API Key 生命周期统计和非法筛选校验，入口为 `GET /api/v1/monitor/security` 与 `GET /api/v1/monitor/security/report`；`fb6806b` 增加跨项目响应字段、错误分类、权限码和角色权限路由契约回归。安全报告当前使用 Phoenix 操作日志作为用户会话事件来源，API Key 只返回生命周期统计；Phoenix 尚未持久化与 Native 完全相同的 API Key 安全事件明细，因此 `credentialType` 和 `credentialId` 筛选明确返回 `validation_failed`。
 
+本轮 UI 与最终回归基线：`7925d5e` 将安全指标、API Key 轮换计数和脱敏事件表接入 LiveView 监控页面，缺少 `audit:read` 时不加载报告。`mix test` 通过 320 项、排除 43 项；`mix test --include integration` 通过 363 项；LiveView 定向测试通过 14 项；严格编译、源码行数和差异检查通过。当前代码仍保留生产真实窗口、浏览器 Passkey、CSRF/Cookie、多节点和生产数据恢复等外部验收边界。
+
 本轮补充基线为 `25c6c7e`。公告新增独立 `owner_id` 字段和外键，创建者审计字段继续使用 `creator_id`；OWNER 查询改用 `owner_id`，并通过真实集成测试和约束基线检查。当前 Phoenix 全量普通测试为 308 项通过、30 项排除，集成测试为 338 项通过；严格编译和源码行数检查通过。
 
 本轮任务范围基线为 `d6a584e`。任务新增独立 `created_by` 字段和外键，创建审计字段继续保留，任务及任务日志 OWNER 查询统一使用 `created_by`，与 Native 约定一致。普通测试、集成测试、严格编译、源码行数和差异检查均通过。
