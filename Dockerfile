@@ -84,7 +84,7 @@ VOLUME ["/var/lib/keystone/resources"]
 USER keystone
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD ["curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:4000/health/ready"]
+  CMD ["curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:4000/api/v1/health/ready"]
 
 EXPOSE 4000
 
