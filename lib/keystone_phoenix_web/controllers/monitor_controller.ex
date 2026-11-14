@@ -17,25 +17,28 @@ defmodule KeystonePhoenixWeb.MonitorController do
 
   @doc "Returns ETS cache statistics."
   def cache_info(conn, _params) do
-    case Monitor.cache_info() do
+    case Monitor.cache_info(authorization: %{principal: conn.assigns.current_user}) do
       {:ok, info} -> json(conn, ApiResponse.ok(info))
       {:error, :unavailable} -> render_error(conn, :unavailable)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
   @doc "Returns host and BEAM runtime information."
   def server_info(conn, _params) do
-    case Monitor.server_info() do
+    case Monitor.server_info(authorization: %{principal: conn.assigns.current_user}) do
       {:ok, info} -> json(conn, ApiResponse.ok(info))
       {:error, :unavailable} -> render_error(conn, :unavailable)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
   @doc "Returns authenticated online refresh sessions."
   def online_users(conn, params) do
-    case Monitor.online_users(params) do
+    case Monitor.online_users(params, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, users} -> json(conn, ApiResponse.ok(users))
       {:error, :unavailable} -> render_error(conn, :unavailable)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
@@ -52,21 +55,25 @@ defmodule KeystonePhoenixWeb.MonitorController do
 
   @doc "Streams one network status snapshot; the frontend reconnects for updates."
   def network_status_stream(conn, _params) do
-    payload =
-      "event: network-status\ndata: " <>
-        Jason.encode!(Monitor.network_status()) <>
-        "\n\n"
+    case Monitor.network_status(authorization: %{principal: conn.assigns.current_user}) do
+      {:error, reason} ->
+        render_error(conn, reason)
 
-    conn =
-      conn
-      |> put_resp_content_type("text/event-stream")
-      |> put_resp_header("cache-control", "no-cache")
-      |> put_resp_header("connection", "keep-alive")
-      |> send_chunked(200)
+      network_status ->
+        payload =
+          "event: network-status\ndata: " <> Jason.encode!(network_status) <> "\n\n"
 
-    case chunk(conn, payload) do
-      {:ok, conn} -> conn
-      {:error, _reason} -> conn
+        conn =
+          conn
+          |> put_resp_content_type("text/event-stream")
+          |> put_resp_header("cache-control", "no-cache")
+          |> put_resp_header("connection", "keep-alive")
+          |> send_chunked(200)
+
+        case chunk(conn, payload) do
+          {:ok, conn} -> conn
+          {:error, _reason} -> conn
+        end
     end
   end
 
@@ -78,5 +85,13 @@ defmodule KeystonePhoenixWeb.MonitorController do
     conn
     |> put_status(:service_unavailable)
     |> json(ApiResponse.error(:authorization_unavailable, "监控服务暂不可用"))
+  end
+
+  defp render_error(conn, :permission_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "没有操作权限"))
+  end
+
+  defp render_error(conn, :data_scope_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
   end
 end

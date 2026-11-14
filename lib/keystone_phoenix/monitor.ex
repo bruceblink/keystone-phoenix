@@ -27,6 +27,13 @@ defmodule KeystonePhoenix.Monitor do
     _error -> {:error, :unavailable}
   end
 
+  @doc "在检查会话监控权限和资源范围后读取缓存统计。"
+  def cache_info(options) when is_list(options) do
+    with :ok <- Command.authorize_resource(options, "cache:refresh", :session) do
+      cache_info()
+    end
+  end
+
   @doc "Returns online refresh sessions joined with local user and department data."
   def online_users(params \\ %{}) do
     with {:ok, sessions} <- Session.list_active() do
@@ -55,9 +62,16 @@ defmodule KeystonePhoenix.Monitor do
     end
   end
 
+  @doc "在检查会话监控权限和资源范围后查询在线会话。"
+  def online_users(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Command.authorize_resource(options, "online-session:read", :session) do
+      online_users(params)
+    end
+  end
+
   @doc "Revokes one online refresh session after authorization."
   def logout_online_user(token_id, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "online-session:revoke") do
+    with :ok <- Command.authorize_resource(options, "online-session:revoke", :session) do
       Session.revoke_token(token_id)
     end
   end
@@ -79,6 +93,13 @@ defmodule KeystonePhoenix.Monitor do
     _error -> {:error, :unavailable}
   end
 
+  @doc "在检查运行监控权限和资源范围后读取主机指标。"
+  def server_info(options) when is_list(options) do
+    with :ok <- Command.authorize_resource(options, "server:read", :session) do
+      server_info()
+    end
+  end
+
   @doc "Returns one network status snapshot for the monitoring SSE endpoint."
   def network_status do
     checked_at = DateTime.utc_now() |> DateTime.to_iso8601()
@@ -89,6 +110,13 @@ defmodule KeystonePhoenix.Monitor do
       "checkedAt" => checked_at,
       "targets" => []
     }
+  end
+
+  @doc "在检查运行监控权限和资源范围后读取网络状态。"
+  def network_status(options) when is_list(options) do
+    with :ok <- Command.authorize_resource(options, "server:read", :session) do
+      network_status()
+    end
   end
 
   defp online_user_to_map(%{jti: token_id, user_id: user_id}, users, departments) do

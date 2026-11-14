@@ -14,7 +14,7 @@ defmodule KeystonePhoenix.Upload do
   @spec store_file(Plug.Upload.t(), String.t() | nil, keyword()) ::
           {:ok, map()} | {:error, atom()}
   def store_file(%Plug.Upload{} = upload, owner_id, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "file:write") do
+    with :ok <- Command.authorize_resource(options, "file:write", :file) do
       do_store_file(upload, owner_id)
     end
   end
@@ -50,7 +50,7 @@ defmodule KeystonePhoenix.Upload do
           {:ok, list(map())} | {:error, atom()}
   def store_files(uploads, owner_id, options)
       when is_list(uploads) and is_list(options) do
-    with :ok <- Command.authorize(options, "file:write"),
+    with :ok <- Command.authorize_resource(options, "file:write", :file),
          :ok <- validate_batch(uploads) do
       Enum.reduce_while(uploads, {:ok, []}, fn upload, {:ok, stored} ->
         case do_store_file(upload, owner_id) do
@@ -137,6 +137,13 @@ defmodule KeystonePhoenix.Upload do
   end
 
   def resolve_download_path(_file_name), do: {:error, :invalid_file_name}
+
+  @doc "在检查文件读取权限和资源范围后解析下载路径。"
+  def resolve_download_path(file_name, options) when is_binary(file_name) and is_list(options) do
+    with :ok <- Command.authorize_resource(options, "file:read", :file) do
+      resolve_download_path(file_name)
+    end
+  end
 
   @doc "Returns generic file extensions accepted by the original Keystone API."
   def allowed_file_extensions, do: @file_extensions

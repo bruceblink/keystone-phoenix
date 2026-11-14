@@ -39,7 +39,10 @@ defmodule KeystonePhoenixWeb.FileController do
 
   @doc "Downloads a file from the configured download directory."
   def download(conn, %{"fileName" => file_name}) do
-    case Upload.resolve_download_path(file_name) do
+    case Upload.resolve_download_path(
+           file_name,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
       {:ok, path} ->
         conn
         |> put_resp_content_type("application/octet-stream")
@@ -83,5 +86,13 @@ defmodule KeystonePhoenixWeb.FileController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "文件路径无效"))
+  end
+
+  defp render_error(conn, :permission_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "没有操作权限"))
+  end
+
+  defp render_error(conn, :data_scope_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
   end
 end

@@ -158,5 +158,9 @@ defmodule KeystonePhoenix.UploadTest do
   end
 
   defp auth_options,
-    do: [authorization: %{principal: %{permissions: ["file:read", "file:write"]}}]
+    do: [
+      authorization: %{
+        principal: %{data_scope: "TENANT", permissions: ["file:read", "file:write"]}
+      }
+    ]
 end
