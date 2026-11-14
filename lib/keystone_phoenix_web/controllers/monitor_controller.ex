@@ -107,6 +107,9 @@ defmodule KeystonePhoenixWeb.MonitorController do
       {:error, :unsupported_credential_filter} ->
         render_error(conn, :validation_failed, "当前报告不支持凭据筛选")
 
+      {:error, :invalid_subject_id} ->
+        render_error(conn, :validation_failed, "subjectId 无效")
+
       {:error, reason} ->
         render_error(conn, reason)
     end

@@ -12,6 +12,8 @@ defmodule KeystonePhoenix.SecurityTest do
 
     assert {:ok, report} = Security.report(%{"horizonDays" => "30"}, authorization)
     assert report["tenantScope"] == "current"
+    assert report["apiKeys"]["rotated"] == 0
+    assert report["apiKeys"]["horizonDays"] == 30
     assert is_map(report["securityEvents"])
     assert is_list(report["securityEvents"]["page"])
     assert {:ok, metrics} = Security.metrics(authorization)
@@ -32,5 +34,8 @@ defmodule KeystonePhoenix.SecurityTest do
 
     assert {:error, :unsupported_credential_filter} =
              Security.report(%{"credentialType" => "API_KEY"}, authorization)
+
+    assert {:error, :invalid_subject_id} =
+             Security.report(%{"subjectId" => "invalid"}, authorization)
   end
 end

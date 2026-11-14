@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Security do
   import Ecto.Query
 
   alias KeystonePhoenix.Authz.Command
+  alias KeystonePhoenix.Auth.ApiKey.Key
   alias KeystonePhoenix.Log.{SysLoginInfo, SysOperationLog}
   alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Repo
@@ -25,7 +26,8 @@ defmodule KeystonePhoenix.Security do
   def report(params, options) when is_map(params) and is_list(options) do
     with :ok <- Command.authorize_resource(options, "audit:read", :audit),
          {:ok, window} <- report_window(params),
-         :ok <- reject_unsupported_filters(params) do
+         :ok <- reject_unsupported_filters(params),
+         {:ok, subject_id} <- normalize_subject_id(params["subjectId"] || params[:subject_id]) do
       query =
         from(log in SysOperationLog,
           where:
@@ -34,17 +36,17 @@ defmodule KeystonePhoenix.Security do
           order_by: [desc: log.operation_time, desc: log.operation_id]
         )
 
-      query = filter_subject(query, params["subjectId"] || params[:subject_id])
+      query = filter_subject(query, subject_id)
       query = filter_actor(query, params["actor"] || params[:actor])
       page = Pagination.page(query, params, :operation_id, &operation_event/1)
 
       {:ok,
        %{
          "tenantScope" => "current",
-         "subjectId" => params["subjectId"] || params[:subject_id],
+         "subjectId" => subject_id,
          "from" => DateTime.to_iso8601(window.from),
          "to" => DateTime.to_iso8601(window.to),
-         "apiKeys" => %{"rotations" => 0},
+         "apiKeys" => api_key_report(subject_id, window),
          "securityEvents" => %{
            "total" => page.total,
            "page" => page.rows,
@@ -102,7 +104,7 @@ defmodule KeystonePhoenix.Security do
         to = to_value || now
 
         if DateTime.compare(from, to) == :lt,
-          do: {:ok, %{from: from, to: to}},
+          do: {:ok, %{from: from, to: to, horizon_days: horizon}},
           else: {:error, :invalid_window}
       end
     end
@@ -113,6 +115,67 @@ defmodule KeystonePhoenix.Security do
          blank?(params["credentialId"] || params[:credential_id]),
        do: :ok,
        else: {:error, :unsupported_credential_filter}
+  end
+
+  defp normalize_subject_id(nil), do: {:ok, nil}
+  defp normalize_subject_id(""), do: {:ok, nil}
+
+  defp normalize_subject_id(value) do
+    case Ecto.UUID.cast(to_string(value)) do
+      {:ok, uuid} -> {:ok, uuid}
+      :error -> {:error, :invalid_subject_id}
+    end
+  end
+
+  # API Key 生命周期统计使用持久化的撤销、轮换和到期字段，不返回凭据材料。
+  defp api_key_report(subject_id, window) do
+    now = DateTime.utc_now()
+    horizon_days = window.horizon_days
+    horizon = DateTime.add(now, horizon_days * 86_400, :second)
+    subject_filter = if subject_id, do: dynamic([key], key.user_id == ^subject_id), else: true
+
+    total = count_api_keys(subject_filter)
+
+    active =
+      count_api_keys(
+        dynamic(
+          [key],
+          ^subject_filter and is_nil(key.revoked_at) and
+            (is_nil(key.expires_at) or key.expires_at > ^now)
+        )
+      )
+
+    revoked = count_api_keys(dynamic([key], ^subject_filter and not is_nil(key.revoked_at)))
+    rotated = count_api_keys(dynamic([key], ^subject_filter and not is_nil(key.rotated_to)))
+
+    expiring =
+      count_api_keys(
+        dynamic(
+          [key],
+          ^subject_filter and is_nil(key.revoked_at) and not is_nil(key.expires_at) and
+            key.expires_at > ^now and key.expires_at <= ^horizon
+        )
+      )
+
+    %{
+      "total" => total,
+      "active" => active,
+      "revoked" => revoked,
+      "rotated" => rotated,
+      "expiring" => expiring,
+      "horizonDays" => horizon_days,
+      "generatedAt" => DateTime.to_iso8601(now),
+      "horizonAt" => DateTime.to_iso8601(horizon),
+      "windowFrom" => DateTime.to_iso8601(window.from),
+      "windowTo" => DateTime.to_iso8601(window.to)
+    }
+  end
+
+  defp count_api_keys(true), do: Repo.aggregate(Key, :count, :id)
+
+  defp count_api_keys(filter) do
+    from(key in Key, where: ^filter)
+    |> Repo.aggregate(:count, :id)
   end
 
   defp parse_instant(nil), do: {:ok, nil}
