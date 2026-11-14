@@ -2,7 +2,9 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
-更新日期：2026-11-14。本次文档审查基于已推送代码基线 `7949cf5`。认证会话、MFA、API Key、标准 JWK Set、持久化 JWK 注册表、入口级资源范围矩阵、运行时 HTTPS 检查、OIDC Authorization Code + PKCE 和 Phoenix Passkey 已完成代码实现及本地数据库测试；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1。当前默认测试为 271 项通过、23 项排除，集成测试为 294 项通过；test/dev/prod 严格编译、格式和源码行数检查通过。OIDC 使用服务端生成的 state、nonce 和 verifier，Passkey 使用一次性 challenge、受控 RP/origin、公钥和签名计数器。PostgreSQL 18 迁移、重复迁移、认证 HTTP 链路、并发边界和最新镜像 release smoke 已有真实验收。最新本地镜像验收使用 `keystone-phoenix:acceptance-20261114-final@sha256:7982ee9aaddb5ed6525150712f1b5915a725be471038b40f2ec74c0f28fc2ee5`。当前未完成的是真实外部 IdP、真实 TLS 终止链、浏览器 Passkey/硬件仪式和跨项目 Native/Phoenix 端到端一致性验收。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
+更新日期：2026-11-14。本次文档审查基于已推送代码基线 `02c45b2`。认证会话、MFA、API Key、标准 JWK Set、持久化 JWK 注册表、入口级资源范围矩阵、运行时 HTTPS 检查、OIDC Authorization Code + PKCE 和 Phoenix Passkey 已完成代码实现及本地数据库测试；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1。当前默认测试为 272 项通过、23 项排除，集成测试为 295 项通过；test/dev/prod 严格编译、格式和源码行数检查通过。OIDC 使用服务端生成的 state、nonce 和 verifier，Passkey 使用一次性 challenge、受控 RP/origin、公钥和签名计数器。PostgreSQL 18 迁移、重复迁移、认证 HTTP 链路、并发边界、本地 OIDC provider 实际重定向链、临时 TLS 终止代理和最新镜像 release smoke 已有真实验收。最新本地镜像验收使用 `keystone-phoenix:acceptance-20261114-final@sha256:7982ee9aaddb5ed6525150712f1b5915a725be471038b40f2ec74c0f28fc2ee5`。当前未完成的是真实公网 IdP、浏览器 Passkey/硬件仪式、浏览器 CSRF/Cookie 实际行为、整进程崩溃/多节点恢复、非用户资源完整 HTTP 范围矩阵和跨项目生产端到端一致性验收。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
+
+当前结论：核心功能已完成，开发计划尚未全部完成，不能据此声明生产发布验收通过。非用户资源的完整 HTTP 范围矩阵、浏览器 CSRF/Cookie 实际行为、浏览器或硬件 Passkey、整进程崩溃/多节点恢复、真实生产 IdP 与真实生产 TLS 链路仍属于未闭环条件。提交 `02c45b2` 已明确 `HttpOnly`、`SameSite=Lax` 和生产 `Secure` Cookie 配置；依赖编译 warning 也必须在发布记录中单独列出。
 
 本文较早的功能和验收记录只用于识别需要替换的范围，不代表新系统已经完成。一次性重构从 U0 阶段重新实现和验收；现有实体、迁移、接口和测试只有在符合统一架构后才能继续使用。
 
@@ -12,7 +14,7 @@
 
 当前采用单节点部署。PostgreSQL 保存业务数据与认证会话。Erlang 运行时内置表存储（Erlang Term Storage / ETS）只保存可以重建的验证码、缓存和本节点限流记录。它不负责跨节点同步。
 
-2026-11-14 clean-break 实施进度：权限目录、用户、角色、部门、岗位、菜单、公告、配置、字典、任务、任务日志、登录日志、操作日志和刷新令牌关联已完成 PostgreSQL UUID 主键迁移；新业务主键使用 UUIDv7，固定权限和启动种子使用 UUIDv5。生产代码已删除 `is_admin` 字段、管理员旁路、旧三段权限和旧错误响应封装，HTTP 错误统一为 `{success,data,message,error}`。`f7d410d` 之前的授权、认证、管理页面、数据库切片和 clean-break 测试清理已分别提交并推送。当前 Phoenix 验收为非集成测试 258 项通过、23 项集成测试标记在默认运行中排除，集成测试 281 项通过；dev/test/prod 严格编译、格式和源码行数检查通过。
+2026-11-14 clean-break 实施进度：权限目录、用户、角色、部门、岗位、菜单、公告、配置、字典、任务、任务日志、登录日志、操作日志和刷新令牌关联已完成 PostgreSQL UUID 主键迁移；新业务主键使用 UUIDv7，固定权限和启动种子使用 UUIDv5。生产代码已删除 `is_admin` 字段、管理员旁路、旧三段权限和旧错误响应封装，HTTP 错误统一为 `{success,data,message,error}`。`f7d410d` 之前的授权、认证、管理页面、数据库切片和 clean-break 测试清理已分别提交并推送。本段为 clean-break 历史快照；当前测试和发布结论以本文顶部及“完备性验收矩阵”为准。
 
 以下 2026-11-08 至 2026-11-13 记录只用于追溯已经完成的功能切片，不覆盖本节的当前状态和验收结论。
 
@@ -50,7 +52,7 @@
 | 04：Excel 上传（R06） | 已提交并推送 | `492205d`；真实 multipart、客户端文件名、逐行部门范围和非管理员角色字段限制已测试 |
 | 05：常用页面（R07、R08） | 已提交并推送 | `5c7c3bc` 和 `b0efb18`；编辑保存、只读权限和内置浏览器检查有本地证据 |
 | 06：批量写入与任务（R09、V01） | 已提交并推送 | `2917acf` 修复 R09；`d727113` 加入调度与手动执行互斥、进程监控锁和任务回归测试 |
-| 07：发布前检查 | 已完成本轮镜像 smoke | 当前代码的 prod release、迁移、健康检查、RSA 登录、文件上传下载、持久化、备份恢复、OIDC/Passkey 边界和最新镜像 release smoke 已通过；真实外部 IdP、TLS 终止链和浏览器 Passkey 仪式仍待执行 |
+| 07：发布前检查 | 已完成本轮镜像 smoke | 当前代码的 prod release、迁移、健康检查、RSA 登录、文件上传下载、持久化、备份恢复、本地 OIDC provider、临时 TLS 终止代理、OIDC/Passkey 边界和最新镜像 release smoke 已通过；公网 IdP、浏览器 Passkey 仪式和浏览器 CSRF/Cookie 仍待执行 |
 
 ## 后续执行顺序
 
@@ -422,7 +424,7 @@ Phoenix 已实现控制器入口的统一资源范围检查。`user` 和 `depart
 - 两项目分别完成迁移、重复迁移、刷新并发、API Key 并发、MFA 并发、故障回滚、备份恢复、真实 HTTP 和安全事件检查。
 - 静态编译不能替代数据库、HTTP 或浏览器运行证据。
 
-2026-11-14 Phoenix 运行验收已覆盖健康检查、就绪检查、标准 JWK Set、持久化 JWK 注册表、RSA 登录、刷新令牌轮换、旧刷新令牌重放撤销、Bearer API Key 签发、API Key 业务资源访问、登录、API Key 管理和密码路径拒绝；最新镜像的迁移重复执行、数据库停止/恢复、容器健康状态和 API Key/MFA 边界 smoke 已通过。Native 已完成 MySQL V52、JWK 注册表、登录、刷新、重放撤销、注销、统一错误响应、API Key/MFA 生命周期和资源范围 HTTP 验收；两项目的并发、数据库故障和真实 TLS 终止链仍需独立运行验收。
+2026-11-14 Phoenix 运行验收已覆盖健康检查、就绪检查、标准 JWK Set、持久化 JWK 注册表、RSA 登录、刷新令牌轮换、旧刷新令牌重放撤销、Bearer API Key 签发、API Key 业务资源访问、登录、API Key 管理、密码路径拒绝、本地 OIDC provider 和临时 TLS 终止代理；最新镜像的迁移重复执行、容器健康状态和 API Key/MFA 边界 smoke 已通过。Native 已完成 MySQL V55、JWK 注册表、登录、刷新、重放撤销、注销、统一错误响应、API Key/MFA 生命周期、资源范围 HTTP、真实 MySQL 并发、备份还原、进程存活恢复、API Key 猜测限流、密钥轮换、本地 OIDC provider 和临时 TLS 终止代理验收。剩余边界是公网 IdP、浏览器/硬件 Passkey、浏览器 CSRF/Cookie、整进程崩溃和多节点恢复。
 
 ## 历史计划合并说明
 
