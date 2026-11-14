@@ -55,6 +55,7 @@ defmodule KeystonePhoenixWeb.AuthController do
   alias KeystonePhoenix.Log
   alias KeystonePhoenix.Menu
   alias KeystonePhoenixWeb.ApiResponse
+  alias KeystonePhoenixWeb.AuthTokenResponse
 
   @doc "Returns the public key used to verify RS256 access tokens."
   def public_key(conn, _params) do
@@ -377,15 +378,7 @@ defmodule KeystonePhoenixWeb.AuthController do
     json(conn, ApiResponse.ok(Menu.routers_for_user(conn.assigns.current_user)))
   end
 
-  defp token_to_map(tokens) do
-    %{
-      "token" => tokens.token,
-      "refreshToken" => tokens.refresh_token,
-      "expiresIn" => tokens.expires_in,
-      "refreshExpiresIn" => tokens.refresh_expires_in,
-      "currentUser" => tokens.current_user
-    }
-  end
+  defp token_to_map(tokens), do: AuthTokenResponse.to_map(tokens)
 
   defp current_session_context(conn) do
     case get_req_header(conn, "authorization") do

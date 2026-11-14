@@ -407,7 +407,8 @@ defmodule KeystonePhoenix.Auth do
            expires_in: access.expires_in,
            refresh_expires_in: refresh.expires_in,
            refresh_jti: refresh.jti,
-           session_id: session_id
+           session_id: session_id,
+           client_id: client_id
          }}
 
       {:error, {:token_configuration, _reason}} ->
@@ -440,7 +441,8 @@ defmodule KeystonePhoenix.Auth do
            expires_in: access.expires_in,
            refresh_expires_in: refresh.expires_in,
            refresh_jti: refresh.jti,
-           session_id: session.id
+           session_id: session.id,
+           client_id: session.client_id
          }}
       end
     end

@@ -55,6 +55,35 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert get_in(json_response(conn, 409), ["error", "code"]) == "validation_failed"
   end
 
+  test "uses the shared token response schema for login and refresh", %{user: user} do
+    login =
+      build_conn()
+      |> post("/api/v1/auth/login", %{
+        "username" => user.username,
+        "password" => encrypted_password("Strong!123")
+      })
+      |> json_response(200)
+
+    data = login["data"]
+    assert is_binary(data["accessToken"])
+    assert is_binary(data["refreshToken"])
+    assert data["tokenType"] == "Bearer"
+    assert data["username"] == user.username
+    assert is_binary(data["sessionId"])
+    assert data["clientId"] == "web"
+    refute Map.has_key?(data, "token")
+    refute Map.has_key?(data, "currentUser")
+
+    refreshed =
+      build_conn()
+      |> post("/api/v1/auth/refresh", %{"refreshToken" => data["refreshToken"]})
+      |> json_response(200)
+
+    assert is_binary(refreshed["data"]["accessToken"])
+    assert is_binary(refreshed["data"]["refreshToken"])
+    refute Map.has_key?(refreshed["data"], "token")
+  end
+
   test "uses the same response for an unknown username and a wrong password", %{user: user} do
     wrong_password =
       build_conn()

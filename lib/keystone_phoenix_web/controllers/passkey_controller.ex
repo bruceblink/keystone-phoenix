@@ -183,15 +183,8 @@ defmodule KeystonePhoenixWeb.PasskeyController do
     do: {:error, :passkey_challenge_invalid}
 
   defp token_to_map(tokens) do
-    %{
-      "token" => tokens.token,
-      "refreshToken" => tokens.refresh_token,
-      "expiresIn" => tokens.expires_in,
-      "refreshExpiresIn" => tokens.refresh_expires_in,
-      "currentUser" => tokens.current_user,
-      "authenticationLevel" => "AAL2",
-      "amr" => ["passkey"]
-    }
+    KeystonePhoenixWeb.AuthTokenResponse.to_map(tokens)
+    |> Map.merge(%{"authenticationLevel" => "AAL2", "amr" => ["passkey"]})
   end
 
   defp render_error(conn, :passkey_disabled),

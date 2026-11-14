@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.OidcController do
   alias KeystonePhoenix.Auth.Oidc.{AuthorizationCode, Config, Identity, Provider, Verifier}
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.ApiResponse
+  alias KeystonePhoenixWeb.AuthTokenResponse
 
   @session_key :keystone_oidc_pending
 
@@ -118,15 +119,7 @@ defmodule KeystonePhoenixWeb.OidcController do
 
   defp provider_key(config), do: config[:issuer] |> String.trim() |> String.trim_trailing("/")
 
-  defp token_to_map(tokens) do
-    %{
-      "token" => tokens.token,
-      "refreshToken" => tokens.refresh_token,
-      "expiresIn" => tokens.expires_in,
-      "refreshExpiresIn" => tokens.refresh_expires_in,
-      "currentUser" => tokens.current_user
-    }
-  end
+  defp token_to_map(tokens), do: AuthTokenResponse.to_map(tokens)
 
   defp render_error(conn, :oidc_disabled),
     do: error(conn, :authorization_unavailable, "OIDC 未启用", :service_unavailable)

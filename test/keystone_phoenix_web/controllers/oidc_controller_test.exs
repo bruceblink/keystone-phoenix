@@ -77,7 +77,9 @@ defmodule KeystonePhoenixWeb.OidcControllerTest do
     callback = callback(conn, "provider-code", query["state"])
     assert callback.status == 200
     assert get_in(json_response(callback, 200), ["success"]) == true
-    assert is_binary(get_in(json_response(callback, 200), ["data", "token"]))
+    response = json_response(callback, 200)
+    assert is_binary(get_in(response, ["data", "accessToken"]))
+    refute Map.has_key?(response["data"], "token")
     assert URI.decode_query(OidcTestHttpClient.last_form())["code_verifier"]
     assert user.external_subject == "https://issuer.example:subject-123"
 
