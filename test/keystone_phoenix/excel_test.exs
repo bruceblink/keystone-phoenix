@@ -27,6 +27,12 @@ defmodule KeystonePhoenix.ExcelTest do
     assert [%{id: 1}, %{id: 2}, %{id: 3}] = Excel.all_rows(fetcher)
   end
 
+  test "preserves export query errors" do
+    fetcher = fn _params -> {:error, :data_scope_denied} end
+
+    assert {:error, :data_scope_denied} = Excel.all_rows_result(fetcher)
+  end
+
   test "rejects an invalid workbook path and malformed headers" do
     assert {:error, :invalid_workbook} = Excel.import_rows("/tmp/missing.xls")
     assert {:error, :empty_sheet} = Excel.rows_to_maps([])

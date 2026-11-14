@@ -93,15 +93,21 @@ defmodule KeystonePhoenixWeb.LogController do
 
     case Log.authorize_read(authorization, "login-log:export") do
       :ok ->
-        rows =
-          Excel.all_rows(export_fetcher(&Log.list_login_logs_for_export/2, authorization), params)
+        case Excel.all_rows_result(
+               export_fetcher(&Log.list_login_logs_for_export/2, authorization),
+               params
+             ) do
+          {:ok, rows} ->
+            ExcelResponse.send_xlsx(
+              conn,
+              "login-logs.xlsx",
+              @login_export_headers,
+              Enum.map(rows, &login_export_row/1)
+            )
 
-        ExcelResponse.send_xlsx(
-          conn,
-          "login-logs.xlsx",
-          @login_export_headers,
-          Enum.map(rows, &login_export_row/1)
-        )
+          {:error, reason} ->
+            render_error(conn, reason)
+        end
 
       {:error, reason} ->
         render_error(conn, reason)
@@ -114,18 +120,21 @@ defmodule KeystonePhoenixWeb.LogController do
 
     case Log.authorize_read(authorization, "operation-log:export") do
       :ok ->
-        rows =
-          Excel.all_rows(
-            export_fetcher(&Log.list_operation_logs_for_export/2, authorization),
-            params
-          )
+        case Excel.all_rows_result(
+               export_fetcher(&Log.list_operation_logs_for_export/2, authorization),
+               params
+             ) do
+          {:ok, rows} ->
+            ExcelResponse.send_xlsx(
+              conn,
+              "operation-logs.xlsx",
+              @operation_export_headers,
+              Enum.map(rows, &operation_export_row/1)
+            )
 
-        ExcelResponse.send_xlsx(
-          conn,
-          "operation-logs.xlsx",
-          @operation_export_headers,
-          Enum.map(rows, &operation_export_row/1)
-        )
+          {:error, reason} ->
+            render_error(conn, reason)
+        end
 
       {:error, reason} ->
         render_error(conn, reason)
@@ -135,8 +144,8 @@ defmodule KeystonePhoenixWeb.LogController do
   defp export_fetcher(fetcher, authorization) do
     fn params ->
       case fetcher.(params, authorization) do
-        {:ok, page} -> page
-        {:error, _reason} -> %{rows: [], total: 0}
+        {:ok, page} -> {:ok, page}
+        {:error, reason} -> {:error, reason}
       end
     end
   end

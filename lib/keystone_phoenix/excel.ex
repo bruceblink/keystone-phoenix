@@ -116,6 +116,13 @@ defmodule KeystonePhoenix.Excel do
     do_all_rows(fetcher, params, 1, [], @page_size)
   end
 
+  @doc "按页加载导出数据，并保留查询服务返回的授权或数据库错误。"
+  @spec all_rows_result((map() -> map() | {:ok, map()} | {:error, term()}), map()) ::
+          {:ok, [map()]} | {:error, term()}
+  def all_rows_result(fetcher, params \\ %{}) when is_function(fetcher, 1) and is_map(params) do
+    do_all_rows_result(fetcher, params, 1, [], @page_size)
+  end
+
   @doc "Returns the canonical API key for an Excel header."
   @spec canonical_header(term()) :: String.t()
   def canonical_header(header) do
@@ -204,6 +211,37 @@ defmodule KeystonePhoenix.Excel do
       groups |> List.flatten() |> Enum.reverse()
     else
       do_all_rows(fetcher, params, page + 1, groups, page_size)
+    end
+  end
+
+  defp do_all_rows_result(fetcher, params, page, groups, page_size) do
+    result = fetcher.(Map.merge(params, %{"pageNum" => page, "pageSize" => page_size}))
+
+    case result do
+      {:error, reason} ->
+        {:error, reason}
+
+      {:ok, page_result} when is_map(page_result) ->
+        collect_page_result(fetcher, params, page, groups, page_size, page_result)
+
+      page_result when is_map(page_result) ->
+        collect_page_result(fetcher, params, page, groups, page_size, page_result)
+
+      _other ->
+        {:error, :invalid_page}
+    end
+  end
+
+  defp collect_page_result(fetcher, params, page, groups, page_size, page_result) do
+    rows = Map.get(page_result, :rows, Map.get(page_result, "rows", []))
+    total = Map.get(page_result, :total, Map.get(page_result, "total", 0))
+    groups = [Enum.reverse(rows) | groups]
+    loaded = groups |> List.flatten() |> length()
+
+    if rows == [] or loaded >= total do
+      {:ok, groups |> List.flatten() |> Enum.reverse()}
+    else
+      do_all_rows_result(fetcher, params, page + 1, groups, page_size)
     end
   end
 

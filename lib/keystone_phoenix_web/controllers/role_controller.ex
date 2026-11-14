@@ -41,15 +41,21 @@ defmodule KeystonePhoenixWeb.RoleController do
 
     case Role.Authorization.authorize_read(authorization, "role:export") do
       :ok ->
-        rows =
-          Excel.all_rows(export_fetcher(&Role.list_roles_for_export/2, authorization), params)
+        case Excel.all_rows_result(
+               export_fetcher(&Role.list_roles_for_export/2, authorization),
+               params
+             ) do
+          {:ok, rows} ->
+            ExcelResponse.send_xlsx(
+              conn,
+              "roles.xlsx",
+              @role_export_headers,
+              Enum.map(rows, &role_export_row/1)
+            )
 
-        ExcelResponse.send_xlsx(
-          conn,
-          "roles.xlsx",
-          @role_export_headers,
-          Enum.map(rows, &role_export_row/1)
-        )
+          {:error, reason} ->
+            render_error(conn, reason)
+        end
 
       {:error, reason} ->
         render_error(conn, reason)
@@ -59,8 +65,8 @@ defmodule KeystonePhoenixWeb.RoleController do
   defp export_fetcher(fetcher, authorization) do
     fn params ->
       case fetcher.(params, authorization) do
-        {:ok, page} -> page
-        {:error, _reason} -> %{rows: [], total: 0}
+        {:ok, page} -> {:ok, page}
+        {:error, reason} -> {:error, reason}
       end
     end
   end
