@@ -2,6 +2,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
   alias KeystonePhoenix.{Auth, Excel, Permission, Repo, User}
+  alias KeystonePhoenix.Auth.Mfa.Totp
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Identity
@@ -27,7 +28,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
       |> Repo.insert!()
 
     for permission <-
-          ~w(user:read user:export user:update user:create user:import) do
+          ~w(user:read user:export user:update user:create user:import mfa:manage) do
       menu =
         %SysMenu{menu_id: Identity.v7()}
         |> SysMenu.changeset(%{
@@ -292,12 +293,15 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
   test "multipart import uses the client filename and checks each row scope", ctx do
     {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
 
+    allowed_username = unique("import_allowed")
+    denied_username = unique("import_denied")
+
     {:ok, workbook} =
       Excel.export(
         ["部门ID", "用户名", "密码", "状态", "角色ID"],
         [
-          [ctx.child.dept_id, unique("import_allowed"), "Strong!123", 1, nil],
-          [ctx.outside.dept_id, unique("import_denied"), "Strong!123", 1, nil]
+          [ctx.child.dept_id, allowed_username, "Strong!123", 1, nil],
+          [ctx.outside.dept_id, denied_username, "Strong!123", 1, nil]
         ],
         "users.xlsx"
       )
@@ -315,14 +319,58 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     response = post(authorized(tokens.token), "/api/v1/system/users/excel", %{"file" => upload})
     assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
 
-    :ok = Auth.logout(tokens.refresh_token)
-    {:ok, aal2_tokens} = Auth.login_passkey_user(ctx.actor.user_id)
+    # 通过真实 HTTP TOTP enrollment 和 step-up 流程获取短时 AAL2 访问令牌。
+    enrollment =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{tokens.token}")
+      |> post("/api/v1/auth/mfa/enroll", %{})
+      |> json_response(201)
+
+    secret = enrollment["data"]["secret"]
+    enrollment_now = System.system_time(:second)
+
+    enrollment_verification =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{tokens.token}")
+      |> post("/api/v1/auth/mfa/enroll/verify", %{
+        "challengeId" => enrollment["data"]["challengeId"],
+        "code" => Totp.code(secret, enrollment_now)
+      })
+      |> json_response(200)
+
+    assert enrollment_verification["data"]["authenticationLevel"] == "AAL2"
+
+    # enrollment 会递增 permission_version，重新建立一个有效的 AAL1 会话。
+    {:ok, step_up_tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123", true)
+
+    step_up_challenge =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{step_up_tokens.token}")
+      |> post("/api/v1/auth/mfa/step-up", %{})
+      |> json_response(201)
+
+    step_up =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{step_up_tokens.token}")
+      |> post("/api/v1/auth/mfa/step-up/verify", %{
+        "challengeId" => step_up_challenge["data"]["challengeId"],
+        "code" => Totp.code(secret, enrollment_now + Totp.step_seconds())
+      })
+      |> json_response(200)
+
+    assert step_up["data"]["authenticationLevel"] == "AAL2"
 
     response =
-      post(authorized(aal2_tokens.token), "/api/v1/system/users/excel", %{"file" => upload})
+      post(authorized(step_up["data"]["accessToken"]), "/api/v1/system/users/excel", %{
+        "file" => upload
+      })
 
     assert %{"data" => %{"success" => 1, "failed" => [failure]}} = json_response(response, 200)
+    assert failure["username"] == denied_username
     assert failure["reason"] == "没有数据权限"
+    assert {:ok, imported} = User.get_user_by_username(allowed_username)
+    assert imported.dept_id == ctx.child.dept_id
+    assert {:error, :not_found} = User.get_user_by_username(denied_username)
   end
 
   defp authorized(token), do: put_req_header(build_conn(), "authorization", "Bearer #{token}")
