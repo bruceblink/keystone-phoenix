@@ -2,6 +2,7 @@ defmodule KeystonePhoenixWeb.MonitorControllerTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Auth.Token
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
@@ -40,5 +41,32 @@ defmodule KeystonePhoenixWeb.MonitorControllerTest do
     invalid = authorized.("/api/v1/monitor/security/report?horizonDays=91")
     assert invalid.status == 422
     assert get_in(json_response(invalid, 422), ["error", "code"]) == "validation_failed"
+  end
+
+  @tag :integration
+  test "管理员可以按 Native sessionId 下线在线会话" do
+    role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+
+    user =
+      %SysUser{}
+      |> SysUser.create_changeset(%{
+        username: "monitor_session_#{System.unique_integer([:positive])}",
+        password: "Strong!123",
+        role_id: role.role_id,
+        status: 1
+      })
+      |> Repo.insert!()
+
+    token = step_up_token(user)
+    {:ok, claims} = Token.verify(token, Token.access_type())
+
+    response =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{token}")
+      |> delete("/api/v1/monitor/onlineUser/#{claims["sid"]}")
+
+    assert response.status == 200
+    assert get_in(json_response(response, 200), ["data", "loggedOut"]) == true
+    assert {:error, :invalid_token} = Auth.authenticate_access_token(token)
   end
 end

@@ -37,12 +37,14 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
 
     assert type_response.status == 201
 
-    type_id =
-      get(authorized(build_conn(), token), "/api/v1/dictionaries", %{
-        "dictType" => dict_type
-      })
-      |> json_response(200)
-      |> get_in(["data", Access.at(0), "id"])
+    assert Enum.any?(
+             get(authorized(build_conn(), token), "/api/v1/dictionaries", %{
+               "dictType" => dict_type
+             })
+             |> json_response(200)
+             |> get_in(["data"]),
+             &(&1["code"] == dict_type)
+           )
 
     data_response =
       post(authorized(build_conn(), token), "/api/v1/dictionaries/#{dict_type}/items", %{
@@ -67,7 +69,7 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
     assert delete(authorized(build_conn(), token), "/api/v1/dictionaries/items/#{data_code}").status ==
              200
 
-    assert delete(authorized(build_conn(), token), "/api/v1/dictionaries/types/#{type_id}").status ==
+    assert delete(authorized(build_conn(), token), "/api/v1/dictionaries/types/#{dict_type}").status ==
              200
   end
 

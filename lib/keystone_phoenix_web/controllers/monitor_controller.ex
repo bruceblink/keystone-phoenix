@@ -57,8 +57,8 @@ defmodule KeystonePhoenixWeb.MonitorController do
   end
 
   @doc "Revokes an online refresh session."
-  def logout_online_user(conn, %{"token_id" => token_id}) do
-    case Monitor.logout_online_user(token_id,
+  def logout_online_user(conn, %{"session_id" => session_id}) do
+    case Monitor.logout_online_user(session_id,
            authorization: %{principal: conn.assigns.current_user}
          ) do
       :ok -> json(conn, ApiResponse.ok(%{"loggedOut" => true}))

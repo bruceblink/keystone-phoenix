@@ -120,13 +120,13 @@ defmodule KeystonePhoenix.Monitor do
   end
 
   @doc "Revokes one online refresh session after authorization."
-  def logout_online_user(token_id, options) when is_list(options) do
+  def logout_online_user(session_id, options) when is_list(options) do
     with :ok <- Command.authorize_resource(options, "online-session:revoke", :session) do
-      Session.revoke_token(token_id)
+      Session.revoke_token(session_id)
     end
   end
 
-  def logout_online_user(_token_id, _options), do: {:error, :authorization_required}
+  def logout_online_user(_session_id, _options), do: {:error, :authorization_required}
 
   @doc "Returns host and BEAM runtime metrics in the existing ServerInfo shape."
   @spec server_info() :: {:ok, map()} | {:error, :unavailable}

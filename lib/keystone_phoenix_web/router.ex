@@ -91,7 +91,7 @@ defmodule KeystonePhoenixWeb.Router do
     get "/monitor/onlineUsers", MonitorController, :online_users
     get "/monitor/security", MonitorController, :security_metrics
     get "/monitor/security/report", MonitorController, :security_report
-    delete "/monitor/onlineUser/:token_id", MonitorController, :logout_online_user
+    delete "/monitor/onlineUser/:session_id", MonitorController, :logout_online_user
     get "/jobs", JobController, :list
     get "/jobs/invoke-targets", JobController, :invoke_targets
     get "/jobs/logs", JobController, :logs
@@ -121,8 +121,8 @@ defmodule KeystonePhoenixWeb.Router do
     get "/dictionaries", DictionaryController, :list_types
     get "/dictionaries/:dict_type/items", DictionaryController, :list_data_by_type
     post "/dictionaries", DictionaryController, :create_type
-    put "/dictionaries/types/:dict_id", DictionaryController, :update_type
-    delete "/dictionaries/types/:dict_id", DictionaryController, :delete_type
+    put "/dictionaries/types/:code", DictionaryController, :update_type
+    delete "/dictionaries/types/:code", DictionaryController, :delete_type
     post "/dictionaries/:dict_type/items", DictionaryController, :create_data
     put "/dictionaries/items/:dict_code", DictionaryController, :update_data
     delete "/dictionaries/items/:dict_code", DictionaryController, :delete_data

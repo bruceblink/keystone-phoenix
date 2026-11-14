@@ -67,13 +67,13 @@ defmodule KeystonePhoenixWeb.DictionaryController do
     end
   end
 
-  def update_type(conn, %{"dict_id" => dict_id} = params) do
+  def update_type(conn, %{"code" => code} = params) do
     params =
       params
       |> ManagementContract.dictionary_type_params()
       |> Map.drop(["code", "dictType"])
 
-    case Dictionary.update_dict_type(dict_id, params,
+    case Dictionary.update_dict_type(code, params,
            authorization: %{principal: conn.assigns.current_user}
          ) do
       {:ok, dict_type} ->
@@ -93,8 +93,8 @@ defmodule KeystonePhoenixWeb.DictionaryController do
     end
   end
 
-  def delete_type(conn, %{"dict_id" => dict_id}) do
-    case Dictionary.delete_dict_type(dict_id,
+  def delete_type(conn, %{"code" => code}) do
+    case Dictionary.delete_dict_type(code,
            authorization: %{principal: conn.assigns.current_user}
          ) do
       :ok -> json(conn, ApiResponse.ok(%{"deleted" => true}))
