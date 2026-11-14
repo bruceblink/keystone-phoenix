@@ -161,7 +161,6 @@ defmodule KeystonePhoenixWeb.Router do
     get "/posts/:post_id", PostController, :show
     post "/posts", PostController, :create
     put "/posts/:post_id", PostController, :update
-    delete "/posts", PostController, :delete
     delete "/posts/:post_id", PostController, :delete
     get "/roles", RoleController, :list
     get "/roles/export", RoleController, :export

@@ -458,7 +458,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
       {"post list", :get, "/api/v1/posts", %{}},
       {"post detail", :get, "/api/v1/posts/#{uuid}", %{}},
       {"post write", :post, "/api/v1/posts", %{}},
-      {"post delete", :delete, "/api/v1/posts?ids=#{uuid}", %{}},
+      {"post delete", :delete, "/api/v1/posts/#{uuid}", %{}},
       {"menu list", :get, "/api/v1/menus", %{}},
       {"menu detail", :get, "/api/v1/menus/#{uuid}", %{}},
       {"menu write", :post, "/api/v1/menus", %{}},

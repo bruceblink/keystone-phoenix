@@ -101,16 +101,8 @@ defmodule KeystonePhoenixWeb.PostController do
   end
 
   @doc "Soft deletes posts."
-  def delete(conn, %{"ids" => ids}) do
-    delete_posts(conn, ids)
-  end
-
-  def delete(conn, %{"post_id" => post_id}), do: delete_posts(conn, post_id)
-
-  def delete(conn, _params), do: render_error(conn, :invalid_ids)
-
-  defp delete_posts(conn, ids) do
-    case Post.delete_posts(String.split(ids, ","),
+  def delete(conn, %{"post_id" => post_id}) do
+    case Post.delete_posts([post_id],
            authorization: %{principal: conn.assigns.current_user}
          ) do
       :ok -> json(conn, ApiResponse.ok())
