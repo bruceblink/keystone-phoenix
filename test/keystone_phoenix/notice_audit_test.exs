@@ -24,6 +24,7 @@ defmodule KeystonePhoenix.NoticeAuditTest do
              )
 
     assert notice.creator_id == actor.user_id
+    assert notice.owner_id == actor.user_id
 
     assert {:ok, updated} =
              Notice.update_notice(notice.notice_id, %{"status" => 0},

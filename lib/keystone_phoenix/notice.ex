@@ -74,7 +74,8 @@ defmodule KeystonePhoenix.Notice do
 
   defp do_create_notice(attrs, actor_id) when is_map(attrs) do
     changeset = SysNotice.changeset(%SysNotice{}, normalize_attrs(attrs))
-    Repo.insert(Audit.put_actor(changeset, :creator_id, actor_id))
+    changeset = Audit.put_actor(changeset, :creator_id, actor_id)
+    Repo.insert(Ecto.Changeset.put_change(changeset, :owner_id, actor_id))
   end
 
   def update_notice(id, attrs, options)
@@ -164,7 +165,7 @@ defmodule KeystonePhoenix.Notice do
   defp owner_filter(query, :all), do: query
 
   defp owner_filter(query, {:owner, owner_id}),
-    do: where(query, [notice], notice.creator_id == ^owner_id)
+    do: where(query, [notice], notice.owner_id == ^owner_id)
 
   def notice_to_map(notice) do
     notice_to_map(notice, %{})

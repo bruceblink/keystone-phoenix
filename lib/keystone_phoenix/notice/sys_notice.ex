@@ -13,6 +13,7 @@ defmodule KeystonePhoenix.Notice.SysNotice do
     field :notice_content, :string
     field :status, :integer, default: 1
     field :creator_id, :binary_id
+    field :owner_id, :binary_id
     field :updater_id, :binary_id
     field :remark, :string, default: ""
     field :deleted, :boolean, default: false

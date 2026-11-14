@@ -47,13 +47,13 @@ defmodule KeystonePhoenix.NoticeConfigDictionaryUuidTest do
       SELECT table_name, column_name, data_type
       FROM information_schema.columns
       WHERE table_schema = current_schema()
-        AND ((table_name = 'sys_notice' AND column_name IN ('notice_id', 'creator_id', 'updater_id'))
+        AND ((table_name = 'sys_notice' AND column_name IN ('notice_id', 'creator_id', 'owner_id', 'updater_id'))
           OR (table_name = 'sys_config' AND column_name IN ('config_id', 'creator_id', 'updater_id'))
           OR (table_name = 'sys_dict_type' AND column_name IN ('dict_id', 'creator_id', 'updater_id'))
           OR (table_name = 'sys_dict_data' AND column_name IN ('dict_code', 'creator_id', 'updater_id')))
       """)
 
-    assert length(rows) == 12
+    assert length(rows) == 13
     assert Enum.all?(rows, &(Enum.at(&1, 2) == "uuid"))
   end
 

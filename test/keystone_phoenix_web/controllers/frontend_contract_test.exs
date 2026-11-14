@@ -135,6 +135,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
         status: 1
       })
       |> Ecto.Changeset.put_change(:creator_id, user.user_id)
+      |> Ecto.Changeset.put_change(:owner_id, user.user_id)
       |> Repo.insert!()
 
     dict_type =
