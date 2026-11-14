@@ -34,7 +34,8 @@ defmodule KeystonePhoenixWeb.PostController do
 
     case KeystonePhoenix.Post.Authorization.authorize_read(authorization, "post:export") do
       :ok ->
-        rows = Excel.all_rows(&Post.list_posts/1, params)
+        rows =
+          Excel.all_rows(export_fetcher(&Post.list_posts_for_export/2, authorization), params)
 
         ExcelResponse.send_xlsx(
           conn,
@@ -45,6 +46,15 @@ defmodule KeystonePhoenixWeb.PostController do
 
       {:error, reason} ->
         render_error(conn, reason)
+    end
+  end
+
+  defp export_fetcher(fetcher, authorization) do
+    fn params ->
+      case fetcher.(params, authorization) do
+        {:ok, page} -> page
+        {:error, _reason} -> %{rows: [], total: 0}
+      end
     end
   end
 

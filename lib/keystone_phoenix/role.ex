@@ -38,6 +38,20 @@ defmodule KeystonePhoenix.Role do
     Pagination.page(query, params, :role_id, &role_to_map/1)
   end
 
+  @doc "在检查角色资源权限和范围后查询角色列表。"
+  def list_roles(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "role:read") do
+      {:ok, list_roles(params)}
+    end
+  end
+
+  @doc "在检查角色导出权限和范围后查询导出页。"
+  def list_roles_for_export(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "role:export") do
+      {:ok, list_roles(params)}
+    end
+  end
+
   def get_role(id) do
     case Params.parse_uuid(id) do
       {:ok, id} ->
@@ -48,6 +62,13 @@ defmodule KeystonePhoenix.Role do
 
       :error ->
         {:error, :not_found}
+    end
+  end
+
+  @doc "在检查角色资源权限和范围后读取角色详情。"
+  def get_role(id, options) when is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "role:read") do
+      get_role(id)
     end
   end
 

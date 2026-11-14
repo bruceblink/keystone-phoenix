@@ -40,6 +40,13 @@ defmodule KeystonePhoenix.Post do
     end
   end
 
+  @doc "在检查岗位导出权限和范围后查询导出页。"
+  def list_posts_for_export(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "post:export") do
+      {:ok, list_posts(params)}
+    end
+  end
+
   def get_post(id) do
     case Params.parse_uuid(id) do
       {:ok, id} ->

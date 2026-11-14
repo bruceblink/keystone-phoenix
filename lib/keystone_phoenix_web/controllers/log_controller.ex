@@ -93,7 +93,8 @@ defmodule KeystonePhoenixWeb.LogController do
 
     case Log.authorize_read(authorization, "login-log:export") do
       :ok ->
-        rows = Excel.all_rows(&Log.list_login_logs/1, params)
+        rows =
+          Excel.all_rows(export_fetcher(&Log.list_login_logs_for_export/2, authorization), params)
 
         ExcelResponse.send_xlsx(
           conn,
@@ -113,7 +114,11 @@ defmodule KeystonePhoenixWeb.LogController do
 
     case Log.authorize_read(authorization, "operation-log:export") do
       :ok ->
-        rows = Excel.all_rows(&Log.list_operation_logs/1, params)
+        rows =
+          Excel.all_rows(
+            export_fetcher(&Log.list_operation_logs_for_export/2, authorization),
+            params
+          )
 
         ExcelResponse.send_xlsx(
           conn,
@@ -124,6 +129,15 @@ defmodule KeystonePhoenixWeb.LogController do
 
       {:error, reason} ->
         render_error(conn, reason)
+    end
+  end
+
+  defp export_fetcher(fetcher, authorization) do
+    fn params ->
+      case fetcher.(params, authorization) do
+        {:ok, page} -> page
+        {:error, _reason} -> %{rows: [], total: 0}
+      end
     end
   end
 

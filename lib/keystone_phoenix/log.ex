@@ -30,6 +30,13 @@ defmodule KeystonePhoenix.Log do
     end
   end
 
+  @doc "在检查登录日志导出权限和审计范围后查询导出页。"
+  def list_login_logs_for_export(params, options) when is_map(params) and is_list(options) do
+    with :ok <- authorize_read(options, "login-log:export") do
+      {:ok, list_login_logs(params)}
+    end
+  end
+
   def list_operation_logs(params \\ %{}) do
     query =
       from(log in SysOperationLog,
@@ -49,6 +56,13 @@ defmodule KeystonePhoenix.Log do
   @doc "在检查审计资源范围后查询操作日志。"
   def list_operation_logs(params, options) when is_map(params) and is_list(options) do
     with :ok <- authorize_read(options, "operation-log:read") do
+      {:ok, list_operation_logs(params)}
+    end
+  end
+
+  @doc "在检查操作日志导出权限和审计范围后查询导出页。"
+  def list_operation_logs_for_export(params, options) when is_map(params) and is_list(options) do
+    with :ok <- authorize_read(options, "operation-log:export") do
       {:ok, list_operation_logs(params)}
     end
   end

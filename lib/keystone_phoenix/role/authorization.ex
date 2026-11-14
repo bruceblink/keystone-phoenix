@@ -2,6 +2,11 @@ defmodule KeystonePhoenix.Role.Authorization do
   @moduledoc "Principal authorization checks for role write commands."
 
   alias KeystonePhoenix.Authz
+  alias KeystonePhoenix.Authz.Command
+
+  # 角色查询和导出必须经过统一资源范围检查。
+  def authorize_read(options, permission),
+    do: Command.authorize_resource(options, permission, :role)
 
   def authorize_write(options, permission, attrs \\ %{}) do
     with {:ok, principal} <- principal(options),

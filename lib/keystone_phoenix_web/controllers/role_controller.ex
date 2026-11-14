@@ -29,12 +29,16 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Returns a paginated list of roles."
   def list(conn, params) do
-    json(conn, ApiResponse.ok(Role.list_roles(params)))
+    case Role.list_roles(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
   end
 
   @doc "Exports all roles matching the current filters."
   def export(conn, params) do
-    rows = Excel.all_rows(&Role.list_roles/1, params)
+    authorization = [authorization: %{principal: conn.assigns.current_user}]
+    rows = Excel.all_rows(export_fetcher(&Role.list_roles_for_export/2, authorization), params)
 
     ExcelResponse.send_xlsx(
       conn,
@@ -44,9 +48,20 @@ defmodule KeystonePhoenixWeb.RoleController do
     )
   end
 
+  defp export_fetcher(fetcher, authorization) do
+    fn params ->
+      case fetcher.(params, authorization) do
+        {:ok, page} -> page
+        {:error, _reason} -> %{rows: [], total: 0}
+      end
+    end
+  end
+
   @doc "Returns a role."
   def show(conn, %{"role_id" => role_id}) do
-    case Role.get_role(role_id) do
+    authorization = [authorization: %{principal: conn.assigns.current_user}]
+
+    case Role.get_role(role_id, authorization) do
       {:ok, role} ->
         menu_ids = Role.menu_ids_for_role(role.role_id)
 
@@ -63,6 +78,9 @@ defmodule KeystonePhoenixWeb.RoleController do
 
       {:error, :not_found} ->
         render_error(conn, :not_found)
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
   end
 
