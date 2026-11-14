@@ -10,6 +10,7 @@ defmodule KeystonePhoenix.Auth.ApiKey do
   import Ecto.Query
 
   alias KeystonePhoenix.Auth.ApiKey.{Key, RateLimiter, ServiceSubject}
+  alias KeystonePhoenix.Authz.Command
   alias KeystonePhoenix.Authz.PermissionCatalog
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Repo
@@ -34,6 +35,14 @@ defmodule KeystonePhoenix.Auth.ApiKey do
         subject_id = ensure_subject!(user_id)
         issue_locked!(user, subject_id, name, scopes, expires_at)
       end)
+    end
+  end
+
+  @doc "通过显式人类授权上下文签发 API Key；API Key 主体不能进入管理命令。"
+  def issue(user_id, name, scopes, expires_at, options) when is_list(options) do
+    with {:ok, user_id} <- canonical_id(user_id),
+         :ok <- authorize_management(options, "api-key:create", user_id) do
+      issue(user_id, name, scopes, expires_at)
     end
   end
 
@@ -66,6 +75,14 @@ defmodule KeystonePhoenix.Auth.ApiKey do
     end
   end
 
+  @doc "通过显式人类授权上下文查询本人 API Key 元数据。"
+  def list(user_id, options) when is_list(options) do
+    with {:ok, user_id} <- canonical_id(user_id),
+         :ok <- authorize_management(options, "api-key:read", user_id) do
+      {:ok, list(user_id)}
+    end
+  end
+
   @doc "撤销指定用户拥有的 API Key；重复撤销保持成功。"
   def revoke(user_id, key_id) do
     with {:ok, user_id} <- canonical_id(user_id),
@@ -85,6 +102,14 @@ defmodule KeystonePhoenix.Auth.ApiKey do
         {:ok, :ok} -> :ok
         other -> other
       end
+    end
+  end
+
+  @doc "通过显式人类授权上下文撤销本人的 API Key。"
+  def revoke(user_id, key_id, options) when is_list(options) do
+    with {:ok, user_id} <- canonical_id(user_id),
+         :ok <- authorize_management(options, "api-key:revoke", user_id) do
+      revoke(user_id, key_id)
     end
   end
 
@@ -116,6 +141,14 @@ defmodule KeystonePhoenix.Auth.ApiKey do
 
         replacement
       end)
+    end
+  end
+
+  @doc "通过显式人类授权上下文轮换本人的 API Key。"
+  def rotate(user_id, key_id, options) when is_list(options) do
+    with {:ok, user_id} <- canonical_id(user_id),
+         :ok <- authorize_management(options, "api-key:rotate", user_id) do
+      rotate(user_id, key_id)
     end
   end
 
@@ -362,6 +395,24 @@ defmodule KeystonePhoenix.Auth.ApiKey do
   end
 
   defp validate_value(_value), do: {:error, :invalid_credential}
+
+  # API Key 管理命令只接受当前用户的 SELF 关系，并拒绝机器凭据递归管理。
+  defp authorize_management(options, permission, user_id) do
+    with {:ok, principal} <- Command.principal(options),
+         false <- api_key_principal?(principal),
+         :ok <-
+           Command.authorize_resource(options, permission, :api_key, %{target_id: user_id}) do
+      :ok
+    else
+      true -> {:error, :permission_denied}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp api_key_principal?(principal) when is_map(principal) do
+    Map.get(principal, :credential_type, Map.get(principal, "credential_type")) == "API_KEY" or
+      Map.get(principal, :credentialType, Map.get(principal, "credentialType")) == "API_KEY"
+  end
 
   defp key_hash(value), do: :crypto.hash(:sha256, value) |> Base.encode16(case: :lower)
   defp random(bytes), do: :crypto.strong_rand_bytes(bytes) |> Base.url_encode64(padding: false)

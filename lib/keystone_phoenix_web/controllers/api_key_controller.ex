@@ -15,7 +15,13 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
     with :ok <- require_permission(conn, "api-key:create"),
          {:ok, expires_at} <- parse_expiry(params["expiresAt"]),
          {:ok, issued} <-
-           ApiKey.issue(current_user_id(conn), params["name"], params["scopes"], expires_at) do
+           ApiKey.issue(
+             current_user_id(conn),
+             params["name"],
+             params["scopes"],
+             expires_at,
+             authorization(conn)
+           ) do
       conn |> put_status(:created) |> json(ApiResponse.ok(issue_to_map(issued)))
     else
       {:error, :permission_denied} -> render_error(conn, :permission_denied)
@@ -28,7 +34,11 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
   @doc "返回当前用户拥有的 API Key 元数据。"
   def index(conn, _params) do
     with :ok <- require_permission(conn, "api-key:read") do
-      json(conn, ApiResponse.ok(Enum.map(ApiKey.list(current_user_id(conn)), &metadata_to_map/1)))
+      with {:ok, metadata} <- ApiKey.list(current_user_id(conn), authorization(conn)) do
+        json(conn, ApiResponse.ok(Enum.map(metadata, &metadata_to_map/1)))
+      else
+        {:error, reason} -> render_error(conn, reason)
+      end
     else
       {:error, reason} -> render_error(conn, reason)
     end
@@ -38,7 +48,7 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
   def rotate(conn, %{"id" => id}) do
     with :ok <- require_permission(conn, "api-key:rotate"),
          {:ok, key_id} <- Params.parse_uuid(id),
-         {:ok, issued} <- ApiKey.rotate(current_user_id(conn), key_id) do
+         {:ok, issued} <- ApiKey.rotate(current_user_id(conn), key_id, authorization(conn)) do
       json(conn, ApiResponse.ok(issue_to_map(issued)))
     else
       {:error, :permission_denied} -> render_error(conn, :permission_denied)
@@ -55,7 +65,7 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
   def delete(conn, %{"id" => id}) do
     with :ok <- require_permission(conn, "api-key:revoke"),
          {:ok, key_id} <- Params.parse_uuid(id),
-         :ok <- ApiKey.revoke(current_user_id(conn), key_id) do
+         :ok <- ApiKey.revoke(current_user_id(conn), key_id, authorization(conn)) do
       json(conn, ApiResponse.ok(%{"revoked" => true}))
     else
       {:error, :permission_denied} -> render_error(conn, :permission_denied)
@@ -68,6 +78,9 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
   def delete(conn, _params), do: render_error(conn, :validation_failed)
 
   defp current_user_id(conn), do: conn.assigns.current_user.user_id
+
+  defp authorization(conn),
+    do: [authorization: %{principal: conn.assigns.current_user}]
 
   defp require_permission(conn, permission) do
     if Authz.allowed?(conn.assigns.current_user, permission, %{connection: conn}),
@@ -118,6 +131,9 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
       case reason do
         :permission_denied ->
           {:forbidden, :permission_denied, "没有操作权限"}
+
+        :data_scope_denied ->
+          {:forbidden, :data_scope_denied, "没有数据权限"}
 
         :authorization_unavailable ->
           {:service_unavailable, :authorization_unavailable, "授权服务暂不可用"}
