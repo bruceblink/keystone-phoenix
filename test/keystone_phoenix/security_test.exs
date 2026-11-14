@@ -32,6 +32,12 @@ defmodule KeystonePhoenix.SecurityTest do
     assert {:error, :invalid_time} =
              Security.report(%{"from" => "not-an-instant"}, authorization)
 
+    assert {:error, :invalid_window} =
+             Security.report(
+               %{"from" => "2026-01-01T00:00:00Z", "to" => "2026-04-02T00:00:00Z"},
+               authorization
+             )
+
     assert {:error, :unsupported_credential_filter} =
              Security.report(%{"credentialType" => "API_KEY"}, authorization)
 

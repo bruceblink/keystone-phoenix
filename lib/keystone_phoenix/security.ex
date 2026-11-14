@@ -103,9 +103,16 @@ defmodule KeystonePhoenix.Security do
         from = from_value || DateTime.add(now, -horizon * 86_400, :second)
         to = to_value || now
 
-        if DateTime.compare(from, to) == :lt,
-          do: {:ok, %{from: from, to: to, horizon_days: horizon}},
-          else: {:error, :invalid_window}
+        cond do
+          DateTime.compare(from, to) != :lt ->
+            {:error, :invalid_window}
+
+          DateTime.diff(to, from, :second) > @max_horizon_days * 86_400 ->
+            {:error, :invalid_window}
+
+          true ->
+            {:ok, %{from: from, to: to, horizon_days: horizon}}
+        end
       end
     end
   end
