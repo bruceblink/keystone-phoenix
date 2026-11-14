@@ -16,6 +16,7 @@ defmodule KeystonePhoenix.Application do
         KeystonePhoenix.Monitor.CpuSampler,
         KeystonePhoenix.Repo,
         KeystonePhoenix.Auth.SessionCleanup,
+        KeystonePhoenix.Auth.JwtKeyCleanup,
         KeystonePhoenix.Job.Lock,
         {Task.Supervisor,
          name: KeystonePhoenix.JobTaskSupervisor,

@@ -71,11 +71,20 @@ defmodule KeystonePhoenix.Auth.Token do
 
   @spec verify(String.t(), String.t()) :: {:ok, map()} | {:error, :invalid_token}
   def verify(token, expected_type) when is_binary(token) do
-    case JOSE.JWT.verify_strict(public_jwk(), ["RS256"], token) do
+    case verification_jwk(token) do
+      {:ok, key} -> verify_with_key(key, token, expected_type)
+      :error -> {:error, :invalid_token}
+    end
+  end
+
+  def verify(_token, _expected_type), do: {:error, :invalid_token}
+
+  defp verify_with_key(key, token, expected_type) do
+    case JOSE.JWT.verify_strict(key, ["RS256"], token) do
       {true, jwt, _jws} ->
         {_modules, claims} = JOSE.JWT.to_map(jwt)
 
-        if valid_header?(token) and valid_claims?(claims, expected_type) do
+        if valid_header?(token, key_id(token)) and valid_claims?(claims, expected_type) do
           {:ok, claims}
         else
           {:error, :invalid_token}
@@ -87,8 +96,6 @@ defmodule KeystonePhoenix.Auth.Token do
   rescue
     _ -> {:error, :invalid_token}
   end
-
-  def verify(_token, _expected_type), do: {:error, :invalid_token}
 
   defp token_ttl(token_type, nil) do
     if token_type == @access_type, do: access_ttl(), else: refresh_ttl()
@@ -121,9 +128,13 @@ defmodule KeystonePhoenix.Auth.Token do
     pem
   end
 
-  @doc "按 RFC 7517 JWK Set 格式返回用于验签的 RSA 公钥。"
+  @doc "按 RFC 7517 JWK Set 格式返回注册表中的 RSA 公钥。"
   @spec public_jwk_set() :: {:ok, map()} | {:error, term()}
-  def public_jwk_set do
+  def public_jwk_set, do: KeystonePhoenix.Auth.JwtKeyRegistry.public_jwk_set()
+
+  @doc "返回运行时配置的当前公钥，供注册表首次引导或数据库不可用时使用。"
+  @spec runtime_public_jwk_set() :: {:ok, map()} | {:error, term()}
+  def runtime_public_jwk_set do
     key_id = Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone")
 
     if valid_key_id?(key_id) do
@@ -197,14 +208,39 @@ defmodule KeystonePhoenix.Auth.Token do
 
   defp audience_matches?(_audience), do: false
 
-  defp valid_header?(token) do
+  defp valid_header?(token, expected_key_id) do
     with [encoded_header | _] <- String.split(token, "."),
          {:ok, header} <- Base.url_decode64(encoded_header, padding: false),
          {:ok, decoded} <- Jason.decode(header) do
-      decoded["alg"] == "RS256" and decoded["typ"] == "JWT" and
-        decoded["kid"] == Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone")
+      decoded["alg"] == "RS256" and decoded["typ"] == "JWT" and decoded["kid"] == expected_key_id
     else
       _ -> false
+    end
+  end
+
+  defp verification_jwk(token) do
+    case KeystonePhoenix.Auth.JwtKeyRegistry.public_jwk_for(key_id(token)) do
+      {:ok, jwk_map} ->
+        {:ok, JOSE.JWK.from_map(jwk_map)}
+
+      {:error, :registry_unavailable} ->
+        if key_id(token) == Application.get_env(:keystone_phoenix, :jwt_key_id, "keystone"),
+          do: {:ok, public_jwk()},
+          else: :error
+
+      {:error, :unknown_key_id} ->
+        :error
+    end
+  end
+
+  defp key_id(token) do
+    with [encoded_header | _] <- String.split(token, "."),
+         {:ok, header} <- Base.url_decode64(encoded_header, padding: false),
+         {:ok, decoded} <- Jason.decode(header),
+         key_id when is_binary(key_id) <- decoded["kid"] do
+      key_id
+    else
+      _ -> ""
     end
   end
 
@@ -215,7 +251,8 @@ defmodule KeystonePhoenix.Auth.Token do
     end
   end
 
-  defp public_jwk do
+  @doc "返回运行时配置的公钥 JWK。"
+  def public_jwk do
     case Application.get_env(:keystone_phoenix, :jwt_public_key) do
       nil -> JOSE.JWK.to_public(private_jwk())
       pem -> configured_jwk(@public_key_cache_key, pem)

@@ -107,6 +107,8 @@ if config_env() == :prod do
       parse_integer_env.("JOB_EXECUTION_TIMEOUT_MS", 30_000, 250, 86_400_000),
     auth_session_cleanup_interval_ms:
       parse_integer_env.("AUTH_SESSION_CLEANUP_INTERVAL_MS", 60_000, 250, 86_400_000),
+    jwt_key_registry_cleanup_interval_ms:
+      parse_integer_env.("JWT_KEY_REGISTRY_CLEANUP_INTERVAL_MS", 3_600_000, 1_000, 86_400_000),
     monitor_snapshot_interval_ms:
       parse_integer_env.("MONITOR_SNAPSHOT_INTERVAL_MS", 1_000, 250, 86_400_000),
     telemetry_period_ms: parse_integer_env.("TELEMETRY_PERIOD_MS", 10_000, 250, 86_400_000),

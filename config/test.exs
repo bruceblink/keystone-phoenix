@@ -15,7 +15,9 @@ config :keystone_phoenix, KeystonePhoenix.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
-config :keystone_phoenix, job_scheduler_enabled: false
+config :keystone_phoenix,
+  job_scheduler_enabled: false,
+  jwt_key_registry_cleanup_interval_ms: 3_600_000
 
 config :keystone_phoenix,
   mfa_master_key: Base.encode64(String.duplicate("m", 32)),
