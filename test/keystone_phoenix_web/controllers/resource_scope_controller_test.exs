@@ -127,6 +127,41 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
   end
 
   @tag :integration
+  test "owner-scoped profile download only serves the authenticated owner" do
+    directory =
+      Path.join(
+        System.tmp_dir!(),
+        "keystone-http-profile-download-#{System.unique_integer([:positive])}"
+      )
+
+    old_directory = Application.get_env(:keystone_phoenix, :file_base_dir)
+    Application.put_env(:keystone_phoenix, :file_base_dir, directory)
+
+    on_exit(fn ->
+      if old_directory,
+        do: Application.put_env(:keystone_phoenix, :file_base_dir, old_directory),
+        else: Application.delete_env(:keystone_phoenix, :file_base_dir)
+
+      File.rm_rf!(directory)
+    end)
+
+    {owner_token, owner_ids} = authenticated_scope_user("OWNER")
+    {other_token, _other_ids} = authenticated_scope_user("OWNER")
+    relative_path = "upload/#{owner_ids.user_id}/owner.txt"
+    absolute_path = Path.join(directory, relative_path)
+    File.mkdir_p!(Path.dirname(absolute_path))
+    File.write!(absolute_path, "owner profile file")
+    url = "/profile/#{relative_path}"
+
+    owner_response = get(authorized(build_conn(), owner_token), url)
+    assert owner_response.status == 200
+    assert owner_response.resp_body == "owner profile file"
+
+    other_response = get(authorized(build_conn(), other_token), url)
+    assert other_response.status == 403
+  end
+
+  @tag :integration
   test "owner job and notice HTTP commands filter and roll back mixed deletes" do
     {owner_token, _owner_ids} = authenticated_scope_user("OWNER")
     {other_token, _other_ids} = authenticated_scope_user("OWNER")
