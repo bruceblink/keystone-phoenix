@@ -384,7 +384,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     export_cases = export_cases()
     {department_token, _ids} = authenticated_scope_user("DEPARTMENT")
 
-    for {label, method, path} <- export_cases do
+    for {label, method, path, _filename} <- export_cases do
       response = request(authorized(build_conn(), department_token), method, path, %{})
 
       assert response.status == 403, "#{label} returned #{response.status}"
@@ -393,7 +393,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
 
     {tenant_token, _ids} = authenticated_scope_user("TENANT")
 
-    for {label, method, path} <- export_cases do
+    for {label, method, path, filename} <- export_cases do
       response = request(authorized(build_conn(), tenant_token), method, path, %{})
 
       assert response.status == 200, "#{label} returned #{response.status}"
@@ -406,6 +406,15 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
              )
 
       assert byte_size(response.resp_body) > 100, label
+
+      # 导出响应必须是真实可读取的 Open XML 工作簿，并使用 `.xlsx` 文件名。
+      assert [content_disposition] = get_resp_header(response, "content-disposition")
+      assert content_disposition == ~s(attachment; filename="#{filename}")
+
+      assert {:ok, entries} = :zip.unzip(response.resp_body, [:memory])
+      entry_names = Enum.map(entries, fn {name, _content} -> to_string(name) end)
+      assert "[Content_Types].xml" in entry_names
+      assert "xl/workbook.xml" in entry_names
     end
   end
 
@@ -485,10 +494,10 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
 
   defp export_cases do
     [
-      {"post export", :get, "/api/v1/system/post/excel"},
-      {"role export", :post, "/api/v1/system/role/export"},
-      {"login log export", :get, "/api/v1/logs/loginLogs/excel"},
-      {"operation log export", :get, "/api/v1/logs/operationLogs/excel"}
+      {"post export", :get, "/api/v1/system/post/excel", "posts.xlsx"},
+      {"role export", :post, "/api/v1/system/role/export", "roles.xlsx"},
+      {"login log export", :get, "/api/v1/logs/loginLogs/excel", "login-logs.xlsx"},
+      {"operation log export", :get, "/api/v1/logs/operationLogs/excel", "operation-logs.xlsx"}
     ]
   end
 
