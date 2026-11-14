@@ -58,6 +58,7 @@ defmodule KeystonePhoenix.Auth.Session do
       refresh_token
     )
   end
+
   defp occupy_with_access_token(
          user_id,
          jti,
@@ -146,7 +147,6 @@ defmodule KeystonePhoenix.Auth.Session do
     rotate(user_id, jti, session_id, nil, issue_tokens)
   end
 
-  @doc "保留旧调用形式，供低层测试和内部工具使用。"
   def rotate(user_id, jti, issue_tokens) when is_function(issue_tokens, 1) do
     case Repo.one(
            from session in AuthSession,
