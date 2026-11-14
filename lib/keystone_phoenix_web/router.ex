@@ -25,6 +25,8 @@ defmodule KeystonePhoenixWeb.Router do
   pipeline :oidc_browser do
     plug :accepts, ["html", "json"]
     plug :fetch_session
+    plug KeystonePhoenixWeb.Plugs.ApiKeyAuthenticate
+    plug KeystonePhoenixWeb.Plugs.RejectApiKey
   end
 
   pipeline :passkey_public do

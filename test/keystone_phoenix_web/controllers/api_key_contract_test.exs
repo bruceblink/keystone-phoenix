@@ -41,6 +41,7 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
 
     for response <- [
           get(conn, "/api/v1/auth/me"),
+          get(conn, "/api/v1/auth/oidc/authorize"),
           post(conn, "/api/v1/auth/login", %{}),
           post(conn, "/api/v1/api-keys", %{}),
           put(conn, "/api/v1/system/user/profile/password", %{})
