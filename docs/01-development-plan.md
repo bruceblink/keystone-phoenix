@@ -2,7 +2,7 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
-更新日期：2026-11-14。本次文档审查基于已推送代码基线 `389fa62`。认证会话、MFA 领域与 HTTP 接口、API Key 领域与业务 HTTP PEP、标准 JWK Set、持久化 JWK 注册表、入口级资源范围矩阵和运行时 HTTPS 检查已完成；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1。当前默认测试为 259 项通过、23 项排除，集成测试为 282 项通过；test/dev/prod 严格编译、格式和源码行数检查通过。PostgreSQL 18 开发库迁移、重复迁移、健康检查、RSA 登录、刷新令牌重放撤销、API Key 业务访问、敏感路径拒绝、资源范围拒绝和最新镜像 release smoke 已完成真实验收。最新镜像验收使用 `keystone-phoenix:acceptance-20261114@sha256:9141e4cb23607f7f5bd7101ec1c4c17f443a6e445575e580c244d9f4e7442e43`。运行时只信任配置的 `TRUSTED_PROXY_CIDRS` 代理来源提供的 `x-forwarded-proto`。跨项目并发、数据库故障演练、真实 TLS 终止链和 OIDC/WebAuthn 仍不属于本轮已完成范围。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
+更新日期：2026-11-14。本次文档审查基于已推送代码基线 `7949cf5`。认证会话、MFA、API Key、标准 JWK Set、持久化 JWK 注册表、入口级资源范围矩阵、运行时 HTTPS 检查、OIDC Authorization Code + PKCE 和 Phoenix Passkey 已完成代码实现及本地数据库测试；step-up 使用短时 AAL2 access token，刷新后重新回到 AAL1。当前默认测试为 271 项通过、23 项排除，集成测试为 294 项通过；test/dev/prod 严格编译、格式和源码行数检查通过。OIDC 使用服务端生成的 state、nonce 和 verifier，Passkey 使用一次性 challenge、受控 RP/origin、公钥和签名计数器。PostgreSQL 18 迁移、重复迁移、认证 HTTP 链路、并发边界和最新镜像 release smoke 已有真实验收。最新镜像验收使用 `keystone-phoenix:acceptance-20261114@sha256:9141e4cb23607f7f5bd7101ec1c4c17f443a6e445575e580c244d9f4e7442e43`。当前未完成的是真实外部 IdP、真实 TLS 终止链、浏览器 Passkey/硬件仪式和跨项目 Native/Phoenix 端到端一致性验收。历史审查记录和后续计划已经合并到本文并删除原文件。`04-deployment-runbook.md` 和 `05-image-performance-2026-11-08.md` 保留为独立的运维与性能证据，不承担开发计划职责。本文是唯一主线开发计划。新实现采用一次性重构，不保留旧接口、旧权限格式、旧响应封装或旧整数主键。
 
 本文较早的功能和验收记录只用于识别需要替换的范围，不代表新系统已经完成。一次性重构从 U0 阶段重新实现和验收；现有实体、迁移、接口和测试只有在符合统一架构后才能继续使用。
 
@@ -35,6 +35,8 @@
 - 用户、组织、角色、菜单、公告、配置、字典、文件和 Excel 接口。
 - 登录与操作日志、定时任务、运行监控和 LiveView 管理页面。
 - Redis 移除、ETS 临时数据、运行时指标、组合索引、测试工作流和 release 镜像构建工作流。
+- OIDC Authorization Code + PKCE：服务端保存短期 state、nonce 和 verifier；回调校验 JWKS、RS256、issuer、audience、`azp`、nonce、时间窗口和完整 issuer/subject 映射。
+- Passkey：Ithibati/Wax 校验注册与认证数据，数据库保存账户映射、凭据、公钥和签名计数器；注册要求 step-up，登录签发 AAL2 会话，challenge 单次消费并定期清理。
 
 这些实现的主要功能范围已覆盖。较早测试数字和镜像结果只作为历史证据；它们不替代 clean-break 后的当前验证。当前验收必须分别记录：编译和格式、非集成测试、集成测试、PostgreSQL 迁移与重复迁移、认证 HTTP 链路、管理页面真实窗口、生产镜像 smoke。功能清单已经合并到本节“已有实现”和“后续执行顺序”，不再维护单独的 Java parity 文档。
 
@@ -48,7 +50,7 @@
 | 04：Excel 上传（R06） | 已提交并推送 | `492205d`；真实 multipart、客户端文件名、逐行部门范围和非管理员角色字段限制已测试 |
 | 05：常用页面（R07、R08） | 已提交并推送 | `5c7c3bc` 和 `b0efb18`；编辑保存、只读权限和内置浏览器检查有本地证据 |
 | 06：批量写入与任务（R09、V01） | 已提交并推送 | `2917acf` 修复 R09；`d727113` 加入调度与手动执行互斥、进程监控锁和任务回归测试 |
-| 07：发布前检查 | 已完成本轮镜像 smoke | 当前代码的 prod release、迁移、健康检查、RSA 登录、文件上传下载、持久化、备份恢复和最新镜像 release smoke 已通过；生产镜像真实 Chrome 窗口仍需在工具可用时补验 |
+| 07：发布前检查 | 已完成本轮镜像 smoke | 当前代码的 prod release、迁移、健康检查、RSA 登录、文件上传下载、持久化、备份恢复、OIDC/Passkey 边界和最新镜像 release smoke 已通过；真实外部 IdP、TLS 终止链和浏览器 Passkey 仪式仍待执行 |
 
 ## 后续执行顺序
 

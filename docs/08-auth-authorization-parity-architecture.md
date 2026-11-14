@@ -105,7 +105,8 @@ scope_allowed(principal, scope, resource, context)
 - 密码会话：只用于人类用户登录，创建独立会话和刷新令牌族。
 - API Key：使用 `ks_live_<prefix>_<secret>` 格式。数据库只保存哈希、前缀、主体、范围、过期和撤销状态。明文只返回一次。有效范围是请求范围、签发者可授予范围和主体当前权限的交集。API Key 不能访问密码修改、MFA 或 API Key 管理路径。
 - MFA：第一版使用 TOTP、一次性恢复码和短期认证请求。敏感写操作需要 AAL2 step-up。并发消费必须只有一次成功。
-- 外部身份：后续使用 OIDC Authorization Code + PKCE，并校验 `state`、`nonce`、issuer、audience 和时间窗口。本轮不实现 OIDC、WebAuthn 或 FIDO；它们属于需要真实身份提供商和浏览器验收的独立发布批次。
+- 外部身份：OIDC 使用 Authorization Code + PKCE。服务端生成并保存 `state`、`nonce` 和 verifier，回调只接受一次性 `code` 与 `state`，并校验 JWKS、RS256、issuer、audience、`azp`、nonce 和时间窗口。外部主体按完整 issuer 与 subject 绑定本地用户。
+- Passkey：WebAuthn 使用一次性 challenge、受控 RP ID/origin、凭据公钥、算法、签名计数器和账户映射。注册要求已完成 AAL2 step-up；登录成功签发 AAL2 会话。API Key 不能进入注册和登录入口。
 
 ## Phoenix 适配边界
 
@@ -123,7 +124,7 @@ TOTP 因子、短期 `LOGIN`/`STEP_UP`/`ENROLL`/`RECOVERY` 请求、一次性恢
 
 Phoenix 的 API Key 领域服务使用 `ks_live_<prefix>_<secret>` 格式，保存服务主体、密钥摘要、批准范围、过期和撤销状态。`/api/v1/api-keys` 由 Bearer 会话和 `api-key:*` 权限保护；API Key 认证入口单独建立服务主体 Principal，认证时再次计算当前权限与批准范围的交集。API Key 不能调用密码、MFA 或 API Key 管理路径。
 
-资源路径存在语言适配边界：Phoenix 管理资源使用 `/api/v1/system/*`，Native 使用 `/api/v1/{users,roles,departments,...}`；两者共享 Principal、权限、范围、错误和审计语义，不提供旧根路径。认证统一使用 `/api/v1/auth/*`；JWK Set 保留标准路径 `/api/.well-known/jwks.json`。两项目均把公开 RSA key 登记到持久化 registry，使用 `ACTIVE/RETIRING` 保留窗口、过期清理和未知 `kid` 拒绝；私钥只由运行时密钥配置提供。
+资源路径存在语言适配边界：Phoenix 管理资源使用 `/api/v1/system/*`，Native 使用 `/api/v1/{users,roles,departments,...}`；两者共享 Principal、权限、范围、错误和审计语义，不提供旧根路径。认证统一使用 `/api/v1/auth/*`；OIDC 入口为 `/api/v1/auth/oidc/{authorize,callback}`，Phoenix Passkey 入口为 `/api/v1/auth/passkey/{registration,registration/challenge,authentication,authentication/challenge}`，Native WebAuthn 入口为 `/api/v1/auth/webauthn/{register,register/options,login,login/options}`。JWK Set 保留标准路径 `/api/.well-known/jwks.json`。两项目均把公开 RSA key 登记到持久化 registry，使用 `ACTIVE/RETIRING` 保留窗口、过期清理和未知 `kid` 拒绝；私钥只由运行时密钥配置提供。
 
 Phoenix 的 step-up 成功后签发短时 `AAL2` access token，并要求敏感 MFA 管理接口携带该令牌；刷新流程重新签发 `AAL1` access token，客户端需要再次完成 step-up。该边界避免把短时二次认证结果延长到整个刷新令牌生命周期。
 
