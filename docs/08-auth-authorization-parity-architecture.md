@@ -78,12 +78,12 @@ Phoenix 的 `RequireResourceScope` 是控制器入口的统一 PEP。它在 `Aut
 
 | 资源标识 | 入口示例 | 支持范围 | 执行规则 |
 | --- | --- | --- | --- |
-| `user` | `/api/v1/system/users` | `ALL`、`TENANT`、`SELF`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM` | 使用现有列表、详情、写入和导出范围检查；先过滤再计数和分页。 |
-| `department` | `/api/v1/system/depts` | `ALL`、`TENANT`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM` | 使用现有部门层级范围检查；目标部门和子部门关系在写入前核验。 |
-| `profile` | `/api/v1/system/user/profile` | `SELF` | 目标固定为当前主体；API Key 主体由人类用户入口拒绝。 |
+| `user` | `/api/v1/users` | `ALL`、`TENANT`、`SELF`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM` | 使用现有列表、详情、写入和导出范围检查；先过滤再计数和分页。 |
+| `department` | `/api/v1/departments` | `ALL`、`TENANT`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM` | 使用现有部门层级范围检查；目标部门和子部门关系在写入前核验。 |
+| `profile` | `/api/v1/profile` | `SELF` | 目标固定为当前主体；API Key 主体由人类用户入口拒绝。 |
 | `api_key` | `/api/v1/api-keys` | `SELF` | 只能操作当前主体拥有的密钥；签发、列表、轮换和撤销不接受其他主体 ID。 |
 | `owned` | 受保护的用户资源文件 | `OWNER`、`MEMBER` | 入口必须提供明确 `owner_id` 或成员列表；当前用户资源文件使用 `OWNER`。 |
-| `role`、`post`、`menu`、`config`、`dictionary` | `/api/v1/system/*` | `ALL`、`TENANT` | 资源没有稳定的主体关系；角色数据范围不是 `ALL` 或 `TENANT` 时默认拒绝。 |
+| `role`、`post`、`menu`、`config`、`dictionary` | `/api/v1/{roles,posts,menus,configs,dictionaries}` | `ALL`、`TENANT` | 资源没有稳定的主体关系；角色数据范围不是 `ALL` 或 `TENANT` 时默认拒绝。 |
 | `audit`、`session`、`file` | 日志、监控和通用文件入口 | `ALL`、`TENANT` | 资源没有稳定的所有者或成员关系；只接受全局或当前租户范围。 |
 | `job`、`notice` | 任务和公告入口 | `ALL`、`TENANT`、`OWNER` | 公告使用 `owner_id`，任务使用 `created_by`；`OWNER` 主体只能读取和操作自己的记录。 |
 
@@ -129,7 +129,7 @@ TOTP 因子、短期 `LOGIN`/`STEP_UP`/`ENROLL`/`RECOVERY` 请求、一次性恢
 
 Phoenix 的 API Key 领域服务使用 `ks_live_<prefix>_<secret>` 格式，保存服务主体、密钥摘要、批准范围、过期和撤销状态。`/api/v1/api-keys` 由 Bearer 会话和 `api-key:*` 权限保护；API Key 认证入口单独建立服务主体 Principal，认证时再次计算当前权限与批准范围的交集。API Key 不能调用密码、MFA 或 API Key 管理路径。
 
-资源路径存在语言适配边界：Phoenix 管理资源使用 `/api/v1/system/*`，Native 使用 `/api/v1/{users,roles,departments,...}`；两者共享 Principal、权限、范围、错误和审计语义，不提供旧根路径。认证统一使用 `/api/v1/auth/*`；OIDC 入口为 `/api/v1/auth/oidc/{authorize,callback}`，Phoenix Passkey 入口为 `/api/v1/auth/passkey/{registration,registration/challenge,authentication,authentication/challenge}`，Native WebAuthn 入口为 `/api/v1/auth/webauthn/{register,register/options,login,login/options}`。JWK Set 保留标准路径 `/api/.well-known/jwks.json`。两项目均把公开 RSA key 登记到持久化 registry，使用 `ACTIVE/RETIRING` 保留窗口、过期清理和未知 `kid` 拒绝；私钥只由运行时密钥配置提供。
+两个项目的管理资源统一使用 `/api/v1/{users,roles,departments,posts,menus,configs,dictionaries,notices,jobs,login-logs,operation-logs,profile}`，并共享 Principal、权限、范围、错误和审计语义；旧 `/system/*` 与 `/logs/*` 路径已删除。认证统一使用 `/api/v1/auth/*`；OIDC 入口为 `/api/v1/auth/oidc/{authorize,callback}`，Phoenix Passkey 入口为 `/api/v1/auth/passkey/{registration,registration/challenge,authentication,authentication/challenge}`，Native WebAuthn 入口为 `/api/v1/auth/webauthn/{register,register/options,login,login/options}`。JWK Set 保留标准路径 `/api/.well-known/jwks.json`。两项目均把公开 RSA key 登记到持久化 registry，使用 `ACTIVE/RETIRING` 保留窗口、过期清理和未知 `kid` 拒绝；私钥只由运行时密钥配置提供。
 
 Phoenix 的 step-up 成功后签发短时 `AAL2` access token，并要求敏感 MFA 管理接口携带该令牌；会话记录单独保存当前 `access_token_id`，step-up 在会话行锁内替换该标识，因此旧 `jti` 立即失效，同时保留 refresh token 哈希、令牌族和到期状态。step-up 的 JWT `amr` 只表示 `otp` 或 `recovery`；刷新流程重新签发 `AAL1` access token，客户端需要再次完成 step-up。该边界避免把短时二次认证结果延长到整个刷新令牌生命周期。
 

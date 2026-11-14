@@ -21,7 +21,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     response =
       put(
         authorized(tokens.token),
-        "/api/v1/system/role/#{target_role.role_id}/permissions",
+        "/api/v1/roles/#{target_role.role_id}/permissions",
         %{"permissions" => ["user:read", "role:read"]}
       )
 
@@ -49,29 +49,31 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     missing_id = Identity.v7()
     {:ok, tokens} = Auth.login_plaintext(actor.username, "Strong!123")
 
-    assign_path =
-      "/api/v1/system/role/#{target_role.role_id}/users/#{target.user_id},#{missing_id}/grant/bulk"
+    assign_path = "/api/v1/roles/#{target_role.role_id}/users"
 
-    response = post(authorized(tokens.token), assign_path, %{})
+    response =
+      put(authorized(tokens.token), assign_path, %{"userIds" => [target.user_id, missing_id]})
+
     assert get_in(json_response(response, 404), ["error", "code"]) == "validation_failed"
     assert Repo.get!(SysUser, target.user_id).role_id == nil
 
     assert %{"success" => true} =
              json_response(
-               post(
+               put(
                  authorized(tokens.token),
-                 "/api/v1/system/role/#{target_role.role_id}/users/#{target.user_id}/grant/bulk",
-                 %{}
+                 assign_path,
+                 %{"userIds" => [target.user_id]}
                ),
                200
              )
 
     assert Repo.get!(SysUser, target.user_id).role_id == target_role.role_id
 
-    unassign_path =
-      "/api/v1/system/role/users/#{target.user_id},#{missing_id}/grant/bulk"
+    unassign_path = "/api/v1/roles/#{target_role.role_id}/users"
 
-    response = delete(authorized(tokens.token), unassign_path, %{})
+    response =
+      delete(authorized(tokens.token), unassign_path, %{"userIds" => [target.user_id, missing_id]})
+
     assert get_in(json_response(response, 404), ["error", "code"]) == "validation_failed"
     assert Repo.get!(SysUser, target.user_id).role_id == target_role.role_id
   end
@@ -92,8 +94,8 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     allocated_response =
       get(
         authorized(tokens.token),
-        "/api/v1/system/role/#{target_role.role_id}/allocated/list",
-        %{"username" => allocated.username}
+        "/api/v1/roles/#{target_role.role_id}/users",
+        %{"allocated" => "true", "username" => allocated.username}
       )
 
     assert %{
@@ -104,8 +106,8 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     unallocated_response =
       get(
         authorized(tokens.token),
-        "/api/v1/system/role/#{target_role.role_id}/unallocated/list",
-        %{"username" => unallocated.username}
+        "/api/v1/roles/#{target_role.role_id}/users",
+        %{"allocated" => "false", "username" => unallocated.username}
       )
 
     assert %{
@@ -127,7 +129,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     rejected =
       delete(
         authorized(tokens.token),
-        "/api/v1/system/roles",
+        "/api/v1/roles",
         %{"role_ids" => Enum.join([first_role.role_id, missing_id, second_role.role_id], ",")}
       )
 
@@ -138,7 +140,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     success =
       delete(
         authorized(tokens.token),
-        "/api/v1/system/roles",
+        "/api/v1/roles",
         %{
           "role_ids" =>
             Enum.join([first_role.role_id, first_role.role_id, second_role.role_id], ",")

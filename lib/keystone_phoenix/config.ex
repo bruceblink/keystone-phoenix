@@ -58,7 +58,10 @@ defmodule KeystonePhoenix.Config do
         end
 
       :error ->
-        {:error, :not_found}
+        case Repo.get_by(SysConfig, config_key: id, deleted: false) do
+          nil -> {:error, :not_found}
+          config -> {:ok, config}
+        end
     end
   end
 
@@ -117,6 +120,29 @@ defmodule KeystonePhoenix.Config do
   end
 
   def update_config(_id, _attrs, _options), do: {:error, :authorization_required}
+
+  @doc "Soft deletes a configuration entry after checking the update permission."
+  def delete_config(id, options) when is_list(options) do
+    with :ok <- Authorization.authorize(options, "config:update"),
+         {:ok, config} <- get_config(id) do
+      changeset =
+        config
+        |> Ecto.Changeset.change(deleted: true)
+        |> Audit.put_actor(:updater_id, Authorization.actor_id(options))
+
+      case Repo.update(changeset) do
+        {:ok, deleted} = result ->
+          Cache.delete(config_cache_key(config.config_key))
+          Cache.delete(config_cache_key(deleted.config_key))
+          result
+
+        error ->
+          error
+      end
+    end
+  end
+
+  def delete_config(_id, _options), do: {:error, :authorization_required}
 
   defp do_update_config(id, attrs, actor_id) do
     with {:ok, config} <- get_config(id) do

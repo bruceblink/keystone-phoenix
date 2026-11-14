@@ -12,9 +12,11 @@ defmodule KeystonePhoenixWeb.RoleController do
       change_status: "role:update",
       data_scope: "role:manage",
       permissions: "role:manage",
+      users: "role:read",
       allocated_users: "role:read",
       unallocated_users: "role:read",
-      assign_users: "role:update",
+      assign_users: "role:assign",
+      revoke_users: "role:assign",
       unassign_users: "role:update"
     }
 
@@ -139,17 +141,10 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @doc "Soft deletes a role."
   def delete(conn, %{"role_ids" => role_ids}) do
-    case Role.delete_roles(String.split(to_string(role_ids), ","),
-           authorization: %{
-             principal: conn.assigns.current_user,
-             permission: "role:delete"
-           }
-         ) do
-      {:ok, deleted} -> json(conn, ApiResponse.ok(%{"deleted" => deleted}))
-      {:error, :invalid_ids} -> render_error(conn, :invalid_role_ids)
-      {:error, reason} -> render_error(conn, reason)
-    end
+    delete_roles(conn, role_ids)
   end
+
+  def delete(conn, %{"ids" => ids}), do: delete_roles(conn, ids)
 
   def delete(conn, %{"role_id" => role_id}) do
     case Role.delete_role(role_id,
@@ -160,6 +155,19 @@ defmodule KeystonePhoenixWeb.RoleController do
          ) do
       {:ok, _} -> json(conn, ApiResponse.ok())
       {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
+  defp delete_roles(conn, role_ids) do
+    case Role.delete_roles(String.split(to_string(role_ids), ","),
+           authorization: %{
+             principal: conn.assigns.current_user,
+             permission: "role:delete"
+           }
+         ) do
+      {:ok, deleted} -> json(conn, ApiResponse.ok(%{"deleted" => deleted}))
+      {:error, :invalid_ids} -> render_error(conn, :invalid_role_ids)
       {:error, reason} -> render_error(conn, reason)
     end
   end
@@ -213,6 +221,14 @@ defmodule KeystonePhoenixWeb.RoleController do
   end
 
   @doc "Lists users assigned to a role."
+  def users(conn, %{"role_id" => _role_id} = params) do
+    if to_string(params["allocated"] || "true") in ["false", "0"] do
+      unallocated_users(conn, params)
+    else
+      allocated_users(conn, params)
+    end
+  end
+
   def allocated_users(conn, %{"role_id" => role_id} = params) do
     json(
       conn,
@@ -229,7 +245,19 @@ defmodule KeystonePhoenixWeb.RoleController do
   end
 
   @doc "Assigns users to a role."
-  def assign_users(conn, %{"role_id" => role_id, "user_ids" => user_ids}) do
+  def assign_users(conn, %{"role_id" => role_id} = params) do
+    user_ids = params["userIds"] || params["user_ids"]
+
+    if is_nil(user_ids) do
+      render_error(conn, :invalid_ids)
+    else
+      assign_users_to_role(conn, role_id, user_ids)
+    end
+  end
+
+  def assign_users(conn, _params), do: render_error(conn, :invalid_ids)
+
+  defp assign_users_to_role(conn, role_id, user_ids) do
     case Role.assign_users(role_id, user_ids,
            authorization: %{
              principal: conn.assigns.current_user,
@@ -241,9 +269,17 @@ defmodule KeystonePhoenixWeb.RoleController do
     end
   end
 
-  def assign_users(conn, _params), do: render_error(conn, :invalid_ids)
-
   @doc "Removes role assignments from users."
+  def revoke_users(conn, %{"role_id" => _role_id} = params) do
+    user_ids = params["userIds"] || params["user_ids"]
+
+    if is_nil(user_ids) do
+      render_error(conn, :invalid_ids)
+    else
+      unassign_users(conn, %{"user_ids" => user_ids})
+    end
+  end
+
   def unassign_users(conn, %{"user_ids" => user_ids}) do
     case Role.unassign_users(user_ids,
            authorization: %{

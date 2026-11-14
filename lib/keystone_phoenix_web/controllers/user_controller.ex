@@ -14,6 +14,7 @@ defmodule KeystonePhoenixWeb.UserController do
            create: "user:create",
            update: "user:update",
            delete: "user:delete",
+           delete_single: "user:delete",
            reset_password: "user:reset-password",
            change_status: "user:update",
            export: "user:export",
@@ -24,7 +25,8 @@ defmodule KeystonePhoenixWeb.UserController do
            show: {:user, "user_id"},
            create: {:dept, "deptId"},
            update: {:user_update, "user_id"},
-           delete: {:users, "user_ids"},
+           delete: {:users, "ids"},
+           delete_single: {:user, "user_id"},
            reset_password: {:user, "user_id"},
            change_status: {:user, "user_id"}
          }
@@ -35,6 +37,7 @@ defmodule KeystonePhoenixWeb.UserController do
               :create,
               :update,
               :delete,
+              :delete_single,
               :reset_password,
               :change_status,
               :export,
@@ -143,6 +146,16 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Soft deletes one or more local users."
   def delete(conn, %{"user_ids" => user_ids}) do
+    delete_users(conn, user_ids)
+  end
+
+  def delete(conn, %{"ids" => ids}), do: delete_users(conn, ids)
+
+  def delete(conn, %{"user_id" => user_id}), do: delete_users(conn, user_id)
+
+  def delete_single(conn, %{"user_id" => user_id}), do: delete_users(conn, user_id)
+
+  defp delete_users(conn, user_ids) do
     case User.delete_users(String.split(user_ids, ","),
            authorization: %{
              principal: conn.assigns.current_user,

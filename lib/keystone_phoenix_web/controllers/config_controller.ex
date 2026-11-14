@@ -7,6 +7,7 @@ defmodule KeystonePhoenixWeb.ConfigController do
       show: "config:read",
       create: "config:create",
       update: "config:update",
+      delete: "config:update",
       refresh_cache: "config:refresh"
     }
 
@@ -51,6 +52,17 @@ defmodule KeystonePhoenixWeb.ConfigController do
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, :not_allow_change} -> render_error(conn, :not_allow_change)
       {:error, changeset} -> render_error(conn, changeset)
+    end
+  end
+
+  @doc "Soft deletes a system configuration entry."
+  def delete(conn, %{"config_id" => config_id}) do
+    case Config.delete_config(config_id,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
+      {:ok, _config} -> json(conn, ApiResponse.ok(%{"deleted" => true}))
+      {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 

@@ -109,6 +109,14 @@ defmodule KeystonePhoenixWeb.JobController do
 
   @doc "Deletes one or more scheduled jobs."
   def delete(conn, %{"jobIds" => job_ids}) do
+    delete_jobs(conn, job_ids)
+  end
+
+  def delete(conn, %{"ids" => ids}), do: delete_jobs(conn, ids)
+
+  def delete(conn, _params), do: render_error(conn, :invalid_ids)
+
+  defp delete_jobs(conn, job_ids) do
     case Job.delete_jobs(String.split(to_string(job_ids), ","),
            authorization: %{principal: conn.assigns.current_user}
          ) do
@@ -116,8 +124,6 @@ defmodule KeystonePhoenixWeb.JobController do
       {:error, reason} -> render_error(conn, reason)
     end
   end
-
-  def delete(conn, _params), do: render_error(conn, :invalid_ids)
 
   defp render_error(conn, :not_found) do
     conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "找不到请求的定时任务"))

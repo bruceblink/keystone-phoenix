@@ -28,7 +28,7 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
     response =
       conn
       |> Plug.Conn.put_req_header("authorization", "ApiKey #{issued.api_key}")
-      |> get("/api/v1/system/users")
+      |> get("/api/v1/users")
 
     assert response.status == 200
     assert json_response(response, 200)["success"] == true
@@ -44,7 +44,7 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
           get(conn, "/api/v1/auth/oidc/authorize"),
           post(conn, "/api/v1/auth/login", %{}),
           post(conn, "/api/v1/api-keys", %{}),
-          put(conn, "/api/v1/system/user/profile/password", %{})
+          put(conn, "/api/v1/profile/password", %{})
         ] do
       assert response.status == 403
       assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"

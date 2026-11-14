@@ -59,6 +59,16 @@ defmodule KeystonePhoenixWeb.NoticeController do
 
   @doc "Soft deletes notices."
   def delete(conn, %{"notice_ids" => notice_ids}) do
+    delete_notices(conn, notice_ids)
+  end
+
+  def delete(conn, %{"ids" => ids}), do: delete_notices(conn, ids)
+
+  def delete(conn, %{"notice_id" => notice_id}), do: delete_notices(conn, notice_id)
+
+  def delete(conn, _params), do: render_error(conn, :invalid_ids)
+
+  defp delete_notices(conn, notice_ids) do
     case Notice.delete_notices(String.split(notice_ids, ","),
            authorization: %{principal: conn.assigns.current_user}
          ) do
@@ -67,8 +77,6 @@ defmodule KeystonePhoenixWeb.NoticeController do
       {:error, :not_found} -> render_error(conn, :not_found)
     end
   end
-
-  def delete(conn, _params), do: render_error(conn, :invalid_ids)
 
   defp render_error(conn, :not_found) do
     conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "找不到请求的公告"))

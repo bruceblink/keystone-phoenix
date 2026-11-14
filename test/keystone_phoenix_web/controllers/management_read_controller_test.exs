@@ -14,13 +14,13 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
     conn = authorized(build_conn(), token)
 
     assert %{"success" => true, "data" => %{"rows" => _configs}} =
-             json_response(get(conn, "/api/v1/system/configs"), 200)
+             json_response(get(conn, "/api/v1/configs"), 200)
 
     assert %{"success" => true, "data" => %{"rows" => _types}} =
-             json_response(get(authorized(build_conn(), token), "/api/v1/system/dict/types"), 200)
+             json_response(get(authorized(build_conn(), token), "/api/v1/dictionaries"), 200)
 
     assert %{"success" => true, "data" => %{"rows" => _notices}} =
-             json_response(get(authorized(build_conn(), token), "/api/v1/system/notices"), 200)
+             json_response(get(authorized(build_conn(), token), "/api/v1/notices"), 200)
   end
 
   @tag :integration
@@ -29,7 +29,7 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
     dict_type = "http.read.#{System.unique_integer([:positive])}"
 
     type_response =
-      post(authorized(build_conn(), token), "/api/v1/system/dict/type", %{
+      post(authorized(build_conn(), token), "/api/v1/dictionaries", %{
         "dictName" => "HTTP 查询字典",
         "dictType" => dict_type,
         "status" => 1
@@ -38,14 +38,14 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
     assert type_response.status == 201
 
     type_id =
-      get(authorized(build_conn(), token), "/api/v1/system/dict/types", %{
+      get(authorized(build_conn(), token), "/api/v1/dictionaries", %{
         "dictType" => dict_type
       })
       |> json_response(200)
       |> get_in(["data", "rows", Access.at(0), "dictId"])
 
     data_response =
-      post(authorized(build_conn(), token), "/api/v1/system/dict/data", %{
+      post(authorized(build_conn(), token), "/api/v1/dictionaries/#{dict_type}/items", %{
         "dictType" => dict_type,
         "dictLabel" => "已启用",
         "dictValue" => 1,
@@ -56,7 +56,7 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
 
     assert %{"success" => true, "data" => rows} =
              json_response(
-               get(authorized(build_conn(), token), "/api/v1/system/dict/data/type/#{dict_type}"),
+               get(authorized(build_conn(), token), "/api/v1/dictionaries/#{dict_type}/items"),
                200
              )
 
@@ -64,10 +64,10 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
 
     data_code = Enum.find(rows, &(&1["dictType"] == dict_type))["dictCode"]
 
-    assert delete(authorized(build_conn(), token), "/api/v1/system/dict/data/#{data_code}").status ==
+    assert delete(authorized(build_conn(), token), "/api/v1/dictionaries/items/#{data_code}").status ==
              200
 
-    assert delete(authorized(build_conn(), token), "/api/v1/system/dict/type/#{type_id}").status ==
+    assert delete(authorized(build_conn(), token), "/api/v1/dictionaries/types/#{type_id}").status ==
              200
   end
 
@@ -78,7 +78,7 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
     notice_title = "HTTP 写入公告 #{System.unique_integer([:positive])}"
 
     config_response =
-      post(authorized(build_conn(), token), "/api/v1/system/config", %{
+      post(authorized(build_conn(), token), "/api/v1/configs", %{
         "configName" => "HTTP 写入配置",
         "configKey" => config_key,
         "configValue" => "初始值",
@@ -88,19 +88,19 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
     assert config_response.status == 201
 
     config_id =
-      get(authorized(build_conn(), token), "/api/v1/system/configs", %{"configKey" => config_key})
+      get(authorized(build_conn(), token), "/api/v1/configs", %{"configKey" => config_key})
       |> json_response(200)
       |> get_in(["data", "rows", Access.at(0), "configId"])
 
-    assert put(authorized(build_conn(), token), "/api/v1/system/config/#{config_id}", %{
+    assert put(authorized(build_conn(), token), "/api/v1/configs/#{config_id}", %{
              "configValue" => "更新值"
            }).status == 200
 
-    assert get(authorized(build_conn(), token), "/api/v1/system/config/#{config_id}")
+    assert get(authorized(build_conn(), token), "/api/v1/configs/#{config_id}")
            |> json_response(200)
            |> get_in(["data", "configValue"]) == "更新值"
 
-    assert post(authorized(build_conn(), token), "/api/v1/system/notices", %{
+    assert post(authorized(build_conn(), token), "/api/v1/notices", %{
              "noticeTitle" => notice_title,
              "noticeType" => 1,
              "noticeContent" => "HTTP 写入内容",
@@ -108,26 +108,23 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
            }).status == 201
 
     notice_id =
-      get(authorized(build_conn(), token), "/api/v1/system/notices", %{
+      get(authorized(build_conn(), token), "/api/v1/notices", %{
         "noticeTitle" => notice_title
       })
       |> json_response(200)
       |> get_in(["data", "rows", Access.at(0), "noticeId"])
 
-    assert put(authorized(build_conn(), token), "/api/v1/system/notices/#{notice_id}", %{
+    assert put(authorized(build_conn(), token), "/api/v1/notices/#{notice_id}", %{
              "status" => 0
            }).status == 200
 
-    assert delete(
-             authorized(build_conn(), token),
-             "/api/v1/system/notices?notice_ids=#{notice_id}"
-           ).status ==
-             200
+    assert delete(authorized(build_conn(), token), "/api/v1/notices/#{notice_id}").status == 200
 
-    assert get(authorized(build_conn(), token), "/api/v1/system/notices/#{notice_id}").status ==
+    assert get(authorized(build_conn(), token), "/api/v1/notices/#{notice_id}").status ==
              404
 
-    # 测试创建的配置没有删除接口，直接软删除，避免污染共享验收数据库。
+    assert delete(authorized(build_conn(), token), "/api/v1/configs/#{config_key}").status == 200
+
     Repo.get!(KeystonePhoenix.Config.SysConfig, config_id)
     |> Ecto.Changeset.change(deleted: true)
     |> Repo.update!()

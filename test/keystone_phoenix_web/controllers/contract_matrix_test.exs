@@ -29,9 +29,9 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
           {:get, "/api/v1/file/download?fileName=missing.txt"},
           {:get, "/api/v1/monitor/cacheInfo"},
           {:get, "/api/v1/monitor/serverInfo"},
-          {:get, "/api/v1/system/config/1"},
-          {:get, "/api/v1/system/jobs/1"},
-          {:get, "/api/v1/logs/loginLogs"}
+          {:get, "/api/v1/configs/1"},
+          {:get, "/api/v1/jobs/1"},
+          {:get, "/api/v1/login-logs"}
         ] do
       response =
         case method do
@@ -57,13 +57,13 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
     authorized = fn -> put_req_header(build_conn(), "authorization", "Bearer #{tokens.token}") end
 
-    assert get_in(json_response(get(authorized.(), "/api/v1/system/config/abc"), 404), [
+    assert get_in(json_response(get(authorized.(), "/api/v1/configs/abc"), 404), [
              "error",
              "code"
            ]) ==
              "validation_failed"
 
-    assert get_in(json_response(get(authorized.(), "/api/v1/system/jobs/abc"), 404), [
+    assert get_in(json_response(get(authorized.(), "/api/v1/jobs/abc"), 404), [
              "error",
              "code"
            ]) ==

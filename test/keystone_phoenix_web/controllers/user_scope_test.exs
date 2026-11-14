@@ -138,22 +138,22 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
   @tag :integration
   test "HTTP list, detail and export expose the same authorized set", ctx do
     {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
-    response = get(authorized(tokens.token), "/api/v1/system/users", %{"pageSize" => 50})
+    response = get(authorized(tokens.token), "/api/v1/users", %{"pageSize" => 50})
     assert %{"data" => %{"total" => 3, "rows" => rows}} = json_response(response, 200)
     expected = MapSet.new([ctx.actor.user_id, ctx.oldest.user_id, ctx.descendant.user_id])
     assert MapSet.new(Enum.map(rows, & &1["userId"])) == expected
 
     assert json_response(
-             get(authorized(tokens.token), "/api/v1/system/users/#{ctx.oldest.user_id}"),
+             get(authorized(tokens.token), "/api/v1/users/#{ctx.oldest.user_id}"),
              200
            )["data"]["userId"] == ctx.oldest.user_id
 
     assert json_response(
-             get(authorized(tokens.token), "/api/v1/system/users/#{hd(ctx.outside_ids)}"),
+             get(authorized(tokens.token), "/api/v1/users/#{hd(ctx.outside_ids)}"),
              403
            )["error"]["code"] == "data_scope_denied"
 
-    response = get(authorized(tokens.token), "/api/v1/system/users/excel")
+    response = get(authorized(tokens.token), "/api/v1/users/export")
     assert response.status == 200
     path = Path.join(System.tmp_dir!(), "#{unique("user_scope")}.xlsx")
     File.write!(path, response.resp_body)
@@ -167,7 +167,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
 
     response =
-      put(authorized(tokens.token), "/api/v1/system/users/#{ctx.oldest.user_id}", %{
+      put(authorized(tokens.token), "/api/v1/users/#{ctx.oldest.user_id}", %{
         "deptId" => ctx.outside.dept_id,
         "nickname" => "不应写入"
       })
@@ -177,14 +177,14 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     refute Repo.get!(SysUser, ctx.oldest.user_id).nickname == "不应写入"
 
     response =
-      put(authorized(tokens.token), "/api/v1/system/users/#{hd(ctx.outside_ids)}", %{
+      put(authorized(tokens.token), "/api/v1/users/#{hd(ctx.outside_ids)}", %{
         "deptId" => ctx.parent.dept_id
       })
 
     assert get_in(json_response(response, 403), ["error", "code"]) == "data_scope_denied"
 
     response =
-      put(authorized(tokens.token), "/api/v1/system/users/#{ctx.oldest.user_id}", %{
+      put(authorized(tokens.token), "/api/v1/users/#{ctx.oldest.user_id}", %{
         "deptId" => ctx.child.dept_id
       })
 
@@ -194,7 +194,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     denied_name = unique("denied_create")
 
     response =
-      post(authorized(tokens.token), "/api/v1/system/users", %{
+      post(authorized(tokens.token), "/api/v1/users", %{
         "username" => denied_name,
         "password" => "Strong!123",
         "deptId" => ctx.outside.dept_id
@@ -206,7 +206,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     allowed_name = unique("allowed_create")
 
     response =
-      post(authorized(tokens.token), "/api/v1/system/users", %{
+      post(authorized(tokens.token), "/api/v1/users", %{
         "username" => allowed_name,
         "password" => "Strong!123",
         "deptId" => ctx.child.dept_id
@@ -221,12 +221,12 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
   test "self scope can list and edit itself but cannot move to another department", ctx do
     Repo.update!(Ecto.Changeset.change(ctx.role, data_scope: "SELF"))
     {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
-    response = get(authorized(tokens.token), "/api/v1/system/users")
+    response = get(authorized(tokens.token), "/api/v1/users")
     assert %{"data" => %{"total" => 1, "rows" => [row]}} = json_response(response, 200)
     assert row["userId"] == ctx.actor.user_id
 
     response =
-      put(authorized(tokens.token), "/api/v1/system/users/#{ctx.actor.user_id}", %{
+      put(authorized(tokens.token), "/api/v1/users/#{ctx.actor.user_id}", %{
         "nickname" => "本人已更新",
         "deptId" => ctx.actor.dept_id
       })
@@ -234,7 +234,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert json_response(response, 200)["success"] == true
 
     response =
-      put(authorized(tokens.token), "/api/v1/system/users/#{ctx.actor.user_id}", %{
+      put(authorized(tokens.token), "/api/v1/users/#{ctx.actor.user_id}", %{
         "deptId" => ctx.child.dept_id
       })
 
@@ -252,7 +252,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     response =
       delete(
         authorized(actor_tokens.token),
-        "/api/v1/system/users/#{ctx.oldest.user_id},#{missing_id}",
+        "/api/v1/users?ids=#{ctx.oldest.user_id},#{missing_id}",
         %{}
       )
 
@@ -264,7 +264,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     response =
       delete(
         authorized(actor_tokens.token),
-        "/api/v1/system/users/#{ctx.oldest.user_id},#{hd(ctx.outside_ids)}",
+        "/api/v1/users?ids=#{ctx.oldest.user_id},#{hd(ctx.outside_ids)}",
         %{}
       )
 
@@ -275,7 +275,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     response =
       delete(
         authorized(actor_tokens.token),
-        "/api/v1/system/users/#{ctx.oldest.user_id}",
+        "/api/v1/users/#{ctx.oldest.user_id}",
         %{}
       )
 
@@ -300,7 +300,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
 
     response =
-      post(authorized(tokens.token), "/api/v1/system/users", %{
+      post(authorized(tokens.token), "/api/v1/users", %{
         "username" => unique("role_denied_create"),
         "password" => "Strong!123",
         "deptId" => ctx.child.dept_id,
@@ -310,7 +310,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
 
     response =
-      put(authorized(tokens.token), "/api/v1/system/users/#{ctx.actor.user_id}", %{
+      put(authorized(tokens.token), "/api/v1/users/#{ctx.actor.user_id}", %{
         "nickname" => "角色不应改变",
         "deptId" => ctx.actor.dept_id,
         "roleId" => elevated_role.role_id
@@ -358,7 +358,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
       content_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     }
 
-    response = post(authorized(tokens.token), "/api/v1/system/users/excel", %{"file" => upload})
+    response = post(authorized(tokens.token), "/api/v1/users/import", %{"file" => upload})
     assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
 
     # 通过真实 HTTP TOTP enrollment 和 step-up 流程获取短时 AAL2 访问令牌。
@@ -403,7 +403,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert step_up["data"]["authenticationLevel"] == "AAL2"
 
     response =
-      post(authorized(step_up["data"]["accessToken"]), "/api/v1/system/users/excel", %{
+      post(authorized(step_up["data"]["accessToken"]), "/api/v1/users/import", %{
         "file" => upload
       })
 

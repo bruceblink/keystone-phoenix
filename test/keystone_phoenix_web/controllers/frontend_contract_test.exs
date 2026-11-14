@@ -19,7 +19,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     conn = put_req_header(conn, "authorization", "Bearer #{fixtures.token}")
 
     assert %{"success" => true, "data" => menus} =
-             json_response(get(conn, "/api/v1/system/menus"), 200)
+             json_response(get(conn, "/api/v1/menus"), 200)
 
     menu = Enum.find(menus, &(&1["id"] == fixtures.page_menu.menu_id))
     assert menu["menuId"] == fixtures.page_menu.menu_id
@@ -28,26 +28,26 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     assert menu["statusStr"] == "正常"
 
     assert %{"success" => true, "data" => departments} =
-             json_response(get(conn, "/api/v1/system/depts"), 200)
+             json_response(get(conn, "/api/v1/departments"), 200)
 
     department = Enum.find(departments, &(&1["id"] == fixtures.department.dept_id))
     assert department["deptId"] == fixtures.department.dept_id
     assert department["statusStr"] == "正常"
 
     assert %{"success" => true, "data" => %{"rows" => posts}} =
-             json_response(get(conn, "/api/v1/system/post/list?pageSize=50"), 200)
+             json_response(get(conn, "/api/v1/posts?pageSize=50"), 200)
 
     post = Enum.find(posts, &(&1["postId"] == fixtures.post.post_id))
     assert post["statusStr"] == "正常"
 
     assert %{"success" => true, "data" => role} =
-             json_response(get(conn, "/api/v1/system/role/#{fixtures.role.role_id}"), 200)
+             json_response(get(conn, "/api/v1/roles/#{fixtures.role.role_id}"), 200)
 
     assert fixtures.page_menu.menu_id in role["selectedMenuList"]
     assert role["selectedDeptList"] == [fixtures.department.dept_id]
 
     assert %{"success" => true, "data" => %{"rows" => users}} =
-             json_response(get(conn, "/api/v1/system/users?userId=#{fixtures.user.user_id}"), 200)
+             json_response(get(conn, "/api/v1/users?userId=#{fixtures.user.user_id}"), 200)
 
     user = Enum.find(users, &(&1["userId"] == fixtures.user.user_id))
     assert user["deptName"] == "契约部门"
@@ -55,7 +55,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     assert user["roleName"] == "契约角色"
 
     assert %{"success" => true, "data" => profile} =
-             json_response(get(conn, "/api/v1/system/user/profile"), 200)
+             json_response(get(conn, "/api/v1/profile"), 200)
 
     assert profile["user"]["userId"] == fixtures.user.user_id
     assert profile["roleName"] == "契约角色"
@@ -63,7 +63,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
 
     assert %{"success" => true, "data" => %{"rows" => dict_data}} =
              json_response(
-               get(conn, "/api/v1/system/dict/data/list?dictType=contract.status"),
+               get(conn, "/api/v1/dictionaries/items?dictType=contract.status"),
                200
              )
 
@@ -71,7 +71,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     assert dict["isDefault"] == 1
 
     assert %{"success" => true, "data" => %{"rows" => notices}} =
-             json_response(get(conn, "/api/v1/system/notices?pageSize=10"), 200)
+             json_response(get(conn, "/api/v1/notices?pageSize=10"), 200)
 
     notice = Enum.find(notices, &(&1["noticeId"] == fixtures.notice.notice_id))
     assert notice["creatorName"] == fixtures.user.username

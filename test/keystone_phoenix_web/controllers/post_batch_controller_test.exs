@@ -22,7 +22,7 @@ defmodule KeystonePhoenixWeb.PostBatchControllerTest do
     response =
       delete(
         authorized(build_conn(), tokens.token),
-        "/api/v1/system/post?ids=#{first.post_id},#{missing_id}",
+        "/api/v1/posts?ids=#{first.post_id},#{missing_id}",
         %{}
       )
 
@@ -34,7 +34,7 @@ defmodule KeystonePhoenixWeb.PostBatchControllerTest do
     response =
       delete(
         authorized(build_conn(), tokens.token),
-        "/api/v1/system/post?ids=#{first.post_id}",
+        "/api/v1/posts?ids=#{first.post_id}",
         %{}
       )
 
@@ -87,7 +87,7 @@ defmodule KeystonePhoenixWeb.PostBatchControllerTest do
     code = "#{prefix}_#{System.unique_integer([:positive])}"
 
     response =
-      post(authorized(build_conn(), token), "/api/v1/system/post", %{
+      post(authorized(build_conn(), token), "/api/v1/posts", %{
         "postCode" => code,
         "postName" => "#{prefix}岗位",
         "postSort" => 1,

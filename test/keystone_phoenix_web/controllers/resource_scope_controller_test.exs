@@ -16,14 +16,14 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     user = insert_user(role.role_id)
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
 
-    response = get(authorized(conn, tokens.token), "/api/v1/system/role/list")
+    response = get(authorized(conn, tokens.token), "/api/v1/roles")
 
     assert get_in(json_response(response, 403), ["error", "code"]) == "data_scope_denied"
 
     Repo.update!(Ecto.Changeset.change(role, data_scope: "TENANT"))
     {:ok, refreshed} = Auth.login_plaintext(user.username, "Strong!123", true)
 
-    response = get(authorized(build_conn(), refreshed.token), "/api/v1/system/role/list")
+    response = get(authorized(build_conn(), refreshed.token), "/api/v1/roles")
     assert response.status == 200
     assert json_response(response, 200)["success"] == true
   end
@@ -170,7 +170,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     notice_title = "owner_http_notice_#{System.unique_integer([:positive])}"
 
     assert json_response(
-             post(authorized(build_conn(), owner_token), "/api/v1/system/jobs", %{
+             post(authorized(build_conn(), owner_token), "/api/v1/jobs", %{
                "jobName" => job_name,
                "jobGroup" => "owner-http",
                "invokeTarget" => "demoJobTask.printHeartbeat()",
@@ -182,7 +182,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
            )["success"]
 
     assert json_response(
-             post(authorized(build_conn(), other_token), "/api/v1/system/jobs", %{
+             post(authorized(build_conn(), other_token), "/api/v1/jobs", %{
                "jobName" => job_name <> "_other",
                "jobGroup" => "owner-http",
                "invokeTarget" => "demoJobTask.printHeartbeat()",
@@ -194,7 +194,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
            )["success"]
 
     assert json_response(
-             post(authorized(build_conn(), owner_token), "/api/v1/system/notices", %{
+             post(authorized(build_conn(), owner_token), "/api/v1/notices", %{
                "noticeTitle" => notice_title,
                "noticeType" => 1,
                "noticeContent" => "owner http notice",
@@ -204,7 +204,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
            )["success"]
 
     assert json_response(
-             post(authorized(build_conn(), other_token), "/api/v1/system/notices", %{
+             post(authorized(build_conn(), other_token), "/api/v1/notices", %{
                "noticeTitle" => notice_title <> "_other",
                "noticeType" => 1,
                "noticeContent" => "other owner http notice",
@@ -213,15 +213,15 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
              201
            )["success"]
 
-    owner_job_id = owner_id(owner_token, "/api/v1/system/jobs", %{"jobName" => job_name}, "jobId")
+    owner_job_id = owner_id(owner_token, "/api/v1/jobs", %{"jobName" => job_name}, "jobId")
 
     other_job_id =
-      owner_id(other_token, "/api/v1/system/jobs", %{"jobName" => job_name <> "_other"}, "jobId")
+      owner_id(other_token, "/api/v1/jobs", %{"jobName" => job_name <> "_other"}, "jobId")
 
     owner_notice_id =
       owner_id(
         owner_token,
-        "/api/v1/system/notices",
+        "/api/v1/notices",
         %{"noticeTitle" => notice_title},
         "noticeId"
       )
@@ -229,7 +229,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     other_notice_id =
       owner_id(
         other_token,
-        "/api/v1/system/notices",
+        "/api/v1/notices",
         %{"noticeTitle" => notice_title <> "_other"},
         "noticeId"
       )
@@ -239,7 +239,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
              "data" => %{"rows" => [%{"jobId" => ^owner_job_id}], "total" => 1}
            } =
              json_response(
-               get(authorized(build_conn(), owner_token), "/api/v1/system/jobs", %{
+               get(authorized(build_conn(), owner_token), "/api/v1/jobs", %{
                  "jobName" => "owner_http_job"
                }),
                200
@@ -250,21 +250,21 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
              "data" => %{"rows" => [%{"noticeId" => ^owner_notice_id}], "total" => 1}
            } =
              json_response(
-               get(authorized(build_conn(), owner_token), "/api/v1/system/notices", %{
+               get(authorized(build_conn(), owner_token), "/api/v1/notices", %{
                  "noticeTitle" => "owner_http_notice"
                }),
                200
              )
 
     assert json_response(
-             get(authorized(build_conn(), owner_token), "/api/v1/system/jobs/#{other_job_id}"),
+             get(authorized(build_conn(), owner_token), "/api/v1/jobs/#{other_job_id}"),
              404
            )["error"]["code"] == "validation_failed"
 
     assert json_response(
              get(
                authorized(build_conn(), owner_token),
-               "/api/v1/system/notices/#{other_notice_id}"
+               "/api/v1/notices/#{other_notice_id}"
              ),
              404
            )["error"]["code"] == "validation_failed"
@@ -272,7 +272,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     assert json_response(
              delete(
                authorized(build_conn(), owner_token),
-               "/api/v1/system/jobs?jobIds=#{owner_job_id},#{other_job_id}",
+               "/api/v1/jobs?jobIds=#{owner_job_id},#{other_job_id}",
                %{}
              ),
              404
@@ -281,16 +281,16 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     assert json_response(
              delete(
                authorized(build_conn(), owner_token),
-               "/api/v1/system/notices?notice_ids=#{owner_notice_id},#{other_notice_id}",
+               "/api/v1/notices?notice_ids=#{owner_notice_id},#{other_notice_id}",
                %{}
              ),
              404
            )["error"]["code"] == "validation_failed"
 
-    assert get(authorized(build_conn(), owner_token), "/api/v1/system/jobs/#{owner_job_id}").status ==
+    assert get(authorized(build_conn(), owner_token), "/api/v1/jobs/#{owner_job_id}").status ==
              200
 
-    assert get(authorized(build_conn(), owner_token), "/api/v1/system/notices/#{owner_notice_id}").status ==
+    assert get(authorized(build_conn(), owner_token), "/api/v1/notices/#{owner_notice_id}").status ==
              200
   end
 
@@ -305,7 +305,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     assert json_response(
              post(
                authorized(build_conn(), owner_token),
-               "/api/v1/system/jobs/#{owner_job_id}/run",
+               "/api/v1/jobs/#{owner_job_id}/trigger",
                %{}
              ),
              200
@@ -314,7 +314,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     assert json_response(
              post(
                authorized(build_conn(), other_token),
-               "/api/v1/system/jobs/#{other_job_id}/run",
+               "/api/v1/jobs/#{other_job_id}/trigger",
                %{}
              ),
              200
@@ -325,7 +325,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
              "data" => %{"rows" => [%{"jobId" => ^owner_job_id}], "total" => 1}
            } =
              json_response(
-               get(authorized(build_conn(), owner_token), "/api/v1/system/jobs/logs", %{}),
+               get(authorized(build_conn(), owner_token), "/api/v1/jobs/logs", %{}),
                200
              )
 
@@ -334,7 +334,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
              "data" => %{"rows" => [], "total" => 0}
            } =
              json_response(
-               get(authorized(build_conn(), owner_token), "/api/v1/system/jobs/logs", %{
+               get(authorized(build_conn(), owner_token), "/api/v1/jobs/logs", %{
                  "jobId" => other_job_id
                }),
                200
@@ -359,7 +359,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     login_response =
       delete(
         authorized(build_conn(), token),
-        "/api/v1/logs/loginLogs?ids=#{login_id},#{missing_id}",
+        "/api/v1/login-logs?ids=#{login_id},#{missing_id}",
         %{}
       )
 
@@ -370,7 +370,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     operation_response =
       delete(
         authorized(build_conn(), token),
-        "/api/v1/logs/operationLogs?operationIds=#{operation_id},#{missing_id}",
+        "/api/v1/operation-logs?operationIds=#{operation_id},#{missing_id}",
         %{}
       )
 
@@ -454,38 +454,38 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
 
   defp operation_cases(%{uuid: uuid, file_name: file_name}) do
     [
-      {"role export", :post, "/api/v1/system/role/export", %{}},
-      {"post list", :get, "/api/v1/system/post/list", %{}},
-      {"post detail", :get, "/api/v1/system/post/#{uuid}", %{}},
-      {"post write", :post, "/api/v1/system/post", %{}},
-      {"post delete", :delete, "/api/v1/system/post?ids=#{uuid}", %{}},
-      {"menu list", :get, "/api/v1/system/menus", %{}},
-      {"menu detail", :get, "/api/v1/system/menus/#{uuid}", %{}},
-      {"menu write", :post, "/api/v1/system/menus", %{}},
-      {"menu delete", :delete, "/api/v1/system/menus/#{uuid}", %{}},
-      {"config list", :get, "/api/v1/system/configs", %{}},
-      {"config detail", :get, "/api/v1/system/config/#{uuid}", %{}},
-      {"config write", :post, "/api/v1/system/config", %{}},
-      {"config update", :put, "/api/v1/system/config/#{uuid}", %{}},
-      {"dictionary list", :get, "/api/v1/system/dict/types", %{}},
-      {"dictionary detail", :get, "/api/v1/system/dict/type/#{uuid}", %{}},
-      {"dictionary write", :post, "/api/v1/system/dict/type", %{}},
-      {"dictionary delete", :delete, "/api/v1/system/dict/type/#{uuid}", %{}},
-      {"audit list", :get, "/api/v1/logs/loginLogs", %{}},
-      {"audit detail", :get, "/api/v1/logs/operationLogs", %{}},
-      {"audit delete", :delete, "/api/v1/logs/loginLogs?ids=#{uuid}", %{}},
+      {"role export", :get, "/api/v1/roles/export", %{}},
+      {"post list", :get, "/api/v1/posts", %{}},
+      {"post detail", :get, "/api/v1/posts/#{uuid}", %{}},
+      {"post write", :post, "/api/v1/posts", %{}},
+      {"post delete", :delete, "/api/v1/posts?ids=#{uuid}", %{}},
+      {"menu list", :get, "/api/v1/menus", %{}},
+      {"menu detail", :get, "/api/v1/menus/#{uuid}", %{}},
+      {"menu write", :post, "/api/v1/menus", %{}},
+      {"menu delete", :delete, "/api/v1/menus/#{uuid}", %{}},
+      {"config list", :get, "/api/v1/configs", %{}},
+      {"config detail", :get, "/api/v1/configs/#{uuid}", %{}},
+      {"config write", :post, "/api/v1/configs", %{}},
+      {"config update", :put, "/api/v1/configs/#{uuid}", %{}},
+      {"dictionary list", :get, "/api/v1/dictionaries", %{}},
+      {"dictionary detail", :get, "/api/v1/dictionaries/types/#{uuid}", %{}},
+      {"dictionary write", :post, "/api/v1/dictionaries", %{}},
+      {"dictionary delete", :delete, "/api/v1/dictionaries/types/#{uuid}", %{}},
+      {"audit list", :get, "/api/v1/login-logs", %{}},
+      {"audit detail", :get, "/api/v1/operation-logs", %{}},
+      {"audit delete", :delete, "/api/v1/login-logs?ids=#{uuid}", %{}},
       {"session list", :get, "/api/v1/monitor/onlineUsers", %{}},
       {"session detail", :get, "/api/v1/monitor/serverInfo", %{}},
       {"session write", :get, "/api/v1/monitor/cacheInfo", %{}},
       {"session delete", :delete, "/api/v1/monitor/onlineUser/#{uuid}", %{}},
-      {"job list", :get, "/api/v1/system/jobs", %{}},
-      {"job detail", :get, "/api/v1/system/jobs/#{uuid}", %{}},
-      {"job write", :post, "/api/v1/system/jobs", %{}},
-      {"job delete", :delete, "/api/v1/system/jobs?jobIds=#{uuid}", %{}},
-      {"notice list", :get, "/api/v1/system/notices", %{}},
-      {"notice detail", :get, "/api/v1/system/notices/#{uuid}", %{}},
-      {"notice write", :post, "/api/v1/system/notices", %{}},
-      {"notice delete", :delete, "/api/v1/system/notices?notice_ids=#{uuid}", %{}},
+      {"job list", :get, "/api/v1/jobs", %{}},
+      {"job detail", :get, "/api/v1/jobs/#{uuid}", %{}},
+      {"job write", :post, "/api/v1/jobs", %{}},
+      {"job delete", :delete, "/api/v1/jobs?jobIds=#{uuid}", %{}},
+      {"notice list", :get, "/api/v1/notices", %{}},
+      {"notice detail", :get, "/api/v1/notices/#{uuid}", %{}},
+      {"notice write", :post, "/api/v1/notices", %{}},
+      {"notice delete", :delete, "/api/v1/notices?notice_ids=#{uuid}", %{}},
       {"file detail", :get, "/api/v1/file/download?fileName=#{file_name}", %{}},
       {"file write", :post, "/api/v1/file/upload", %{}},
       {"file batch write", :post, "/api/v1/file/uploads", %{}}
@@ -494,10 +494,10 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
 
   defp export_cases do
     [
-      {"post export", :get, "/api/v1/system/post/excel", "posts.xlsx"},
-      {"role export", :post, "/api/v1/system/role/export", "roles.xlsx"},
-      {"login log export", :get, "/api/v1/logs/loginLogs/excel", "login-logs.xlsx"},
-      {"operation log export", :get, "/api/v1/logs/operationLogs/excel", "operation-logs.xlsx"}
+      {"post export", :get, "/api/v1/posts/export", "posts.xlsx"},
+      {"role export", :get, "/api/v1/roles/export", "roles.xlsx"},
+      {"login log export", :get, "/api/v1/login-logs/export", "login-logs.xlsx"},
+      {"operation log export", :get, "/api/v1/operation-logs/export", "operation-logs.xlsx"}
     ]
   end
 
@@ -514,7 +514,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     name = "#{name_prefix}_#{System.unique_integer([:positive])}"
 
     assert json_response(
-             post(authorized(build_conn(), token), "/api/v1/system/jobs", %{
+             post(authorized(build_conn(), token), "/api/v1/jobs", %{
                "jobName" => name,
                "jobGroup" => "owner-log-http",
                "invokeTarget" => "demoJobTask.printHeartbeat()",
@@ -525,19 +525,19 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
              200
            )["success"]
 
-    owner_id(token, "/api/v1/system/jobs", %{"jobName" => name}, "jobId")
+    owner_id(token, "/api/v1/jobs", %{"jobName" => name}, "jobId")
   end
 
   defp list_cases(%{file_name: file_name}) do
     [
-      {"post", "/api/v1/system/post/list", %{}},
-      {"menu", "/api/v1/system/menus", %{}},
-      {"config", "/api/v1/system/configs", %{}},
-      {"dictionary", "/api/v1/system/dict/types", %{}},
-      {"audit", "/api/v1/logs/loginLogs", %{}},
+      {"post", "/api/v1/posts", %{}},
+      {"menu", "/api/v1/menus", %{}},
+      {"config", "/api/v1/configs", %{}},
+      {"dictionary", "/api/v1/dictionaries", %{}},
+      {"audit", "/api/v1/login-logs", %{}},
       {"session", "/api/v1/monitor/onlineUsers", %{}},
-      {"job", "/api/v1/system/jobs", %{}},
-      {"notice", "/api/v1/system/notices", %{}},
+      {"job", "/api/v1/jobs", %{}},
+      {"notice", "/api/v1/notices", %{}},
       {"file", "/api/v1/file/download?fileName=#{file_name}", %{}}
     ]
   end

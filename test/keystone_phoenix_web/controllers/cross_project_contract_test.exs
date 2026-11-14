@@ -34,7 +34,7 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     validation_failed
   )
 
-  @role_permission_path "/api/v1/system/role/:role_id/permissions"
+  @role_permission_path "/api/v1/roles/:role_id/permissions"
 
   test "token response keeps the shared fields and removes legacy aliases" do
     response =

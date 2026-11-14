@@ -152,6 +152,14 @@ defmodule KeystonePhoenixWeb.LogController do
 
   @doc "Soft deletes operation audit records."
   def delete_operation_logs(conn, %{"operationIds" => ids}) do
+    delete_operation_logs_by_ids(conn, ids)
+  end
+
+  def delete_operation_logs(conn, %{"ids" => ids}), do: delete_operation_logs_by_ids(conn, ids)
+
+  def delete_operation_logs(conn, _params), do: render_error(conn, :invalid_ids)
+
+  defp delete_operation_logs_by_ids(conn, ids) do
     case Log.delete_operation_logs(String.split(ids, ","),
            authorization: %{principal: conn.assigns.current_user}
          ) do
@@ -159,8 +167,6 @@ defmodule KeystonePhoenixWeb.LogController do
       {:error, reason} -> render_error(conn, reason)
     end
   end
-
-  def delete_operation_logs(conn, _params), do: render_error(conn, :invalid_ids)
 
   defp login_export_row(row) do
     [

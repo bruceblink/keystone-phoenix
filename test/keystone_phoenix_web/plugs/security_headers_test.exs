@@ -49,7 +49,7 @@ defmodule KeystonePhoenixWeb.Plugs.SecurityHeadersTest do
     Application.put_env(:keystone_phoenix, :cors_allowed_origins, ["https://admin.example.com"])
 
     conn =
-      conn(:options, "/api/v1/system/users")
+      conn(:options, "/api/v1/users")
       |> put_req_header("origin", "https://admin.example.com")
       |> apply_plug()
 
@@ -69,7 +69,7 @@ defmodule KeystonePhoenixWeb.Plugs.SecurityHeadersTest do
     Application.put_env(:keystone_phoenix, :cors_allowed_origins, ["https://admin.example.com"])
 
     conn =
-      conn(:get, "/api/v1/system/users")
+      conn(:get, "/api/v1/users")
       |> put_req_header("origin", "https://attacker.example.com")
       |> apply_plug()
 
