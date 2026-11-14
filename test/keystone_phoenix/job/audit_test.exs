@@ -21,7 +21,13 @@ defmodule KeystonePhoenix.Job.AuditTest do
                  "concurrent" => 0,
                  "status" => 0
                },
-               authorization: %{principal: %{user_id: actor.user_id, permissions: ["job:create"]}}
+               authorization: %{
+                 principal: %{
+                   user_id: actor.user_id,
+                   data_scope: "TENANT",
+                   permissions: ["job:create"]
+                 }
+               }
              )
 
     assert job.creator_id == actor.user_id
@@ -35,7 +41,13 @@ defmodule KeystonePhoenix.Job.AuditTest do
                  "jobParams" => "",
                  "cronExpression" => "*/5 * * * * *"
                },
-               authorization: %{principal: %{user_id: actor.user_id, permissions: ["job:update"]}}
+               authorization: %{
+                 principal: %{
+                   user_id: actor.user_id,
+                   data_scope: "TENANT",
+                   permissions: ["job:update"]
+                 }
+               }
              )
 
     assert job.updater_id == actor.user_id
@@ -43,7 +55,11 @@ defmodule KeystonePhoenix.Job.AuditTest do
     assert {:ok, job} =
              Job.update_job_status(job.job_id, 1,
                authorization: %{
-                 principal: %{user_id: actor.user_id, permissions: ["job:update-status"]}
+                 principal: %{
+                   user_id: actor.user_id,
+                   data_scope: "TENANT",
+                   permissions: ["job:update-status"]
+                 }
                }
              )
 

@@ -21,21 +21,37 @@ defmodule KeystonePhoenixWeb.JobController do
   alias KeystonePhoenixWeb.ApiResponse
 
   @doc "Returns a paginated scheduled job list."
-  def list(conn, params), do: json(conn, ApiResponse.ok(Job.list_jobs(params)))
+  def list(conn, params) do
+    case Job.list_jobs(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
 
   @doc "Returns one scheduled job."
   def show(conn, %{"job_id" => job_id}) do
-    case Job.get_job(job_id) do
+    case Job.get_job(job_id, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, job} -> json(conn, ApiResponse.ok(Job.job_to_map(job)))
       {:error, :not_found} -> render_error(conn, :not_found)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
   @doc "Returns allow-listed invocation targets."
-  def invoke_targets(conn, _params), do: json(conn, ApiResponse.ok(Job.invoke_targets()))
+  def invoke_targets(conn, _params) do
+    case Job.invoke_targets(authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, targets} -> json(conn, ApiResponse.ok(targets))
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
 
   @doc "Returns a paginated scheduled job execution log list."
-  def logs(conn, params), do: json(conn, ApiResponse.ok(Job.list_job_logs(params)))
+  def logs(conn, params) do
+    case Job.list_job_logs(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
 
   @doc "Creates a scheduled job."
   def create(conn, params) do
@@ -111,6 +127,14 @@ defmodule KeystonePhoenixWeb.JobController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "任务编号无效"))
+  end
+
+  defp render_error(conn, :permission_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "没有操作权限"))
+  end
+
+  defp render_error(conn, :data_scope_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
   end
 
   defp render_error(conn, :invalid_status) do

@@ -23,6 +23,13 @@ defmodule KeystonePhoenix.Log do
     paginate(query, params, :info_id, &login_info_to_map/1)
   end
 
+  @doc "在检查审计资源范围后查询登录日志。"
+  def list_login_logs(params, options) when is_map(params) and is_list(options) do
+    with :ok <- authorize_read(options, "login-log:read") do
+      {:ok, list_login_logs(params)}
+    end
+  end
+
   def list_operation_logs(params \\ %{}) do
     query =
       from(log in SysOperationLog,
@@ -39,8 +46,15 @@ defmodule KeystonePhoenix.Log do
     paginate(query, params, :operation_id, &operation_log_to_map/1)
   end
 
+  @doc "在检查审计资源范围后查询操作日志。"
+  def list_operation_logs(params, options) when is_map(params) and is_list(options) do
+    with :ok <- authorize_read(options, "operation-log:read") do
+      {:ok, list_operation_logs(params)}
+    end
+  end
+
   def delete_login_logs(ids, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "login-log:delete") do
+    with :ok <- authorize_read(options, "login-log:delete") do
       soft_delete(SysLoginInfo, :info_id, ids)
     end
   end
@@ -48,12 +62,16 @@ defmodule KeystonePhoenix.Log do
   def delete_login_logs(_ids, _options), do: {:error, :authorization_required}
 
   def delete_operation_logs(ids, options) when is_list(options) do
-    with :ok <- Command.authorize(options, "operation-log:delete") do
+    with :ok <- authorize_read(options, "operation-log:delete") do
       soft_delete(SysOperationLog, :operation_id, ids)
     end
   end
 
   def delete_operation_logs(_ids, _options), do: {:error, :authorization_required}
+
+  # 审计写操作统一通过资源范围授权，避免服务层直接删除日志。
+  def authorize_read(options, permission),
+    do: Command.authorize_resource(options, permission, :audit)
 
   @doc "Records a login result without persisting passwords or tokens."
   def record_login(conn, username, status, message) when is_binary(username) do

@@ -30,6 +30,13 @@ defmodule KeystonePhoenix.Job do
     paginate(query, params, :job_id, &job_to_map/1)
   end
 
+  @doc "在检查任务权限和资源范围后查询任务列表。"
+  def list_jobs(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "job:read") do
+      {:ok, list_jobs(params)}
+    end
+  end
+
   @doc "Returns one task definition."
   def get_job(id) do
     case Params.parse_uuid(id) do
@@ -41,6 +48,13 @@ defmodule KeystonePhoenix.Job do
 
       :error ->
         {:error, :not_found}
+    end
+  end
+
+  @doc "在检查任务权限和资源范围后查询单个任务。"
+  def get_job(id, options) when is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "job:read") do
+      get_job(id)
     end
   end
 
@@ -238,6 +252,13 @@ defmodule KeystonePhoenix.Job do
   @doc "Returns available allow-listed invocation targets."
   def invoke_targets, do: Invoke.targets()
 
+  @doc "在检查任务权限和资源范围后读取允许的调用目标。"
+  def invoke_targets(options) when is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "job:read") do
+      {:ok, invoke_targets()}
+    end
+  end
+
   @doc "Returns paginated execution logs."
   def list_job_logs(params \\ %{}) do
     query = from(log in SysJobLog, order_by: [desc: log.start_time, desc: log.job_log_id])
@@ -252,6 +273,13 @@ defmodule KeystonePhoenix.Job do
       |> filter_integer(:status, params["status"] || params[:status])
 
     paginate(query, params, :job_log_id, &job_log_to_map/1)
+  end
+
+  @doc "在检查任务权限和资源范围后查询任务日志。"
+  def list_job_logs(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "job:read") do
+      {:ok, list_job_logs(params)}
+    end
   end
 
   def job_to_map(job) do

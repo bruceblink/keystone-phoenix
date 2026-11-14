@@ -61,7 +61,10 @@ defmodule KeystonePhoenixWeb.LogController do
 
   @doc "Returns login audit records."
   def login_logs(conn, params) do
-    json(conn, ApiResponse.ok(Log.list_login_logs(params)))
+    case Log.list_login_logs(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
   end
 
   @doc "Soft deletes login audit records."
@@ -78,31 +81,50 @@ defmodule KeystonePhoenixWeb.LogController do
 
   @doc "Returns operation audit records."
   def operation_logs(conn, params) do
-    json(conn, ApiResponse.ok(Log.list_operation_logs(params)))
+    case Log.list_operation_logs(params, authorization: %{principal: conn.assigns.current_user}) do
+      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+      {:error, reason} -> render_error(conn, reason)
+    end
   end
 
   @doc "Exports all login audit records matching the current filters."
   def export_login_logs(conn, params) do
-    rows = Excel.all_rows(&Log.list_login_logs/1, params)
+    authorization = [authorization: %{principal: conn.assigns.current_user}]
 
-    ExcelResponse.send_xlsx(
-      conn,
-      "login-logs.xlsx",
-      @login_export_headers,
-      Enum.map(rows, &login_export_row/1)
-    )
+    case Log.authorize_read(authorization, "login-log:export") do
+      :ok ->
+        rows = Excel.all_rows(&Log.list_login_logs/1, params)
+
+        ExcelResponse.send_xlsx(
+          conn,
+          "login-logs.xlsx",
+          @login_export_headers,
+          Enum.map(rows, &login_export_row/1)
+        )
+
+      {:error, reason} ->
+        render_error(conn, reason)
+    end
   end
 
   @doc "Exports all operation audit records matching the current filters."
   def export_operation_logs(conn, params) do
-    rows = Excel.all_rows(&Log.list_operation_logs/1, params)
+    authorization = [authorization: %{principal: conn.assigns.current_user}]
 
-    ExcelResponse.send_xlsx(
-      conn,
-      "operation-logs.xlsx",
-      @operation_export_headers,
-      Enum.map(rows, &operation_export_row/1)
-    )
+    case Log.authorize_read(authorization, "operation-log:export") do
+      :ok ->
+        rows = Excel.all_rows(&Log.list_operation_logs/1, params)
+
+        ExcelResponse.send_xlsx(
+          conn,
+          "operation-logs.xlsx",
+          @operation_export_headers,
+          Enum.map(rows, &operation_export_row/1)
+        )
+
+      {:error, reason} ->
+        render_error(conn, reason)
+    end
   end
 
   @doc "Soft deletes operation audit records."
@@ -200,6 +222,14 @@ defmodule KeystonePhoenixWeb.LogController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "日志参数无效"))
+  end
+
+  defp render_error(conn, :permission_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:permission_denied, "没有操作权限"))
+  end
+
+  defp render_error(conn, :data_scope_denied) do
+    conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
