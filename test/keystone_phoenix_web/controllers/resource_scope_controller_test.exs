@@ -86,6 +86,47 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
   end
 
   @tag :integration
+  test "owner-scoped multipart batch upload stores every file in the owner namespace" do
+    directory =
+      Path.join(
+        System.tmp_dir!(),
+        "keystone-http-batch-upload-#{System.unique_integer([:positive])}"
+      )
+
+    old_directory = Application.get_env(:keystone_phoenix, :file_base_dir)
+    Application.put_env(:keystone_phoenix, :file_base_dir, directory)
+
+    on_exit(fn ->
+      if old_directory,
+        do: Application.put_env(:keystone_phoenix, :file_base_dir, old_directory),
+        else: Application.delete_env(:keystone_phoenix, :file_base_dir)
+
+      File.rm_rf!(directory)
+    end)
+
+    {token, ids} = authenticated_scope_user("TENANT")
+
+    sources =
+      Enum.map([{"first.txt", "first file"}, {"second.pdf", "second file"}], fn {filename, body} ->
+        path = Path.join(System.tmp_dir!(), "keystone-http-#{System.unique_integer([:positive])}")
+        File.write!(path, body)
+        on_exit(fn -> File.rm(path) end)
+        %Plug.Upload{path: path, filename: filename, content_type: "application/octet-stream"}
+      end)
+
+    response =
+      post(authorized(build_conn(), token), "/api/v1/file/uploads", %{"files" => sources})
+
+    assert %{"data" => stored} = json_response(response, 200)
+    assert length(stored) == 2
+
+    Enum.each(stored, fn %{"url" => url, "newFileName" => filename} ->
+      assert String.starts_with?(url, "/profile/upload/#{ids.user_id}/")
+      assert File.exists?(Path.join([directory, "upload", ids.user_id, filename]))
+    end)
+  end
+
+  @tag :integration
   test "owner job and notice HTTP commands filter and roll back mixed deletes" do
     {owner_token, _owner_ids} = authenticated_scope_user("OWNER")
     {other_token, _other_ids} = authenticated_scope_user("OWNER")
