@@ -223,13 +223,6 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
-  if force_ssl do
-    config :keystone_phoenix, KeystonePhoenixWeb.Endpoint,
-      force_ssl: [hsts: true, rewrite_on: [:x_forwarded_proto]]
-  else
-    config :keystone_phoenix, KeystonePhoenixWeb.Endpoint, force_ssl: false
-  end
-
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key

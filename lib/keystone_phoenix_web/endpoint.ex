@@ -1,6 +1,8 @@
 defmodule KeystonePhoenixWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :keystone_phoenix
 
+  plug KeystonePhoenixWeb.Plugs.RequireHttps
+
   # 该 Plug 位于静态资源和路由之前，确保静态响应、错误响应和 API 响应使用同一组安全头。
   plug KeystonePhoenixWeb.Plugs.SecurityHeaders
 
