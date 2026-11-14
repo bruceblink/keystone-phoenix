@@ -3,6 +3,9 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
 
   import Phoenix.LiveViewTest
 
+  alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Auth.Mfa
+  alias KeystonePhoenix.Auth.Mfa.Totp
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Config.SysConfig
@@ -256,11 +259,25 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     admin_role = Repo.get_by!(SysRole, role_key: "admin")
     admin = create_user(%{role_id: admin_role.role_id})
     {:ok, view, _html} = login_view(conn, admin)
+    mfa_secret = enroll_liveview_factor(view, admin)
+    render_click(view, "logout")
+    assert has_element?(view, "#login-form")
+    render_submit(view, "login", %{"username" => admin.username, "password" => @password})
+    assert has_element?(view, "nav[aria-label='管理模块']")
 
     render_click(view, "show-panel", %{"panel" => "api-keys"})
     assert has_element?(view, "button[phx-click='new-api-key']")
 
     render_click(view, "new-api-key")
+
+    render_submit(view, "save-api-key", %{
+      "name" => "liveview-test",
+      "scopes" => "user:read",
+      "expiresAt" => ""
+    })
+
+    assert render(view) =~ "此操作需要完成二次认证"
+    complete_liveview_step_up(view, mfa_secret)
 
     render_submit(view, "save-api-key", %{
       "name" => "liveview-test",
@@ -301,6 +318,42 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
 
     refute has_element?(view, "#login-form")
     {:ok, view, render(view)}
+  end
+
+  # 注册测试 TOTP 因子；因注册会更新权限版本，调用方必须重新登录。
+  defp enroll_liveview_factor(view, user) do
+    token = live_socket(view).assigns.access_token
+    {:ok, claims} = Auth.Token.verify(token, Auth.Token.access_type())
+
+    {:ok, enrollment} =
+      Mfa.begin_enrollment(user.user_id, user.username, claims["client_id"], claims["sid"])
+
+    now = System.system_time(:second)
+
+    {:ok, _verification} =
+      Mfa.verify_enrollment(
+        user.user_id,
+        enrollment.challenge_id,
+        claims["client_id"],
+        claims["sid"],
+        Totp.code(enrollment.secret, now),
+        nil
+      )
+
+    enrollment.secret
+  end
+
+  # 通过页面事件完成 step-up，使 API Key 写操作使用 AAL2 令牌。
+  defp complete_liveview_step_up(view, secret) do
+    render_click(view, "begin-liveview-step-up")
+    challenge = live_socket(view).assigns.mfa_step_up_challenge
+    assert is_map(challenge)
+
+    render_submit(view, "verify-liveview-step-up", %{
+      "code" => Totp.code(secret, System.system_time(:second) + Totp.step_seconds())
+    })
+
+    refute live_socket(view).assigns.mfa_step_up_required
   end
 
   defp create_user(attrs \\ %{}) do

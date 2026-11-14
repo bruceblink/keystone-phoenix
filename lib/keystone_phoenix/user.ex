@@ -393,6 +393,7 @@ defmodule KeystonePhoenix.User do
       "phoneNumber" => user.phone_number,
       "sex" => user.sex,
       "avatar" => user.avatar,
+      "mustChangePassword" => user.must_change_password,
       "status" => user.status,
       "loginIp" => user.login_ip,
       "loginDate" => format_datetime(user.login_date),

@@ -61,7 +61,7 @@ defmodule KeystonePhoenixWeb.MonitorController do
     case Monitor.logout_online_user(token_id,
            authorization: %{principal: conn.assigns.current_user}
          ) do
-      :ok -> json(conn, ApiResponse.ok())
+      :ok -> json(conn, ApiResponse.ok(%{"loggedOut" => true}))
       {:error, :not_found} -> render_error(conn, :not_found)
       {:error, :unavailable} -> render_error(conn, :unavailable)
     end

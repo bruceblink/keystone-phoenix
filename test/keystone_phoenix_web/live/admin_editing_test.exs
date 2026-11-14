@@ -3,7 +3,9 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
 
   import Phoenix.LiveViewTest
 
-  alias KeystonePhoenix.{Cache, Config, Dictionary, Identity, Log, Menu, Repo, Role}
+  alias KeystonePhoenix.{Auth, Cache, Config, Dictionary, Identity, Log, Menu, Repo, Role}
+  alias KeystonePhoenix.Auth.Mfa
+  alias KeystonePhoenix.Auth.Mfa.Totp
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Config.SysConfig
   alias KeystonePhoenix.Menu.SysMenu
@@ -93,7 +95,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
         authorization: %{principal: ctx.admin, permission: "role:create"}
       )
 
-    {:ok, view} = login(ctx.conn, ctx.admin)
+    {:ok, view} = login_with_step_up(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "roles"})
     render_click(view, "edit-role", %{"role-id" => to_string(role.role_id)})
     assert live_socket(view).assigns.active_modal == "role"
@@ -126,7 +128,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
         authorization: %{principal: ctx.admin, permission: "role:create"}
       )
 
-    {:ok, view} = login(ctx.conn, ctx.admin)
+    {:ok, view} = login_with_step_up(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "roles"})
     render_click(view, "select-role", %{"role-id" => to_string(role.role_id)})
     assert has_element?(view, "#role-user-management")
@@ -262,6 +264,39 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     {:ok, view, _html} = live(conn, "/")
     render_submit(view, "login", %{"username" => user.username, "password" => "Strong!123"})
     assert has_element?(view, "nav[aria-label='管理模块']")
+    {:ok, view}
+  end
+
+  # 注册测试 TOTP 并通过页面完成 step-up，覆盖角色敏感写操作的真实认证路径。
+  defp login_with_step_up(conn, user) do
+    {:ok, view} = login(conn, user)
+    token = live_socket(view).assigns.access_token
+    {:ok, claims} = Auth.Token.verify(token, Auth.Token.access_type())
+
+    {:ok, enrollment} =
+      Mfa.begin_enrollment(user.user_id, user.username, claims["client_id"], claims["sid"])
+
+    now = System.system_time(:second)
+
+    {:ok, _verification} =
+      Mfa.verify_enrollment(
+        user.user_id,
+        enrollment.challenge_id,
+        claims["client_id"],
+        claims["sid"],
+        Totp.code(enrollment.secret, now),
+        nil
+      )
+
+    render_click(view, "logout")
+    render_submit(view, "login", %{"username" => user.username, "password" => "Strong!123"})
+    render_click(view, "begin-liveview-step-up")
+
+    render_submit(view, "verify-liveview-step-up", %{
+      "code" => Totp.code(enrollment.secret, now + Totp.step_seconds())
+    })
+
+    refute live_socket(view).assigns.mfa_step_up_required
     {:ok, view}
   end
 

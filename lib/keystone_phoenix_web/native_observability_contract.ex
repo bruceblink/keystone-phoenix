@@ -48,7 +48,7 @@ defmodule KeystonePhoenixWeb.NativeObservabilityContract do
   def profile(row) when is_map(row) do
     row
     |> NativeContract.user()
-    |> Map.put("mustChangePassword", false)
+    |> Map.put("mustChangePassword", row["mustChangePassword"] in [true, 1, "1"])
   end
 
   @doc "把 Phoenix 服务信息转换为 Native 监控字段。"

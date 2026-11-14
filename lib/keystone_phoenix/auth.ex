@@ -268,29 +268,30 @@ defmodule KeystonePhoenix.Auth do
   end
 
   @doc "Authenticates a password already received over a LiveView session."
-  @spec login_plaintext(String.t(), String.t(), boolean()) :: {:ok, map()} | {:error, atom()}
+  @spec login_plaintext(String.t(), String.t(), boolean()) ::
+          {:ok, map()} | {:mfa_required, map()} | {:error, atom()}
   def login_plaintext(username, password, force_login \\ false)
 
   def login_plaintext(username, password, force_login)
       when is_binary(username) and is_binary(password) and is_boolean(force_login) do
     with {:ok, candidate} <- User.get_user_by_username(username),
-         {:ok, tokens} <-
+         {:ok, result} <-
            Session.with_user_lock(candidate.user_id, fn ->
-             with {:ok, user} <- User.get_user(candidate.user_id),
-                  true <- user.status == 1,
-                  true <- Bcrypt.verify_pass(password, user.password || ""),
-                  {:ok, tokens} <- issue_pair(user, force_login) do
-               {:ok, Map.put(tokens, :current_user, current_login_user(user))}
-             else
-               {:error, :not_found} -> {:error, :invalid_credentials}
-               false -> {:error, :invalid_credentials}
-               {:error, reason} -> {:error, reason}
-             end
+             authenticate_api_login(candidate.user_id, password, force_login, "web")
            end) do
-      {:ok, tokens}
+      case result do
+        {:mfa_required, challenge} ->
+          {:mfa_required, %{challenge: challenge, username: candidate.username}}
+
+        {:authenticated, tokens} ->
+          {:ok, tokens}
+      end
     else
       {:error, reason} when reason in [:unavailable, :token_configuration, :already_logged_in] ->
         {:error, reason}
+
+      {:error, :mfa_enrollment_required} ->
+        {:error, :mfa_enrollment_required}
 
       _ ->
         {:error, :invalid_credentials}
@@ -415,7 +416,10 @@ defmodule KeystonePhoenix.Auth do
     }
   end
 
-  defp issue_pair(user, force_login, client_id \\ "web", authentication_level \\ "AAL1") do
+  defp issue_pair(user, force_login, client_id),
+    do: issue_pair(user, force_login, client_id, "AAL1")
+
+  defp issue_pair(user, force_login, client_id, authentication_level) do
     session_id = Session.new_session_id()
 
     with {:ok, refresh} <-

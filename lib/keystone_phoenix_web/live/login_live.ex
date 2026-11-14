@@ -11,8 +11,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Captcha
   alias KeystonePhoenix.Auth.LoginLimiter
-  alias KeystonePhoenix.Authz
-  alias KeystonePhoenix.Job
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.AdminSupport
@@ -23,6 +21,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenixWeb.Live.AdminEvents.Organization, as: OrganizationEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.System, as: SystemEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.Security, as: SecurityEvents
+  alias KeystonePhoenixWeb.Live.LoginEvents
 
   @impl true
   def mount(_params, _session, socket) do
@@ -72,77 +71,18 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
     case result do
       {:ok, tokens} ->
-        Log.record_login_event(username, 1, "登录成功")
-        current_user = Map.get(tokens.current_user, "userInfo", tokens.current_user)
-        permissions = Map.get(tokens.current_user, "permissions", [])
+        {:noreply, LoginEvents.authenticated_socket(socket, username, tokens)}
 
-        admin? = Authz.admin?(Map.put(current_user, :permissions, permissions))
-
-        dashboard =
-          if admin?,
-            do: AdminSupport.load_dashboard(),
-            else: AdminSupport.load_dashboard_for_permissions(current_user, permissions)
-
-        panel_access = AdminSupport.panel_access(permissions, current_user)
-
+      {:mfa_required, %{challenge: challenge, username: challenge_username}} ->
         {:noreply,
          assign(socket,
-           username: username,
+           username: challenge_username,
            password: "",
            login_error: nil,
-           current_user: current_user,
-           permissions: permissions,
-           auth_context: Authentication.context(current_user, permissions),
-           panel_access: panel_access,
-           read_only: not admin?,
-           access_token: tokens.token,
-           refresh_token: tokens.refresh_token,
-           active_panel: "overview",
-           active_modal: nil,
-           user_rows: dashboard.user_rows,
-           dept_rows: dashboard.dept_rows,
-           dept_feedback: nil,
-           dept_form: AdminSupport.empty_dept_form(),
-           post_rows: dashboard.post_rows,
-           post_feedback: nil,
-           post_form: AdminSupport.empty_post_form(),
-           config_rows: dashboard.config_rows,
-           config_feedback: nil,
-           config_form: AdminSupport.empty_config_form(),
-           dict_type_rows: dashboard.dict_type_rows,
-           dict_data_rows: dashboard.dict_data_rows,
-           dict_feedback: nil,
-           dict_type_form: AdminSupport.empty_dict_type_form(),
-           dict_data_form: AdminSupport.empty_dict_data_form(dashboard.selected_dict_type),
-           selected_dict_type: dashboard.selected_dict_type,
-           job_rows: dashboard.job_rows,
-           job_feedback: nil,
-           job_form: AdminSupport.empty_job_form(),
-           job_targets: Job.invoke_targets(),
-           job_log_rows: dashboard.job_log_rows,
-           job_log_feedback: nil,
-           role_rows: dashboard.role_rows,
-           selected_role_id: "",
-           selected_role_name: "",
-           allocated_role_user_rows: [],
-           unallocated_role_user_rows: [],
-           role_user_feedback: nil,
-           role_feedback: nil,
-           role_form: AdminSupport.empty_role_form(),
-           menu_rows: dashboard.menu_rows,
-           menu_feedback: nil,
-           menu_form: AdminSupport.empty_menu_form(),
-           notice_rows: dashboard.notice_rows,
-           notice_feedback: nil,
-           notice_form: AdminSupport.empty_notice_form(),
-           login_log_rows: dashboard.login_log_rows,
-           operation_log_rows: dashboard.operation_log_rows,
-           log_feedback: nil,
-           user_form: AdminSupport.empty_user_form(),
-           user_feedback: nil,
-           profile_form: current_user,
-           password_form: AdminSupport.empty_password_form(),
-           profile_feedback: nil
+           mfa_challenge: challenge,
+           mfa_username: challenge_username,
+           mfa_code: "",
+           mfa_error: nil
          )}
 
       {:error, :already_logged_in} ->
@@ -161,6 +101,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
         Log.record_login_event(username, 0, "认证会话暂不可用")
         login_error(socket, username, "认证会话暂不可用，请稍后重试")
 
+      {:error, :mfa_enrollment_required} ->
+        Log.record_login_event(username, 0, "账号尚未完成 MFA 注册")
+        login_error(socket, username, "账号需要先完成 MFA 注册")
+
       {:error, reason} when reason in [:captcha_required, :captcha_invalid, :captcha_expired] ->
         message = captcha_error(reason)
         Log.record_login_event(username, 0, message)
@@ -175,6 +119,21 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("login", _params, socket) do
     {:noreply, assign(socket, login_error: "请输入用户名和密码")}
   end
+
+  def handle_event("verify-login-mfa", params, socket),
+    do: LoginEvents.handle_event("verify-login-mfa", params, socket)
+
+  def handle_event("cancel-login-mfa", params, socket),
+    do: LoginEvents.handle_event("cancel-login-mfa", params, socket)
+
+  def handle_event("begin-liveview-step-up", params, socket),
+    do: LoginEvents.handle_event("begin-liveview-step-up", params, socket)
+
+  def handle_event("verify-liveview-step-up", params, socket),
+    do: LoginEvents.handle_event("verify-liveview-step-up", params, socket)
+
+  def handle_event("cancel-liveview-step-up", params, socket),
+    do: LoginEvents.handle_event("cancel-liveview-step-up", params, socket)
 
   def handle_event("refresh-captcha", _params, socket) do
     case LoginLimiter.check_captcha(liveview_ip(socket)) do
@@ -420,6 +379,22 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <button type="button" class="secondary" phx-click="logout" phx-disable-with="退出中…">退出</button>
                   </div>
                 </div>
+                <p :if={@mfa_step_up_notice} id="mfa-step-up-notice" class="notice" role="status"><%= @mfa_step_up_notice %></p>
+                <div :if={@mfa_step_up_required} id="mfa-step-up-panel" class="card" role="alert">
+                  <h3>需要二次认证</h3>
+                  <p :if={@mfa_step_up_error} class="error"><%= @mfa_step_up_error %></p>
+                  <%= if @mfa_step_up_challenge do %>
+                    <form id="mfa-step-up-form" phx-submit="verify-liveview-step-up">
+                      <label for="mfa-step-up-code">MFA 验证码</label>
+                      <input id="mfa-step-up-code" name="code" inputmode="numeric" autocomplete="one-time-code" required />
+                      <button type="submit" phx-disable-with="验证中…">验证并继续</button>
+                      <button type="button" class="secondary" phx-click="cancel-liveview-step-up">取消</button>
+                    </form>
+                  <% else %>
+                    <button type="button" phx-click="begin-liveview-step-up">开始二次认证</button>
+                    <button type="button" class="secondary" phx-click="cancel-liveview-step-up">取消</button>
+                  <% end %>
+                </div>
                 <%= if Enum.any?(Map.values(@panel_access)) do %>
                   <nav class="module-nav" aria-label="管理模块">
                     <span class="nav-section-title">工作台</span>
@@ -550,21 +525,33 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <span class="login-badge">安全登录</span>
                   <span class="muted">欢迎回来</span>
                 </div>
-                <form id="login-form" class="login-form" phx-submit="login">
-                  <h2>账号登录</h2>
-                  <label for="username">用户名</label>
-                  <input id="username" name="username" value={@username} autocomplete="username" required />
-                  <label for="password">密码</label>
-                  <input id="password" name="password" type="password" autocomplete="current-password" required />
-                  <div :if={@captcha_enabled}>
-                    <label for="captcha-code">验证码</label>
-                    <img :if={@captcha_image} src={"data:image/gif;base64," <> @captcha_image} alt="登录验证码" width="160" height="60" />
-                    <button type="button" class="secondary" phx-click="refresh-captcha">刷新验证码</button>
-                    <input id="captcha-code" name="captchaCode" value="" autocomplete="off" required />
-                  </div>
-                  <%= if @login_error do %><p class="error" role="alert"><%= @login_error %></p><% end %>
-                  <button type="submit" phx-disable-with="登录中…">登录</button>
-                </form>
+                <%= if @mfa_challenge do %>
+                  <form id="mfa-login-form" class="login-form" phx-submit="verify-login-mfa">
+                    <h2>完成二次认证</h2>
+                    <p class="muted">账号：<%= @mfa_username %></p>
+                    <label for="mfa-code">MFA 验证码</label>
+                    <input id="mfa-code" name="code" inputmode="numeric" autocomplete="one-time-code" required />
+                    <p :if={@mfa_error} class="error" role="alert"><%= @mfa_error %></p>
+                    <button type="submit" phx-disable-with="验证中…">验证并登录</button>
+                    <button type="button" class="secondary" phx-click="cancel-login-mfa">返回登录</button>
+                  </form>
+                <% else %>
+                  <form id="login-form" class="login-form" phx-submit="login">
+                    <h2>账号登录</h2>
+                    <label for="username">用户名</label>
+                    <input id="username" name="username" value={@username} autocomplete="username" required />
+                    <label for="password">密码</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required />
+                    <div :if={@captcha_enabled}>
+                      <label for="captcha-code">验证码</label>
+                      <img :if={@captcha_image} src={"data:image/gif;base64," <> @captcha_image} alt="登录验证码" width="160" height="60" />
+                      <button type="button" class="secondary" phx-click="refresh-captcha">刷新验证码</button>
+                      <input id="captcha-code" name="captchaCode" value="" autocomplete="off" required />
+                    </div>
+                    <%= if @login_error do %><p class="error" role="alert"><%= @login_error %></p><% end %>
+                    <button type="submit" phx-disable-with="登录中…">登录</button>
+                  </form>
+                <% end %>
               </div>
             <% end %>
           </section>

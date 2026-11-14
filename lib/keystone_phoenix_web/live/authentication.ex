@@ -10,11 +10,59 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.Live.LoginState
 
-  @public_events ~w(login refresh-captcha logout)
+  @public_events ~w(login verify-login-mfa cancel-login-mfa refresh-captcha logout)
+  @step_up_events ~w(begin-liveview-step-up verify-liveview-step-up cancel-liveview-step-up)
+
+  # 这些事件会改变身份、授权结果、API Key 或在线会话，必须先取得 AAL2。
+  @aal2_events ~w(
+    import-users
+    save-user
+    toggle-user-status
+    delete-user
+    reset-user-password
+    save-role
+    toggle-role-status
+    delete-role
+    assign-role-user
+    unassign-role-user
+    save-api-key
+    rotate-api-key
+    revoke-api-key
+    logout-online-user
+    change-profile-password
+  )
 
   def guard_event(event, _params, socket) when event in @public_events, do: {:cont, socket}
-  def guard_event(_event, _params, socket), do: authenticate(socket)
+
+  def guard_event(event, _params, socket) when event in @step_up_events,
+    do: authenticate(socket)
+
+  def guard_event(event, _params, socket) do
+    with {:cont, socket} <- authenticate(socket) do
+      if event in @aal2_events and not aal2?(socket) do
+        {:halt,
+         assign(socket,
+           mfa_step_up_required: true,
+           mfa_step_up_challenge: nil,
+           mfa_step_up_code: "",
+           mfa_step_up_error: step_up_message(event),
+           mfa_step_up_notice: nil
+         )}
+      else
+        {:cont, assign(socket, mfa_step_up_notice: nil)}
+      end
+    end
+  end
+
   def guard_info(_message, socket), do: authenticate(socket)
+
+  @doc "返回当前 LiveView access token 是否已经完成 AAL2。"
+  def aal2?(socket) do
+    case Auth.session_context(socket.assigns[:access_token]) do
+      {:ok, %{authentication_level: "AAL2"}} -> true
+      _ -> false
+    end
+  end
 
   @doc "Captures permission and data-scope fields; display-only profile changes remain valid."
   def context(user, permissions) do
@@ -69,6 +117,10 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
         {:halt, expire(socket, "登录状态已失效，请重新登录")}
     end
   end
+
+  defp step_up_message("import-users"), do: "导入用户需要完成二次认证"
+  defp step_up_message("change-profile-password"), do: "修改密码需要完成二次认证"
+  defp step_up_message(_event), do: "此操作需要完成二次认证"
 
   defp role_context(nil), do: nil
 

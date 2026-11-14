@@ -3,6 +3,9 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
   import Phoenix.LiveViewTest
 
+  alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Auth.Mfa
+  alias KeystonePhoenix.Auth.Mfa.Totp
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.Job
@@ -48,6 +51,17 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
     assert has_element?(view, "nav[aria-label='管理模块']")
     assert Log.list_login_logs(%{"username" => admin.username, "pageSize" => 10}).total >= 1
+
+    mfa_secret = enroll_liveview_factor(view, admin)
+    render_click(view, "logout")
+    assert has_element?(view, "#login-form")
+
+    render_submit(view, "login", %{
+      "username" => admin.username,
+      "password" => "Strong!123"
+    })
+
+    assert has_element?(view, "nav[aria-label='管理模块']")
 
     render_click(view, "show-panel", %{"panel" => "profile"})
     render_submit(view, "save-profile-avatar-upload", %{})
@@ -111,6 +125,24 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert render(view) =~ "找不到指定用户"
 
     created_username = "live_user_#{System.unique_integer([:positive])}"
+
+    render_submit(view, "save-user", %{
+      "userId" => "",
+      "username" => created_username,
+      "nickname" => "Live 用户",
+      "password" => "Created!123",
+      "email" => "live@example.com",
+      "phoneNumber" => "",
+      "sex" => "2",
+      "deptId" => "",
+      "postId" => "",
+      "roleId" => "",
+      "status" => "1",
+      "remark" => ""
+    })
+
+    assert render(view) =~ "此操作需要完成二次认证"
+    complete_liveview_step_up(view, mfa_secret)
 
     render_submit(view, "save-user", %{
       "userId" => "",
@@ -289,4 +321,40 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
   defp find_socket(list) when is_list(list), do: Enum.find_value(list, &find_socket/1)
   defp find_socket(_value), do: nil
+
+  # 为当前 LiveView 会话注册测试 TOTP 因子；注册会使旧令牌失效，调用方随后重新登录。
+  defp enroll_liveview_factor(view, admin) do
+    token = live_socket(view).assigns.access_token
+    {:ok, claims} = Auth.Token.verify(token, Auth.Token.access_type())
+
+    {:ok, enrollment} =
+      Mfa.begin_enrollment(admin.user_id, admin.username, claims["client_id"], claims["sid"])
+
+    now = System.system_time(:second)
+
+    {:ok, _verification} =
+      Mfa.verify_enrollment(
+        admin.user_id,
+        enrollment.challenge_id,
+        claims["client_id"],
+        claims["sid"],
+        Totp.code(enrollment.secret, now),
+        nil
+      )
+
+    enrollment.secret
+  end
+
+  # 复现页面上的二次认证流程，并让后续敏感操作使用新的 AAL2 令牌。
+  defp complete_liveview_step_up(view, secret) do
+    render_click(view, "begin-liveview-step-up")
+    challenge = live_socket(view).assigns.mfa_step_up_challenge
+    assert is_map(challenge)
+
+    render_submit(view, "verify-liveview-step-up", %{
+      "code" => Totp.code(secret, System.system_time(:second) + Totp.step_seconds())
+    })
+
+    refute live_socket(view).assigns.mfa_step_up_required
+  end
 end
