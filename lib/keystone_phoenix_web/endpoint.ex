@@ -13,8 +13,13 @@ defmodule KeystonePhoenixWeb.Endpoint do
     store: :cookie,
     key: "_keystone_phoenix_key",
     signing_salt: "6JCcT97h",
-    same_site: "Lax"
+    http_only: true,
+    same_site: "Lax",
+    secure: Application.compile_env(:keystone_phoenix, :session_cookie_secure, false)
   ]
+
+  @doc "返回浏览器会话 Cookie 配置，供安全配置测试核验。"
+  def session_options, do: @session_options
 
   socket "/live", Phoenix.LiveView.Socket,
     websocket: [connect_info: [:peer_data, session: @session_options]],

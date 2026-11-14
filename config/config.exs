@@ -30,6 +30,8 @@ config :keystone_phoenix,
   jwt_key_id: "keystone",
   jwt_private_key: nil,
   jwt_public_key: nil,
+  # 开发与测试使用 HTTP；生产配置在 config/prod.exs 中启用 Secure Cookie。
+  session_cookie_secure: false,
   mfa_master_key: nil,
   mfa_master_key_version: 1,
   mfa_recovery_pepper: nil,
