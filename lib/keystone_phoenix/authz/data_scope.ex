@@ -20,8 +20,8 @@ defmodule KeystonePhoenix.Authz.DataScope do
     dictionary: ~w(ALL TENANT),
     audit: ~w(ALL TENANT),
     session: ~w(ALL TENANT),
-    job: ~w(ALL TENANT),
-    notice: ~w(ALL TENANT),
+    job: ~w(ALL TENANT OWNER),
+    notice: ~w(ALL TENANT OWNER),
     file: ~w(ALL TENANT)
   }
 

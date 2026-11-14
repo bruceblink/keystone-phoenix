@@ -30,10 +30,19 @@ defmodule KeystonePhoenix.Job do
     paginate(query, params, :job_id, &job_to_map/1)
   end
 
+  defp list_jobs_scoped(params, scope) do
+    query = from(job in SysJob, order_by: [desc: job.create_time, desc: job.job_id])
+    query = owner_filter(query, scope)
+    query = filter_contains(query, :job_name, params["jobName"] || params[:job_name])
+    query = filter_contains(query, :job_group, params["jobGroup"] || params[:job_group])
+    query = filter_integer(query, :status, params["status"] || params[:status])
+    paginate(query, params, :job_id, &job_to_map/1)
+  end
+
   @doc "在检查任务权限和资源范围后查询任务列表。"
   def list_jobs(params, options) when is_map(params) and is_list(options) do
-    with :ok <- Authorization.authorize_read(options, "job:read") do
-      {:ok, list_jobs(params)}
+    with {:ok, scope} <- Authorization.authorize_read(options, "job:read") do
+      {:ok, list_jobs_scoped(params, scope)}
     end
   end
 
@@ -51,10 +60,25 @@ defmodule KeystonePhoenix.Job do
     end
   end
 
+  defp get_job_scoped(id, scope) do
+    case Params.parse_uuid(id) do
+      {:ok, id} ->
+        query = from(job in SysJob, where: job.job_id == ^id)
+
+        case Repo.one(owner_filter(query, scope)) do
+          nil -> {:error, :not_found}
+          job -> {:ok, job}
+        end
+
+      :error ->
+        {:error, :not_found}
+    end
+  end
+
   @doc "在检查任务权限和资源范围后查询单个任务。"
   def get_job(id, options) when is_list(options) do
-    with :ok <- Authorization.authorize_read(options, "job:read") do
-      get_job(id)
+    with {:ok, scope} <- Authorization.authorize_read(options, "job:read") do
+      get_job_scoped(id, scope)
     end
   end
 
@@ -62,7 +86,7 @@ defmodule KeystonePhoenix.Job do
   def create_job(attrs, options)
 
   def create_job(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize(options, "job:create") do
+    with {:ok, _scope} <- Authorization.authorize(options, "job:create") do
       do_create_job(attrs, KeystonePhoenix.Authz.Command.actor_id(options))
     end
   end
@@ -86,15 +110,15 @@ defmodule KeystonePhoenix.Job do
   def update_job(id, attrs, options)
 
   def update_job(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize(options, "job:update") do
-      do_update_job(id, attrs, KeystonePhoenix.Authz.Command.actor_id(options))
+    with {:ok, scope} <- Authorization.authorize(options, "job:update") do
+      do_update_job(id, attrs, KeystonePhoenix.Authz.Command.actor_id(options), scope)
     end
   end
 
   def update_job(_id, _attrs, _options), do: {:error, :authorization_required}
 
-  defp do_update_job(id, attrs, actor_id) when is_map(attrs) do
-    with {:ok, job} <- get_job(id),
+  defp do_update_job(id, attrs, actor_id, scope) when is_map(attrs) do
+    with {:ok, job} <- get_job_scoped(id, scope),
          attrs <- normalize_attrs(attrs),
          :ok <- Invoke.validate_target(attrs[:invoke_target], attrs[:job_params]),
          changeset = SysJob.changeset(job, attrs) |> Audit.put_actor(:updater_id, actor_id),
@@ -102,7 +126,7 @@ defmodule KeystonePhoenix.Job do
       Repo.update(changeset)
     else
       false ->
-        case get_job(id) do
+        case get_job_scoped(id, scope) do
           {:ok, job} ->
             changeset = SysJob.changeset(job, normalize_attrs(attrs))
             {:error, Audit.put_actor(changeset, :updater_id, actor_id)}
@@ -123,15 +147,15 @@ defmodule KeystonePhoenix.Job do
   def update_job_status(id, status, options)
 
   def update_job_status(id, status, options) when is_list(options) do
-    with :ok <- Authorization.authorize(options, "job:update-status") do
-      do_update_job_status(id, status, KeystonePhoenix.Authz.Command.actor_id(options))
+    with {:ok, scope} <- Authorization.authorize(options, "job:update-status") do
+      do_update_job_status(id, status, KeystonePhoenix.Authz.Command.actor_id(options), scope)
     end
   end
 
   def update_job_status(_id, _status, _options), do: {:error, :authorization_required}
 
-  defp do_update_job_status(id, status, actor_id) do
-    with {:ok, job} <- get_job(id),
+  defp do_update_job_status(id, status, actor_id, scope) do
+    with {:ok, job} <- get_job_scoped(id, scope),
          {:ok, status} <- positive_status(status) do
       job
       |> Ecto.Changeset.change(status: status)
@@ -144,21 +168,36 @@ defmodule KeystonePhoenix.Job do
   def delete_jobs(ids, options)
 
   def delete_jobs(ids, options) when is_list(options) do
-    with :ok <- Authorization.authorize(options, "job:delete") do
-      do_delete_jobs(ids)
+    with {:ok, scope} <- Authorization.authorize(options, "job:delete") do
+      do_delete_jobs(ids, scope)
     end
   end
 
   def delete_jobs(_ids, _options), do: {:error, :authorization_required}
 
-  defp do_delete_jobs(ids) when is_list(ids) do
+  defp do_delete_jobs(ids, scope) when is_list(ids) do
     ids = ids |> Enum.map(&parse_uuid/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}
     else
-      {count, _} = Repo.delete_all(from(job in SysJob, where: job.job_id in ^ids))
-      if count == length(ids), do: :ok, else: {:error, :not_found}
+      query = from(job in SysJob, where: job.job_id in ^ids)
+
+      Repo.transaction(fn ->
+        scoped = owner_filter(query, scope)
+        count = Repo.aggregate(scoped, :count, :job_id)
+
+        if count != length(ids) do
+          Repo.rollback(:not_found)
+        else
+          Repo.delete_all(scoped)
+          :ok
+        end
+      end)
+      |> case do
+        {:ok, :ok} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
     end
   end
 
@@ -166,15 +205,15 @@ defmodule KeystonePhoenix.Job do
   def run_job(id, options)
 
   def run_job(id, options) when is_list(options) do
-    with :ok <- Authorization.authorize(options, "job:run") do
-      do_run_job(id)
+    with {:ok, scope} <- Authorization.authorize(options, "job:run") do
+      do_run_job(id, scope)
     end
   end
 
   def run_job(_id, _options), do: {:error, :authorization_required}
 
-  defp do_run_job(id) do
-    with {:ok, job} <- get_job(id),
+  defp do_run_job(id, scope) do
+    with {:ok, job} <- get_job_scoped(id, scope),
          :ok <- Invoke.validate_target(job.invoke_target, job.job_params) do
       run_manual_job(job)
     end
@@ -228,23 +267,27 @@ defmodule KeystonePhoenix.Job do
   def cancel_job(id, options)
 
   def cancel_job(id, options) when is_list(options) do
-    with :ok <- Authorization.authorize(options, "job:run") do
-      do_cancel_job(id)
+    with {:ok, scope} <- Authorization.authorize(options, "job:run") do
+      do_cancel_job(id, scope)
     end
   end
 
   def cancel_job(_id, _options), do: {:error, :authorization_required}
 
-  defp do_cancel_job(id) do
+  defp do_cancel_job(id, scope) do
     case parse_uuid(id) do
       nil ->
         {:error, :invalid_id}
 
       job_id ->
-        if Process.whereis(KeystonePhoenix.Job.Scheduler) do
-          KeystonePhoenix.Job.Scheduler.cancel(job_id)
+        with {:ok, _job} <- get_job_scoped(job_id, scope) do
+          if Process.whereis(KeystonePhoenix.Job.Scheduler) do
+            KeystonePhoenix.Job.Scheduler.cancel(job_id)
+          else
+            :not_found
+          end
         else
-          :not_found
+          {:error, :not_found} -> :not_found
         end
     end
   end
@@ -254,7 +297,7 @@ defmodule KeystonePhoenix.Job do
 
   @doc "在检查任务权限和资源范围后读取允许的调用目标。"
   def invoke_targets(options) when is_list(options) do
-    with :ok <- Authorization.authorize_read(options, "job:read") do
+    with {:ok, _scope} <- Authorization.authorize_read(options, "job:read") do
       {:ok, invoke_targets()}
     end
   end
@@ -275,10 +318,32 @@ defmodule KeystonePhoenix.Job do
     paginate(query, params, :job_log_id, &job_log_to_map/1)
   end
 
+  defp list_job_logs_scoped(params, scope) do
+    query =
+      from(log in SysJobLog,
+        join: job in SysJob,
+        on: job.job_id == log.job_id,
+        order_by: [desc: log.start_time, desc: log.job_log_id]
+      )
+
+    query = owner_filter(query, scope, :job)
+
+    query =
+      query
+      |> filter_uuid(:job_id, params["jobId"] || params[:job_id])
+      |> filter_contains(:job_name, params["jobName"] || params[:job_name])
+      |> filter_contains(:job_group, params["jobGroup"] || params[:job_group])
+      |> filter_contains(:invoke_target, params["invokeTarget"] || params[:invoke_target])
+      |> filter_integer(:trigger_type, params["triggerType"] || params[:trigger_type])
+      |> filter_integer(:status, params["status"] || params[:status])
+
+    paginate(query, params, :job_log_id, &job_log_to_map/1)
+  end
+
   @doc "在检查任务权限和资源范围后查询任务日志。"
   def list_job_logs(params, options) when is_map(params) and is_list(options) do
-    with :ok <- Authorization.authorize_read(options, "job:read") do
-      {:ok, list_job_logs(params)}
+    with {:ok, scope} <- Authorization.authorize_read(options, "job:read") do
+      {:ok, list_job_logs_scoped(params, scope)}
     end
   end
 
@@ -370,6 +435,16 @@ defmodule KeystonePhoenix.Job do
       :error -> query
     end
   end
+
+  defp owner_filter(query, :all), do: query
+
+  defp owner_filter(query, {:owner, owner_id}),
+    do: where(query, [job], job.creator_id == ^owner_id)
+
+  defp owner_filter(query, :all, _joined_resource), do: query
+
+  defp owner_filter(query, {:owner, owner_id}, :job),
+    do: where(query, [_log, job], job.creator_id == ^owner_id)
 
   defp parse_uuid(value) do
     case Params.parse_uuid(value) do

@@ -2,6 +2,7 @@ defmodule KeystonePhoenix.Authz.Command do
   @moduledoc "Shared principal and actor extraction for domain write commands."
 
   alias KeystonePhoenix.Authz
+  alias KeystonePhoenix.Authz.ResourceScope
 
   @doc "Checks a command permission carried by keyword authorization options."
   def authorize(options, permission) do
@@ -29,6 +30,19 @@ defmodule KeystonePhoenix.Authz.Command do
   end
 
   def authorize_resource(_options, _permission, _resource, _context),
+    do: {:error, :authorization_required}
+
+  @doc "Checks a permission and returns the owner query scope for a command."
+  def authorize_owner(options, permission, resource)
+      when is_list(options) and is_binary(permission) do
+    with {:ok, principal} <- principal(options),
+         :ok <- Authz.authorize(principal, permission),
+         {:ok, scope} <- ResourceScope.owner_scope(principal, resource) do
+      {:ok, scope}
+    end
+  end
+
+  def authorize_owner(_options, _permission, _resource),
     do: {:error, :authorization_required}
 
   @doc "Returns the principal carried by keyword authorization options."

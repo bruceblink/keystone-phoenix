@@ -27,8 +27,8 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
     dictionary: :global,
     audit: :global,
     session: :global,
-    job: :global,
-    notice: :global,
+    job: :owner_or_global,
+    notice: :owner_or_global,
     file: :global
   }
 
@@ -56,6 +56,34 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
   end
 
   def allowed?(_principal, _resource, _context), do: false
+
+  @doc "Returns the query scope for resources with an explicit owner relation."
+  def owner_scope(principal, resource) do
+    subject = Principal.from_user(principal)
+    resource_rule = rule(resource)
+
+    cond do
+      admin?(subject) ->
+        {:ok, :all}
+
+      is_nil(resource_rule) ->
+        {:error, :data_scope_denied}
+
+      resource_rule.kind != :owner_or_global ->
+        {:error, :data_scope_denied}
+
+      role_scope(subject) in @tenant_scopes ->
+        {:ok, :all}
+
+      role_scope(subject) == "OWNER" and canonical_id?(subject.subject_id) ->
+        {:ok, {:owner, subject.subject_id}}
+
+      true ->
+        {:error, :data_scope_denied}
+    end
+  rescue
+    _error -> {:error, :data_scope_denied}
+  end
 
   @doc "返回资源的规范规则；未知资源返回 nil。"
   def rule(resource) when is_atom(resource) do
@@ -100,6 +128,24 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
   defp allowed_by_rule?(subject, %{kind: :global, scopes: allowed_scopes}, _context) do
     scope = role_scope(subject)
     scope in allowed_scopes and scope in @tenant_scopes
+  end
+
+  defp allowed_by_rule?(subject, %{kind: :owner_or_global}, context) do
+    case role_scope(subject) do
+      scope when scope in @tenant_scopes ->
+        true
+
+      "OWNER" ->
+        if Map.get(context, :defer_owner, Map.get(context, "defer_owner", false)) do
+          true
+        else
+          owner_id = Map.get(context, :owner_id, Map.get(context, "owner_id"))
+          canonical_id?(subject.subject_id) and owner_id == subject.subject_id
+        end
+
+      _scope ->
+        false
+    end
   end
 
   defp allowed_by_rule?(_subject, _rule, _context), do: false

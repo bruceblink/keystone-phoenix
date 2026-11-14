@@ -5,6 +5,7 @@ defmodule KeystonePhoenix.Notice do
 
   alias KeystonePhoenix.Audit
   alias KeystonePhoenix.Authz.Command
+  alias KeystonePhoenix.Notice.Authorization
   alias KeystonePhoenix.Notice.SysNotice
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Pagination
@@ -36,8 +37,8 @@ defmodule KeystonePhoenix.Notice do
 
   @doc "在检查公告权限和资源范围后查询公告列表。"
   def list_notices(params, options) when is_map(params) and is_list(options) do
-    with :ok <- Command.authorize_resource(options, "notice:read", :notice) do
-      {:ok, list_notices(params)}
+    with {:ok, scope} <- Authorization.authorize_owner(options, "notice:read") do
+      {:ok, list_notices_scoped(params, scope)}
     end
   end
 
@@ -56,15 +57,15 @@ defmodule KeystonePhoenix.Notice do
 
   @doc "在检查公告权限和资源范围后查询单个公告。"
   def get_notice(id, options) when is_list(options) do
-    with :ok <- Command.authorize_resource(options, "notice:read", :notice) do
-      get_notice(id)
+    with {:ok, scope} <- Authorization.authorize_owner(options, "notice:read") do
+      get_notice_scoped(id, scope)
     end
   end
 
   def create_notice(attrs, options)
 
   def create_notice(attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize_resource(options, "notice:create", :notice) do
+    with {:ok, _scope} <- Authorization.authorize_owner(options, "notice:create") do
       do_create_notice(attrs, Command.actor_id(options))
     end
   end
@@ -79,45 +80,91 @@ defmodule KeystonePhoenix.Notice do
   def update_notice(id, attrs, options)
 
   def update_notice(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Command.authorize_resource(options, "notice:update", :notice) do
-      do_update_notice(id, attrs, Command.actor_id(options))
+    with {:ok, scope} <- Authorization.authorize_owner(options, "notice:update") do
+      do_update_notice(id, attrs, Command.actor_id(options), scope)
     end
   end
 
   def update_notice(_id, _attrs, _options), do: {:error, :authorization_required}
 
-  defp do_update_notice(id, attrs, actor_id) when is_map(attrs) do
-    with {:ok, notice} <- get_notice(id) do
-      changeset = SysNotice.changeset(notice, normalize_attrs(attrs))
-      Repo.update(Audit.put_actor(changeset, :updater_id, actor_id))
-    end
-  end
-
   def delete_notices(ids, options)
 
   def delete_notices(ids, options) when is_list(options) do
-    with :ok <- Command.authorize_resource(options, "notice:delete", :notice) do
-      do_delete_notices(ids)
+    with {:ok, scope} <- Authorization.authorize_owner(options, "notice:delete") do
+      do_delete_notices(ids, scope)
     end
   end
 
   def delete_notices(_ids, _options), do: {:error, :authorization_required}
 
-  defp do_delete_notices(ids) when is_list(ids) do
+  defp list_notices_scoped(params, scope) do
+    query =
+      from(n in SysNotice,
+        where: n.deleted == false,
+        order_by: [desc: n.notice_id]
+      )
+
+    query = owner_filter(query, scope)
+    query = filter_contains(query, :notice_title, params["noticeTitle"] || params[:notice_title])
+    query = filter_integer(query, :notice_type, params["noticeType"] || params[:notice_type])
+    query = filter_integer(query, :status, params["status"] || params[:status])
+    paged = Pagination.page_rows(query, params, :notice_id)
+    creator_names = creator_names(paged.rows)
+    %{paged | rows: Enum.map(paged.rows, &notice_to_map(&1, creator_names))}
+  end
+
+  defp get_notice_scoped(id, scope) do
+    case Params.parse_uuid(id) do
+      {:ok, id} ->
+        query = from(n in SysNotice, where: n.notice_id == ^id and n.deleted == false)
+
+        case Repo.one(owner_filter(query, scope)) do
+          nil -> {:error, :not_found}
+          notice -> {:ok, notice}
+        end
+
+      :error ->
+        {:error, :not_found}
+    end
+  end
+
+  defp do_update_notice(id, attrs, actor_id, scope) when is_map(attrs) do
+    with {:ok, notice} <- get_notice_scoped(id, scope) do
+      changeset = SysNotice.changeset(notice, normalize_attrs(attrs))
+      Repo.update(Audit.put_actor(changeset, :updater_id, actor_id))
+    end
+  end
+
+  defp do_delete_notices(ids, scope) when is_list(ids) do
     ids = ids |> Enum.map(&parse_uuid/1) |> Enum.uniq()
 
     if ids == [] or Enum.any?(ids, &is_nil/1) do
       {:error, :invalid_ids}
     else
-      case Repo.update_all(
-             from(n in SysNotice, where: n.notice_id in ^ids and n.deleted == false),
-             set: [deleted: true, update_time: DateTime.utc_now()]
-           ) do
-        {count, _} when count == length(ids) -> :ok
-        _ -> {:error, :not_found}
+      query = from(n in SysNotice, where: n.notice_id in ^ids and n.deleted == false)
+
+      Repo.transaction(fn ->
+        scoped = owner_filter(query, scope)
+        count = Repo.aggregate(scoped, :count, :notice_id)
+
+        if count != length(ids) do
+          Repo.rollback(:not_found)
+        else
+          Repo.update_all(scoped, set: [deleted: true, update_time: DateTime.utc_now()])
+          :ok
+        end
+      end)
+      |> case do
+        {:ok, :ok} -> :ok
+        {:error, reason} -> {:error, reason}
       end
     end
   end
+
+  defp owner_filter(query, :all), do: query
+
+  defp owner_filter(query, {:owner, owner_id}),
+    do: where(query, [notice], notice.creator_id == ^owner_id)
 
   def notice_to_map(notice) do
     notice_to_map(notice, %{})

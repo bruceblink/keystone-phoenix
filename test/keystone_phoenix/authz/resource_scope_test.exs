@@ -10,8 +10,12 @@ defmodule KeystonePhoenix.Authz.ResourceScopeTest do
     assert ResourceScope.rule(:profile).scopes == ["SELF"]
     assert ResourceScope.rule(:owned).scopes == ["OWNER", "MEMBER"]
 
-    for resource <- ~w(role post menu config dictionary audit session job notice file)a do
+    for resource <- ~w(role post menu config dictionary audit session file)a do
       assert ResourceScope.rule(resource).scopes == ["ALL", "TENANT"]
+    end
+
+    for resource <- ~w(job notice)a do
+      assert ResourceScope.rule(resource).scopes == ["ALL", "TENANT", "OWNER"]
     end
 
     refute ResourceScope.registered?(:unknown)
@@ -66,6 +70,19 @@ defmodule KeystonePhoenix.Authz.ResourceScopeTest do
       refute ResourceScope.allowed?(principal, :role)
       refute ResourceScope.allowed?(principal, :file)
     end
+  end
+
+  test "owner resources return an owner query scope" do
+    user_id = Identity.v7()
+    principal = %{user_id: user_id, permissions: [], data_scope: "OWNER"}
+
+    assert {:ok, {:owner, ^user_id}} = ResourceScope.owner_scope(principal, :notice)
+    assert {:ok, {:owner, ^user_id}} = ResourceScope.owner_scope(principal, :job)
+
+    assert {:ok, :all} =
+             ResourceScope.owner_scope(%{permissions: [], data_scope: "TENANT"}, :notice)
+
+    assert {:error, :data_scope_denied} = ResourceScope.owner_scope(%{permissions: []}, :notice)
   end
 
   test "permission:manage keeps the administrator path" do

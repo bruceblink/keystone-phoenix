@@ -24,9 +24,14 @@ defmodule KeystonePhoenixWeb.Plugs.RequireResourceScope do
   end
 
   defp context(conn, opts) do
-    case Keyword.get(opts, :owner_param) do
-      nil -> %{}
-      key -> %{owner_id: Map.get(conn.params, key, Map.get(conn.params, to_string(key)))}
-    end
+    context =
+      case Keyword.get(opts, :owner_param) do
+        nil -> %{}
+        key -> %{owner_id: Map.get(conn.params, key, Map.get(conn.params, to_string(key)))}
+      end
+
+    if Keyword.get(opts, :defer_owner, false),
+      do: Map.put(context, :defer_owner, true),
+      else: context
   end
 end
