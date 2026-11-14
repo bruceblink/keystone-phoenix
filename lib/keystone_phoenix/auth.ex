@@ -277,6 +277,23 @@ defmodule KeystonePhoenix.Auth do
 
   def login_oidc_user(_user, _client_id), do: {:error, :invalid_external_identity}
 
+  @doc "使用已经验证的 WebAuthn 账户创建 AAL2 本地会话。"
+  @spec login_passkey_user(String.t(), String.t()) :: {:ok, map()} | {:error, atom()}
+  def login_passkey_user(user_id, client_id \\ "passkey")
+
+  def login_passkey_user(user_id, client_id) when is_binary(user_id) and is_binary(client_id) do
+    with {:ok, user} <- User.get_user(user_id),
+         true <- user.status == 1,
+         {:ok, tokens} <- issue_pair(user, false, client_id, "AAL2") do
+      {:ok, Map.put(tokens, :current_user, current_login_user(user))}
+    else
+      false -> {:error, :invalid_credentials}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def login_passkey_user(_user_id, _client_id), do: {:error, :invalid_credentials}
+
   @spec refresh(String.t()) :: {:ok, map()} | {:error, atom()}
   def refresh(refresh_token) when is_binary(refresh_token) do
     with {:ok, claims} <- Token.verify(refresh_token, Token.refresh_type()),

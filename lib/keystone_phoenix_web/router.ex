@@ -27,6 +27,17 @@ defmodule KeystonePhoenixWeb.Router do
     plug :fetch_session
   end
 
+  pipeline :passkey_public do
+    plug :accepts, ["json"]
+    plug :fetch_session
+    plug KeystonePhoenixWeb.Plugs.RejectApiKey
+  end
+
+  pipeline :passkey_registration do
+    plug KeystonePhoenixWeb.Plugs.Authenticate
+    plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp
+  end
+
   pipeline :protected_profile_resources do
     plug KeystonePhoenixWeb.Plugs.Authenticate
   end
@@ -50,6 +61,20 @@ defmodule KeystonePhoenixWeb.Router do
 
     get "/auth/oidc/authorize", OidcController, :authorize
     get "/auth/oidc/callback", OidcController, :callback
+  end
+
+  scope "/api/v1/auth/passkey", KeystonePhoenixWeb do
+    pipe_through :passkey_public
+
+    post "/authentication/challenge", PasskeyController, :authentication_challenge
+    post "/authentication", PasskeyController, :authentication
+  end
+
+  scope "/api/v1/auth/passkey", KeystonePhoenixWeb do
+    pipe_through [:passkey_public, :passkey_registration]
+
+    post "/registration/challenge", PasskeyController, :registration_challenge
+    post "/registration", PasskeyController, :registration
   end
 
   scope "/api/v1", KeystonePhoenixWeb do

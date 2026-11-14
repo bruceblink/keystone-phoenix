@@ -56,6 +56,8 @@ defmodule KeystonePhoenix.MixProject do
       {:castore, "~> 1.0"},
       {:bcrypt_elixir, "~> 3.2"},
       {:jose, "~> 1.11"},
+      # WebAuthn 验证使用 Wax 实现，避免应用重复实现 CBOR、COSE 和认证器数据解析。
+      {:ithibati, "~> 0.11.0"},
       # 固定已适配 Elixir 1.20 的上游提交，避免 Excel 依赖在编译时产生弃用 warning。
       {:elixlsx, github: "xou/elixlsx", ref: "d24fa3843c82cf2a584637544623eb8c0aeea599"},
       {:xlsxir, path: "vendor/xlsxir", override: true},

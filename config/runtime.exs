@@ -217,6 +217,20 @@ if config_env() == :prod do
   force_ssl = parse_boolean_env.("PHX_FORCE_SSL", true)
   allow_insecure_http = parse_boolean_env.("PHX_ALLOW_INSECURE_HTTP", false)
 
+  passkey_scheme = if force_ssl, do: "https", else: "http"
+  passkey_origin = System.get_env("PASSKEY_ORIGIN", "#{passkey_scheme}://#{host}")
+  passkey_rp_id = System.get_env("PASSKEY_RP_ID", host)
+
+  config :keystone_phoenix,
+    passkey: [
+      enabled: parse_boolean_env.("PASSKEY_ENABLED", false),
+      rp_id: passkey_rp_id,
+      origin: passkey_origin,
+      rp_name: System.get_env("PASSKEY_RP_NAME", "Keystone Phoenix"),
+      user_verification: System.get_env("PASSKEY_USER_VERIFICATION", "required"),
+      challenge_ttl_seconds: parse_integer_env.("PASSKEY_CHALLENGE_TTL_SECONDS", 120, 30, 300)
+    ]
+
   if not force_ssl and not allow_insecure_http do
     raise "PHX_FORCE_SSL=false requires PHX_ALLOW_INSECURE_HTTP=true"
   end

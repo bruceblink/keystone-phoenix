@@ -51,7 +51,22 @@ config :keystone_phoenix,
     code_ttl_seconds: 300,
     auto_provision: false,
     http_client: KeystonePhoenix.Auth.Oidc.HttpClient
+  },
+  passkey: %{
+    enabled: false,
+    rp_id: "localhost",
+    origin: "http://localhost:4000",
+    rp_name: "Keystone Phoenix",
+    user_verification: "required",
+    challenge_ttl_seconds: 120
   }
+
+config :ithibati,
+  repo: KeystonePhoenix.Repo,
+  user_schema: KeystonePhoenix.Auth.Passkey.Account,
+  users_key_type: :binary_id,
+  table_prefix: "auth_passkey",
+  session_validity: {1, :hour}
 
 # Configure the endpoint
 config :keystone_phoenix, KeystonePhoenixWeb.Endpoint,

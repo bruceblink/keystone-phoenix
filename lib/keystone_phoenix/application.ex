@@ -17,6 +17,7 @@ defmodule KeystonePhoenix.Application do
         KeystonePhoenix.Repo,
         KeystonePhoenix.Auth.SessionCleanup,
         KeystonePhoenix.Auth.JwtKeyCleanup,
+        KeystonePhoenix.Auth.Passkey.Cleanup,
         KeystonePhoenix.Job.Lock,
         {Task.Supervisor,
          name: KeystonePhoenix.JobTaskSupervisor,
