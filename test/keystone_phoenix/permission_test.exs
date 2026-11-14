@@ -1,6 +1,7 @@
 defmodule KeystonePhoenix.PermissionTest do
   use KeystonePhoenix.DataCase, async: false
 
+  alias KeystonePhoenix.Department
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Identity
@@ -52,6 +53,19 @@ defmodule KeystonePhoenix.PermissionTest do
     assert Permission.data_scope_allowed?(custom_user, :dept, other.dept_id)
     refute Permission.data_scope_allowed?(custom_user, :dept, child.dept_id)
     refute Permission.data_scope_allowed?(custom_user, :dept, nil)
+  end
+
+  test "applies department scope to direct detail queries" do
+    parent = insert_dept(103, nil, "")
+    child = insert_dept(104, parent.dept_id, to_string(parent.dept_id))
+    other = insert_dept(105, nil, "")
+    role = insert_role(%{data_scope: "DEPARTMENT_AND_CHILDREN", role_key: unique("detail_scope")})
+
+    actor = %{user_id: Identity.v7(), role_id: role.role_id, dept_id: parent.dept_id}
+
+    assert {:ok, _} = Department.get_dept(parent.dept_id, actor)
+    assert {:ok, _} = Department.get_dept(child.dept_id, actor)
+    assert {:error, :not_found} = Department.get_dept(other.dept_id, actor)
   end
 
   test "accepts comma separated menu IDs from LiveView forms" do

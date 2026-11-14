@@ -52,6 +52,27 @@ defmodule KeystonePhoenix.Department do
     end
   end
 
+  @doc "在读取部门详情时应用主体的数据范围；越界记录按不存在处理。"
+  def get_dept(id, actor) when is_map(actor) do
+    case Params.parse_uuid(id) do
+      {:ok, id} ->
+        query =
+          from(d in SysDept,
+            where: d.dept_id == ^id and d.deleted == false
+          )
+
+        case query |> Authz.scope_departments(actor) |> Repo.one() do
+          nil -> {:error, :not_found}
+          dept -> {:ok, dept}
+        end
+
+      :error ->
+        {:error, :not_found}
+    end
+  end
+
+  def get_dept(_id, _actor), do: {:error, :not_found}
+
   @doc "Returns active departments keyed by ID with one database query."
   @spec list_depts_by_ids(list()) :: [SysDept.t()]
   def list_depts_by_ids(ids) when is_list(ids) do

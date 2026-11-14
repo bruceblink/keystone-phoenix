@@ -26,7 +26,7 @@ defmodule KeystonePhoenixWeb.DepartmentController do
 
   @doc "Returns a department."
   def show(conn, %{"dept_id" => dept_id}) do
-    case Department.get_dept(dept_id) do
+    case Department.get_dept(dept_id, conn.assigns.current_user) do
       {:ok, dept} -> json(conn, ApiResponse.ok(Department.dept_to_map(dept)))
       {:error, :not_found} -> render_error(conn, :not_found)
     end
