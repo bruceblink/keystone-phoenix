@@ -17,6 +17,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Navigation do
   def panel_title("dicts"), do: "字典管理"
   def panel_title("notices"), do: "公告管理"
   def panel_title("logs"), do: "日志审计"
+  def panel_title("login-logs"), do: "登录日志"
+  def panel_title("operation-logs"), do: "操作审计"
   def panel_title("jobs"), do: "定时任务"
   def panel_title("job-logs"), do: "任务日志"
   def panel_title("monitor"), do: "运行监控"

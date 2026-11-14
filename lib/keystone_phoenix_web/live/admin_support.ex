@@ -33,6 +33,8 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     "dicts" => ["dictionary:read"],
     "notices" => ["notice:read"],
     "logs" => ["login-log:read", "operation-log:read"],
+    "login-logs" => ["login-log:read"],
+    "operation-logs" => ["operation-log:read"],
     "jobs" => ["job:read"],
     "job-logs" => ["job:read"],
     "monitor" => ["cache:refresh", "server:read", "online-session:read", "audit:read"]
@@ -47,6 +49,8 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     "dicts" => :dictionary,
     "notices" => :notice,
     "logs" => :audit,
+    "login-logs" => :audit,
+    "operation-logs" => :audit,
     "jobs" => :job,
     "job-logs" => :job,
     "monitor" => :session

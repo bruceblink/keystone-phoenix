@@ -167,6 +167,27 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
            )
   end
 
+  test "login and operation audit panels render as separate pages", %{conn: conn} do
+    login_role = insert_role(%{permission: "login-log:read"})
+    operation_role = insert_role(%{permission: "operation-log:read"})
+
+    {:ok, login_view, _html} = login_view(conn, create_user(%{role_id: login_role.role_id}))
+    render_click(login_view, "show-panel", %{"panel" => "login-logs"})
+    render_click(login_view, "refresh-login-logs")
+    assert live_socket(login_view).assigns.active_panel == "login-logs"
+    assert has_element?(login_view, "button[phx-click='refresh-login-logs']")
+    refute has_element?(login_view, "button[phx-click='refresh-operation-logs']")
+
+    {:ok, operation_view, _html} =
+      login_view(conn, create_user(%{role_id: operation_role.role_id}))
+
+    render_click(operation_view, "show-panel", %{"panel" => "operation-logs"})
+    render_click(operation_view, "refresh-operation-logs")
+    assert live_socket(operation_view).assigns.active_panel == "operation-logs"
+    assert has_element?(operation_view, "button[phx-click='refresh-operation-logs']")
+    refute has_element?(operation_view, "button[phx-click='refresh-login-logs']")
+  end
+
   test "a dictionary reader can select data, while an unprivileged user cannot", %{conn: conn} do
     insert_dict_fixture()
     role = insert_role(%{permission: "dictionary:read"})

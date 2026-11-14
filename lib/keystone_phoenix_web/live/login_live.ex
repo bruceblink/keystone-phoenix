@@ -204,6 +204,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
              "api-keys",
              "notices",
              "logs",
+             "login-logs",
+             "operation-logs",
              "users",
              "configs",
              "dicts",
@@ -236,6 +238,13 @@ defmodule KeystonePhoenixWeb.LoginLive do
              active_panel: panel,
              login_log_rows: logs.login_log_rows,
              operation_log_rows: logs.operation_log_rows
+           )}
+
+        panel in ["login-logs", "operation-logs"] ->
+          {:noreply,
+           assign(socket,
+             active_panel: panel,
+             log_feedback: nil
            )}
 
         panel == "api-keys" ->
@@ -295,7 +304,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles new-role edit-role save-role toggle-role-status delete-role select-role assign-role-user unassign-role-user refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
   @accounts_events ~w(refresh-users export-users download-user-template import-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
-  @system_events ~w(refresh-config new-config edit-config save-config refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs edit-notice cancel-notice save-notice toggle-notice-status delete-notice refresh-notices delete-login-log delete-operation-log)
+  @system_events ~w(refresh-config new-config edit-config save-config refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs refresh-login-logs refresh-operation-logs edit-notice cancel-notice save-notice toggle-notice-status delete-notice refresh-notices delete-login-log delete-operation-log)
   @operations_events ~w(refresh-jobs new-job edit-job save-job delete-job run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor logout-online-user)
   @security_events ~w(refresh-api-keys new-api-key save-api-key rotate-api-key revoke-api-key filter-api-keys dismiss-api-key-secret)
 
@@ -427,7 +436,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <button :if={@panel_access["dicts"]} data-icon="≡" type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "dicts", do: "page"} phx-value-panel="dicts">字典</button>
                     <button :if={@panel_access["notices"]} data-icon="▤" type="button" class={if @active_panel == "notices", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "notices", do: "page"} phx-value-panel="notices">公告</button>
                     <span class="nav-section-title">运维审计</span>
-                    <button :if={@panel_access["logs"]} data-icon="◌" type="button" class={if @active_panel == "logs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "logs", do: "page"} phx-value-panel="logs">日志</button>
+                    <button :if={@panel_access["login-logs"]} data-icon="◌" type="button" class={if @active_panel == "login-logs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "login-logs", do: "page"} phx-value-panel="login-logs">登录日志</button>
+                    <button :if={@panel_access["operation-logs"]} data-icon="◌" type="button" class={if @active_panel == "operation-logs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "operation-logs", do: "page"} phx-value-panel="operation-logs">操作审计</button>
                     <button :if={@panel_access["jobs"]} data-icon="↻" type="button" class={if @active_panel == "jobs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "jobs", do: "page"} phx-value-panel="jobs">定时任务</button>
                     <button :if={@panel_access["job-logs"]} data-icon="≋" type="button" class={if @active_panel == "job-logs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "job-logs", do: "page"} phx-value-panel="job-logs">任务日志</button>
                     <button :if={@panel_access["monitor"]} data-icon="◉" type="button" class={if @active_panel == "monitor", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "monitor", do: "page"} phx-value-panel="monitor">监控</button>
@@ -485,6 +495,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
                       <.notices notice_rows={@notice_rows} notice_form={@notice_form} notice_feedback={@notice_feedback} active_modal={@active_modal} read_only={@read_only} />
                     <% "logs" -> %>
                       <.logs login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["login-logs"]} read_only={@read_only} />
+                    <% "login-logs" -> %>
+                      <.logs kind="login" login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["login-logs"]} read_only={@read_only} />
+                    <% "operation-logs" -> %>
+                      <.logs kind="operation" login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["operation-logs"]} read_only={@read_only} />
                     <% "jobs" -> %>
                       <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} active_modal={@active_modal} page_num={@page_nums["jobs"]} page_size={@page_sizes["jobs"]} read_only={@read_only} />
                     <% "job-logs" -> %>

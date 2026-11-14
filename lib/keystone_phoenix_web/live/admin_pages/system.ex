@@ -150,12 +150,18 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       |> assign_new(:login_page_num, fn -> 1 end)
       |> assign_new(:operation_page_num, fn -> 1 end)
       |> assign_new(:page_size, fn -> 50 end)
+      |> assign_new(:kind, fn -> "both" end)
 
     ~H"""
     <div class="panel">
-      <div class="form-actions"><button type="button" class="refresh" phx-click="refresh-logs" phx-disable-with="刷新中…">刷新日志</button></div>
+      <div class="form-actions">
+        <button :if={@kind == "both"} type="button" class="refresh" phx-click="refresh-logs" phx-disable-with="刷新中…">刷新日志</button>
+        <button :if={@kind == "login"} type="button" class="refresh" phx-click="refresh-login-logs" phx-disable-with="刷新中…">刷新登录日志</button>
+        <button :if={@kind == "operation"} type="button" class="refresh" phx-click="refresh-operation-logs" phx-disable-with="刷新中…">刷新操作日志</button>
+      </div>
       <%= if @log_feedback do %><p id="log-feedback" class={Feedback.class(@log_feedback)} role={Feedback.role(@log_feedback)} aria-live={Feedback.live(@log_feedback)}><%= Feedback.message(@log_feedback) %></p><% end %>
-      <p :if={@login_log_rows == [] and @operation_log_rows == []} class="table-empty" role="status">暂无日志数据</p>
+      <%= if @kind in ["both", "login"] do %>
+      <p :if={@login_log_rows == []} class="table-empty" role="status">暂无登录日志数据</p>
       <h3>登录日志（<%= length(@login_log_rows) %>）</h3>
       <div class="table-scroll" role="region" tabindex="0" aria-label="登录日志列表"><table><caption class="sr-only">登录日志列表</caption><thead><tr><th scope="col">用户</th><th scope="col">IP</th><th scope="col">浏览器</th><th scope="col">状态</th><th scope="col">消息</th><th scope="col">时间</th><th scope="col">操作</th></tr></thead><tbody>
           <%= for log <- page_rows(@login_log_rows, @login_page_num, @page_size) do %>
@@ -163,6 +169,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         <% end %>
       </tbody></table></div>
       <.pagination panel="login-logs" page_num={min(@login_page_num, page_count(length(@login_log_rows), @page_size))} page_size={@page_size} total={length(@login_log_rows)} />
+      <% end %>
+      <%= if @kind in ["both", "operation"] do %>
+      <p :if={@operation_log_rows == []} class="table-empty" role="status">暂无操作日志数据</p>
       <h3>操作日志（<%= length(@operation_log_rows) %>）</h3>
       <div class="table-scroll" role="region" tabindex="0" aria-label="操作日志列表"><table><caption class="sr-only">操作日志列表</caption><thead><tr><th scope="col">用户</th><th scope="col">模块</th><th scope="col">方法</th><th scope="col">请求地址</th><th scope="col">状态</th><th scope="col">时间</th><th scope="col">操作</th></tr></thead><tbody>
           <%= for log <- page_rows(@operation_log_rows, @operation_page_num, @page_size) do %>
@@ -170,6 +179,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         <% end %>
       </tbody></table></div>
       <.pagination panel="operation-logs" page_num={min(@operation_page_num, page_count(length(@operation_log_rows), @page_size))} page_size={@page_size} total={length(@operation_log_rows)} />
+      <% end %>
     </div>
     """
   end

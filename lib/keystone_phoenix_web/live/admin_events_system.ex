@@ -342,6 +342,32 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     end
   end
 
+  def handle_event("refresh-login-logs", _params, socket) do
+    if Support.panel_allowed?(socket, "login-logs") do
+      {:noreply,
+       assign(socket,
+         login_log_rows: Support.load_logs_for_socket(socket).login_log_rows,
+         page_nums: Map.put(socket.assigns.page_nums, "login-logs", 1),
+         log_feedback: nil
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("refresh-operation-logs", _params, socket) do
+    if Support.panel_allowed?(socket, "operation-logs") do
+      {:noreply,
+       assign(socket,
+         operation_log_rows: Support.load_logs_for_socket(socket).operation_log_rows,
+         page_nums: Map.put(socket.assigns.page_nums, "operation-logs", 1),
+         log_feedback: nil
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("edit-notice", %{"notice-id" => notice_id}, socket) do
     if Support.permission_socket?(socket, "notice:update") do
       case Enum.find(socket.assigns.notice_rows, &(to_string(&1["noticeId"]) == notice_id)) do
