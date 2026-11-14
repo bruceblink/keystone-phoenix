@@ -192,34 +192,49 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Exports all users matching the current filters."
   def export(conn, params) do
-    rows =
-      Excel.all_rows(&User.list_users(&1, conn.assigns.current_user), params)
-      |> enrich_export_rows()
+    case export_workbook(params, conn.assigns.current_user) do
+      {:ok, binary} -> ExcelResponse.send_xlsx(conn, "users.xlsx", binary)
+      {:error, _reason} -> ExcelResponse.render_error(conn, "Excel 导出失败")
+    end
+  end
 
-    ExcelResponse.send_xlsx(
-      conn,
-      "users.xlsx",
-      @user_export_headers,
-      Enum.map(rows, &user_export_row/1)
-    )
+  @doc "Builds the authorized user workbook for HTTP and LiveView downloads."
+  def export_workbook(params, actor) when is_map(params) and is_map(actor) do
+    rows = Excel.all_rows(&User.list_users(&1, actor), params) |> enrich_export_rows()
+    Excel.export(@user_export_headers, Enum.map(rows, &user_export_row/1), "users.xlsx")
+  end
+
+  @doc "Builds the blank user import template for HTTP and LiveView downloads."
+  def template_workbook do
+    blank = List.duplicate("", length(@user_import_headers))
+    Excel.export(@user_import_headers, [blank], "user-import-template.xlsx")
   end
 
   @doc "Imports users from the first worksheet in an XLSX upload."
   def import(conn, %{"file" => %Plug.Upload{} = upload}) do
-    with {:ok, rows} <- Excel.import_rows(upload.path, upload.filename),
-         {:ok, records} <- Excel.rows_to_maps(rows) do
-      json(conn, ApiResponse.ok(import_records(records, conn.assigns.current_user)))
-    else
+    case import_file(upload.path, upload.filename, conn.assigns.current_user) do
+      {:ok, result} -> json(conn, ApiResponse.ok(result))
       {:error, reason} -> ExcelResponse.render_error(conn, import_error_message(reason))
     end
   end
 
   def import(conn, _params), do: ExcelResponse.render_error(conn, "导入文件不能为空")
 
+  @doc "Imports one uploaded XLSX file with the existing row and scope checks."
+  def import_file(path, filename, actor)
+      when is_binary(path) and is_binary(filename) and is_map(actor) do
+    with {:ok, rows} <- Excel.import_rows(path, filename),
+         {:ok, records} <- Excel.rows_to_maps(rows) do
+      {:ok, import_records(records, actor)}
+    end
+  end
+
   @doc "Downloads the blank user import template."
   def template(conn, _params) do
-    blank = List.duplicate("", length(@user_import_headers))
-    ExcelResponse.send_xlsx(conn, "user-import-template.xlsx", @user_import_headers, [blank])
+    case template_workbook() do
+      {:ok, binary} -> ExcelResponse.send_xlsx(conn, "user-import-template.xlsx", binary)
+      {:error, _reason} -> ExcelResponse.render_error(conn, "Excel 导出失败")
+    end
   end
 
   defp enrich_export_rows(rows) do

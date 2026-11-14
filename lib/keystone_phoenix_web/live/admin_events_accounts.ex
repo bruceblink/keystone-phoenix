@@ -1,13 +1,15 @@
 defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   @moduledoc "LiveView event handlers for the accounts domain."
 
-  import Phoenix.LiveView, only: [consume_uploaded_entries: 3]
+  import Phoenix.LiveView, only: [consume_uploaded_entries: 3, push_event: 3]
   import Phoenix.Component, only: [assign: 2]
+  alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Upload
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
+  alias KeystonePhoenixWeb.UserController
 
   def handle_event("refresh-users", _params, socket) do
     if Support.panel_allowed?(socket, "users") do
@@ -21,6 +23,57 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
        )}
     else
       {:noreply, socket}
+    end
+  end
+
+  def handle_event("export-users", params, socket) do
+    if Support.permission_socket?(socket, "user:export") do
+      case UserController.export_workbook(params, principal(socket)) do
+        {:ok, binary} ->
+          {:noreply,
+           push_event(socket, "download-xlsx", %{
+             filename: "users.xlsx",
+             content: Base.encode64(binary),
+             content_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+           })}
+
+        {:error, _reason} ->
+          {:noreply, assign(socket, user_feedback: Feedback.error("Excel 导出失败"))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("download-user-template", _params, socket) do
+    if Support.permission_socket?(socket, "user:import") do
+      case UserController.template_workbook() do
+        {:ok, binary} ->
+          {:noreply,
+           push_event(socket, "download-xlsx", %{
+             filename: "user-import-template.xlsx",
+             content: Base.encode64(binary),
+             content_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+           })}
+
+        {:error, _reason} ->
+          {:noreply, assign(socket, user_feedback: Feedback.error("Excel 模板生成失败"))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("import-users", _params, socket) do
+    cond do
+      not Support.permission_socket?(socket, "user:import") ->
+        {:noreply, socket}
+
+      not mfa_step_up?(socket) ->
+        discard_import_upload(socket, :mfa_required)
+
+      true ->
+        import_uploaded_users(socket)
     end
   end
 
@@ -329,6 +382,63 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     else
       {:noreply, socket}
     end
+  end
+
+  defp import_uploaded_users(socket) do
+    results =
+      consume_uploaded_entries(socket, :user_import, fn %{path: path}, entry ->
+        upload_result = UserController.import_file(path, entry.client_name, principal(socket))
+        {:ok, upload_result}
+      end)
+
+    case results do
+      [{:ok, %{"total" => total, "success" => success, "failed" => failed}}] ->
+        message = "用户导入完成：成功 #{success} 条，失败 #{length(failed)} 条，共 #{total} 条"
+
+        {:noreply,
+         assign(socket, user_rows: Support.load_users_for_socket(socket), user_feedback: message)}
+
+      [{:error, reason}] ->
+        {:noreply, assign(socket, user_feedback: Feedback.error(import_error_message(reason)))}
+
+      [] ->
+        {:noreply, assign(socket, user_feedback: Feedback.error("请选择用户导入文件"))}
+    end
+  end
+
+  defp discard_import_upload(socket, reason) do
+    results =
+      consume_uploaded_entries(socket, :user_import, fn _meta, _entry ->
+        {:ok, {:error, reason}}
+      end)
+
+    case results do
+      [] ->
+        {:noreply, assign(socket, user_feedback: Feedback.error(import_error_message(reason)))}
+
+      [{:error, ^reason}] ->
+        {:noreply, assign(socket, user_feedback: Feedback.error(import_error_message(reason)))}
+
+      _ ->
+        {:noreply, assign(socket, user_feedback: Feedback.error(import_error_message(reason)))}
+    end
+  end
+
+  defp mfa_step_up?(socket) do
+    case Auth.session_context(socket.assigns[:access_token]) do
+      {:ok, %{authentication_level: "AAL2"}} -> true
+      _ -> false
+    end
+  end
+
+  defp import_error_message(:mfa_required), do: "导入用户需要完成二次认证"
+  defp import_error_message(:invalid_headers), do: "Excel 表头无效"
+  defp import_error_message(:empty_sheet), do: "Excel 工作表为空"
+  defp import_error_message(:invalid_workbook), do: "Excel 文件无效或超过大小限制"
+  defp import_error_message(reason), do: Support.human_error(reason)
+
+  defp principal(socket) do
+    Map.put(socket.assigns.current_user, :permissions, List.wrap(socket.assigns[:permissions]))
   end
 
   defp authorization(socket, permission) do

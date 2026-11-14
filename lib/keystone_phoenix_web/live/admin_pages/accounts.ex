@@ -15,12 +15,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:page_num, fn -> 1 end)
       |> assign_new(:page_size, fn -> 50 end)
+      |> assign_new(:permissions, fn -> [] end)
+      |> assign_new(:user_import_upload, fn -> nil end)
 
     ~H"""
     <div class="panel">
       <div class="form-actions">
         <button :if={!@read_only} type="button" class="refresh" phx-click="new-user" phx-disable-with="处理中…">新建用户</button>
         <button type="button" class="refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…">刷新用户</button>
+        <button :if={"user:export" in @permissions} type="button" class="refresh secondary" phx-click="export-users" phx-disable-with="导出中…">导出 XLSX</button>
+        <button :if={"user:import" in @permissions} type="button" class="refresh secondary" phx-click="download-user-template" phx-disable-with="准备中…">下载导入模板</button>
       </div>
       <%= if @user_feedback do %>
         <p id="user-feedback" class={Feedback.class(@user_feedback)} role={Feedback.role(@user_feedback)} aria-live={Feedback.live(@user_feedback)}><%= Feedback.message(@user_feedback) %></p>
@@ -54,6 +58,20 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       </form>
         </.modal>
       <% end %>
+      <%= if @user_import_upload && "user:import" in @permissions do %>
+        <form id="user-import-form" aria-describedby="user-feedback" phx-submit="import-users">
+          <label for="user-import-file">批量导入用户（XLSX）</label>
+          <.live_file_input upload={@user_import_upload} id="user-import-file" />
+          <%= for entry <- @user_import_upload.entries do %>
+            <progress value={entry.progress} max="100"><%= entry.progress %>%</progress>
+          <% end %>
+          <%= for entry <- @user_import_upload.errors do %>
+            <p class="error" role="alert">用户导入文件无效：<%= user_import_error_message(entry) %></p>
+          <% end %>
+          <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="导入中…">导入用户</button></div>
+        </form>
+      <% end %>
+      <span id="user-download-hook" phx-hook="DownloadFile" hidden></span>
       <div class="table-scroll" role="region" tabindex="0" aria-label="用户列表"><table><caption class="sr-only">用户列表</caption>
         <thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">部门</th><th scope="col">角色</th><th scope="col">邮箱</th><th scope="col">手机号</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
         <tbody>
@@ -122,4 +140,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
   def upload_error_message({:writer_failure, _reason}), do: "头像文件保存失败"
   def upload_error_message({:external_metadata_failure, _reason}), do: "上传准备失败，请重试"
   def upload_error_message(_reason), do: "头像文件无效，请重试"
+
+  def user_import_error_message(:too_large), do: "文件不能超过 50 MB"
+  def user_import_error_message(:not_accepted), do: "只支持 XLSX 文件"
+  def user_import_error_message(:too_many_files), do: "一次只能上传一个用户导入文件"
+  def user_import_error_message(_reason), do: "用户导入文件无效，请重试"
 end

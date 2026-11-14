@@ -10,6 +10,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Log
   alias KeystonePhoenix.Notice
+  alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
@@ -73,6 +74,36 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert String.starts_with?(uploaded_admin.avatar, "/profile/avatar/")
 
     render_click(view, "show-panel", %{"panel" => "users"})
+    render_click(view, "export-users")
+    assert_push_event(view, "download-xlsx", %{filename: "users.xlsx", content: content})
+    assert byte_size(content) > 100
+
+    render_click(view, "download-user-template")
+
+    assert_push_event(view, "download-xlsx", %{
+      filename: "user-import-template.xlsx",
+      content: template
+    })
+
+    assert byte_size(template) > 100
+
+    {:ok, import_workbook} = Excel.export(["用户名"], [["mfa_blocked_user"]], "users.xlsx")
+
+    import_file =
+      file_input(view, "#user-import-form", :user_import, [
+        %{
+          last_modified: 1_700_000_000_000,
+          name: "users.xlsx",
+          content: import_workbook,
+          size: byte_size(import_workbook),
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        }
+      ])
+
+    render_upload(import_file, "users.xlsx")
+    render_submit(view, "import-users", %{})
+    assert render(view) =~ "导入用户需要完成二次认证"
+
     render_click(view, "new-user")
     assert has_element?(view, "form[phx-submit='save-user']")
     render_click(view, "edit-user", %{"user-id" => "999999999"})

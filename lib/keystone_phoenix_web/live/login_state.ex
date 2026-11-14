@@ -112,14 +112,26 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
   end
 
   defp cancel_avatar_uploads(socket) do
+    cancel_uploads(socket, :avatar)
+    |> cancel_uploads(:user_import)
+  end
+
+  # 注销时取消尚未消费的上传，避免文件继续占用 LiveView 临时目录。
+  defp cancel_uploads(socket, name) do
     entries =
       case Map.get(socket.assigns, :uploads) do
-        %{avatar: %{entries: entries}} -> entries
-        _ -> []
+        uploads when is_map(uploads) ->
+          case Map.get(uploads, name) do
+            %{entries: entries} -> entries
+            _ -> []
+          end
+
+        _ ->
+          []
       end
 
     Enum.reduce(entries, socket, fn entry, socket ->
-      Phoenix.LiveView.cancel_upload(socket, :avatar, entry.ref)
+      Phoenix.LiveView.cancel_upload(socket, name, entry.ref)
     end)
   end
 end
