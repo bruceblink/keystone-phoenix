@@ -30,7 +30,7 @@ docker build --build-arg IMAGE_REGISTRY= --build-arg HEX_MIRROR=https://repo.hex
   -t keystone-phoenix:0.3.0 .
 ```
 
-准备生产环境文件，至少包含 `DATABASE_URL`、`SECRET_KEY_BASE`、`JWT_PRIVATE_KEY`、`PHX_HOST` 和 `FILE_BASE_DIR`。生产默认启用数据库 SSL；只有在可信本地网络测试时才显式设置 `DATABASE_SSL_ALLOW_INSECURE=true`。生产运行时默认要求 `PHX_FORCE_SSL=true`，并使用反向代理传入 `x-forwarded-proto`。如果必须在本地使用 HTTP，必须同时设置 `PHX_FORCE_SSL=false` 和 `PHX_ALLOW_INSECURE_HTTP=true`；这两个设置不能用于生产流量。`CORS_ALLOWED_ORIGINS` 使用逗号分隔的完整来源地址，生产来源必须使用 `https://`，留空表示不允许跨域读取。应用启动前会检查 `FILE_BASE_DIR` 可创建、可写和可删除，也会拒绝无效的 CORS 来源和不安全的 HTTP 配置。PostgreSQL 已经可用后，先执行迁移：
+准备生产环境文件，至少包含 `DATABASE_URL`、`SECRET_KEY_BASE`、`JWT_PRIVATE_KEY`、`PHX_HOST` 和 `FILE_BASE_DIR`。生产默认启用数据库 SSL；只有在可信本地网络测试时才显式设置 `DATABASE_SSL_ALLOW_INSECURE=true`。生产运行时默认要求 `PHX_FORCE_SSL=true`。如果通过反向代理传入 `x-forwarded-proto`，必须同时配置 `TRUSTED_PROXY_CIDRS`，应用只信任这些来源地址。直接使用 HTTPS 时不需要配置代理来源。如果必须在本地使用 HTTP，必须同时设置 `PHX_FORCE_SSL=false` 和 `PHX_ALLOW_INSECURE_HTTP=true`；这两个设置不能用于生产流量。`CORS_ALLOWED_ORIGINS` 使用逗号分隔的完整来源地址，生产来源必须使用 `https://`，留空表示不允许跨域读取。应用启动前会检查 `FILE_BASE_DIR` 可创建、可写和可删除，也会拒绝无效的 CORS 来源、代理 CIDR 和不安全的 HTTP 配置。PostgreSQL 已经可用后，先执行迁移：
 
 ```bash
 docker run --rm \
