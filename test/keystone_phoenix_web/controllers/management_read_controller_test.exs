@@ -71,6 +71,68 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
              200
   end
 
+  @tag :integration
+  test "管理员可以通过 HTTP 完成配置和公告的新增、修改与删除" do
+    token = admin_token()
+    config_key = "http.write.config.#{System.unique_integer([:positive])}"
+    notice_title = "HTTP 写入公告 #{System.unique_integer([:positive])}"
+
+    config_response =
+      post(authorized(build_conn(), token), "/api/v1/system/config", %{
+        "configName" => "HTTP 写入配置",
+        "configKey" => config_key,
+        "configValue" => "初始值",
+        "isAllowChange" => 1
+      })
+
+    assert config_response.status == 201
+
+    config_id =
+      get(authorized(build_conn(), token), "/api/v1/system/configs", %{"configKey" => config_key})
+      |> json_response(200)
+      |> get_in(["data", "rows", Access.at(0), "configId"])
+
+    assert put(authorized(build_conn(), token), "/api/v1/system/config/#{config_id}", %{
+             "configValue" => "更新值"
+           }).status == 200
+
+    assert get(authorized(build_conn(), token), "/api/v1/system/config/#{config_id}")
+           |> json_response(200)
+           |> get_in(["data", "configValue"]) == "更新值"
+
+    assert post(authorized(build_conn(), token), "/api/v1/system/notices", %{
+             "noticeTitle" => notice_title,
+             "noticeType" => 1,
+             "noticeContent" => "HTTP 写入内容",
+             "status" => 1
+           }).status == 201
+
+    notice_id =
+      get(authorized(build_conn(), token), "/api/v1/system/notices", %{
+        "noticeTitle" => notice_title
+      })
+      |> json_response(200)
+      |> get_in(["data", "rows", Access.at(0), "noticeId"])
+
+    assert put(authorized(build_conn(), token), "/api/v1/system/notices/#{notice_id}", %{
+             "status" => 0
+           }).status == 200
+
+    assert delete(
+             authorized(build_conn(), token),
+             "/api/v1/system/notices?notice_ids=#{notice_id}"
+           ).status ==
+             200
+
+    assert get(authorized(build_conn(), token), "/api/v1/system/notices/#{notice_id}").status ==
+             404
+
+    # 测试创建的配置没有删除接口，直接软删除，避免污染共享验收数据库。
+    Repo.get!(KeystonePhoenix.Config.SysConfig, config_id)
+    |> Ecto.Changeset.change(deleted: true)
+    |> Repo.update!()
+  end
+
   defp admin_token do
     role =
       %SysRole{}
@@ -84,7 +146,7 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
       |> Repo.insert!()
 
     for permission <-
-          ~w(config:read dictionary:read dictionary:create dictionary:delete notice:read) do
+          ~w(config:read config:create config:update dictionary:read dictionary:create dictionary:delete notice:read notice:create notice:update notice:delete) do
       permission_id = Repo.get_by!(SysPermission, permission: permission).permission_id
       Repo.insert!(%SysRolePermission{role_id: role.role_id, permission_id: permission_id})
     end
