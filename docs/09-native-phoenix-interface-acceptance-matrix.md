@@ -46,6 +46,14 @@ Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。�
 
 ## UI 验收边界
 
-Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 的 `pnpm test:run`、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix `mix test --include integration` 已通过 365 项。
+Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 的 `pnpm test:run`、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix `mix test --include integration` 已通过 366 项。
 
-Phoenix LiveView 已覆盖用户、角色、部门、岗位、菜单、配置、字典、公告、日志、任务、监控、个人资料和 API Key 面板。当前没有可用的真实浏览器窗口证据；MFA 登录挑战、OIDC 按钮和 WebAuthn 页面也不是两个前端共同提供的功能，不能作为 Phoenix 单边已完成项。
+### 真实窗口验收记录
+
+2026-11-15 使用 Codex 内置浏览器，在本机启动 Native、Phoenix 和 admin-web 开发服务后完成页面验收。Native 使用 MySQL 8.4，Phoenix 使用本地 PostgreSQL，admin-web 使用 Vite 代理访问 Native `http://127.0.0.1:8080`。
+
+- admin-web 使用 `admin` 登录成功，进入 `/monitor`。监控页显示 `PARTIAL`，Java 堆和在线会话有数据；CPU、磁盘和网络字段显示 Native 未提供。侧栏、总览别名、用户、角色、组织、岗位、菜单、API Key、操作审计、登录日志、定时任务、系统配置、字典和通知公告页面均能通过真实导航打开，并显示 Native 返回的数据。
+- admin-web 用户页的用户名筛选返回 2 条记录；新增用户模态框能打开和关闭。角色新增模态框、API Key 签发模态框和通知公告筛选控件均能打开或使用。未在验收中签发真实 API Key，也未提交会改变业务数据的表单。
+- Phoenix 使用 `ag1` 登录成功，概览显示部门、岗位、角色、菜单、公告、用户、配置、字典和任务统计。概览、部门、岗位、角色、菜单、用户、API Key、配置、字典、公告、登录日志、操作审计、定时任务、任务日志、监控和个人资料面板均通过真实导航打开；用户新增表单能打开和关闭。
+
+本次真实窗口验收仍有明确限制：监控页的部分指标由 Native 接口未提供，admin-web 仍显示静态“Native API 正常”标签；Phoenix 与 admin-web 的页面筛选、导出、批量删除和加载状态并未因此自动等价。MFA 登录挑战已覆盖接口和前端错误兼容测试，但本次没有触发真实 MFA 挑战；OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理链不属于本地窗口验收，不能据此判定通过。
