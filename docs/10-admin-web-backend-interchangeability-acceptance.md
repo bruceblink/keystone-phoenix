@@ -73,7 +73,7 @@ Phoenix LiveView 已完成共享壳、登录、账号组织和系统页面的主
 当前提交已完成 15 项 LiveView 菜单真实读取矩阵；发布前必须逐页补全筛选、导出、批量操作、空态、
 错误反馈、分页、模态框和写操作结果。
 
-监控页的可视化层已完成一轮共同打磨。admin-web 使用 30 分钟 CPU/内存趋势图，Phoenix 保留当前节点资源条形图；两端均显示 80% 关注阈值、系统 API 来源和明确的无采样空态。Phoenix 缺失资源字段统一显示 `—`，不会把缺失值误读为 `0%`。本轮真实窗口确认 admin-web 的 `PARTIAL` 快照和 Phoenix 的 `LIVE · 在线` 快照均能保持移动端单列布局，Phoenix 463px 视口没有横向溢出。
+监控页的可视化层已完成一轮共同打磨。admin-web 使用 30 分钟 CPU/内存趋势图，Phoenix 保留当前节点资源条形图；两端均显示 80% 关注阈值、系统 API 来源和明确的无采样空态。Phoenix 缺失资源字段统一显示 `—`，不会把缺失值误读为 `0%`。对应提交为 admin-web `637ff2d`、Phoenix `4b56d95`。本轮真实窗口确认 admin-web 的 `PARTIAL` 快照和 Phoenix 的 `LIVE · 在线` 快照均能保持移动端单列布局，Phoenix 463px 视口没有横向溢出。
 
 2026-11-15 登录页视觉复核使用同一内置浏览器视口分别打开 `http://127.0.0.1:5173/login` 和
 `http://127.0.0.1:4000/`。两端的登录布局、logo、标题、登录卡片、输入框图标、按钮和脚注关键元素位置与尺寸一致；两端 `document.documentElement.scrollHeight` 均等于 `clientHeight`，登录页没有页面滚动条。Phoenix 对应提交为 `b975a6c`、`bc9ae1d`，admin-web 对应提交为 `904ffe1`、`f91b4fb`。
