@@ -94,7 +94,24 @@ defmodule KeystonePhoenixWeb.MenuManagementControllerTest do
            |> get_in(["message"]) == "角色编码无效"
   end
 
-  defp insert_role(permissions) do
+  @tag :integration
+  test "menu role assignment rejects disabled roles" do
+    actor_role = insert_role(["menu:manage"])
+    disabled_role = insert_role([], 0)
+    user = insert_user(actor_role.role_id)
+    menu = insert_menu("disabled_role_assignment", 1)
+    token = login(user)
+
+    assert json_response(
+             put(authorized(build_conn(), token), "/api/v1/menus/#{menu.menu_id}/roles", %{
+               "roleCodes" => [disabled_role.role_key]
+             }),
+             422
+           )
+           |> get_in(["message"]) == "角色编码无效"
+  end
+
+  defp insert_role(permissions, status \\ 1) do
     role =
       %SysRole{}
       |> SysRole.changeset(%{
@@ -102,7 +119,7 @@ defmodule KeystonePhoenixWeb.MenuManagementControllerTest do
         role_key: unique("menu_role"),
         role_sort: 1,
         data_scope: "ALL",
-        status: 1
+        status: status
       })
       |> Repo.insert!()
 

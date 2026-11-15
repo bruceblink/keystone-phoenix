@@ -91,7 +91,7 @@ defmodule KeystonePhoenix.Menu.RoleAssignment do
     else
       roles =
         from(role in SysRole,
-          where: role.role_key in ^role_codes and role.deleted == false,
+          where: role.role_key in ^role_codes and role.deleted == false and role.status == 1,
           select: {role.role_key, role.role_id}
         )
         |> Repo.all()
