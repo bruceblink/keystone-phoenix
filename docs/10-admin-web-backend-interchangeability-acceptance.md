@@ -91,13 +91,13 @@ Native 和 Phoenix 的角色、组织、岗位页面均完成真实新增、列�
 
 Phoenix LiveView 已完成共享壳、登录、账号、组织、系统和任务页面的主要视觉重实现。侧栏、顶栏、
 颜色令牌、卡片、筛选区、按钮、表格、徽标、状态 footer、用户图形个人资料入口和侧栏菜单结构已经按 admin-web
-对齐。页面使用同一份 admin-web 样式基准，兼容样式只处理 LiveView 的导航和认证差异。窄屏布局使用流式宽度，
+对齐。Phoenix 壳 DOM 已使用 `app-shell`、`sidebar`、`shell-content`、`topbar` 和 `shell-main` 原生结构，兼容样式只处理 LiveView 的导航和认证差异。窄屏布局使用流式宽度，
 没有设置固定页面最小宽度；内置浏览器在 280、320、390、768 和 1280 视口验证了 Native admin-web 和 Phoenix 页面没有横向溢出。
 Phoenix 和 admin-web 可见菜单均为 13 项，已移除“工作台”、个人资料菜单和“系统”分组标题；`/dashboard` 仍保留为兼容深链接。发布前仍需逐页补全导出、批量操作、加载状态、错误反馈、分页、编辑和写操作结果。
 
 监控帮助按钮已在两个前端实现展开和关闭，显示系统 API、缺失指标和 `PARTIAL` 状态的阅读说明。侧栏仅保留“运维审计”分组标题；系统配置、字典管理和通知公告直接列在其后，两个前端的菜单结构一致。
 
-监控页的状态栏、资源卡片、在线会话、节点详情、80% 关注阈值、系统 API 来源和无采样空态已按 admin-web 组件层级重实现。Phoenix 缺失资源字段统一显示 `—`，不会把缺失值误读为 `0%`。Phoenix 监控页、任务页、组织页和系统页分别在提交 `f4c4e7b`、`65d0cd2` 和 `9431783` 中完成页面模板重实现；admin-web 初始响应式修复在 `661fb2a`，当前中等窄视口和登录页最终修复在 `3e01da7`，工作台入口移除在 `0d34206` 推送，通知发布错误反馈在 `193ec91` 推送，监控帮助和侧栏分组对齐分别在 `379d7f8` 和 `80031cc` 推送，Phoenix 监控帮助状态修复在 `c4f39bd` 推送，Phoenix MFA parity 在 `a5d5320` 推送，两个前端删除“系统”分组标题分别在 `13bcfeb` 和 `65ac3cf` 推送。LiveView 配置删除、通知类型筛选、字典切换分页、任务编码筛选和新建弹窗取消按钮分别在 `205fd85`、`15b782b`、`e7ac3d2`、`8d22f85`、`3752575` 推送。
+监控页的状态栏、资源卡片、在线会话、节点详情、80% 关注阈值、系统 API 来源和无采样空态已按 admin-web 组件层级重实现。Phoenix 缺失资源字段统一显示 `—`，不会把缺失值误读为 `0%`。Phoenix 监控页、任务页、组织页和系统页分别在提交 `f4c4e7b`、`65d0cd2` 和 `9431783` 中完成页面模板重实现；admin-web 初始响应式修复在 `661fb2a`，当前中等窄视口和登录页最终修复在 `3e01da7`，Phoenix 壳结构、抽屉和响应式断点分别在 `7f86d43`、`21a0ce2` 和 `953a8fb` 推送，角色旧接口清理在 `84d8988` 推送，工作台入口移除在 `0d34206` 推送，通知发布错误反馈在 `193ec91` 推送，监控帮助和侧栏分组对齐分别在 `379d7f8` 和 `80031cc` 推送，Phoenix 监控帮助状态修复在 `c4f39bd` 推送，Phoenix MFA parity 在 `a5d5320` 推送，两个前端删除“系统”分组标题分别在 `13bcfeb` 和 `65ac3cf` 推送。LiveView 配置删除、通知类型筛选、字典切换分页、任务编码筛选和新建弹窗取消按钮分别在 `205fd85`、`15b782b`、`e7ac3d2`、`8d22f85`、`3752575` 推送。
 
 2026-11-15 登录页视觉复核使用同一内置浏览器视口分别打开 admin-web 和 Phoenix 代理页面。Phoenix 真实窗口使用 `http://127.0.0.1:5176/login`、Phoenix `4000` 后端和 `VITE_API_PROXY_TARGET=http://127.0.0.1:4000`；390x900 为单列 350px 内容宽度，768x900 为单列 560px，1280x900 为 1050px 双列。三档 document/body scrollWidth 均等于视口宽度，关键标题、输入框、按钮和脚注均在视口内，按钮只显示“登录”。Phoenix 对应提交为 `b6b12ac`，admin-web 对应提交为 `3e01da7`。
 
@@ -141,7 +141,7 @@ Native 菜单树读取已补充 `menu:read` 权限检查；无该权限的已认
 
 Native 已删除 Phoenix 和 admin-web 都不使用的 `DELETE /v1/login-logs?ids=...` 与 `DELETE /v1/operation-logs?ids=...`，同步删除旧权限目录项并增加 `V57__remove_audit_log_delete_permissions.sql`；admin-web 继续使用读取和导出接口。对应提交为 Native `a7e33bb`，定向权限测试和全量 `./gradlew test --no-daemon` 均通过。
 
-Phoenix 已删除岗位更新控制器中无法由现行路由触发的 `postId` 参数分支，并将权限测试迁移到 Native/admin-web 使用的规范字段；对应提交为 `a2a6ea4`，定向测试 9 项通过。Phoenix 和 Native 现仅保留 admin-web 使用的批量参数：用户/角色 `ids`、公告 `notice_ids`、任务 `jobIds`；旧别名返回 422 `validation_failed`。对应提交为 Phoenix `592ceb5`、Native `591ac88`。
+Phoenix 已删除岗位更新控制器中无法由现行路由触发的 `postId` 参数分支，并将权限测试迁移到 Native/admin-web 使用的规范字段；对应提交为 `a2a6ea4`，定向测试 9 项通过。Phoenix 和 Native 现仅保留 admin-web 使用的批量参数：用户/角色 `ids`、公告 `notice_ids`、任务 `jobIds`；旧别名返回 422 `validation_failed`。对应提交为 Phoenix `592ceb5`、Native `591ac88`。Phoenix 角色成员接口另已删除 `user_ids`、`roleId`/`:role_id` 兼容字段和旧分页响应，统一使用 `userIds` 和用户 ID 数组，对应提交为 `84d8988`。
 
 Phoenix 角色成员分配和移除现在与 Native 一样统一使用 `role:assign`；之前控制器传入的 `role:update` 已删除，角色范围集成测试在只授予 `role:assign` 时通过。对应提交为 `c45871a`。
 
