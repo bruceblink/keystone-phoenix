@@ -279,6 +279,15 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
 
     assert "user:read" in live_socket(view).assigns.permissions
 
+    render_change(view, "filter-api-key-scopes", %{
+      "name" => "liveview-test",
+      "expiresAt" => "",
+      "scopes" => "",
+      "scopeQuery" => "user"
+    })
+
+    assert live_socket(view).assigns.api_key_form["name"] == "liveview-test"
+
     render_click(element(view, "input[phx-value-scope='user:read']"), %{
       "scope" => "user:read",
       "selected" => "true"
