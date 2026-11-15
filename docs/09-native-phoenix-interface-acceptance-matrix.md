@@ -132,3 +132,5 @@ admin-web `4ccc35d` 已将 Users、Jobs、LoginLogs、OperationsAudit 的筛选�
 第四批证据：admin-web `3d28cee` 统一所有页面初次读取错误面板，`2df33b3` 统一 API Key 写操作和删除确认错误诊断；Phoenix `339d2b6` 补齐登录日志和操作审计刷新/筛选失败反馈。`b365483` 的接口集合脚本确认 admin-web 使用的 74 条接口均存在于 Native 和 Phoenix，两个后端的 `/api/v1` 集合均为 108 条，JWK 集合均为 1 条。最新全量回归为 Phoenix `424 passed`、admin-web `22 files / 115 tests passed`、Native 测试和构建成功。监控、系统配置和其他 LiveView 读取事件仍需继续补齐。
 
 第五批证据：Phoenix `06b4708`、`9245e78` 补齐监控快照和系统配置刷新/保存后的读取失败保留，并保持源文件行数限制；admin-web `e0d84f6` 为角色和组织页面补齐 URL 查询状态恢复。对应定向回归分别为 Phoenix `26 passed` 和 admin-web `13 passed`。这些修改不改变 Native/Phoenix HTTP 接口，真实可视浏览器窗口仍需单独验收。
+
+第六批证据：admin-web `720f301` 将配置、公告、字典表单和角色导出错误统一接入业务错误码诊断；全量前端回归为 `23 files / 116 tests passed`，类型检查和构建通过。剩余表单和导出入口仍需逐页核对真实结果。
