@@ -2,6 +2,7 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
   @moduledoc "LiveView 读取结果辅助模块，保留查询失败以便页面显示重试反馈。"
 
   alias KeystonePhoenix.Excel
+  alias KeystonePhoenix.Auth.ApiKey
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Notice
@@ -36,6 +37,15 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
       load_all(&Post.list_posts/1)
     else
       load_authorized(&Post.list_posts(&1, Support.authorization_options(socket)))
+    end
+  end
+
+  @doc "读取当前主体的 API Key 元数据，并保留授权或服务失败结果。"
+  def api_keys(socket) do
+    try do
+      ApiKey.list(current_user_id(socket), Support.authorization_options(socket))
+    rescue
+      _error -> {:error, :service_unavailable}
     end
   end
 
@@ -87,6 +97,9 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
       do: selected,
       else: List.first(types, %{})["dictType"] || ""
   end
+
+  defp current_user_id(socket),
+    do: socket.assigns.current_user["userId"] || socket.assigns.current_user[:user_id]
 
   # 读取失败必须与空结果区分，避免页面把服务故障显示成“暂无数据”。
   def read_error_feedback(reason, message),

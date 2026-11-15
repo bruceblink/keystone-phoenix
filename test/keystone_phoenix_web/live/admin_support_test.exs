@@ -60,4 +60,16 @@ defmodule KeystonePhoenixWeb.Live.AdminSupportTest do
 
     assert {:error, :permission_denied} = AdminSupport.load_posts_for_socket_result(socket)
   end
+
+  test "preserves API Key read failures for LiveView feedback" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{
+        __changed__: %{},
+        current_user: %{"userId" => Ecto.UUID.generate()},
+        permissions: []
+      }
+    }
+
+    assert {:error, :permission_denied} = AdminSupport.load_api_keys_for_socket_result(socket)
+  end
 end

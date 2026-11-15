@@ -10,12 +10,21 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
 
   def handle_event("refresh-api-keys", _params, socket) do
     if Support.panel_allowed?(socket, "api-keys") do
-      {:noreply,
-       assign(socket,
-         api_key_rows: Support.load_api_keys_for_socket(socket),
-         api_key_feedback: nil,
-         issued_api_key: nil
-       )}
+      case Support.load_api_keys_for_socket_result(socket) do
+        {:ok, rows} ->
+          {:noreply,
+           assign(socket,
+             api_key_rows: rows,
+             api_key_feedback: nil,
+             issued_api_key: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             api_key_feedback: Support.read_error_feedback(reason, "API Key 列表刷新失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end

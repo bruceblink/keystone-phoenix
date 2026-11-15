@@ -174,6 +174,9 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     end
   end
 
+  @doc "读取 API Key 元数据并保留失败结果，供 LiveView 刷新反馈使用。"
+  def load_api_keys_for_socket_result(socket), do: AdminReadSupport.api_keys(socket)
+
   def load_posts, do: load_all(&Post.list_posts/1)
   def load_posts(options) when is_list(options), do: load_authorized(&Post.list_posts/2, options)
   def load_posts_for_socket(socket), do: load_posts(authorization_options(socket))
