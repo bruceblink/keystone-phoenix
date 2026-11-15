@@ -50,5 +50,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Navigation do
 
   def normalize_panel("dashboard"), do: "monitor"
   def normalize_panel("overview"), do: "monitor"
+  def normalize_panel("logs"), do: "operation-logs"
+  def normalize_panel("job-logs"), do: "jobs"
   def normalize_panel(panel), do: panel
 end

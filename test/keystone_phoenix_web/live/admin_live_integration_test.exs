@@ -358,9 +358,9 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert render(view) =~ "公告已取消发布"
 
     render_click(view, "show-panel", %{"panel" => "logs"})
-    assert has_element?(view, "button[phx-click='refresh-logs']")
+    assert has_element?(view, "button[phx-click='refresh-operation-logs']")
     render_click(view, "show-panel", %{"panel" => "job-logs"})
-    assert has_element?(view, "button[phx-click='refresh-job-logs']")
+    assert has_element?(view, "#jobs-filter")
     render_click(view, "show-panel", %{"panel" => "monitor"})
     assert has_element?(view, "button[phx-click='refresh-monitor']")
   end

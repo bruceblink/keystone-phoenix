@@ -207,23 +207,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
           socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, "online-users", 1))
           {:noreply, AdminSupport.assign_monitor(socket)}
 
-        panel == "job-logs" ->
-          {:noreply,
-           assign(socket,
-             active_panel: panel,
-             job_log_rows: AdminSupport.load_job_logs_for_socket(socket)
-           )}
-
-        panel == "logs" ->
-          logs = AdminSupport.load_logs_for_socket(socket)
-
-          {:noreply,
-           assign(socket,
-             active_panel: panel,
-             login_log_rows: logs.login_log_rows,
-             operation_log_rows: logs.operation_log_rows
-           )}
-
         panel in ["login-logs", "operation-logs"] ->
           {:noreply,
            assign(socket,
@@ -455,28 +438,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <div class={"sidebar-foot#{if @sidebar_open, do: " sidebar-open", else: ""}"}><div class="status-dot"><span></span> API 正常</div><span class="sidebar-version">v0.1.0 · dev</span></div>
                   <div class="page-content">
                   <%= case @active_panel do %>
-                    <% "overview" -> %>
-                      <div class="panel overview-panel">
-                        <div class="overview-heading">
-                          <div>
-                            <p class="eyebrow">平台概览</p>
-                            <h3>当前登录用户：<strong><%= @current_user["username"] %></strong></h3>
-                          </div>
-                          <span class="status-chip">系统运行正常</span>
-                        </div>
-                        <!-- 概览卡只展示当前会话已加载的数据数量。 -->
-                        <div class="overview-grid">
-                          <div class="stat-card"><span>部门</span><strong><%= length(@dept_rows) %></strong></div>
-                          <div class="stat-card"><span>岗位</span><strong><%= length(@post_rows) %></strong></div>
-                          <div class="stat-card"><span>角色</span><strong><%= length(@role_rows) %></strong></div>
-                          <div class="stat-card"><span>菜单</span><strong><%= length(@menu_rows) %></strong></div>
-                          <div class="stat-card"><span>公告</span><strong><%= length(@notice_rows) %></strong></div>
-                          <div class="stat-card"><span>用户</span><strong><%= length(@user_rows) %></strong></div>
-                          <div class="stat-card"><span>配置</span><strong><%= length(@config_rows) %></strong></div>
-                          <div class="stat-card"><span>字典</span><strong><%= length(@dict_type_rows) %></strong></div>
-                          <div class="stat-card"><span>任务</span><strong><%= length(@job_rows) %></strong></div>
-                        </div>
-                      </div>
                     <% "depts" -> %>
                       <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} active_modal={@active_modal} read_only={@read_only} permissions={@permissions} />
                     <% "posts" -> %>
@@ -495,16 +456,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
                       <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} active_modal={@active_modal} dict_data_page_num={@page_nums["dict-data"]} dict_data_page_size={@page_sizes["dict-data"]} dict_type_filter={@dict_type_filter} read_only={@read_only} />
                     <% "notices" -> %>
                       <.notices notice_rows={@notice_rows} notice_form={@notice_form} notice_feedback={@notice_feedback} active_modal={@active_modal} read_only={@read_only} />
-                    <% "logs" -> %>
-                      <.logs login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_log_filter={@login_log_filter} operation_log_filter={@operation_log_filter} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["login-logs"]} read_only={@read_only} />
                     <% "login-logs" -> %>
                       <.logs kind="login" login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_log_filter={@login_log_filter} operation_log_filter={@operation_log_filter} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["login-logs"]} read_only={@read_only} />
                     <% "operation-logs" -> %>
                       <.logs kind="operation" login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_log_filter={@login_log_filter} operation_log_filter={@operation_log_filter} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["operation-logs"]} read_only={@read_only} />
                     <% "jobs" -> %>
                       <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} active_modal={@active_modal} page_num={@page_nums["jobs"]} page_size={@page_sizes["jobs"]} selected_job_ids={@selected_job_ids} read_only={@read_only} />
-                    <% "job-logs" -> %>
-                      <.job_logs job_log_rows={@job_log_rows} job_log_feedback={@job_log_feedback} page_num={@page_nums["job-logs"]} page_size={@page_sizes["job-logs"]} read_only={@read_only} />
                     <% "monitor" -> %>
                       <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} online_user_total={@online_user_total} online_user_page_num={@page_nums["online-users"]} online_user_page_size={@page_sizes["online-users"]} network_status={@network_status} security_access={@security_access} security_metrics={@security_metrics} security_api_keys={@security_api_keys} security_event_rows={@security_event_rows} security_event_total={@security_event_total} monitor_feedback={@monitor_feedback} read_only={@read_only} />
                     <% "profile" -> %>
