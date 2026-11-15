@@ -49,7 +49,7 @@ Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。�
 
 ## UI 验收边界
 
-Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（78 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 392 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
+Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（78 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 393 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
 
 个人资料密码更新已与 Native/admin-web 接口对齐：`PUT /api/v1/profile/password` 在 AAL2 会话中接收单个 `password` 字段，并在成功后撤销当前会话。Phoenix LiveView 个人资料页也只显示新密码字段。
 
@@ -75,6 +75,8 @@ Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `
 - Phoenix LiveView 已将用户、部门、岗位、角色、菜单、配置和任务页面的筛选、选择及当前详情状态显式传给组件；筛选输入和批量操作状态不会在事件后回退到默认值。用户筛选值和删除按钮状态由集成测试验证，对应提交为 `fa66fff`。
 - Phoenix 菜单页已按 admin-web 基准展开任意层级菜单树，兼容 `nil`、`0`、`"0"` 和混合类型父级 ID；深层筛选保留祖先节点，表格使用响应式层级缩进，并在编辑父级选择中排除自身和后代。对应提交为 `763feb7`。
 - 本次内置浏览器复核使用真实 Phoenix 服务和 `ag1/123456`：菜单筛选 `user:read` 显示“系统管理”根节点和“用户管理”子节点，用户筛选 `ag1` 保留输入值并在选择后显示“删除用户（1）”；1280 视口的文档宽度为 1280，390 窄屏的文档和 body 宽度均为 390，侧栏抽屉可以打开且页面没有横向溢出。菜单表格在窄屏内部滚动，不扩大页面宽度。
+- Phoenix 菜单编辑弹窗已补齐 admin-web 的“可访问角色”复选框，只展示启用角色；编辑时读取现有绑定，保存时替换绑定，空选择会清除绑定。LiveView 集成测试覆盖读取、保存、重新打开和清空，对应提交为 `86a9114`。角色绑定失败时保留编辑弹窗和表单状态。
+- Native/admin-web 真实窗口复核补充了登录加载状态、错误密码反馈、用户筛选和批量选择、角色编辑取消、菜单多级筛选祖先保留，以及 390 窄屏文档/body 宽度检查。Native 使用 MySQL 8.4 和端口 8080；admin-web 代理目标必须显式使用 `http://127.0.0.1:8080`，否则登录请求会返回 502。
 
 - Native 和 Phoenix 的同一份 admin-web 还完成了真实筛选和模态框检查：角色、组织、岗位、菜单、API Key、操作审计、登录日志、系统配置和字典页面使用无结果条件查询后显示空态，再点击“重置”恢复列表；用户、角色、组织、岗位、菜单、系统配置、字典、通知和定时任务的新增弹窗均能打开并取消关闭。两端的页面标题、查询按钮、空态和弹窗关闭结果一致。
 - Native 和 Phoenix 的用户、角色、岗位、操作审计和登录日志页面均通过真实“导出 Excel”检查，下载操作没有显示错误反馈。Phoenix 角色导出的 `406` 已在 `220fdde` 修复：API 管道现在接受 XLSX MIME，并登记 `xlsx` 格式。
@@ -82,8 +84,8 @@ Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `
 - Native 和 Phoenix 的角色、组织、岗位页面均完成真实新增、列表显示、删除确认和测试数据清理。Phoenix 未登记菜单权限的错误已从 500 修复为 422 `validation_failed`，对应提交为 `55e92fe`；API Key 缺失和重复轮换状态已在 `b3a1af9` 对齐 Native。菜单非法 UUID 的 422/404 边界已在 `c39f335` 和 `47a26a1` 对齐 Native。
 
 - Phoenix LiveView 已按 admin-web 的共享壳和页面组件结构重实现。已验证深色页面令牌、流式侧栏和内容区、统一卡片、筛选表格、徽标、模态框、用户图形个人资料入口，以及侧栏移除“工作台”、个人资料菜单和“系统”分组标题。内置浏览器在 280、320、390、768 和 1280 视口验证了 Phoenix 无横向溢出，顶栏上下文不换行，内容区随视口拉伸；窄屏侧边抽屉可以打开，选择导航后自动收起。当前可见 LiveView 菜单为 13 项；`/dashboard` 和旧任务日志状态保留为兼容路径或内部分支，不作为侧栏菜单。LiveView 另已修复配置删除、通知类型筛选、字典切换分页、任务编码筛选和新建弹窗取消按钮，提交分别为 `205fd85`、`15b782b`、`e7ac3d2`、`8d22f85`、`3752575`。Native admin-web 已完成同样的真实浏览器宽度矩阵，两个后端均保留逐页写操作、筛选、导出、批量操作、空态、错误反馈和模态框结果验收项。
-- 菜单权限专项已完成：Native、Phoenix 和 admin-web 均支持多级菜单树、父级选择防环、停用/未绑定节点的管理读取、菜单角色绑定查询和替换。Native 菜单更新支持父级重排，并拒绝不存在的父级、自身引用和后代环引用。Phoenix LiveView 角色编辑提供按层级缩进的 `menuIds[]` 多选树，菜单筛选保留匹配节点的祖先；admin-web 菜单表单提供同样的父级防环、启用角色选择和多级筛选祖先保留。对应提交为 Phoenix `eb847a7`、`9fb9d33`，Native `4198d1c`、`44cb524`、`8c06179`，admin-web `efb9133`、`65413f4`、`734279d`、`c38d343`。
+- 菜单权限专项已完成：Native、Phoenix 和 admin-web 均支持多级菜单树、父级选择防环、停用/未绑定节点的管理读取、菜单角色绑定查询和替换。Native 菜单更新支持父级重排，并拒绝不存在的父级、自身引用和后代环引用。Phoenix LiveView 角色编辑提供按层级缩进的 `menuIds[]` 多选树，菜单编辑弹窗也提供启用角色复选框和绑定替换；菜单筛选保留匹配节点的祖先。admin-web 菜单表单提供同样的父级防环、启用角色选择和多级筛选祖先保留。对应提交为 Phoenix `86a9114`、`763feb7`、`eb847a7`、`9fb9d33`，Native `4198d1c`、`44cb524`、`8c06179`，admin-web `efb9133`、`65413f4`、`734279d`、`c38d343`。
 - admin-web 组织结构筛选也已按多级树规则递归保留完整祖先链，并用异常环保护避免筛选死循环；对应提交为 `6b75eba`。
-- 监控页按 Vercel Dashboard 的信息密度重新打磨：状态栏、健康摘要、主证据图表、资源卡片、在线会话和节点详情保持统一层级。admin-web 趋势图增加 80% 关注阈值和数据来源，空趋势显示“暂无采样数据”；Phoenix 当前采样图使用同样的阈值、来源和空态语义，缺失指标显示 `—`，不再显示为 `0%`。监控帮助交互对应 admin-web `379d7f8`、Phoenix `c4f39bd`；admin-web 当前测试为 17 个文件、78 项通过；Phoenix `mix test --include integration` 为 392 项通过，Native 和 Phoenix 真实窗口均已在 280、320、390、768 和 1280 视口检查横向溢出。
+- 监控页按 Vercel Dashboard 的信息密度重新打磨：状态栏、健康摘要、主证据图表、资源卡片、在线会话和节点详情保持统一层级。admin-web 趋势图增加 80% 关注阈值和数据来源，空趋势显示“暂无采样数据”；Phoenix 当前采样图使用同样的阈值、来源和空态语义，缺失指标显示 `—`，不再显示为 `0%`。监控帮助交互对应 admin-web `379d7f8`、Phoenix `c4f39bd`；admin-web 当前测试为 17 个文件、78 项通过；Phoenix `mix test --include integration` 为 393 项通过，Native 和 Phoenix 真实窗口均已在 280、320、390、768 和 1280 视口检查横向溢出。
 
 本次验收仍有明确限制：监控页的部分指标由 Native 接口未提供，页面应显示后端来源和未提供指标；页面通过不表示缺失指标已经补齐。Native 和 Phoenix 已完成真实读取、导航、响应式宽度、筛选空态、新增弹窗打开/关闭、主要 Excel 导出和部分新增/删除检查；Phoenix 和 Native admin-web 均已完成真实 TOTP 登录挑战并进入监控页。Native 还完成了 API Key 敏感操作的真实 step-up 验证；临时用户、令牌、会话和 MFA 挑战已清理，数据库残留计数为 0。菜单权限的 HTTP、组件和 LiveView 回归测试已完成；用户、岗位、任务和审计列表分页也已完成代码与组件验证，Phoenix 用户页、任务页、执行日志页、登录日志和操作审计默认每页 20 条与 admin-web 一致，对应提交为 `dcfaba5`、`2594151`、`1ac38b7`。其余页面仍需补充逐页编辑、加载状态、错误反馈、分页和批量写操作的完整发布窗口记录；OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理链不属于本地窗口验收，不能据此判定通过。
