@@ -391,30 +391,32 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
 
     assert config_modal_html =~ ~s(phx-value-modal="config" phx-disable-with="处理中…">取消</button>)
 
-    assert render_component(
-             &System.dicts/1,
-             Map.take(system_assigns, [
-               :dict_type_rows,
-               :dict_data_rows,
-               :dict_type_form,
-               :dict_data_form,
-               :selected_dict_type,
-               :dict_feedback
-             ])
-             |> Map.put(:active_modal, "dict-data")
-           ) =~ "save-dict-data"
+    dict_assigns =
+      Map.take(system_assigns, [
+        :dict_type_rows,
+        :dict_data_rows,
+        :dict_type_form,
+        :dict_data_form,
+        :selected_dict_type,
+        :dict_feedback
+      ])
+
+    assert render_component(&System.dicts/1, Map.put(dict_assigns, :active_modal, "dict-data")) =~
+             "save-dict-data"
+
+    empty_dict_html =
+      render_component(
+        &System.dicts/1,
+        dict_assigns
+      )
+
+    assert empty_dict_html =~ "选择一个字典类型"
+    assert empty_dict_html =~ "选择类型后维护"
 
     dict_modal_html =
       render_component(
         &System.dicts/1,
-        Map.take(system_assigns, [
-          :dict_type_rows,
-          :dict_data_rows,
-          :dict_type_form,
-          :dict_data_form,
-          :selected_dict_type,
-          :dict_feedback
-        ])
+        dict_assigns
         |> Map.put(:active_modal, "dict-data")
       )
 

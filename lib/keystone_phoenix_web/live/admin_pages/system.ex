@@ -138,9 +138,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       </section>
       <section class="card dictionary-items-card table-card" aria-labelledby="dict-items-title">
         <header class="card-header table-card-heading">
-          <div><h2 id="dict-items-title">字典数据（<%= @selected_dict_type || "未选择" %>）</h2><p>当前类型的标签、值和展示属性</p></div>
-          <div class="heading-actions"><button :if={!@read_only and @selected_dict_type != ""} type="button" class="button button-primary button-sm" phx-click="new-dict-data" phx-disable-with="处理中…">新增条目</button></div>
+          <div><h2 id="dict-items-title"><%= if @selected_dict_type == "", do: "字典条目", else: "#{@selected_dict_type} · 字典条目" %></h2><p><%= if @selected_dict_type == "", do: "选择类型后查看条目。", else: "当前类型的标签、值和展示属性" %></p></div>
+          <div class="heading-actions"><span :if={@selected_dict_type == ""} class="badge badge-neutral">选择类型后维护</span><button :if={!@read_only and @selected_dict_type != ""} type="button" class="button button-primary button-sm" phx-click="new-dict-data" phx-disable-with="处理中…">新增条目</button></div>
         </header>
+      <%= if @selected_dict_type == "" and @active_modal != "dict-data" do %>
+        <div class="dictionaries-empty" role="status"><strong>选择一个字典类型</strong><p>左侧选择类型后查看条目。</p></div>
+      <% else %>
       <%= if @active_modal == "dict-data" do %>
         <.modal id="dict-data-modal" title={if @dict_data_form["dictCode"] == "", do: "新建字典数据", else: "编辑字典数据"} description="维护字典标签、值和展示属性。">
     <form :if={!@read_only} aria-describedby="dict-feedback" phx-submit="save-dict-data">
@@ -166,6 +169,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <% end %>
         </tbody></table></div>
         <.pagination panel="dict-data" page_num={min(@dict_data_page_num, page_count(length(@dict_data_rows), @dict_data_page_size))} page_size={@dict_data_page_size} total={length(@dict_data_rows)} />
+      <% end %>
       </section>
     </div>
     """
