@@ -322,6 +322,10 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     end
   end
 
+  @doc "读取审计日志并保留失败结果，供 LiveView 刷新反馈使用。"
+  def load_logs_for_socket_result(socket, filters \\ %{}) when is_map(filters),
+    do: AdminReadSupport.logs(socket, filters)
+
   defp logs_for_permissions(permissions, options, filters) do
     permissions = List.wrap(permissions)
     login_filter = Map.get(filters, "login", %{})

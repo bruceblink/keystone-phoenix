@@ -6,6 +6,7 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Notice
+  alias KeystonePhoenix.Log
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
@@ -84,11 +85,52 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     end
   end
 
+  @doc "读取登录日志和操作审计，并保留任一查询失败结果。"
+  def logs(socket, filters \\ %{}) do
+    options = Support.authorization_options(socket)
+    login_filter = Map.get(filters, "login", %{})
+    operation_filter = Map.get(filters, "operation", %{})
+
+    with {:ok, login_rows} <-
+           log_rows(
+             socket,
+             options,
+             "login-log:read",
+             &Log.list_login_logs/1,
+             &Log.list_login_logs/2,
+             login_filter
+           ),
+         {:ok, operation_rows} <-
+           log_rows(
+             socket,
+             options,
+             "operation-log:read",
+             &Log.list_operation_logs/1,
+             &Log.list_operation_logs/2,
+             operation_filter
+           ) do
+      {:ok, %{login_log_rows: login_rows, operation_log_rows: operation_rows}}
+    end
+  end
+
   defp dictionary_types(socket, options, params) do
     if Support.admin_socket?(socket) do
       load_all(&Dictionary.list_dict_types/1, params)
     else
       load_authorized(fn page -> Dictionary.list_dict_types(page, options) end, params)
+    end
+  end
+
+  defp log_rows(socket, options, permission, admin_fetcher, authorized_fetcher, filters) do
+    cond do
+      Support.admin_socket?(socket) ->
+        load_all(admin_fetcher, filters)
+
+      permission in List.wrap(socket.assigns[:permissions]) ->
+        load_authorized(fn page -> authorized_fetcher.(page, options) end, filters)
+
+      true ->
+        {:ok, []}
     end
   end
 

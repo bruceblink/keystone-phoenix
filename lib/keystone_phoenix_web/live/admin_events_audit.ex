@@ -38,14 +38,23 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
         "status" => String.trim(to_string(params["loginStatus"] || ""))
       }
 
-      {:noreply,
-       assign(socket,
-         login_log_filter: filter,
-         login_log_rows:
-           Support.load_logs_for_socket(socket, %{"login" => login_query(filter)}).login_log_rows,
-         page_nums: Map.put(socket.assigns.page_nums, "login-logs", 1),
-         log_feedback: nil
-       )}
+      case Support.load_logs_for_socket_result(socket, %{"login" => login_query(filter)}) do
+        {:ok, logs} ->
+          {:noreply,
+           assign(socket,
+             login_log_filter: filter,
+             login_log_rows: logs.login_log_rows,
+             page_nums: Map.put(socket.assigns.page_nums, "login-logs", 1),
+             log_feedback: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             login_log_filter: filter,
+             log_feedback: Support.read_error_feedback(reason, "登录日志查询失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end
@@ -62,14 +71,23 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
         "resource" => String.trim(to_string(params["operationResource"] || ""))
       }
 
-      {:noreply,
-       assign(socket,
-         operation_log_filter: filter,
-         operation_log_rows:
-           Support.load_logs_for_socket(socket, %{"operation" => operation_query(filter)}).operation_log_rows,
-         page_nums: Map.put(socket.assigns.page_nums, "operation-logs", 1),
-         log_feedback: nil
-       )}
+      case Support.load_logs_for_socket_result(socket, %{"operation" => operation_query(filter)}) do
+        {:ok, logs} ->
+          {:noreply,
+           assign(socket,
+             operation_log_filter: filter,
+             operation_log_rows: logs.operation_log_rows,
+             page_nums: Map.put(socket.assigns.page_nums, "operation-logs", 1),
+             log_feedback: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             operation_log_filter: filter,
+             log_feedback: Support.read_error_feedback(reason, "操作审计查询失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end

@@ -296,18 +296,25 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("refresh-logs", _params, socket) do
     if Support.panel_allowed?(socket, "logs") do
-      logs = Support.load_logs_for_socket(socket)
+      case Support.load_logs_for_socket_result(socket, current_log_filters(socket)) do
+        {:ok, logs} ->
+          {:noreply,
+           assign(socket,
+             login_log_rows: logs.login_log_rows,
+             operation_log_rows: logs.operation_log_rows,
+             page_nums:
+               socket.assigns.page_nums
+               |> Map.put("login-logs", 1)
+               |> Map.put("operation-logs", 1),
+             log_feedback: nil
+           )}
 
-      {:noreply,
-       assign(socket,
-         login_log_rows: logs.login_log_rows,
-         operation_log_rows: logs.operation_log_rows,
-         page_nums:
-           socket.assigns.page_nums
-           |> Map.put("login-logs", 1)
-           |> Map.put("operation-logs", 1),
-         log_feedback: nil
-       )}
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             log_feedback: Support.read_error_feedback(reason, "日志刷新失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end
@@ -315,12 +322,23 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("refresh-login-logs", _params, socket) do
     if Support.panel_allowed?(socket, "login-logs") do
-      {:noreply,
-       assign(socket,
-         login_log_rows: Support.load_logs_for_socket(socket).login_log_rows,
-         page_nums: Map.put(socket.assigns.page_nums, "login-logs", 1),
-         log_feedback: nil
-       )}
+      case Support.load_logs_for_socket_result(socket, %{
+             "login" => Map.get(socket.assigns, :login_log_filter, %{})
+           }) do
+        {:ok, logs} ->
+          {:noreply,
+           assign(socket,
+             login_log_rows: logs.login_log_rows,
+             page_nums: Map.put(socket.assigns.page_nums, "login-logs", 1),
+             log_feedback: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             log_feedback: Support.read_error_feedback(reason, "登录日志刷新失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end
@@ -328,12 +346,23 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("refresh-operation-logs", _params, socket) do
     if Support.panel_allowed?(socket, "operation-logs") do
-      {:noreply,
-       assign(socket,
-         operation_log_rows: Support.load_logs_for_socket(socket).operation_log_rows,
-         page_nums: Map.put(socket.assigns.page_nums, "operation-logs", 1),
-         log_feedback: nil
-       )}
+      case Support.load_logs_for_socket_result(socket, %{
+             "operation" => Map.get(socket.assigns, :operation_log_filter, %{})
+           }) do
+        {:ok, logs} ->
+          {:noreply,
+           assign(socket,
+             operation_log_rows: logs.operation_log_rows,
+             page_nums: Map.put(socket.assigns.page_nums, "operation-logs", 1),
+             log_feedback: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             log_feedback: Support.read_error_feedback(reason, "操作审计刷新失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end
@@ -528,6 +557,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("delete-notice", %{"notice-id" => notice_id}, socket) do
     handle_event("delete-notices", %{"notice-ids" => notice_id}, socket)
+  end
+
+  defp current_log_filters(socket) do
+    %{
+      "login" => Map.get(socket.assigns, :login_log_filter, %{}),
+      "operation" => Map.get(socket.assigns, :operation_log_filter, %{})
+    }
   end
 
   defp self_authorization(socket) do
