@@ -10,6 +10,11 @@
 .profile-page > .card > .admin-form .modal-footer { display: flex; justify-content: flex-end; margin: 4px -20px -20px; padding: 16px 20px; border-top: 1px solid var(--line); background: rgba(8,17,31,.24); }
 .profile-upload-form { display: grid; gap: 11px; padding: 0 20px 20px; }
 .profile-upload-form label { display: grid; gap: 7px; color: var(--muted-strong); font-size: 11px; font-weight: 650; }
+.monitor-help-panel { display: flex; align-items: flex-start; gap: 10px; margin: -8px 0 17px; padding: 12px 14px; border: 1px solid rgba(85,214,232,.25); border-radius: 10px; color: var(--muted-strong); background: rgba(85,214,232,.06); }
+.monitor-help-panel > span { flex: 0 0 auto; color: var(--cyan); font-weight: 800; }
+.monitor-help-panel > div { flex: 1; }
+.monitor-help-panel strong { display: block; color: var(--text); font-size: 12px; }
+.monitor-help-panel p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .modal { width: min(720px, 100%); max-height: min(820px, calc(100vh - 48px)); overflow: auto; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); box-shadow: 0 28px 80px rgba(0,0,0,.46); }
 .modal-md { width: min(560px, 100%); }.modal-lg { width: min(720px, 100%); }
 .modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 20px 22px 16px; border-bottom: 1px solid var(--line); }

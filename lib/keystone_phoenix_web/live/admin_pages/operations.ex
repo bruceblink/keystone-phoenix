@@ -176,6 +176,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       |> assign_new(:online_user_total, fn -> length(assigns[:online_user_rows] || []) end)
       |> assign_new(:security_access, fn -> false end)
       |> assign_new(:monitor_feedback, fn -> nil end)
+      |> assign_new(:monitor_help_open, fn -> false end)
       |> assign_new(:monitor_metrics, fn ->
         monitor_metrics(assigns[:monitor_server_info] || %{})
       end)
@@ -190,8 +191,14 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
         </div>
         <div class="heading-actions">
           <button type="button" class="button button-secondary button-sm refresh" phx-click="refresh-monitor" phx-disable-with="刷新中…">刷新快照</button>
-          <button type="button" class="button button-ghost button-sm" aria-label="监控帮助">?</button>
+          <button type="button" class="button button-ghost button-sm" aria-label="监控帮助" aria-expanded={@monitor_help_open} phx-click="toggle-monitor-help">?</button>
         </div>
+      </div>
+
+      <div :if={@monitor_help_open} class="monitor-help-panel" role="note">
+        <span aria-hidden="true">?</span>
+        <div><strong>如何阅读监控</strong><p>状态和趋势来自系统 API。显示“—”表示当前后端没有提供该指标；PARTIAL 表示部分节点数据可用。</p></div>
+        <button type="button" class="button button-ghost button-sm" aria-label="关闭监控帮助" phx-click="toggle-monitor-help">关闭</button>
       </div>
 
       <div class="monitor-status-bar">

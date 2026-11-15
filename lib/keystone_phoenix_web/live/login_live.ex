@@ -273,7 +273,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   @accounts_events ~w(filter-users reset-user-filter refresh-users export-users new-user-import toggle-user-selection toggle-all-user-selection delete-users import-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
   @system_events ~w(refresh-config filter-configs reset-config-filter new-config edit-config save-config refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs refresh-login-logs refresh-operation-logs new-notice edit-notice cancel-notice save-notice toggle-notice-status publish-notice delete-notice refresh-notices filter-notices reset-notice-filter delete-login-log delete-operation-log)
   @audit_events ~w(filter-login-logs reset-login-log-filter filter-operation-logs reset-operation-log-filter filter-dict-types reset-dict-type-filter export-login-logs export-operation-logs)
-  @operations_events ~w(refresh-jobs filter-jobs reset-job-filter toggle-job-selection toggle-all-job-selection select-job new-job edit-job save-job delete-job delete-jobs run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor logout-online-user)
+  @operations_events ~w(refresh-jobs filter-jobs reset-job-filter toggle-job-selection toggle-all-job-selection select-job new-job edit-job save-job delete-job delete-jobs run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor toggle-monitor-help logout-online-user)
   @security_events ~w(refresh-api-keys new-api-key save-api-key rotate-api-key revoke-api-key filter-api-keys dismiss-api-key-secret)
 
   @impl true

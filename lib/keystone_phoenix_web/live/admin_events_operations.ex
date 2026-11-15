@@ -281,6 +281,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
     end
   end
 
+  def handle_event("toggle-monitor-help", _params, socket) do
+    {:noreply,
+     assign(socket, monitor_help_open: !Map.get(socket.assigns, :monitor_help_open, false))}
+  end
+
   def handle_event("logout-online-user", %{"token-id" => token_id}, socket) do
     if Support.permission_socket?(socket, "online-session:revoke") do
       feedback =
