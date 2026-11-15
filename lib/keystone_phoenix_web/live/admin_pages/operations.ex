@@ -35,7 +35,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       </header>
       <%= if @job_feedback do %><p id="job-feedback" class={Feedback.class(@job_feedback)} role={Feedback.role(@job_feedback)} aria-live={Feedback.live(@job_feedback)}><%= Feedback.message(@job_feedback) %></p><% end %>
       <section class="card jobs-filter-card">
-        <form id="jobs-filter" class="jobs-filter-form filter-form" phx-change="filter-jobs" phx-submit="filter-jobs">
+        <form id="jobs-filter" class="jobs-filter-form filter-form" phx-submit="filter-jobs">
           <label for="jobs-filter-keyword"><span>任务名称、编码或分组</span><input id="jobs-filter-keyword" name="jobKeyword" value={@job_filter["keyword"] || ""} placeholder="按任务名称、调用目标或分组筛选" autocomplete="off" /></label>
           <div class="jobs-filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-job-filter">重置</button></div>
         </form>
