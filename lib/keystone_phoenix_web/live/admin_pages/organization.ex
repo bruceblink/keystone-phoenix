@@ -15,13 +15,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       |> assign_new(:active_modal, fn -> nil end)
 
     ~H"""
-    <div class="panel">
-      <div class="form-actions">
-        <button :if={!@read_only} type="button" class="refresh" phx-click="new-dept" phx-disable-with="处理中…">新建部门</button>
-        <button type="button" class="refresh secondary" phx-click="refresh-depts" phx-disable-with="刷新中…">刷新部门</button>
+    <div class="panel departments-page">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">ORGANIZATION / STRUCTURE</p>
+          <h1>组织结构</h1>
+          <p class="page-description">按层级查看部门、负责人和启用状态。新增和编辑在模态框中完成。</p>
+        </div>
+        <div class="heading-actions form-actions">
+          <button :if={!@read_only} type="button" class="button button-primary refresh" phx-click="new-dept" phx-disable-with="处理中…">新建部门</button>
+          <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-depts" phx-disable-with="刷新中…">刷新部门</button>
+        </div>
       </div>
       <%= if @dept_feedback do %><p id="dept-feedback" class={Feedback.class(@dept_feedback)} role={Feedback.role(@dept_feedback)} aria-live={Feedback.live(@dept_feedback)}><%= Feedback.message(@dept_feedback) %></p><% end %>
-      <p :if={@dept_rows == []} class="table-empty" role="status">暂无部门数据</p>
       <%= if @active_modal == "dept" do %>
         <.modal id="dept-modal" title={if @dept_form["deptId"] == "", do: "新建部门", else: "编辑部门"} description="维护组织层级和负责人信息。">
     <form :if={!@read_only} aria-describedby="dept-feedback" phx-submit="save-dept">
@@ -39,14 +45,26 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       </form>
         </.modal>
       <% end %>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="部门列表"><table><caption class="sr-only">部门列表</caption><thead><tr><th scope="col">部门名称</th><th scope="col">负责人</th><th scope="col">电话</th><th scope="col">邮箱</th><th scope="col">状态</th><th scope="col">排序</th><th scope="col">操作</th></tr></thead><tbody>
-        <%= for dept <- @dept_rows do %>
-          <tr>
-            <td><%= String.duplicate("　", dept["depth"] || 0) %><%= dept["deptName"] %></td><td><%= dept["leaderName"] || "" %></td><td><%= dept["phone"] || "" %></td><td><%= dept["email"] || "" %></td><td><span class={"status-badge #{Status.normal_paused(dept["status"])}"}><%= if dept["status"] == 1, do: "正常", else: "停用" %></span></td><td><%= dept["orderNum"] %></td>
-            <td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-dept" phx-value-dept-id={dept["deptId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="toggle-dept-status" phx-value-dept-id={dept["deptId"]} phx-value-status={if dept["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if dept["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-dept" phx-value-dept-id={dept["deptId"]} phx-disable-with="删除中…">删除</button></td>
-          </tr>
-        <% end %>
-      </tbody></table></div>
+      <section class="card table-card departments-table-card" aria-labelledby="departments-table-title">
+        <div class="card-header">
+          <div>
+            <h2 id="departments-table-title">组织结构</h2>
+            <p>当前加载 <%= length(@dept_rows) %> 个组织节点。</p>
+          </div>
+          <span class="badge badge-info">LiveView</span>
+        </div>
+        <p :if={@dept_rows == []} class="table-empty" role="status">暂无部门数据</p>
+        <div class="table-wrap">
+          <div class="table-scroll" role="region" tabindex="0" aria-label="部门列表"><table class="departments-table"><caption class="sr-only">部门列表</caption><thead><tr><th scope="col">部门名称</th><th scope="col">负责人</th><th scope="col">电话</th><th scope="col">邮箱</th><th scope="col">状态</th><th scope="col">排序</th><th scope="col">操作</th></tr></thead><tbody>
+            <%= for dept <- @dept_rows do %>
+              <tr>
+                <td><%= String.duplicate("　", dept["depth"] || 0) %><%= dept["deptName"] %></td><td><%= dept["leaderName"] || "" %></td><td><%= dept["phone"] || "" %></td><td><%= dept["email"] || "" %></td><td><span class={"status-badge #{Status.normal_paused(dept["status"])}"}><%= if dept["status"] == 1, do: "正常", else: "停用" %></span></td><td><%= dept["orderNum"] %></td>
+                <td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost refresh" phx-click="edit-dept" phx-value-dept-id={dept["deptId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost refresh" phx-click="toggle-dept-status" phx-value-dept-id={dept["deptId"]} phx-value-status={if dept["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if dept["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="button button-danger refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-dept" phx-value-dept-id={dept["deptId"]} phx-disable-with="删除中…">删除</button></td>
+              </tr>
+            <% end %>
+          </tbody></table></div>
+        </div>
+      </section>
     </div>
     """
   end
@@ -58,10 +76,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       |> assign_new(:active_modal, fn -> nil end)
 
     ~H"""
-    <div class="panel">
-      <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-post" phx-disable-with="处理中…">新建岗位</button><button type="button" class="refresh secondary" phx-click="refresh-posts" phx-disable-with="刷新中…">刷新岗位</button></div>
+    <div class="panel posts-page">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">ORGANIZATION / POSTS</p>
+          <h1>岗位管理</h1>
+          <p class="page-description">查询岗位编码、显示排序和启用状态。新增和编辑在模态框中完成。</p>
+        </div>
+        <div class="heading-actions form-actions">
+          <button :if={!@read_only} type="button" class="button button-primary refresh" phx-click="new-post" phx-disable-with="处理中…">新建岗位</button>
+          <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-posts" phx-disable-with="刷新中…">刷新岗位</button>
+        </div>
+      </div>
       <%= if @post_feedback do %><p id="post-feedback" class={Feedback.class(@post_feedback)} role={Feedback.role(@post_feedback)} aria-live={Feedback.live(@post_feedback)}><%= Feedback.message(@post_feedback) %></p><% end %>
-      <p :if={@post_rows == []} class="table-empty" role="status">暂无岗位数据</p>
       <%= if @active_modal == "post" do %>
         <.modal id="post-modal" title={if @post_form["postId"] == "", do: "新建岗位", else: "编辑岗位"} description="维护岗位编码、排序和状态。">
     <form :if={!@read_only} aria-describedby="post-feedback" phx-submit="save-post">
@@ -73,7 +100,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       </form>
         </.modal>
       <% end %>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="岗位列表"><table><caption class="sr-only">岗位列表</caption><thead><tr><th scope="col">编码</th><th scope="col">名称</th><th scope="col">排序</th><th scope="col">状态</th><th scope="col">备注</th><th scope="col">操作</th></tr></thead><tbody><%= for post <- @post_rows do %><tr><td><%= post["postCode"] %></td><td><%= post["postName"] %></td><td><%= post["postSort"] %></td><td><span class={"status-badge #{Status.normal_paused(post["status"])}"}><%= if post["status"] == 1, do: "正常", else: "停用" %></span></td><td><%= post["remark"] || "" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-post" phx-value-post-id={post["postId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="toggle-post-status" phx-value-post-id={post["postId"]} phx-value-status={if post["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if post["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-post" phx-value-post-id={post["postId"]} phx-disable-with="删除中…">删除</button></td></tr><% end %></tbody></table></div>
+      <section class="card table-card posts-table-card" aria-labelledby="posts-table-title">
+        <div class="card-header">
+          <div>
+            <h2 id="posts-table-title">岗位列表</h2>
+            <p>当前加载 <%= length(@post_rows) %> 个岗位。</p>
+          </div>
+          <span class="badge badge-info">LiveView</span>
+        </div>
+        <p :if={@post_rows == []} class="table-empty" role="status">暂无岗位数据</p>
+        <div class="table-wrap">
+          <div class="table-scroll" role="region" tabindex="0" aria-label="岗位列表"><table class="posts-table"><caption class="sr-only">岗位列表</caption><thead><tr><th scope="col">编码</th><th scope="col">名称</th><th scope="col">排序</th><th scope="col">状态</th><th scope="col">备注</th><th scope="col">操作</th></tr></thead><tbody><%= for post <- @post_rows do %><tr><td><%= post["postCode"] %></td><td><%= post["postName"] %></td><td><%= post["postSort"] %></td><td><span class={"status-badge #{Status.normal_paused(post["status"])}"}><%= if post["status"] == 1, do: "正常", else: "停用" %></span></td><td><%= post["remark"] || "" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost refresh" phx-click="edit-post" phx-value-post-id={post["postId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost refresh" phx-click="toggle-post-status" phx-value-post-id={post["postId"]} phx-value-status={if post["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if post["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="button button-danger refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-post" phx-value-post-id={post["postId"]} phx-disable-with="删除中…">删除</button></td></tr><% end %></tbody></table></div>
+        </div>
+      </section>
     </div>
     """
   end
@@ -93,10 +132,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       |> assign_new(:role_user_page_size, fn -> 50 end)
 
     ~H"""
-    <div class="panel">
-      <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-role" phx-disable-with="处理中…">新建角色</button><button type="button" class="refresh secondary" phx-click="refresh-roles" phx-disable-with="刷新中…">刷新角色</button></div>
+    <div class="panel roles-page">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">ACCESS / ROLES</p>
+          <h1>角色管理</h1>
+          <p class="page-description">查询角色状态、数据范围和用户数量。新增和编辑在模态框中完成。</p>
+        </div>
+        <div class="heading-actions form-actions">
+          <button :if={!@read_only} type="button" class="button button-primary refresh" phx-click="new-role" phx-disable-with="处理中…">新建角色</button>
+          <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-roles" phx-disable-with="刷新中…">刷新角色</button>
+        </div>
+      </div>
       <%= if @role_feedback do %><p id="role-feedback" class={Feedback.class(@role_feedback)} role={Feedback.role(@role_feedback)} aria-live={Feedback.live(@role_feedback)}><%= Feedback.message(@role_feedback) %></p><% end %>
-      <p :if={@role_rows == []} class="table-empty" role="status">暂无角色数据</p>
       <%= if @active_modal == "role" do %>
         <.modal id="role-modal" title={if @role_form["roleId"] == "", do: "新建角色", else: "编辑角色"} description="维护角色权限和数据范围。">
     <form :if={!@read_only} aria-describedby="role-feedback" phx-submit="save-role">
@@ -108,14 +156,31 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       </form>
         </.modal>
       <% end %>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="角色列表"><table><caption class="sr-only">角色列表</caption><thead><tr><th scope="col">角色名称</th><th scope="col">角色标识</th><th scope="col">数据范围</th><th scope="col">用户数</th><th scope="col">状态</th><th scope="col">排序</th><th scope="col">操作</th></tr></thead><tbody><%= for role <- @role_rows do %><tr><td><%= role["roleName"] %></td><td><%= role["roleKey"] %></td><td><%= role["dataScopeStr"] %></td><td><%= role["userCount"] %></td><td><span class={"status-badge #{Status.normal_paused(role["status"])}"}><%= role["statusStr"] %></span></td><td><%= role["roleSort"] %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="select-role" phx-value-role-id={role["roleId"]} phx-disable-with="加载中…">管理用户</button><button type="button" class="refresh" phx-click="edit-role" phx-value-role-id={role["roleId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="toggle-role-status" phx-value-role-id={role["roleId"]} phx-value-status={if role["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if role["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-role" phx-value-role-id={role["roleId"]} phx-disable-with="删除中…">删除</button></td></tr><% end %></tbody></table></div>
+      <section class="card table-card roles-table-card" aria-labelledby="roles-table-title">
+        <div class="card-header">
+          <div>
+            <h2 id="roles-table-title">角色列表</h2>
+            <p>当前加载 <%= length(@role_rows) %> 个角色。</p>
+          </div>
+          <span class="badge badge-info">LiveView</span>
+        </div>
+        <p :if={@role_rows == []} class="table-empty" role="status">暂无角色数据</p>
+        <div class="table-wrap">
+          <div class="table-scroll" role="region" tabindex="0" aria-label="角色列表"><table class="roles-table"><caption class="sr-only">角色列表</caption><thead><tr><th scope="col">角色名称</th><th scope="col">角色标识</th><th scope="col">数据范围</th><th scope="col">用户数</th><th scope="col">状态</th><th scope="col">排序</th><th scope="col">操作</th></tr></thead><tbody><%= for role <- @role_rows do %><tr><td><%= role["roleName"] %></td><td><%= role["roleKey"] %></td><td><%= role["dataScopeStr"] %></td><td><%= role["userCount"] %></td><td><span class={"status-badge #{Status.normal_paused(role["status"])}"}><%= role["statusStr"] %></span></td><td><%= role["roleSort"] %></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost refresh" phx-click="select-role" phx-value-role-id={role["roleId"]} phx-disable-with="加载中…">管理用户</button><button type="button" class="button button-ghost refresh" phx-click="edit-role" phx-value-role-id={role["roleId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost refresh" phx-click="toggle-role-status" phx-value-role-id={role["roleId"]} phx-value-status={if role["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if role["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="button button-danger refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-role" phx-value-role-id={role["roleId"]} phx-disable-with="删除中…">删除</button></td></tr><% end %></tbody></table></div>
+        </div>
+      </section>
       <%= if @selected_role_id != "" do %>
-        <section id="role-user-management">
-          <h3>角色用户：<%= @selected_role_name %></h3>
+        <section id="role-user-management" class="card role-user-management">
+          <div class="card-header">
+            <div>
+              <h2>角色用户：<%= @selected_role_name %></h2>
+              <p>管理当前角色的用户分配。</p>
+            </div>
+          </div>
           <%= if @role_user_feedback do %><p id="role-user-feedback" class={Feedback.class(@role_user_feedback)} role={Feedback.role(@role_user_feedback)} aria-live={Feedback.live(@role_user_feedback)}><%= Feedback.message(@role_user_feedback) %></p><% end %>
           <div class="monitor-grid details">
-            <div><h3>已分配用户（<%= length(@allocated_role_user_rows) %>）</h3><div class="table-scroll" role="region" tabindex="0" aria-label="已分配用户列表"><table><caption class="sr-only">已分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- page_rows(@allocated_role_user_rows, @allocated_page_num, @role_user_page_size) do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={!@read_only} type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="unassign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">取消分配</button></td></tr><% end %></tbody></table></div><.pagination panel="role-users-allocated" page_num={min(@allocated_page_num, page_count(length(@allocated_role_user_rows), @role_user_page_size))} page_size={@role_user_page_size} total={length(@allocated_role_user_rows)} /></div>
-            <div><h3>可分配用户（<%= length(@unallocated_role_user_rows) %>）</h3><div class="table-scroll" role="region" tabindex="0" aria-label="可分配用户列表"><table><caption class="sr-only">可分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- page_rows(@unallocated_role_user_rows, @unallocated_page_num, @role_user_page_size) do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={!@read_only} type="button" class="refresh" phx-click="assign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">分配</button></td></tr><% end %></tbody></table></div><.pagination panel="role-users-unallocated" page_num={min(@unallocated_page_num, page_count(length(@unallocated_role_user_rows), @role_user_page_size))} page_size={@role_user_page_size} total={length(@unallocated_role_user_rows)} /></div>
+            <div><h3>已分配用户（<%= length(@allocated_role_user_rows) %>）</h3><div class="table-wrap"><div class="table-scroll" role="region" tabindex="0" aria-label="已分配用户列表"><table><caption class="sr-only">已分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- page_rows(@allocated_role_user_rows, @allocated_page_num, @role_user_page_size) do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={!@read_only} type="button" class="button button-danger refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="unassign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">取消分配</button></td></tr><% end %></tbody></table></div></div><.pagination panel="role-users-allocated" page_num={min(@allocated_page_num, page_count(length(@allocated_role_user_rows), @role_user_page_size))} page_size={@role_user_page_size} total={length(@allocated_role_user_rows)} /></div>
+            <div><h3>可分配用户（<%= length(@unallocated_role_user_rows) %>）</h3><div class="table-wrap"><div class="table-scroll" role="region" tabindex="0" aria-label="可分配用户列表"><table><caption class="sr-only">可分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- page_rows(@unallocated_role_user_rows, @unallocated_page_num, @role_user_page_size) do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={!@read_only} type="button" class="button button-ghost refresh" phx-click="assign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">分配</button></td></tr><% end %></tbody></table></div></div><.pagination panel="role-users-unallocated" page_num={min(@unallocated_page_num, page_count(length(@unallocated_role_user_rows), @role_user_page_size))} page_size={@role_user_page_size} total={length(@unallocated_role_user_rows)} /></div>
           </div>
         </section>
       <% end %>
@@ -130,10 +195,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       |> assign_new(:active_modal, fn -> nil end)
 
     ~H"""
-    <div class="panel">
-      <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-menu" phx-disable-with="处理中…">新建菜单</button><button type="button" class="refresh secondary" phx-click="refresh-menus" phx-disable-with="刷新中…">刷新菜单</button></div>
+    <div class="panel menus-page">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">ACCESS / MENUS</p>
+          <h1>菜单与权限</h1>
+          <p class="page-description">查询菜单层级、路由和权限标识。新增和编辑在模态框中完成。</p>
+        </div>
+        <div class="heading-actions form-actions">
+          <button :if={!@read_only} type="button" class="button button-primary refresh" phx-click="new-menu" phx-disable-with="处理中…">新建菜单</button>
+          <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-menus" phx-disable-with="刷新中…">刷新菜单</button>
+        </div>
+      </div>
       <%= if @menu_feedback do %><p id="menu-feedback" class={Feedback.class(@menu_feedback)} role={Feedback.role(@menu_feedback)} aria-live={Feedback.live(@menu_feedback)}><%= Feedback.message(@menu_feedback) %></p><% end %>
-      <p :if={@menu_rows == []} class="table-empty" role="status">暂无菜单数据</p>
       <%= if @active_modal == "menu" do %>
         <.modal id="menu-modal" title={if @menu_form["menuId"] == "", do: "新建菜单", else: "编辑菜单"} description="维护菜单层级和访问权限。">
     <form :if={!@read_only} aria-describedby="menu-feedback" phx-submit="save-menu">
@@ -145,7 +219,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       </form>
         </.modal>
       <% end %>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="菜单列表"><table><caption class="sr-only">菜单列表</caption><thead><tr><th scope="col">菜单名称</th><th scope="col">类型</th><th scope="col">路径</th><th scope="col">权限标识</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody><%= for menu <- @menu_rows do %><tr><td><%= String.duplicate("　", menu["depth"] || 0) %><%= menu["menuName"] %></td><td><%= menu["menuTypeStr"] %></td><td><%= menu["path"] || "" %></td><td><%= menu["permission"] || "" %></td><td><span class={"status-badge #{Status.normal_paused(menu["status"])}"}><%= menu["statusStr"] %></span></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-menu" phx-value-menu-id={menu["menuId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="toggle-menu-status" phx-value-menu-id={menu["menuId"]} phx-value-status={if menu["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if menu["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-menu" phx-value-menu-id={menu["menuId"]} phx-disable-with="删除中…">删除</button></td></tr><% end %></tbody></table></div>
+      <section class="card table-card menus-table-card" aria-labelledby="menus-table-title">
+        <div class="card-header">
+          <div>
+            <h2 id="menus-table-title">菜单目录</h2>
+            <p>当前加载 <%= length(@menu_rows) %> 个菜单节点。</p>
+          </div>
+          <span class="badge badge-info">LiveView</span>
+        </div>
+        <p :if={@menu_rows == []} class="table-empty" role="status">暂无菜单数据</p>
+        <div class="table-wrap">
+          <div class="table-scroll" role="region" tabindex="0" aria-label="菜单列表"><table class="menus-table"><caption class="sr-only">菜单列表</caption><thead><tr><th scope="col">菜单名称</th><th scope="col">类型</th><th scope="col">路径</th><th scope="col">权限标识</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody><%= for menu <- @menu_rows do %><tr><td><%= String.duplicate("　", menu["depth"] || 0) %><%= menu["menuName"] %></td><td><%= menu["menuTypeStr"] %></td><td><%= menu["path"] || "" %></td><td><%= menu["permission"] || "" %></td><td><span class={"status-badge #{Status.normal_paused(menu["status"])}"}><%= menu["statusStr"] %></span></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost refresh" phx-click="edit-menu" phx-value-menu-id={menu["menuId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost refresh" phx-click="toggle-menu-status" phx-value-menu-id={menu["menuId"]} phx-value-status={if menu["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if menu["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="button button-danger refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-menu" phx-value-menu-id={menu["menuId"]} phx-disable-with="删除中…">删除</button></td></tr><% end %></tbody></table></div>
+        </div>
+      </section>
     </div>
     """
   end

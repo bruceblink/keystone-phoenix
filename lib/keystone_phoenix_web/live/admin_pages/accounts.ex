@@ -21,27 +21,41 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       |> assign_new(:user_import_upload, fn -> nil end)
 
     ~H"""
-    <div class="panel">
-      <div class="form-actions">
-        <button :if={!@read_only} type="button" class="refresh" phx-click="new-user" phx-disable-with="处理中…">新建用户</button>
-        <button type="button" class="refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…">刷新用户</button>
-        <button :if={"user:export" in @permissions} type="button" class="refresh secondary" phx-click="export-users" phx-disable-with="导出中…">导出 XLSX</button>
-        <button :if={"user:import" in @permissions} type="button" class="refresh secondary" phx-click="download-user-template" phx-disable-with="准备中…">下载导入模板</button>
-      </div>
-      <form class="filter-bar" phx-submit="filter-users">
-        <label for="user-query">用户名</label>
-        <input id="user-query" name="username" value={@user_query} placeholder="按用户名筛选" autocomplete="off" />
-        <label for="user-display-name-query">昵称</label>
-        <input id="user-display-name-query" name="displayName" value={@user_display_name_query} placeholder="按昵称筛选" autocomplete="off" />
-        <div class="form-actions">
-          <button type="submit" class="refresh" phx-disable-with="查询中…">查询</button>
-          <button type="button" class="refresh secondary" phx-click="reset-user-filter" phx-disable-with="处理中…">重置</button>
+    <div class="panel users-page">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">IDENTITY / USERS</p>
+          <h1>用户管理</h1>
+          <p class="page-description">查询用户身份、组织归属和授权角色。新增和编辑在模态框中完成。</p>
         </div>
-      </form>
+        <div class="heading-actions form-actions">
+          <button :if={!@read_only} type="button" class="button button-primary refresh" phx-click="new-user" phx-disable-with="处理中…">新建用户</button>
+          <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…">刷新用户</button>
+          <button :if={"user:export" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="export-users" phx-disable-with="导出中…">导出 XLSX</button>
+          <button :if={"user:import" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="download-user-template" phx-disable-with="准备中…">下载导入模板</button>
+        </div>
+      </div>
+      <section class="card filter-card users-filter-card" aria-labelledby="users-filter-title">
+        <div class="card-header">
+          <div>
+            <h2 id="users-filter-title">筛选用户</h2>
+            <p>按用户名或昵称缩小当前列表。</p>
+          </div>
+        </div>
+        <form class="filter-form users-filter-form" phx-submit="filter-users">
+          <label for="user-query">用户名</label>
+          <input id="user-query" name="username" value={@user_query} placeholder="按用户名筛选" autocomplete="off" />
+          <label for="user-display-name-query">昵称</label>
+          <input id="user-display-name-query" name="displayName" value={@user_display_name_query} placeholder="按昵称筛选" autocomplete="off" />
+          <div class="form-actions users-filter-actions">
+            <button type="submit" class="button button-primary refresh" phx-disable-with="查询中…">查询</button>
+            <button type="button" class="button button-ghost refresh secondary" phx-click="reset-user-filter" phx-disable-with="处理中…">重置</button>
+          </div>
+        </form>
+      </section>
       <%= if @user_feedback do %>
         <p id="user-feedback" class={Feedback.class(@user_feedback)} role={Feedback.role(@user_feedback)} aria-live={Feedback.live(@user_feedback)}><%= Feedback.message(@user_feedback) %></p>
       <% end %>
-      <p :if={@user_rows == []} class="table-empty" role="status">暂无用户数据</p>
       <%= if @active_modal == "user" do %>
         <.modal id="user-modal" title={if @user_form["userId"] == "", do: "新建用户", else: "编辑用户"} description="维护账号资料、组织归属和登录权限。">
       <form :if={!@read_only} aria-describedby="user-feedback" phx-submit="save-user">
@@ -84,18 +98,32 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         </form>
       <% end %>
       <span id="user-download-hook" phx-hook="DownloadFile" hidden></span>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="用户列表"><table><caption class="sr-only">用户列表</caption>
-        <thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">部门</th><th scope="col">角色</th><th scope="col">邮箱</th><th scope="col">手机号</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
-        <tbody>
-          <%= for user <- page_rows(@user_rows, @page_num, @page_size) do %>
-            <tr>
-              <td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><%= user["deptName"] || "" %></td><td><%= user["roleName"] || "" %></td><td><%= user["email"] || "" %></td><td><%= user["phoneNumber"] || "" %></td><td><span class={"status-badge #{Status.normal_paused(user["status"])}"}><%= if user["status"] == 1, do: "正常", else: "停用" %></span></td>
-              <td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-user" phx-value-user-id={user["userId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="toggle-user-status" phx-value-user-id={user["userId"]} phx-value-status={if user["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if user["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-user" phx-value-user-id={user["userId"]} phx-disable-with="删除中…">删除</button></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table></div>
-      <.pagination panel="users" page_num={min(@page_num, page_count(length(@user_rows), @page_size))} page_size={@page_size} total={length(@user_rows)} />
+      <section class="card table-card users-table-card" aria-labelledby="users-table-title">
+        <div class="card-header">
+          <div>
+            <h2 id="users-table-title">用户列表</h2>
+            <p>当前加载 <%= length(@user_rows) %> 个用户。</p>
+          </div>
+          <span class="badge badge-info">LiveView</span>
+        </div>
+        <p :if={@user_rows == []} class="table-empty" role="status">暂无用户数据</p>
+        <div class="table-wrap">
+          <div class="table-scroll" role="region" tabindex="0" aria-label="用户列表"><table class="users-table"><caption class="sr-only">用户列表</caption>
+            <thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">部门</th><th scope="col">角色</th><th scope="col">邮箱</th><th scope="col">手机号</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
+            <tbody>
+              <%= for user <- page_rows(@user_rows, @page_num, @page_size) do %>
+                <tr>
+                  <td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><%= user["deptName"] || "" %></td><td><%= user["roleName"] || "" %></td><td><%= user["email"] || "" %></td><td><%= user["phoneNumber"] || "" %></td><td><span class={"status-badge #{Status.normal_paused(user["status"])}"}><%= if user["status"] == 1, do: "正常", else: "停用" %></span></td>
+                  <td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost refresh" phx-click="edit-user" phx-value-user-id={user["userId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost refresh" phx-click="toggle-user-status" phx-value-user-id={user["userId"]} phx-value-status={if user["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if user["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="button button-danger refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-user" phx-value-user-id={user["userId"]} phx-disable-with="删除中…">删除</button></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table></div>
+        </div>
+        <div class="table-card-footer">
+          <.pagination panel="users" page_num={min(@page_num, page_count(length(@user_rows), @page_size))} page_size={@page_size} total={length(@user_rows)} />
+        </div>
+      </section>
     </div>
     """
   end
@@ -104,9 +132,17 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
     assigns = assign_new(assigns, :avatar_upload, fn -> nil end)
 
     ~H"""
-    <div class="panel">
-      <h3>个人资料</h3>
+    <div class="panel profile-page">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">ACCOUNT / PROFILE</p>
+          <h1>个人资料</h1>
+          <p class="page-description">维护当前账号资料、头像和登录凭据。</p>
+        </div>
+      </div>
       <%= if @profile_feedback do %><p id="profile-feedback" class={Feedback.class(@profile_feedback)} role={Feedback.role(@profile_feedback)} aria-live={Feedback.live(@profile_feedback)}><%= Feedback.message(@profile_feedback) %></p><% end %>
+      <section class="card profile-card" aria-labelledby="profile-details-title">
+        <div class="card-header"><div><h2 id="profile-details-title">账号资料</h2><p>更新昵称、联系方式和性别信息。</p></div></div>
       <form aria-describedby="profile-feedback" phx-submit="save-profile">
         <div class="form-grid">
           <div><label for="profile-nickname">昵称</label><input id="profile-nickname" name="nickname" value={@profile_form["nickname"] || ""} required /></div>
@@ -133,7 +169,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="上传中…">上传头像</button></div>
         </form>
       <% end %>
-      <h3>修改密码</h3>
+      </section>
+      <section class="card profile-card" aria-labelledby="profile-password-title">
+        <div class="card-header"><div><h2 id="profile-password-title">修改密码</h2><p>使用当前密码确认账号变更。</p></div></div>
       <form aria-describedby="profile-feedback" phx-submit="change-profile-password">
         <div class="form-grid">
           <div><label for="profile-old-password">当前密码</label><input id="profile-old-password" type="password" name="oldPassword" required /></div>
@@ -141,6 +179,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         </div>
         <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="更新中…">更新密码</button></div>
       </form>
+      </section>
     </div>
     """
   end
