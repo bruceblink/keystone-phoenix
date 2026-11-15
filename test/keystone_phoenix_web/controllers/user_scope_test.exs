@@ -218,6 +218,26 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
   end
 
   @tag :integration
+  test "user create follows the Native policy-disabled MFA behavior", ctx do
+    {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
+    username = unique("policy_disabled_create")
+
+    response =
+      post(authorized(tokens.token), "/api/v1/users", %{
+        "username" => username,
+        "password" => "Strong!123",
+        "deptId" => ctx.child.dept_id
+      })
+
+    assert json_response(response, 201)["success"] == true
+    {:ok, created} = User.get_user_by_username(username)
+
+    on_exit(fn ->
+      Repo.update!(Ecto.Changeset.change(Repo.get!(SysUser, created.user_id), deleted: true))
+    end)
+  end
+
+  @tag :integration
   test "self scope can list and edit itself but cannot move to another department", ctx do
     Repo.update!(Ecto.Changeset.change(ctx.role, data_scope: "SELF"))
     token = step_up_token(ctx.actor)

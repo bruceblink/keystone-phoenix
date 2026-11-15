@@ -4,7 +4,7 @@ defmodule KeystonePhoenixWeb.UserController do
   plug KeystonePhoenixWeb.Plugs.RejectApiKey
        when action in [:create, :import, :delete, :delete_single, :reset_password]
 
-  # 用户创建、修改、删除和密码操作会改变身份或权限，必须使用 AAL2 会话。
+  # 普通用户写操作遵循账号 MFA 策略；用户导入始终要求 AAL2。
   plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp
        when action in [
               :create,
@@ -12,9 +12,10 @@ defmodule KeystonePhoenixWeb.UserController do
               :delete,
               :delete_single,
               :reset_password,
-              :change_status,
-              :import
+              :change_status
             ]
+
+  plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp, [enforce: true] when action in [:import]
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
        [

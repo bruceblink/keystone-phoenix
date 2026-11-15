@@ -37,7 +37,7 @@ defmodule KeystonePhoenixWeb.Router do
 
   pipeline :passkey_registration do
     plug KeystonePhoenixWeb.Plugs.Authenticate
-    plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp
+    plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp, enforce: true
   end
 
   pipeline :protected_profile_resources do

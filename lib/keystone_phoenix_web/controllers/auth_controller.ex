@@ -25,7 +25,8 @@ defmodule KeystonePhoenixWeb.AuthController do
               :verify_mfa_step_up
             ]
 
-  plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp
+  plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp,
+       [enforce: true]
        when action in [
               :begin_mfa_enrollment,
               :verify_mfa_enrollment,
