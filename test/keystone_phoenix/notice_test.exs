@@ -4,7 +4,7 @@ defmodule KeystonePhoenix.NoticeTest do
   alias KeystonePhoenix.Notice
   alias KeystonePhoenix.Notice.SysNotice
 
-  test "maps notice fields without exposing persistence flags" do
+  test "maps notice fields with publication state" do
     notice_id = "018f2a7e-5d3c-7b01-8a11-000000000007"
 
     notice = %SysNotice{
@@ -13,6 +13,7 @@ defmodule KeystonePhoenix.NoticeTest do
       notice_type: 1,
       notice_content: "服务将在周末维护。",
       status: 1,
+      published: false,
       creator_id: notice_id,
       remark: "管理员",
       deleted: false,
@@ -25,6 +26,8 @@ defmodule KeystonePhoenix.NoticeTest do
              "noticeType" => 1,
              "noticeContent" => "服务将在周末维护。",
              "status" => 1,
+             "published" => false,
+             "publishAt" => nil,
              "creatorName" => "",
              "remark" => "管理员",
              "createTime" => "2026-11-04 04:00:00"
