@@ -320,7 +320,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
       keyword == "" or
         String.contains?(
           String.downcase(
-            "#{job["jobName"] || ""} #{job["jobGroup"] || ""} #{job["invokeTarget"] || ""}"
+            "#{job["jobName"] || ""} #{job["jobGroup"] || ""} #{job["invokeTarget"] || ""}" <>
+              " #{job["jobCode"] || ""}"
           ),
           keyword
         )

@@ -464,6 +464,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       job_rows: [
         %{
           "jobId" => 1,
+          "jobCode" => "health-check",
           "jobName" => "健康检查",
           "jobGroup" => "DEFAULT",
           "invokeTarget" => "system:health",
@@ -508,6 +509,17 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     assert jobs_html =~ "toggle-all-job-selection"
     assert jobs_html =~ "delete-jobs"
     assert jobs_html =~ ~s(phx-value-modal="job" phx-disable-with="处理中…">取消</button>)
+
+    filtered_jobs_html =
+      render_component(
+        &Operations.jobs/1,
+        Map.merge(
+          Map.take(operations_assigns, [:job_rows, :job_form, :job_targets, :job_feedback]),
+          %{job_filter: %{"keyword" => "health-check"}, active_modal: nil}
+        )
+      )
+
+    assert filtered_jobs_html =~ "健康检查"
 
     assert render_component(
              &Operations.job_logs/1,
