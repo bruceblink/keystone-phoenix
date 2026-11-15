@@ -57,6 +57,8 @@ VITE_API_PROXY_TARGET=http://localhost:4000 VITE_ENABLE_MOCK=false pnpm dev
 - 配置、字典、公告页验证筛选、CRUD、启用状态、公告发布/取消发布和空态。
 - 个人资料页验证资料保存、密码更新的 AAL2 step-up 和会话失效提示。
 
+个人资料密码更新的请求体统一为 `{"password": "..."}`。Native 和 Phoenix 都在 AAL2 step-up 通过后更新密码并撤销当前会话，LiveView 表单与 admin-web 均只要求填写新密码。
+
 Phoenix LiveView 管理页面同时以 admin-web 的颜色、布局、筛选栏、表格、卡片、徽标、空态、错误反馈、分页和模态框为视觉基准。LiveView 重实现不改变 `/api/v1` 接口约定。
 
 2026-11-15 的真实窗口记录使用同一份 admin-web 构建分别连接 Native 和 Phoenix，且设置

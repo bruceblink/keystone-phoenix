@@ -181,11 +181,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       <% end %>
       </section>
       <section class="card profile-card" aria-labelledby="profile-password-title">
-        <div class="card-header"><div><h2 id="profile-password-title">修改密码</h2><p>使用当前密码确认账号变更。</p></div></div>
+        <div class="card-header"><div><h2 id="profile-password-title">修改密码</h2><p>密码更新需要当前会话完成 MFA 二次验证。</p></div></div>
       <form aria-describedby="profile-feedback" phx-submit="change-profile-password">
         <div class="form-grid">
-          <div><label for="profile-old-password">当前密码</label><input id="profile-old-password" type="password" name="oldPassword" required /></div>
-          <div><label for="profile-new-password">新密码</label><input id="profile-new-password" type="password" name="newPassword" required /></div>
+          <div><label for="profile-password">新密码 *</label><input id="profile-password" type="password" name="password" autocomplete="new-password" required /></div>
         </div>
         <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="更新中…">更新密码</button></div>
       </form>

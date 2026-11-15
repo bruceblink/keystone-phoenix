@@ -288,9 +288,8 @@ defmodule KeystonePhoenix.User do
     do_update_user(id, attrs, actor_id)
   end
 
-  @doc "Changes a password after checking the current password."
-  @spec update_password(String.t(), map(), keyword()) ::
-          {:ok, SysUser.t()} | {:error, term()}
+  @doc "Changes a password after checking the current password or an authorized AAL2 step-up."
+  @spec update_password(String.t(), map(), keyword()) :: {:ok, SysUser.t()} | {:error, term()}
   def update_password(id, attrs, options)
 
   def update_password(id, attrs, options) when is_map(attrs) and is_list(options) do
@@ -301,7 +300,13 @@ defmodule KeystonePhoenix.User do
 
   def update_password(_id, _attrs, _options), do: {:error, :authorization_required}
 
-  defp do_update_password(id, attrs, actor_id) when is_map(attrs) do
+  defp do_update_password(id, %{"password" => _} = attrs, actor_id),
+    do: do_reset_password(id, attrs, actor_id)
+
+  defp do_update_password(id, attrs, actor_id) when is_map(attrs),
+    do: do_update_password_with_current(id, attrs, actor_id)
+
+  defp do_update_password_with_current(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, user_id} <- Params.parse_uuid(id),
          {:ok, old_password, new_password} <- password_inputs(attrs) do
       Session.update_account_and_revoke(user_id, fn ->
@@ -588,10 +593,5 @@ defmodule KeystonePhoenix.User do
   end
 
   defp format_datetime(nil), do: nil
-
-  defp format_datetime(%DateTime{} = datetime),
-    do: Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
-
-  defp format_datetime(%NaiveDateTime{} = datetime),
-    do: Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
+  defp format_datetime(datetime), do: Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
 end
