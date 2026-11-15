@@ -54,7 +54,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
           <div><label for="job-status">状态</label><select id="job-status" name="status"><option value="1" selected={@job_form["status"] in [1, "1"]}>正常</option><option value="0" selected={@job_form["status"] in [0, "0"]}>暂停</option></select></div>
           <div class="wide"><label for="job-remark">备注</label><textarea id="job-remark" name="remark"><%= @job_form["remark"] || "" %></textarea></div>
         </div>
-        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存任务</button><button :if={@job_form["jobId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="job" phx-disable-with="处理中…">取消编辑</button></div>
+        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存任务</button><button type="button" class="secondary" phx-click="close-modal" phx-value-modal="job" phx-disable-with="处理中…">取消</button></div>
       </form>
         </.modal>
       <% end %>

@@ -47,7 +47,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <div><label for="config-change">允许修改</label><select id="config-change" name="isAllowChange"><option value="true" selected={@config_form["isAllowChange"] in [true, "true", 1, "1"]}>是</option><option value="false" selected={@config_form["isAllowChange"] in [false, "false", 0, "0"]}>否</option></select></div>
           <div class="wide"><label for="config-remark">备注</label><textarea id="config-remark" name="remark"><%= @config_form["remark"] || "" %></textarea></div>
         </div>
-        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存配置</button><button :if={@config_form["configId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="config" phx-disable-with="处理中…">取消编辑</button></div>
+        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存配置</button><button type="button" class="secondary" phx-click="close-modal" phx-value-modal="config" phx-disable-with="处理中…">取消</button></div>
       </form>
         </.modal>
       <% end %>
@@ -121,7 +121,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <div><label for="dict-status">状态</label><select id="dict-status" name="status"><option value="1" selected={@dict_type_form["status"] in [1, "1"]}>正常</option><option value="0" selected={@dict_type_form["status"] in [0, "0"]}>停用</option></select></div>
           <div><label for="dict-remark">备注</label><input id="dict-remark" name="remark" value={@dict_type_form["remark"] || ""} /></div>
         </div>
-        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存字典类型</button><button :if={@dict_type_form["dictId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="dict-type" phx-disable-with="处理中…">取消编辑</button></div>
+        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存字典类型</button><button type="button" class="secondary" phx-click="close-modal" phx-value-modal="dict-type" phx-disable-with="处理中…">取消</button></div>
       </form>
         </.modal>
       <% end %>
@@ -156,7 +156,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <div><label for="dict-list">列表类</label><input id="dict-list" name="listClass" value={@dict_data_form["listClass"] || ""} /></div>
           <div class="wide"><label for="dict-data-remark">备注</label><textarea id="dict-data-remark" name="remark"><%= @dict_data_form["remark"] || "" %></textarea></div>
         </div>
-        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存字典数据</button><button :if={@dict_data_form["dictCode"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="dict-data" phx-disable-with="处理中…">取消编辑</button></div>
+        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存字典数据</button><button type="button" class="secondary" phx-click="close-modal" phx-value-modal="dict-data" phx-disable-with="处理中…">取消</button></div>
       </form>
         </.modal>
       <% end %>
@@ -222,7 +222,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <div><label for="notice-status">状态</label><select id="notice-status" name="status"><option value="1" selected={@notice_form["status"] in [1, "1"]}>正常</option><option value="0" selected={@notice_form["status"] in [0, "0"]}>停用</option></select></div>
           <div><label for="notice-remark">备注</label><input id="notice-remark" name="remark" value={@notice_form["remark"] || ""} /></div>
         </div>
-        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存公告</button><button :if={@notice_form["noticeId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="notice" phx-disable-with="处理中…">取消编辑</button></div>
+        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存公告</button><button type="button" class="secondary" phx-click="close-modal" phx-value-modal="notice" phx-disable-with="处理中…">取消</button></div>
       </form>
         </.modal>
       <% end %>

@@ -353,6 +353,18 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
              )
            ) =~ "save-config"
 
+    config_modal_html =
+      render_component(
+        &System.configs/1,
+        Map.put(
+          Map.take(system_assigns, [:config_rows, :config_form, :config_feedback]),
+          :active_modal,
+          "config"
+        )
+      )
+
+    assert config_modal_html =~ ~s(phx-value-modal="config" phx-disable-with="处理中…">取消</button>)
+
     assert render_component(
              &System.dicts/1,
              Map.take(system_assigns, [
@@ -366,14 +378,34 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
              |> Map.put(:active_modal, "dict-data")
            ) =~ "save-dict-data"
 
-    assert render_component(
-             &System.notices/1,
-             Map.put(
-               Map.take(system_assigns, [:notice_rows, :notice_form, :notice_feedback]),
-               :active_modal,
-               "notice"
-             )
-           ) =~ "save-notice"
+    dict_modal_html =
+      render_component(
+        &System.dicts/1,
+        Map.take(system_assigns, [
+          :dict_type_rows,
+          :dict_data_rows,
+          :dict_type_form,
+          :dict_data_form,
+          :selected_dict_type,
+          :dict_feedback
+        ])
+        |> Map.put(:active_modal, "dict-data")
+      )
+
+    assert dict_modal_html =~ ~s(phx-value-modal="dict-data" phx-disable-with="处理中…">取消</button>)
+
+    notice_modal_html =
+      render_component(
+        &System.notices/1,
+        Map.put(
+          Map.take(system_assigns, [:notice_rows, :notice_form, :notice_feedback]),
+          :active_modal,
+          "notice"
+        )
+      )
+
+    assert notice_modal_html =~ "save-notice"
+    assert notice_modal_html =~ ~s(phx-value-modal="notice" phx-disable-with="处理中…">取消</button>)
 
     assert render_component(
              &System.logs/1,
@@ -453,6 +485,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     assert jobs_html =~ "select-job"
     assert jobs_html =~ "toggle-all-job-selection"
     assert jobs_html =~ "delete-jobs"
+    assert jobs_html =~ ~s(phx-value-modal="job" phx-disable-with="处理中…">取消</button>)
 
     assert render_component(
              &Operations.job_logs/1,
