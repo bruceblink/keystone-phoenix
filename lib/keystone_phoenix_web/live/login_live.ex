@@ -19,6 +19,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenixWeb.Live.AdminEvents.Operations, as: OperationsEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.Organization, as: OrganizationEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.System, as: SystemEvents
+  alias KeystonePhoenixWeb.Live.AdminEvents.Audit, as: AuditEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.Security, as: SecurityEvents
   alias KeystonePhoenixWeb.Live.LoginEvents
 
@@ -261,8 +262,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("paginate", _params, socket), do: {:noreply, socket}
 
   @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts export-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles export-roles new-role edit-role save-role toggle-role-status delete-role select-role assign-role-user unassign-role-user refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
-  @accounts_events ~w(filter-users reset-user-filter refresh-users export-users download-user-template import-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
+  @accounts_events ~w(filter-users reset-user-filter refresh-users export-users download-user-template new-user-import toggle-user-selection toggle-all-user-selection delete-users import-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
   @system_events ~w(refresh-config filter-configs reset-config-filter new-config edit-config save-config refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs refresh-login-logs refresh-operation-logs new-notice edit-notice cancel-notice save-notice toggle-notice-status publish-notice delete-notice refresh-notices filter-notices reset-notice-filter delete-login-log delete-operation-log)
+  @audit_events ~w(filter-login-logs reset-login-log-filter filter-operation-logs reset-operation-log-filter filter-dict-types reset-dict-type-filter export-login-logs export-operation-logs)
   @operations_events ~w(refresh-jobs filter-jobs reset-job-filter new-job edit-job save-job delete-job run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor logout-online-user)
   @security_events ~w(refresh-api-keys new-api-key save-api-key rotate-api-key revoke-api-key filter-api-keys dismiss-api-key-secret)
 
@@ -275,6 +277,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   def handle_event(event, params, socket) when event in @system_events,
     do: SystemEvents.handle_event(event, params, socket)
+
+  def handle_event(event, params, socket) when event in @audit_events,
+    do: AuditEvents.handle_event(event, params, socket)
 
   def handle_event(event, params, socket) when event in @operations_events,
     do: OperationsEvents.handle_event(event, params, socket)
@@ -353,15 +358,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
         <link rel="stylesheet" href="/css/keystone.css" />
       </head>
       <body>
-        <main class="app-main">
-          <section class={if @current_user, do: "shell app-shell dashboard-shell", else: "shell app-shell login-shell"}>
+        <main class={if @current_user, do: "app-main dashboard-main", else: "app-main"}>
+          <section class={if @current_user, do: "shell app-shell dashboard-shell", else: "login-page"}>
             <%= if @current_user do %>
               <div class="dashboard">
-                <div class="sidebar-brand">
+                  <div class="sidebar-brand sidebar-head">
                   <div class="brand-mark" aria-hidden="true">KP</div>
                   <div>
-                    <strong>Keystone Phoenix</strong>
-                    <span>企业运营管理平台</span>
+                    <strong>KEYSTONE</strong>
+                    <span>Phoenix LiveView</span>
                   </div>
                 </div>
                 <div class="topbar dashboard-topbar">
@@ -369,13 +374,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <p class="eyebrow">Keystone Phoenix · 管理平台</p>
                     <h2><%= if @read_only, do: "个人中心", else: "管理概览" %></h2>
                   </div>
-                  <div class="user">
-                    <span class="user-avatar" aria-hidden="true">KP</span>
-                    <div>
-                      <strong><%= @current_user["nickname"] || @current_user["username"] %></strong>
-                      <span>@<%= @current_user["username"] %></span>
-                    </div>
-                    <button type="button" class="secondary" phx-click="logout" phx-disable-with="退出中…">退出</button>
+                  <div class="user topbar-actions user-menu">
+                    <button type="button" class="user-profile-button" phx-click="show-panel" phx-value-panel="profile" aria-label="打开个人资料">
+                      <span class="user-avatar" aria-hidden="true">KP</span>
+                      <span>
+                        <strong><%= @current_user["nickname"] || @current_user["username"] %></strong>
+                        <span>@<%= @current_user["username"] %></span>
+                      </span>
+                    </button>
+                    <button type="button" class="button button-ghost logout-button secondary" phx-click="logout" phx-disable-with="退出中…">退出</button>
                   </div>
                 </div>
                 <p :if={@mfa_step_up_notice} id="mfa-step-up-notice" class="notice" role="status"><%= @mfa_step_up_notice %></p>
@@ -415,8 +422,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <button :if={@panel_access["jobs"]} data-icon="↻" type="button" class={if @active_panel == "jobs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "jobs", do: "page"} phx-value-panel="jobs">定时任务</button>
                     <button :if={@panel_access["job-logs"]} data-icon="≋" type="button" class={if @active_panel == "job-logs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "job-logs", do: "page"} phx-value-panel="job-logs">任务日志</button>
                     <button :if={@panel_access["monitor"]} data-icon="◉" type="button" class={if @active_panel == "monitor", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "monitor", do: "page"} phx-value-panel="monitor">监控</button>
-                    <span class="nav-section-title">账号</span>
-                    <button data-icon="◎" type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "profile", do: "page"} phx-value-panel="profile">个人资料</button>
                   </nav>
                   <div class="page-content">
                   <%= case @active_panel do %>
@@ -457,15 +462,15 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "configs" -> %>
                       <.configs config_rows={@config_rows} config_form={@config_form} config_feedback={@config_feedback} active_modal={@active_modal} read_only={@read_only} />
                     <% "dicts" -> %>
-                      <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} active_modal={@active_modal} dict_data_page_num={@page_nums["dict-data"]} dict_data_page_size={@page_sizes["dict-data"]} read_only={@read_only} />
+                      <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} active_modal={@active_modal} dict_data_page_num={@page_nums["dict-data"]} dict_data_page_size={@page_sizes["dict-data"]} dict_type_filter={@dict_type_filter} read_only={@read_only} />
                     <% "notices" -> %>
                       <.notices notice_rows={@notice_rows} notice_form={@notice_form} notice_feedback={@notice_feedback} active_modal={@active_modal} read_only={@read_only} />
                     <% "logs" -> %>
-                      <.logs login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["login-logs"]} read_only={@read_only} />
+                      <.logs login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_log_filter={@login_log_filter} operation_log_filter={@operation_log_filter} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["login-logs"]} read_only={@read_only} />
                     <% "login-logs" -> %>
-                      <.logs kind="login" login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["login-logs"]} read_only={@read_only} />
+                      <.logs kind="login" login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_log_filter={@login_log_filter} operation_log_filter={@operation_log_filter} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["login-logs"]} read_only={@read_only} />
                     <% "operation-logs" -> %>
-                      <.logs kind="operation" login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["operation-logs"]} read_only={@read_only} />
+                      <.logs kind="operation" login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_log_filter={@login_log_filter} operation_log_filter={@operation_log_filter} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["operation-logs"]} read_only={@read_only} />
                     <% "jobs" -> %>
                       <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} active_modal={@active_modal} page_num={@page_nums["jobs"]} page_size={@page_sizes["jobs"]} read_only={@read_only} />
                     <% "job-logs" -> %>
@@ -480,8 +485,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   </div>
                 <% else %>
                   <nav class="module-nav" aria-label="个人模块">
-                    <span class="nav-section-title">账号</span>
-                    <button data-icon="◎" type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "profile", do: "page"} phx-value-panel="profile">个人资料</button>
                   </nav>
                   <div class="page-content">
                   <%= if @active_panel == "profile" do %>
@@ -497,18 +500,20 @@ defmodule KeystonePhoenixWeb.LoginLive do
                 <% end %>
               </div>
             <% else %>
-              <div class="brand hero-copy">
-                <p>Keystone Phoenix</p>
-                <h1>企业运营管理平台</h1>
-                <p>统一管理组织架构、账号权限与系统运营，为日常业务提供清晰、可靠的工作入口。</p>
-                <div class="hero-points" aria-label="平台能力">
-                  <span>实时状态</span><span>细粒度权限</span><span>安全审计</span>
+              <section class="login-intro">
+                <div class="brand-mark" aria-hidden="true">KP</div>
+                <p class="eyebrow">KEYSTONE NATIVE / ADMIN</p>
+                <h1>把平台状态，<span>放在一个清晰的工作台。</span></h1>
+                <p class="login-lede">从登录、授权到运行监控，管理前端只保留完成运维判断所需的证据。</p>
+                <div class="login-signals" aria-label="平台能力">
+                  <div><strong>30s</strong><span>健康快照刷新</span></div>
+                  <div><strong>99.9%</strong><span>API 可用目标</span></div>
                 </div>
-              </div>
+              </section>
               <div class="card login-card">
-                <div class="login-card-heading">
-                  <span class="login-badge">安全登录</span>
-                  <span class="muted">欢迎回来</span>
+                <div class="login-card-header">
+                  <div class="brand-mark brand-mark-small" aria-hidden="true">KP</div>
+                  <div><p class="eyebrow">安全登录</p><h2>进入管理台</h2></div>
                 </div>
                 <%= if @mfa_challenge do %>
                   <form id="mfa-login-form" class="login-form" phx-submit="verify-login-mfa">
@@ -522,7 +527,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   </form>
                 <% else %>
                   <form id="login-form" class="login-form" phx-submit="login">
-                    <h2>账号登录</h2>
                     <label for="username">用户名</label>
                     <input id="username" name="username" value={@username} autocomplete="username" required />
                     <label for="password">密码</label>
@@ -534,9 +538,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
                       <input id="captcha-code" name="captchaCode" value="" autocomplete="off" required />
                     </div>
                     <%= if @login_error do %><p class="error" role="alert"><%= @login_error %></p><% end %>
-                    <button type="submit" phx-disable-with="登录中…">登录</button>
+                    <button type="submit" class="login-submit" phx-disable-with="登录中…">登录</button>
                   </form>
                 <% end %>
+                <p class="login-footnote">访问令牌只保存在当前页面内存，页面刷新后需要重新登录。</p>
               </div>
             <% end %>
           </section>

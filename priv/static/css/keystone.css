@@ -560,3 +560,29 @@ table button.danger-action:hover {
 .monitor-session-table code { color: var(--muted-strong); font-size: 12px; }.monitor-session-cards { display: none; }.monitor-session-card { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: rgba(19,34,56,.8); }.monitor-session-card + .monitor-session-card { margin-top: 9px; }.monitor-session-card > div { display: flex; justify-content: space-between; gap: 10px; }.monitor-session-card span { color: var(--muted); font-size: 12px; }.monitor-session-card dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }.monitor-session-card dt { color: var(--muted); font-size: 11px; }.monitor-session-card dd { margin: 3px 0 0; color: var(--text); font-size: 12px; overflow-wrap: anywhere; }.monitor-session-card button { width: auto; margin: 0; }
 @media (max-width: 900px) { .monitor-layout { grid-template-columns: 1fr; }.monitor-inspector { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }.monitor-inspector-note { grid-column: 1 / -1; }.monitor-health-strip { grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(110px, 1fr)); } }
 @media (max-width: 640px) { .monitor-command-bar, .monitor-section-heading { align-items: flex-start; flex-direction: column; }.monitor-command-actions { justify-content: flex-start; }.monitor-health-strip, .monitor-inspector { grid-template-columns: 1fr 1fr; }.monitor-health-summary { grid-column: 1 / -1; }.monitor-chart-panel, .monitor-session-panel, .monitor-inspector-section, .monitor-inspector-note { padding: 16px; }.monitor-chart { margin-inline: -4px; }.monitor-chart-footer { align-items: flex-start; flex-direction: column; gap: 7px; }.monitor-source { margin-left: 0; }.monitor-session-table { display: none; }.monitor-session-cards { display: block; }.monitor-session-card button { width: 100%; }.monitor-updated { order: 3; width: 100%; }.monitor-command-actions .refresh { min-height: 40px; } }
+
+/* LiveView 壳覆盖 admin-web 的精确尺寸和登录页结构。 */
+main.app-main.dashboard-main { width: 100%; max-width: none; margin: 0; padding: 0; }
+.dashboard-shell { min-height: 100vh; width: 100%; gap: 0; }
+.dashboard { grid-template-columns: 244px minmax(0, 1fr); grid-template-rows: 76px minmax(0, 1fr); gap: 0; min-height: 100vh; }
+.sidebar-brand { min-height: 76px; padding: 0 22px; border-right: 1px solid var(--line); border-bottom: 1px solid rgba(32,50,75,.72); background: #0a1525; }
+.sidebar-brand .brand-mark { width: 34px; height: 34px; border-radius: 10px; font-size: 12px; }
+.dashboard-topbar { min-height: 76px; padding: 0 32px; border-bottom: 1px solid var(--line); background: rgba(8,17,31,.8); }
+.dashboard-topbar h2 { margin: 0; font-size: 18px; letter-spacing: 0; }
+.dashboard > .module-nav { top: 0; min-height: calc(100vh - 76px); margin: 0; padding: 24px 12px; border: 0; border-right: 1px solid var(--line); border-radius: 0; background: #0a1525; box-shadow: none; }
+.dashboard > .module-nav::before { margin: 0 10px 9px; content: "工作台"; }
+.dashboard > .module-nav button { min-height: 42px; border-radius: 9px; padding: 0 12px; }
+.dashboard > .module-nav button.active { background: #162844; box-shadow: inset 3px 0 0 var(--cyan); }
+.page-content { padding: 34px 32px 60px; background: var(--bg); }
+.page-content > .panel, .page-content > .card { border-radius: 14px; }
+.login-page { min-height: 100vh; display: grid; place-items: center; overflow: hidden; padding: 0; background: radial-gradient(circle at 10% 80%, rgba(52,108,167,.16), transparent 33%), var(--bg); }
+.login-page > .login-intro, .login-page > .login-card { min-width: 0; }
+.login-intro { width: auto; grid-column: auto; }
+.login-page { grid-template-columns: minmax(0, 1.1fr) minmax(360px, .9fr); gap: 10%; padding: 48px; }
+.login-card { width: 100%; max-width: 480px; padding: 27px; }
+.login-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 29px; }
+.login-card-header h2 { margin: 6px 0 0; font-size: 24px; }
+.login-submit { width: 100%; min-height: 46px; margin-top: 6px; }
+.login-footnote { display: flex; margin: 19px 0 0; color: #71859f; font-size: 10px; line-height: 1.6; }
+.user-profile-button { display: flex; align-items: center; gap: 10px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; }
+@media (max-width: 850px) { .dashboard { grid-template-columns: 1fr; grid-template-rows: auto auto auto minmax(0,1fr); }.sidebar-brand, .dashboard-topbar, .dashboard > .module-nav, .page-content { grid-column: 1; }.sidebar-brand { grid-row: 1; }.dashboard-topbar { grid-row: 2; }.dashboard > .module-nav { grid-row: 3; min-height: auto; border-right: 0; }.page-content { grid-row: 4; }.login-page { display: block; padding: 24px; }.login-intro { width: 100%; }.login-card { margin: 34px auto 0; } }
