@@ -4,16 +4,18 @@
 
 ## 2026-11-15 当前审查与下一轮主线
 
-本轮审查以 Phoenix `61511e7`、admin-web `a7f95a4` 和 Native `779d80b` 为代码基线。`/api/v1` 接口集合共 108 条，包含 `/api/v1/health`，业务方法分布为 `GET 42`、`POST 29`、`PUT 20`、`DELETE 17`；标准 JWK Set 另有 1 条路径。归一化后 Native-only、Phoenix-only 和重复 `HTTP method + path` 均为 0。admin-web 当前调用的接口全部存在于两个后端，Swagger 文档入口不计入 `/api/v1` 接口集合。
+本轮审查以 Phoenix `79ce1dc`、admin-web `86ea75a` 和 Native `779d80b` 为代码基线。`/api/v1` 接口集合共 108 条，包含 `/api/v1/health`，业务方法分布为 `GET 42`、`POST 29`、`PUT 20`、`DELETE 17`；标准 JWK Set 另有 1 条路径。归一化后 Native-only、Phoenix-only 和重复 `HTTP method + path` 均为 0。admin-web 当前调用的接口全部存在于两个后端，Swagger 文档入口不计入 `/api/v1` 接口集合。
 
 前端闭环要求已写入全局记忆并作为本阶段验收条件：每个页面必须完成入口、查询或筛选、加载、成功、错误、空态、分页、编辑/删除/批量操作、详情和结果回到当前页面的完整逻辑；按钮不能只改变视觉状态，也不能跳转到错误的管理页面。通知铃铛只展开站内通知列表，点击列表项显示详情；登录在当前浏览器已有有效会话时直接进入 dashboard，其他活动会话返回 409 时显示取消/强制登录弹窗，强制选项继续传递到 API 和 MFA 流程。
 
-本轮已完成通知列表/详情、通知读取错误重试、活动会话登录确认、MFA 阶段活动会话强制接管、严格 Native DTO 字段、旧审计删除权限与迁移清理、无对应接口的审计权限标识清理、Swagger Try-it-out 地址和 CSP 修复，以及 LiveView 来源徽标和 admin-web 窄屏标题布局修复。Phoenix 集成测试当前为 410 项通过；admin-web `pnpm test:run` 为 86 项通过，并已通过 `pnpm typecheck` 和 `pnpm build`。Native `./gradlew test --no-daemon --rerun-tasks` 返回 `BUILD SUCCESSFUL`。
+本轮已完成通知列表/详情、通知读取错误重试、活动会话登录确认、MFA 阶段活动会话强制接管、严格 Native DTO 字段、API Key 重复配置入口清理、旧审计删除权限与迁移清理、无对应接口的审计权限标识清理、Swagger Try-it-out 地址和 CSP 修复，以及 LiveView 来源徽标和 admin-web 窄屏标题布局修复。Phoenix 集成测试当前为 410 项通过；admin-web `pnpm test:run` 为 86 项通过，并已通过 `pnpm typecheck` 和 `pnpm build`。Native `./gradlew test --no-daemon --rerun-tasks` 返回 `BUILD SUCCESSFUL`。
+
+Native 和 Phoenix 的同一份 admin-web 已通过 Chrome CDP 页面验收：活动会话 409 的取消/强制接管、MFA 继续、注销、站内通知列表/详情和通知铃铛不跳公告管理均通过；280、320、390、768 和 1280 宽度没有横向溢出。Codex 内置浏览器已优先打开页面，但当前会话只能排队打开、不能保持交互，因此本轮记录为 headless 实际页面证据，不声称可视窗口通过。
 
 下一轮按以下顺序执行：
 
-1. 使用同一份正式 admin-web 分别连接 Native 和 Phoenix，补齐通知列表/详情、当前会话直达、409 强制登录、MFA 继续和注销后的真实窗口验收。
-2. 按页面矩阵补齐加载、错误、分页、编辑、批量写入和详情返回的真实窗口记录，并记录每个后端的结果；未具备真实窗口证据的项目保持未完成状态。
+1. 按页面矩阵补齐剩余页面的加载、错误、分页、编辑、批量写入和详情返回验收，并记录每个后端的结果；未具备真实页面证据的项目保持未完成状态。
+2. 复核菜单类型选项、角色与用户分配入口，以及保留的头像专用接口是否属于正式发布范围；未确认过时前不删除可被其他客户端使用的接口。
 3. 安装或接入 Playwright 与 axe-core 后，执行登录、侧栏抽屉、通知弹层、菜单树和表单焦点的自动化回归；工具不可用时只报告代码和组件测试证据。
 4. 继续执行公网 IdP、浏览器/硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和正式发布窗口验收。这些检查不由本地代码测试替代。
 
