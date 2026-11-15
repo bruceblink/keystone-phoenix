@@ -508,7 +508,6 @@ main.app-main.dashboard-main { width: 100%; max-width: none; margin: 0; padding:
 .dashboard-topbar { min-height: 76px; padding: 0 32px; border-bottom: 1px solid var(--line); background: rgba(8,17,31,.8); }
 .dashboard-topbar h2 { margin: 0; font-size: 18px; letter-spacing: 0; }
 .dashboard > .module-nav { top: 0; min-height: calc(100vh - 76px); margin: 0; padding: 24px 12px; border: 0; border-right: 1px solid var(--line); border-radius: 0; background: #0a1525; box-shadow: none; }
-.dashboard > .module-nav::before { margin: 0 10px 9px; content: "工作台"; }
 .dashboard > .module-nav button { min-height: 42px; border-radius: 9px; padding: 0 12px; }
 .dashboard > .module-nav button.active { background: #162844; box-shadow: inset 3px 0 0 var(--cyan); }
 .page-content { padding: 34px 32px 60px; background: var(--bg); }
