@@ -50,7 +50,7 @@ defmodule KeystonePhoenixWeb.ApiDocsController do
     json(conn, %{
       "openapi" => "3.0.3",
       "info" => %{"title" => "Keystone API", "version" => "v1"},
-      "servers" => [%{"url" => "/api/v1"}],
+      "servers" => [%{"url" => "/"}],
       "paths" => paths
     })
   end

@@ -13,6 +13,7 @@ defmodule KeystonePhoenixWeb.ApiDocsControllerTest do
     assert body["openapi"] == "3.0.3"
     assert is_map(body["paths"])
     assert Map.has_key?(body["paths"], "/api/v1/users")
+    assert body["servers"] == [%{"url" => "/"}]
 
     api_openapi = get(build_conn(), "/api/openapi")
     assert json_response(api_openapi, 200)["openapi"] == "3.0.3"

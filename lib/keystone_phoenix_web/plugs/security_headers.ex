@@ -17,7 +17,7 @@ defmodule KeystonePhoenixWeb.Plugs.SecurityHeaders do
     {"content-security-policy",
      "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; " <>
        "img-src 'self' data:; connect-src 'self' ws: wss:; " <>
-       "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"}
+       "style-src 'self' 'unsafe-inline' https://unpkg.com; script-src 'self' 'unsafe-inline' https://unpkg.com"}
   ]
 
   @cors_methods "GET,POST,PUT,PATCH,DELETE,OPTIONS"

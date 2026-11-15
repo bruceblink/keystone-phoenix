@@ -31,7 +31,8 @@ defmodule KeystonePhoenixWeb.Plugs.SecurityHeadersTest do
              "camera=(), geolocation=(), microphone=()"
            ]
 
-    assert get_resp_header(conn, "content-security-policy") != []
+    assert [policy] = get_resp_header(conn, "content-security-policy")
+    assert policy =~ "https://unpkg.com"
     assert get_resp_header(conn, "strict-transport-security") == []
   end
 
