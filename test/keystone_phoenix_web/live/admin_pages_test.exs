@@ -144,6 +144,35 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     refute html =~ "save-dept"
   end
 
+  test "notice panel exposes title and publication filters" do
+    html =
+      render_component(&System.notices/1, %{
+        notice_rows: [
+          %{
+            "noticeId" => "notice-1",
+            "noticeTitle" => "维护公告",
+            "noticeContent" => "系统维护窗口",
+            "noticeType" => 2,
+            "status" => 1,
+            "published" => false,
+            "remark" => "",
+            "createTime" => "2026-11-15"
+          }
+        ],
+        notice_form: %{"noticeId" => ""},
+        notice_feedback: nil,
+        notice_filter: %{"title" => "", "published" => "all"},
+        read_only: false
+      })
+
+    assert html =~ ~s(phx-change="filter-notices")
+    assert html =~ ~s(name="noticeTitle")
+    assert html =~ ~s(name="published")
+    assert html =~ ~s(phx-click="reset-notice-filter")
+    assert html =~ ~s(phx-click="publish-notice")
+    assert html =~ "发布"
+  end
+
   test "high-volume account lists render accessible pagination controls" do
     rows =
       Enum.map(1..51, fn id ->
@@ -234,6 +263,10 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       )
 
     assert account_html =~ ~s(phx-click="refresh-users" phx-disable-with="刷新中…")
+    assert account_html =~ ~s(phx-submit="filter-users")
+    assert account_html =~ ~s(name="username")
+    assert account_html =~ ~s(name="displayName")
+    assert account_html =~ ~s(phx-click="reset-user-filter")
     assert account_html =~ ~s(class="table-scroll" role="region" tabindex="0")
     assert account_html =~ ~s(<th scope="col">用户名</th>)
     refute account_html =~ "save-user"

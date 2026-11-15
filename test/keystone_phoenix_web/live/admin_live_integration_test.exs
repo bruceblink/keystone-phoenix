@@ -88,6 +88,11 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert String.starts_with?(uploaded_admin.avatar, "/profile/avatar/")
 
     render_click(view, "show-panel", %{"panel" => "users"})
+    render_submit(view, "filter-users", %{"username" => admin.username, "displayName" => ""})
+    filtered_usernames = Enum.map(live_socket(view).assigns.user_rows, & &1["username"])
+    assert filtered_usernames != []
+    assert Enum.all?(filtered_usernames, &String.contains?(&1, admin.username))
+    render_click(view, "reset-user-filter")
     render_click(view, "export-users")
     assert_push_event(view, "download-xlsx", %{filename: "users.xlsx", content: content})
     assert byte_size(content) > 100
@@ -301,7 +306,32 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     })
 
     assert render(view) =~ "公告已创建"
-    assert Notice.list_notices(%{"noticeTitle" => notice_title, "pageSize" => 10}).total == 1
+
+    notice =
+      Notice.list_notices(%{"noticeTitle" => notice_title, "pageSize" => 10}).rows
+      |> List.first()
+
+    assert notice["published"] == false
+
+    render_click(view, "publish-notice", %{
+      "notice-id" => notice["noticeId"],
+      "published" => "true"
+    })
+
+    assert render(view) =~ "公告已发布"
+
+    published_notice =
+      Notice.list_notices(%{"noticeTitle" => notice_title, "pageSize" => 10}).rows
+      |> List.first()
+
+    assert published_notice["published"] == true
+
+    render_click(view, "publish-notice", %{
+      "notice-id" => notice["noticeId"],
+      "published" => "false"
+    })
+
+    assert render(view) =~ "公告已取消发布"
 
     render_click(view, "show-panel", %{"panel" => "logs"})
     assert has_element?(view, "button[phx-click='refresh-logs']")

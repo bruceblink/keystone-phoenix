@@ -13,6 +13,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Status do
   def success_failure(1), do: "status-badge--success"
   def success_failure(_status), do: "status-badge--failure"
 
+  def published(true), do: "status-badge--success"
+  def published(_published), do: "status-badge--paused"
+
   # 定时任务日志保留跳过和未知状态的独立语义。
   def job_log(0), do: "status-badge--failure"
   def job_log(1), do: "status-badge--success"

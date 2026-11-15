@@ -105,6 +105,28 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     end
   end
 
+  def handle_event("filter-notices", params, socket) do
+    if Support.panel_allowed?(socket, "notices") do
+      {:noreply,
+       assign(socket,
+         notice_filter: %{
+           "title" => String.trim(params["noticeTitle"] || ""),
+           "published" => params["published"] || "all"
+         }
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("reset-notice-filter", _params, socket) do
+    if Support.panel_allowed?(socket, "notices") do
+      {:noreply, assign(socket, notice_filter: %{"title" => "", "published" => "all"})}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("refresh-dicts", _params, socket) do
     if Support.panel_allowed?(socket, "dicts") do
       dictionary = Support.load_dictionary_for_socket(socket, socket.assigns.selected_dict_type)
@@ -453,6 +475,37 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
            assign(socket,
              notice_rows: Support.load_notices_for_socket(socket),
              notice_feedback: "公告状态已更新"
+           )}
+
+        {:error, :not_found} ->
+          {:noreply, assign(socket, notice_feedback: Feedback.error("找不到指定公告"))}
+
+        {:error, changeset} ->
+          {:noreply, assign(socket, notice_feedback: Support.form_error(changeset))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event(
+        "publish-notice",
+        %{"notice-id" => notice_id, "published" => published},
+        socket
+      ) do
+    if Support.permission_socket?(socket, "notice:update") do
+      case Notice.publish_notice(
+             notice_id,
+             published == "true",
+             authorization: self_authorization(socket)
+           ) do
+        {:ok, _notice} ->
+          message = if published == "true", do: "公告已发布", else: "公告已取消发布"
+
+          {:noreply,
+           assign(socket,
+             notice_rows: Support.load_notices_for_socket(socket),
+             notice_feedback: message
            )}
 
         {:error, :not_found} ->

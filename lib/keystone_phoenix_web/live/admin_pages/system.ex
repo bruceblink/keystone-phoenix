@@ -113,12 +113,18 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       assigns
       |> assign_new(:read_only, fn -> false end)
       |> assign_new(:active_modal, fn -> nil end)
+      |> assign_new(:notice_filter, fn -> %{"title" => "", "published" => "all"} end)
 
     ~H"""
     <div class="panel">
       <div class="form-actions"><button type="button" class="refresh" phx-click="refresh-notices" phx-disable-with="刷新中…">刷新公告</button></div>
       <%= if @notice_feedback do %><p id="notice-feedback" class={Feedback.class(@notice_feedback)} role={Feedback.role(@notice_feedback)} aria-live={Feedback.live(@notice_feedback)}><%= Feedback.message(@notice_feedback) %></p><% end %>
-      <p :if={@notice_rows == []} class="table-empty" role="status">暂无公告数据</p>
+      <form id="notice-filter" class="table-filters" phx-change="filter-notices" phx-submit="filter-notices">
+        <div><label for="notice-filter-title">标题或内容</label><input id="notice-filter-title" name="noticeTitle" value={@notice_filter["title"] || ""} placeholder="按标题或内容筛选" /></div>
+        <div><label for="notice-filter-published">发布状态</label><select id="notice-filter-published" name="published"><option value="all" selected={@notice_filter["published"] in [nil, "all"]}>全部状态</option><option value="true" selected={@notice_filter["published"] == "true"}>已发布</option><option value="false" selected={@notice_filter["published"] == "false"}>未发布</option></select></div>
+        <div class="form-actions"><button type="submit" class="refresh">查询</button><button type="button" class="refresh secondary" phx-click="reset-notice-filter">重置</button></div>
+      </form>
+      <p :if={filtered_notice_rows(@notice_rows, @notice_filter) == []} class="table-empty" role="status">暂无公告数据</p>
       <%= if @active_modal == "notice" do %>
         <.modal id="notice-modal" title={if @notice_form["noticeId"] == "", do: "新建公告", else: "编辑公告"} description="维护公告内容、状态和备注。">
     <form :if={!@read_only} aria-describedby="notice-feedback" phx-submit="save-notice">
@@ -135,12 +141,31 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         </.modal>
       <% end %>
       <div class="table-scroll" role="region" tabindex="0" aria-label="公告列表"><table><caption class="sr-only">公告列表</caption><thead><tr><th scope="col">标题</th><th scope="col">类型</th><th scope="col">内容</th><th scope="col">状态</th><th scope="col">备注</th><th scope="col">创建时间</th><th scope="col">操作</th></tr></thead><tbody>
-        <%= for notice <- @notice_rows do %>
-          <tr><td><%= notice["noticeTitle"] %></td><td><%= if notice["noticeType"] == 1, do: "通知", else: "公告" %></td><td><%= notice["noticeContent"] %></td><td><span class={"status-badge #{Status.normal_paused(notice["status"])}"}><%= if notice["status"] == 1, do: "正常", else: "停用" %></span></td><td><%= notice["remark"] || "" %></td><td><%= notice["createTime"] || "" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-notice" phx-value-notice-id={notice["noticeId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="toggle-notice-status" phx-value-notice-id={notice["noticeId"]} phx-value-status={if notice["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if notice["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-notice" phx-value-notice-id={notice["noticeId"]} phx-disable-with="删除中…">删除</button></td></tr>
+        <%= for notice <- filtered_notice_rows(@notice_rows, @notice_filter) do %>
+          <tr><td><%= notice["noticeTitle"] %></td><td><%= if notice["noticeType"] == 1, do: "通知", else: "公告" %></td><td><%= notice["noticeContent"] %></td><td><span class={"status-badge #{Status.normal_paused(notice["status"])}"}><%= if notice["status"] == 1, do: "正常", else: "停用" %></span></td><td><span class={"status-badge #{Status.published(notice["published"])}"}><%= if notice["published"], do: "已发布", else: "未发布" %></span></td><td><%= notice["remark"] || "" %></td><td><%= notice["createTime"] || "" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-notice" phx-value-notice-id={notice["noticeId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="toggle-notice-status" phx-value-notice-id={notice["noticeId"]} phx-value-status={if notice["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if notice["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="refresh" phx-click="publish-notice" phx-value-notice-id={notice["noticeId"]} phx-value-published={if notice["published"], do: "false", else: "true"} phx-disable-with="处理中…"><%= if notice["published"], do: "取消发布", else: "发布" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-notice" phx-value-notice-id={notice["noticeId"]} phx-disable-with="删除中…">删除</button></td></tr>
         <% end %>
       </tbody></table></div>
     </div>
     """
+  end
+
+  defp filtered_notice_rows(rows, filter) do
+    title = String.trim(to_string(filter["title"] || "")) |> String.downcase()
+    published = filter["published"] || "all"
+
+    Enum.filter(rows, fn notice ->
+      text =
+        "#{notice["noticeTitle"] || ""} #{notice["noticeContent"] || ""}" |> String.downcase()
+
+      title_match? = title == "" or String.contains?(text, title)
+
+      published_match? =
+        published == "all" or
+          (published == "true" and notice["published"] == true) or
+          (published == "false" and notice["published"] != true)
+
+      title_match? and published_match?
+    end)
   end
 
   def logs(assigns) do
