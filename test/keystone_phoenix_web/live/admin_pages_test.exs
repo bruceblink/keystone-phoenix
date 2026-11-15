@@ -493,8 +493,8 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
           "invokeTarget" => "system:health",
           "cronExpression" => "* * * * * *",
           "concurrent" => 0,
-          "status" => 1,
-          "statusStr" => "正常"
+          "status" => 0,
+          "statusStr" => "暂停"
         }
       ],
       job_form: %{
@@ -531,6 +531,10 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     assert jobs_html =~ "select-job"
     assert jobs_html =~ "toggle-all-job-selection"
     assert jobs_html =~ "delete-jobs"
+
+    assert jobs_html =~
+             ~s(phx-click="run-job" phx-value-job-id="1" phx-disable-with="执行中…" disabled)
+
     assert jobs_html =~ ~s(phx-value-modal="job" phx-disable-with="处理中…">取消</button>)
 
     filtered_jobs_html =

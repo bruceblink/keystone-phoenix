@@ -230,10 +230,15 @@ defmodule KeystonePhoenix.Job do
 
   defp do_run_job(id, scope) do
     with {:ok, job} <- get_job_scoped(id, scope),
+         :ok <- ensure_enabled(job),
          :ok <- Invoke.validate_target(job.invoke_target, job.job_params) do
       run_manual_job(job)
     end
   end
+
+  # 手动执行只允许启用任务，避免绕过 admin-web 的暂停状态约束。
+  defp ensure_enabled(%SysJob{status: 1}), do: :ok
+  defp ensure_enabled(%SysJob{}), do: {:error, :job_paused}
 
   defp run_manual_job(job) do
     timeout_ms = Application.get_env(:keystone_phoenix, :job_execution_timeout_ms, 30_000)

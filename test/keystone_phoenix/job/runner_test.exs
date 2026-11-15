@@ -84,6 +84,17 @@ defmodule KeystonePhoenix.Job.RunnerTest do
     assert lock_available?(job.job_id)
   end
 
+  test "manual execution rejects a paused job" do
+    job = create_job(status: 0)
+
+    assert {:error, :job_paused} =
+             KeystonePhoenix.Job.run_job(job.job_id,
+               authorization: %{principal: %{data_scope: "TENANT", permissions: ["job:run"]}}
+             )
+
+    assert logs(job.job_id) == []
+  end
+
   test "manual execution returns a resource error when the task supervisor is full" do
     {:ok, supervisor} = Task.Supervisor.start_link(max_children: 1)
     first_task = Task.Supervisor.async_nolink(supervisor, fn -> Process.sleep(5_000) end)

@@ -195,6 +195,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   def handle_event("run-job", %{"job-id" => job_id}, socket) do
     if Support.permission_socket?(socket, "job:run") do
       case Job.get_job(job_id, Support.authorization_options(socket, "job:read")) do
+        {:ok, %{status: 0}} ->
+          {:noreply, assign(socket, job_feedback: Feedback.error("任务已暂停，无法手动执行"))}
+
         {:ok, _job} ->
           live_view = self()
 

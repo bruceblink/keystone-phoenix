@@ -214,6 +214,12 @@ defmodule KeystonePhoenixWeb.JobController do
     |> json(ApiResponse.error(:validation_failed, "任务状态值无效"))
   end
 
+  defp render_error(conn, :job_paused) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "任务已暂停，无法手动执行"))
+  end
+
   defp render_error(conn, :not_running) do
     conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "没有正在运行的任务"))
   end
