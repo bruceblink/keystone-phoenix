@@ -1,36 +1,36 @@
 defmodule KeystonePhoenixWeb.ManagementContract do
   @moduledoc "HTTP 管理资源 DTO 与 Native/admin-web 约定的字段适配。"
 
-  @doc "把部门旧字段映射为 Native 部门字段，并保留旧字段供兼容读取。"
+  @doc "把部门内部字段转换为 Native 部门字段。"
   def department(row) when is_map(row) do
     id = row["deptId"] || row["id"]
 
-    Map.merge(row, %{
+    %{
       "id" => id,
       "parentId" => row["parentId"],
       "code" => row["code"] || generated_code("dept", id),
       "name" => row["deptName"] || row["name"],
       "sortOrder" => row["orderNum"] || row["sortOrder"] || 0,
       "enabled" => enabled?(row["status"])
-    })
+    }
   end
 
-  @doc "把岗位旧字段映射为 Native 岗位字段，并保留旧字段供兼容读取。"
+  @doc "把岗位内部字段转换为 Native 岗位字段。"
   def post(row) when is_map(row) do
-    Map.merge(row, %{
+    %{
       "id" => row["postId"] || row["id"],
       "code" => row["postCode"] || row["code"],
       "name" => row["postName"] || row["name"],
       "sortOrder" => row["postSort"] || row["sortOrder"] || 0,
       "enabled" => enabled?(row["status"])
-    })
+    }
   end
 
-  @doc "把单条菜单映射为 Native 菜单，同时保留 LiveView 使用的字段。"
+  @doc "把单条菜单转换为 Native 菜单字段。"
   def menu(row) when is_map(row) do
     id = row["menuId"] || row["id"]
 
-    Map.merge(row, %{
+    %{
       "id" => id,
       "parentId" => row["parentId"],
       "code" => row["code"] || generated_code("menu", id),
@@ -41,10 +41,10 @@ defmodule KeystonePhoenixWeb.ManagementContract do
       "permission" => nullable_string(row["permission"]),
       "sortOrder" => row["sortOrder"] || row["rank"] || 0,
       "enabled" => enabled?(row["status"])
-    })
+    }
   end
 
-  @doc "把扁平菜单列表构建为 Native 菜单树，并在节点顶层保留旧字段。"
+  @doc "把扁平菜单列表构建为 Native 菜单树。"
   def menu_tree(rows) when is_list(rows) do
     items = Enum.map(rows, &menu/1)
     ids = MapSet.new(items, & &1["id"])
@@ -54,38 +54,38 @@ defmodule KeystonePhoenixWeb.ManagementContract do
     |> Enum.map(&menu_node(&1, items))
   end
 
-  @doc "把配置旧字段映射为 Native 配置字段。"
+  @doc "把配置内部字段转换为 Native 配置字段。"
   def config(row) when is_map(row) do
-    Map.merge(row, %{
+    %{
       "id" => row["configId"] || row["id"],
       "key" => row["configKey"] || row["key"],
       "value" => row["configValue"] || row["value"],
       "description" => row["remark"] || row["description"],
-      "enabled" => enabled?(row["enabled"]),
+      "enabled" => enabled?(row["enabled"] || row["status"]),
       "updatedAt" => row["updatedAt"] || row["updateTime"] || row["createTime"]
-    })
+    }
   end
 
-  @doc "把字典类型旧字段映射为 Native 字典类型字段。"
+  @doc "把字典类型内部字段转换为 Native 字典类型字段。"
   def dictionary_type(row) when is_map(row) do
-    Map.merge(row, %{
+    %{
       "id" => row["dictId"] || row["id"],
       "code" => row["dictType"] || row["code"],
       "name" => row["dictName"] || row["name"],
       "enabled" => enabled?(row["status"])
-    })
+    }
   end
 
-  @doc "把字典条目旧字段映射为 Native 字典条目字段。"
+  @doc "把字典条目内部字段转换为 Native 字典条目字段。"
   def dictionary_item(row) when is_map(row) do
-    Map.merge(row, %{
+    %{
       "id" => row["dictCode"] || row["id"],
       "typeCode" => row["dictType"] || row["typeCode"],
       "value" => to_string(row["dictValue"] || row["value"] || ""),
       "label" => row["dictLabel"] || row["label"],
       "sortOrder" => row["dictSort"] || row["sortOrder"] || 0,
       "enabled" => enabled?(row["status"])
-    })
+    }
   end
 
   @doc "把 Native 部门写入字段转换为 Phoenix 领域字段。"
@@ -144,7 +144,7 @@ defmodule KeystonePhoenixWeb.ManagementContract do
     children =
       items |> Enum.filter(&(&1["parentId"] == item["id"])) |> Enum.map(&menu_node(&1, items))
 
-    Map.merge(item, %{"menu" => item, "children" => children})
+    %{"menu" => item, "children" => children}
   end
 
   defp copy(params, source, target) do

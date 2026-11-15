@@ -63,9 +63,9 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
                200
              )
 
-    assert Enum.any?(rows, &(&1["dictType"] == dict_type))
+    assert Enum.any?(rows, &(&1["typeCode"] == dict_type))
 
-    data_code = Enum.find(rows, &(&1["dictType"] == dict_type))["dictCode"]
+    data_code = Enum.find(rows, &(&1["typeCode"] == dict_type))["id"]
 
     assert delete(authorized(build_conn(), token), "/api/v1/dictionaries/items/#{data_code}").status ==
              200
@@ -102,7 +102,7 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
 
     assert get(authorized(build_conn(), token), "/api/v1/configs/#{config_key}")
            |> json_response(200)
-           |> get_in(["data", "configValue"]) == "更新值"
+           |> get_in(["data", "value"]) == "更新值"
 
     assert post(authorized(build_conn(), token), "/api/v1/notices", %{
              "title" => notice_title,

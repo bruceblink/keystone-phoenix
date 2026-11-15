@@ -20,9 +20,9 @@ defmodule KeystonePhoenixWeb.MenuManagementControllerTest do
 
     response = get(authorized(build_conn(), token), "/api/v1/menus")
     assert %{"success" => true, "data" => rows} = json_response(response, 200)
-    root_row = Enum.find(rows, &(&1["id"] == root.menu_id))
-    assert root_row["enabled"] == false
-    assert Enum.any?(root_row["children"], &(&1["id"] == child.menu_id))
+    root_row = Enum.find(rows, &(&1["menu"]["id"] == root.menu_id))
+    assert root_row["menu"]["enabled"] == false
+    assert Enum.any?(root_row["children"], &(&1["menu"]["id"] == child.menu_id))
 
     assert %{"success" => true, "data" => %{"roleCodes" => []}} =
              json_response(
@@ -76,9 +76,9 @@ defmodule KeystonePhoenixWeb.MenuManagementControllerTest do
     token = login(user)
 
     rows = json_response(get(authorized(build_conn(), token), "/api/v1/menus"), 200)["data"]
-    assert Enum.any?(rows, &(&1["id"] == enabled.menu_id))
-    refute Enum.any?(rows, &(&1["id"] == disabled.menu_id))
-    refute Enum.any?(rows, &(&1["id"] == unassigned.menu_id))
+    assert Enum.any?(rows, &(&1["menu"]["id"] == enabled.menu_id))
+    refute Enum.any?(rows, &(&1["menu"]["id"] == disabled.menu_id))
+    refute Enum.any?(rows, &(&1["menu"]["id"] == unassigned.menu_id))
 
     dropdown =
       json_response(get(authorized(build_conn(), token), "/api/v1/menus/dropdown"), 200)["data"]

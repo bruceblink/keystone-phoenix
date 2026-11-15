@@ -156,7 +156,10 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     assert %{"success" => true, "data" => rows} =
              json_response(get(fresh_conn.(), "/api/v1/menus"), 200)
 
-    assert Enum.any?(rows, &(&1["id"] == created["id"] and &1["enabled"] == false))
+    assert Enum.any?(
+             rows,
+             &(&1["menu"]["id"] == created["id"] and &1["menu"]["enabled"] == false)
+           )
 
     assert %{"success" => true, "data" => %{"updated" => true}} =
              json_response(

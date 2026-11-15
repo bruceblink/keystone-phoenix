@@ -21,24 +21,32 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     assert %{"success" => true, "data" => menus} =
              json_response(get(conn, "/api/v1/menus"), 200)
 
-    menu = Enum.find(menus, &(&1["id"] == fixtures.page_menu.menu_id))
-    assert menu["menuId"] == fixtures.page_menu.menu_id
-    assert menu["isButton"] == false
-    assert menu["menuTypeStr"] == "页面"
-    assert menu["statusStr"] == "正常"
+    menu_node = Enum.find(menus, &(&1["menu"]["id"] == fixtures.page_menu.menu_id))
+    menu = menu_node["menu"]
+
+    assert Map.keys(menu) |> Enum.sort() ==
+             ~w(code component enabled id menuType name parentId path permission sortOrder)
+
+    refute Map.has_key?(menu, "menuId")
+    refute Map.has_key?(menu, "isButton")
+    refute Map.has_key?(menu, "menuTypeStr")
+    refute Map.has_key?(menu, "statusStr")
 
     assert %{"success" => true, "data" => departments} =
              json_response(get(conn, "/api/v1/departments"), 200)
 
     department = Enum.find(departments, &(&1["id"] == fixtures.department.dept_id))
-    assert department["deptId"] == fixtures.department.dept_id
-    assert department["statusStr"] == "正常"
+    assert Map.keys(department) |> Enum.sort() == ~w(code enabled id name parentId sortOrder)
+    refute Map.has_key?(department, "deptId")
+    refute Map.has_key?(department, "statusStr")
 
     assert %{"success" => true, "data" => posts} =
              json_response(get(conn, "/api/v1/posts?pageSize=50"), 200)
 
     post = Enum.find(posts, &(&1["id"] == fixtures.post.post_id))
-    assert post["statusStr"] == "正常"
+    assert Map.keys(post) |> Enum.sort() == ~w(code enabled id name sortOrder)
+    refute Map.has_key?(post, "postId")
+    refute Map.has_key?(post, "statusStr")
 
     assert %{"success" => true, "data" => users_page} =
              json_response(get(conn, "/api/v1/users?userId=#{fixtures.user.user_id}"), 200)
@@ -57,8 +65,10 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     assert %{"success" => true, "data" => dict_data} =
              json_response(get(conn, "/api/v1/dictionaries/contract.status/items"), 200)
 
-    dict = Enum.find(dict_data, &(&1["dictCode"] == fixtures.dict_data.dict_code))
-    assert dict["isDefault"] == 1
+    dict = Enum.find(dict_data, &(&1["id"] == fixtures.dict_data.dict_code))
+    assert Map.keys(dict) |> Enum.sort() == ~w(enabled id label sortOrder typeCode value)
+    refute Map.has_key?(dict, "dictCode")
+    refute Map.has_key?(dict, "isDefault")
 
     assert %{"success" => true, "data" => notices} =
              json_response(get(build_conn(), "/api/v1/notices"), 200)
