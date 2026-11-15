@@ -22,21 +22,16 @@ defmodule KeystonePhoenixWeb.JobController do
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.NativeContract
 
-  @doc "Returns a paginated scheduled job list."
+  @doc "按 Native 约定返回任务数组。"
   def list(conn, params) do
     query_params = NativeContract.pagination_params(params)
 
     result =
-      if legacy_job_query?(params) do
-        Job.list_jobs(query_params, authorization: %{principal: conn.assigns.current_user})
-      else
-        Job.list_jobs_all(query_params, authorization: %{principal: conn.assigns.current_user})
-      end
+      Job.list_jobs_all(query_params, authorization: %{principal: conn.assigns.current_user})
 
     case result do
       {:ok, page} ->
-        data = if legacy_job_query?(params), do: page, else: NativeContract.jobs(page)
-        json(conn, ApiResponse.ok(data))
+        json(conn, ApiResponse.ok(NativeContract.jobs(page)))
 
       {:error, reason} ->
         render_error(conn, reason)
@@ -179,13 +174,6 @@ defmodule KeystonePhoenixWeb.JobController do
   defp native_job(job) do
     legacy = Job.job_to_map(job)
     Map.merge(NativeContract.job(legacy), legacy)
-  end
-
-  defp legacy_job_query?(params) do
-    Enum.any?(
-      ["jobName", "jobGroup", "status"],
-      &Map.has_key?(params, &1)
-    )
   end
 
   defp render_error(conn, :not_found) do

@@ -139,9 +139,11 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
   test "HTTP list, detail and export expose the same authorized set", ctx do
     {:ok, tokens} = Auth.login_plaintext(ctx.actor.username, "Strong!123")
     response = get(authorized(tokens.token), "/api/v1/users", %{"pageSize" => 50})
-    assert %{"data" => %{"total" => 3, "rows" => rows}} = json_response(response, 200)
+    response_data = json_response(response, 200)["data"]
+    assert %{"total" => 3, "items" => rows} = response_data
+    refute Map.has_key?(response_data, "rows")
     expected = MapSet.new([ctx.actor.user_id, ctx.oldest.user_id, ctx.descendant.user_id])
-    assert MapSet.new(Enum.map(rows, & &1["userId"])) == expected
+    assert MapSet.new(Enum.map(rows, & &1["id"])) == expected
 
     assert json_response(
              get(authorized(tokens.token), "/api/v1/users/#{ctx.oldest.user_id}"),
@@ -242,8 +244,10 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     Repo.update!(Ecto.Changeset.change(ctx.role, data_scope: "SELF"))
     token = step_up_token(ctx.actor)
     response = get(authorized(token), "/api/v1/users")
-    assert %{"data" => %{"total" => 1, "rows" => [row]}} = json_response(response, 200)
-    assert row["userId"] == ctx.actor.user_id
+    response_data = json_response(response, 200)["data"]
+    assert %{"total" => 1, "items" => [row]} = response_data
+    refute Map.has_key?(response_data, "rows")
+    assert row["id"] == ctx.actor.user_id
 
     response =
       put(authorized(token), "/api/v1/users/#{ctx.actor.user_id}", %{

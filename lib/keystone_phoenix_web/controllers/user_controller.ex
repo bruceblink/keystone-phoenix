@@ -94,8 +94,7 @@ defmodule KeystonePhoenixWeb.UserController do
   @doc "Returns a paginated list of users."
   def list(conn, params) do
     page = User.list_users(NativeContract.pagination_params(params), conn.assigns.current_user)
-    data = NativeContract.users_page(page, params) |> Map.put(:rows, page.rows)
-    json(conn, ApiResponse.ok(data))
+    json(conn, ApiResponse.ok(NativeContract.users_page(page, params)))
   end
 
   @doc "Returns a user without exposing its password."

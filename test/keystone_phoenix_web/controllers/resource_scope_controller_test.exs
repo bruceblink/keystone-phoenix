@@ -212,19 +212,16 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
              201
            )["success"]
 
-    owner_job_id = owner_id(owner_token, "/api/v1/jobs", %{"jobName" => job_name}, "jobId")
+    owner_job_id = owner_id(owner_token, "/api/v1/jobs", %{"jobName" => job_name}, "id")
 
     other_job_id =
-      owner_id(other_token, "/api/v1/jobs", %{"jobName" => job_name <> "_other"}, "jobId")
+      owner_id(other_token, "/api/v1/jobs", %{"jobName" => job_name <> "_other"}, "id")
 
     owner_notice_id = owner_notice_id(owner_token, %{"title" => notice_title})
 
     other_notice_id = owner_notice_id(other_token, %{"title" => notice_title <> "_other"})
 
-    assert %{
-             "success" => true,
-             "data" => %{"rows" => [%{"jobId" => ^owner_job_id}], "total" => 1}
-           } =
+    assert %{"success" => true, "data" => [%{"id" => ^owner_job_id}]} =
              json_response(
                get(authorized(build_conn(), owner_token), "/api/v1/jobs", %{
                  "jobName" => "owner_http_job"
@@ -303,25 +300,31 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
              200
            )["success"]
 
-    assert %{
-             "success" => true,
-             "data" => %{"rows" => [%{"jobId" => ^owner_job_id}], "total" => 1}
-           } =
-             json_response(
-               get(authorized(build_conn(), owner_token), "/api/v1/jobs/logs", %{}),
-               200
-             )
+    logs_response =
+      json_response(
+        get(authorized(build_conn(), owner_token), "/api/v1/jobs/logs", %{}),
+        200
+      )
 
     assert %{
              "success" => true,
-             "data" => %{"rows" => [], "total" => 0}
+             "data" => %{"items" => [%{"jobId" => ^owner_job_id}], "total" => 1}
            } =
-             json_response(
-               get(authorized(build_conn(), owner_token), "/api/v1/jobs/logs", %{
-                 "jobId" => other_job_id
-               }),
-               200
-             )
+             logs_response
+
+    refute Map.has_key?(logs_response["data"], "rows")
+
+    empty_logs_response =
+      json_response(
+        get(authorized(build_conn(), owner_token), "/api/v1/jobs/logs", %{
+          "jobId" => other_job_id
+        }),
+        200
+      )
+
+    assert %{"success" => true, "data" => %{"items" => [], "total" => 0}} = empty_logs_response
+
+    refute Map.has_key?(empty_logs_response["data"], "rows")
   end
 
   @tag :integration
@@ -453,7 +456,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
   defp owner_id(token, path, params, field) do
     response = get(authorized(build_conn(), token), path, params)
 
-    assert %{"data" => %{"rows" => [%{^field => id}], "total" => 1}} =
+    assert %{"data" => [%{^field => id}]} =
              json_response(response, 200)
 
     id
@@ -481,7 +484,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
              201
            )["success"]
 
-    owner_id(token, "/api/v1/jobs", %{"jobName" => name}, "jobId")
+    owner_id(token, "/api/v1/jobs", %{"jobName" => name}, "id")
   end
 
   defp list_cases(%{file_name: file_name}) do

@@ -122,8 +122,7 @@ defmodule KeystonePhoenixWeb.NativeContract do
       items: Enum.map(rows, &job_log/1),
       page: page(params),
       size: size(params),
-      total: total,
-      rows: rows
+      total: total
     }
   end
 
