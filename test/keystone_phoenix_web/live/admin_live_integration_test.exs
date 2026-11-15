@@ -305,6 +305,10 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert render(view) =~ "字典类型已创建"
     assert Dictionary.list_dict_types(%{"dictType" => dict_type, "pageSize" => 10}).total == 1
 
+    render_click(view, "paginate", %{"panel" => "dict-data", "page" => "2"})
+    render_click(view, "select-dict-type", %{"dict-type" => dict_type})
+    assert live_socket(view).assigns.page_nums["dict-data"] == 1
+
     render_submit(view, "save-dict-data", %{
       "dictCode" => "",
       "dictType" => dict_type,

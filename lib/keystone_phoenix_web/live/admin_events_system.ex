@@ -160,6 +160,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
          selected_dict_type: dict_type,
          dict_data_rows: Support.load_dict_data_for_socket(socket, dict_type),
          dict_data_form: Support.empty_dict_data_form(dict_type),
+         page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
          active_modal: nil
        )}
     else
