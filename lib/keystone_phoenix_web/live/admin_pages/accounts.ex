@@ -107,22 +107,25 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           </div>
           <span class="badge badge-info">LiveView</span>
         </div>
-        <div :if={@user_rows == []} class="users-empty" role="status"><span class="users-empty-icon" aria-hidden="true">◎</span><strong>没有匹配的用户</strong><p>调整筛选条件后重试，或清空筛选条件查看全部用户。</p></div>
-        <div class="table-wrap">
-          <div class="table-scroll" role="region" tabindex="0" aria-label="用户列表"><table class="users-table"><caption class="sr-only">用户列表</caption>
-            <% page_user_rows = page_rows(@user_rows, @page_num, @page_size) %>
-            <% all_selected = page_user_rows != [] and Enum.all?(page_user_rows, &(to_string(&1["userId"]) in @selected_user_ids)) %>
-            <thead><tr><th scope="col"><input type="checkbox" aria-label="选择当前页用户" checked={all_selected} phx-click="toggle-all-user-selection" phx-value-selected={if all_selected, do: "false", else: "true"} /></th><th scope="col">用户</th><th scope="col">UUID</th><th scope="col">部门</th><th scope="col">岗位</th><th scope="col">角色</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
-            <tbody>
-              <%= for user <- page_user_rows do %>
-                <tr>
-                  <td><input type="checkbox" aria-label={"选择用户 #{user["username"]}"} checked={to_string(user["userId"]) in @selected_user_ids} phx-click="toggle-user-selection" phx-value-user-id={user["userId"]} phx-value-selected={if to_string(user["userId"]) in @selected_user_ids, do: "false", else: "true"} /></td><td><div class="user-cell"><span class="user-cell-avatar"><%= String.first(user["nickname"] || user["username"] || "U") %></span><span><strong><%= user["nickname"] || "" %></strong><small><%= user["username"] %></small></span></div></td><td><code class="user-uuid"><%= user["userId"] %></code></td><td><%= user["deptName"] || "" %></td><td><%= user["postName"] || "" %></td><td><%= user["roleName"] || "" %></td><td><span class={"status-badge #{Status.normal_paused(user["status"])}"}><%= if user["status"] == 1, do: "正常", else: "停用" %></span></td>
-                  <td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost refresh" phx-click="edit-user" phx-value-user-id={user["userId"]} phx-disable-with="加载中…">编辑</button></td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table></div>
-        </div>
+        <% page_user_rows = page_rows(@user_rows, @page_num, @page_size) %>
+        <%= if page_user_rows == [] do %>
+          <div class="users-empty" role="status"><span class="users-empty-icon" aria-hidden="true">◎</span><strong>没有匹配的用户</strong><p>调整筛选条件后重试，或清空筛选条件查看全部用户。</p></div>
+        <% else %>
+          <div class="table-wrap">
+            <div class="table-scroll" role="region" tabindex="0" aria-label="用户列表"><table class="users-table"><caption class="sr-only">用户列表</caption>
+              <% all_selected = Enum.all?(page_user_rows, &(to_string(&1["userId"]) in @selected_user_ids)) %>
+              <thead><tr><th scope="col"><input type="checkbox" aria-label="选择当前页用户" checked={all_selected} phx-click="toggle-all-user-selection" phx-value-selected={if all_selected, do: "false", else: "true"} /></th><th scope="col">用户</th><th scope="col">UUID</th><th scope="col">部门</th><th scope="col">岗位</th><th scope="col">角色</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
+              <tbody>
+                <%= for user <- page_user_rows do %>
+                  <tr>
+                    <td><input type="checkbox" aria-label={"选择用户 #{user["username"]}"} checked={to_string(user["userId"]) in @selected_user_ids} phx-click="toggle-user-selection" phx-value-user-id={user["userId"]} phx-value-selected={if to_string(user["userId"]) in @selected_user_ids, do: "false", else: "true"} /></td><td><div class="user-cell"><span class="user-cell-avatar"><%= String.first(user["nickname"] || user["username"] || "U") %></span><span><strong><%= user["nickname"] || "" %></strong><small><%= user["username"] %></small></span></div></td><td><code class="user-uuid"><%= user["userId"] %></code></td><td><%= user["deptName"] || "" %></td><td><%= user["postName"] || "" %></td><td><%= user["roleName"] || "" %></td><td><span class={"status-badge #{Status.normal_paused(user["status"])}"}><%= if user["status"] == 1, do: "正常", else: "停用" %></span></td>
+                    <td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost refresh" phx-click="edit-user" phx-value-user-id={user["userId"]} phx-disable-with="加载中…">编辑</button></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table></div>
+          </div>
+        <% end %>
         <div class="table-card-footer">
           <.pagination panel="users" page_num={min(@page_num, page_count(length(@user_rows), @page_size))} page_size={@page_size} total={length(@user_rows)} />
         </div>

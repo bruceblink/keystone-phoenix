@@ -298,8 +298,8 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     assert account_html =~ ~s(name="username")
     assert account_html =~ ~s(name="displayName")
     assert account_html =~ ~s(phx-click="reset-user-filter")
-    assert account_html =~ ~s(class="table-scroll" role="region" tabindex="0")
-    assert account_html =~ ~s(<th scope="col">用户</th>)
+    refute account_html =~ ~s(class="table-scroll" role="region" tabindex="0")
+    refute account_html =~ ~s(<th scope="col">用户</th>)
     refute account_html =~ "save-user"
     assert account_html =~ "没有匹配的用户"
 
