@@ -460,7 +460,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "dicts" -> %>
                       <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} active_modal={@active_modal} dict_data_page_num={@page_nums["dict-data"]} dict_data_page_size={@page_sizes["dict-data"]} dict_type_filter={@dict_type_filter} read_only={@read_only} />
                     <% "notices" -> %>
-                      <.notices notice_rows={@notice_rows} notice_form={@notice_form} notice_feedback={@notice_feedback} active_modal={@active_modal} read_only={@read_only} />
+                      <.notices notice_rows={@notice_rows} notice_form={@notice_form} notice_feedback={@notice_feedback} active_modal={@active_modal} selected_notice_ids={@selected_notice_ids} notice_filter={@notice_filter} read_only={@read_only} />
                     <% "login-logs" -> %>
                       <.logs kind="login" login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_log_filter={@login_log_filter} operation_log_filter={@operation_log_filter} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["login-logs"]} read_only={@read_only} />
                     <% "operation-logs" -> %>

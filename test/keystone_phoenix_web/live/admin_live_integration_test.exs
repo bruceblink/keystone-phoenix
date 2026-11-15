@@ -338,6 +338,15 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
     render_click(view, "show-panel", %{"panel" => "notices"})
 
+    render_submit(view, "filter-notices", %{
+      "noticeTitle" => "no-such-live-notice",
+      "published" => "all"
+    })
+
+    assert render(view) =~ "没有匹配的公告"
+    refute render(view) =~ "notices-table-wrap"
+    render_click(view, "reset-notice-filter")
+
     render_submit(view, "save-notice", %{
       "noticeId" => "",
       "noticeTitle" => notice_title,
