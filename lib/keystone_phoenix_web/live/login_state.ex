@@ -103,6 +103,8 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       log_feedback: nil,
       user_form: Support.empty_user_form(),
       user_feedback: nil,
+      user_query: "",
+      user_display_name_query: "",
       profile_form: Support.empty_profile_form(),
       password_form: Support.empty_password_form(),
       profile_feedback: nil,

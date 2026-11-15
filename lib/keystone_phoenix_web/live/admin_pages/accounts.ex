@@ -15,6 +15,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:page_num, fn -> 1 end)
       |> assign_new(:page_size, fn -> 50 end)
+      |> assign_new(:user_query, fn -> "" end)
+      |> assign_new(:user_display_name_query, fn -> "" end)
       |> assign_new(:permissions, fn -> [] end)
       |> assign_new(:user_import_upload, fn -> nil end)
 
@@ -26,6 +28,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         <button :if={"user:export" in @permissions} type="button" class="refresh secondary" phx-click="export-users" phx-disable-with="导出中…">导出 XLSX</button>
         <button :if={"user:import" in @permissions} type="button" class="refresh secondary" phx-click="download-user-template" phx-disable-with="准备中…">下载导入模板</button>
       </div>
+      <form class="filter-bar" phx-submit="filter-users">
+        <label for="user-query">用户名</label>
+        <input id="user-query" name="username" value={@user_query} placeholder="按用户名筛选" autocomplete="off" />
+        <label for="user-display-name-query">昵称</label>
+        <input id="user-display-name-query" name="displayName" value={@user_display_name_query} placeholder="按昵称筛选" autocomplete="off" />
+        <div class="form-actions">
+          <button type="submit" class="refresh" phx-disable-with="查询中…">查询</button>
+          <button type="button" class="refresh secondary" phx-click="reset-user-filter" phx-disable-with="处理中…">重置</button>
+        </div>
+      </form>
       <%= if @user_feedback do %>
         <p id="user-feedback" class={Feedback.class(@user_feedback)} role={Feedback.role(@user_feedback)} aria-live={Feedback.live(@user_feedback)}><%= Feedback.message(@user_feedback) %></p>
       <% end %>

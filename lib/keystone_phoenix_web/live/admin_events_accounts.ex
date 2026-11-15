@@ -11,12 +11,35 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.UserController
 
+  def handle_event("filter-users", params, socket) do
+    if Support.panel_allowed?(socket, "users") do
+      filters = user_filter_params(params)
+
+      {:noreply,
+       assign(socket,
+         user_rows: Support.load_users_for_socket(socket, filters),
+         user_query: filters["username"],
+         user_display_name_query: filters["displayName"],
+         page_nums: Map.put(socket.assigns.page_nums, "users", 1),
+         user_feedback: nil,
+         active_modal: nil
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("reset-user-filter", _params, socket),
+    do: handle_event("filter-users", %{}, socket)
+
   def handle_event("refresh-users", _params, socket) do
     if Support.panel_allowed?(socket, "users") do
       {:noreply,
        assign(socket,
-         user_rows: Support.load_users_for_socket(socket),
+         user_rows: Support.load_users_for_socket(socket, %{}),
          page_nums: Map.put(socket.assigns.page_nums, "users", 1),
+         user_query: "",
+         user_display_name_query: "",
          user_form: Support.empty_user_form(),
          user_feedback: nil,
          active_modal: nil
@@ -144,7 +167,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
         {:ok, _user} ->
           {:noreply,
            assign(socket,
-             user_rows: Support.load_users_for_socket(socket),
+             user_rows: reload_users(socket),
              role_rows: Support.load_roles_for_socket(socket),
              user_form: Support.empty_user_form(),
              active_modal: nil,
@@ -178,7 +201,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           else
             {:noreply,
              assign(socket,
-               user_rows: Support.load_users_for_socket(socket),
+               user_rows: reload_users(socket),
                user_feedback: "用户状态已更新"
              )}
           end
@@ -206,7 +229,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
         :ok ->
           {:noreply,
            assign(socket,
-             user_rows: Support.load_users_for_socket(socket),
+             user_rows: reload_users(socket),
              role_rows: Support.load_roles_for_socket(socket),
              user_form: Support.empty_user_form(),
              active_modal: nil,
@@ -395,8 +418,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       [{:ok, %{"total" => total, "success" => success, "failed" => failed}}] ->
         message = "用户导入完成：成功 #{success} 条，失败 #{length(failed)} 条，共 #{total} 条"
 
-        {:noreply,
-         assign(socket, user_rows: Support.load_users_for_socket(socket), user_feedback: message)}
+        {:noreply, assign(socket, user_rows: reload_users(socket), user_feedback: message)}
 
       [{:error, reason}] ->
         {:noreply, assign(socket, user_feedback: Feedback.error(import_error_message(reason)))}
@@ -462,4 +484,22 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
     %{principal: principal}
   end
+
+  # 过滤条件只在事件入口清理一次，内部查询使用已确定的字符串值。
+  defp user_filter_params(params) do
+    %{
+      "username" => String.trim(to_string(params["username"] || "")),
+      "displayName" => String.trim(to_string(params["displayName"] || ""))
+    }
+  end
+
+  defp current_user_filters(socket) do
+    user_filter_params(%{
+      "username" => socket.assigns[:user_query],
+      "displayName" => socket.assigns[:user_display_name_query]
+    })
+  end
+
+  defp reload_users(socket),
+    do: Support.load_users_for_socket(socket, current_user_filters(socket))
 end

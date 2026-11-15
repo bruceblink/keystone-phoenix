@@ -142,16 +142,16 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     |> Map.put("profile", true)
   end
 
-  def load_users, do: load_all(&User.list_users/1)
+  def load_users(params \\ %{}), do: load_all(&User.list_users/1, params)
 
-  def load_users_for_user(user) do
-    load_all(fn params -> User.list_users(params, user) end)
+  def load_users_for_user(user, params \\ %{}) do
+    load_all(fn page -> User.list_users(page, user) end, params)
   end
 
-  def load_users_for_socket(socket) do
+  def load_users_for_socket(socket, params \\ %{}) do
     if admin_socket?(socket),
-      do: load_users(),
-      else: load_users_for_user(socket.assigns.current_user)
+      do: load_users(params),
+      else: load_users_for_user(socket.assigns.current_user, params)
   end
 
   def load_api_keys_for_socket(socket) do
