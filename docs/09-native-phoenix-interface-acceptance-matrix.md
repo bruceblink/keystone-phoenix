@@ -52,7 +52,7 @@ Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。�
 
 ## UI 验收边界
 
-Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（86 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 408 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon --rerun-tasks` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
+Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（86 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 410 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon --rerun-tasks` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
 
 个人资料密码更新已与 Native/admin-web 接口对齐：`PUT /api/v1/profile/password` 在 AAL2 会话中接收单个 `password` 字段，并在成功后撤销当前会话。Phoenix LiveView 个人资料页也只显示新密码字段。用户和任务列表 DTO 已在 Phoenix `61511e7` 收敛为 Native canonical 字段，旧字段不会通过兼容合并继续返回。
 
