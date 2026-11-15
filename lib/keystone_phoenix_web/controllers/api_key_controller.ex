@@ -57,8 +57,8 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
     else
       {:error, :permission_denied} -> render_error(conn, :permission_denied)
       {:error, :validation_failed} -> render_error(conn, :validation_failed)
-      {:error, :already_revoked} -> render_error(conn, :validation_failed, "API Key 已撤销")
-      {:error, :not_found} -> render_error(conn, :validation_failed, "API Key 不存在")
+      {:error, :already_revoked} -> render_error(conn, :already_revoked)
+      {:error, :not_found} -> render_error(conn, :not_found)
       {:error, reason} -> render_error(conn, reason)
     end
   end
@@ -74,7 +74,7 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
     else
       {:error, :permission_denied} -> render_error(conn, :permission_denied)
       {:error, :validation_failed} -> render_error(conn, :validation_failed)
-      {:error, :not_found} -> render_error(conn, :validation_failed, "API Key 不存在")
+      {:error, :not_found} -> render_error(conn, :not_found)
       {:error, reason} -> render_error(conn, reason)
     end
   end
@@ -141,6 +141,12 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
 
         :authorization_unavailable ->
           {:service_unavailable, :authorization_unavailable, "授权服务暂不可用"}
+
+        :already_revoked ->
+          {:conflict, :validation_failed, "API Key 已撤销"}
+
+        :not_found ->
+          {:not_found, :validation_failed, "API Key 不存在"}
 
         _ ->
           {:unprocessable_entity, :validation_failed, "请求参数无效"}

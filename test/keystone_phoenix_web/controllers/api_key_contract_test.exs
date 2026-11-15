@@ -86,6 +86,12 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
     assert %{"success" => true, "data" => %{"revoked" => true}} =
              json_response(delete(authorized_conn, "/api/v1/api-keys/#{replacement_id}"), 200)
 
+    missing_id = Identity.v7()
+
+    assert post(authorized_conn, "/api/v1/api-keys/#{missing_id}/rotate", %{}).status == 404
+    assert delete(authorized_conn, "/api/v1/api-keys/#{missing_id}").status == 404
+    assert post(authorized_conn, "/api/v1/api-keys/#{replacement_id}/rotate", %{}).status == 409
+
     final_metadata =
       authorized_conn
       |> get("/api/v1/api-keys")
