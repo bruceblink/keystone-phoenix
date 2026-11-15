@@ -52,9 +52,18 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert has_element?(view, "nav[aria-label='管理模块']")
     shell_html = render(view)
     assert shell_html =~ "Admin Console"
-    assert shell_html =~ "Keystone / 管理工作台"
+    assert has_element?(view, ".topbar-context .context-kicker", "Keystone")
+    assert has_element?(view, ".topbar-context .context-separator", "/")
+    assert has_element?(view, ".topbar-context", "管理工作台")
     refute shell_html =~ "Phoenix LiveView"
     refute shell_html =~ "Keystone Phoenix"
+    assert has_element?(view, ".sidebar-foot", "API 正常")
+    assert has_element?(view, ".sidebar-version", "v0.1.0 · dev")
+    assert has_element?(view, "button[aria-label='通知'] svg")
+    assert has_element?(view, "button[aria-label='打开个人资料'] .profile-chevron")
+    assert has_element?(view, "button.logout-button svg")
+    assert has_element?(view, "nav[aria-label='管理模块'] .nav-icon svg")
+    refute has_element?(view, ".dashboard-topbar h2")
     assert has_element?(view, "button[aria-label='打开导航']")
     refute has_element?(view, "nav[aria-label='管理模块'].sidebar-open")
     render_click(view, "toggle-sidebar")
