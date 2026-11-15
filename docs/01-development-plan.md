@@ -48,7 +48,7 @@
 
 ## 目标与范围
 
-将 Keystone 的账号、组织权限、系统管理、监控、定时任务和管理前端迁移到 Elixir、Phoenix、Ecto、PostgreSQL 和 LiveView。保留已确定的 HTTP 路径、有效输入、响应字段和业务行为。旧 Java 项目与 `keystone-frontend` 是接口参考，不要求视觉或实现方式逐项复制。
+将 Keystone 的账号、组织权限、系统管理、监控、定时任务和管理前端迁移到 Elixir、Phoenix、Ecto、PostgreSQL 和 LiveView。保留已确定的 HTTP 路径、有效输入、响应字段和业务行为。`keystone-admin-web` 是 Phoenix LiveView 的页面结构、交互、文案和响应式布局基准；LiveView 可以使用不同的实现方式，但不能保留与 admin-web 冲突的可见页面。
 
 当前采用单节点部署。PostgreSQL 保存业务数据与认证会话。Erlang 运行时内置表存储（Erlang Term Storage / ETS）只保存可以重建的验证码、缓存和本节点限流记录。它不负责跨节点同步。
 
