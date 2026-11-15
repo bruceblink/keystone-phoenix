@@ -30,11 +30,14 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     authentication_required
     authorization_unavailable
     data_scope_denied
+    https_required
     invalid_credential
     internal_error
     mfa_challenge_invalid
+    mfa_invalid_code
     mfa_required
     mfa_step_up_required
+    mfa_state_conflict
     permission_denied
     payload_too_large
     precondition_required

@@ -27,6 +27,7 @@ defmodule KeystonePhoenixWeb.Plugs.RequireHttpsTest do
     assert conn.halted
     assert conn.status == 426
     assert get_resp_header(conn, "x-content-type-options") == ["nosniff"]
+    assert %{"error" => %{"code" => "https_required"}} = Jason.decode!(conn.resp_body)
   end
 
   test "accepts HTTPS and trusted forwarded HTTPS" do

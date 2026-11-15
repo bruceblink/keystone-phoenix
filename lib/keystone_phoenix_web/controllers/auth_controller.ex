@@ -399,7 +399,7 @@ defmodule KeystonePhoenixWeb.AuthController do
             ] do
     conn
     |> put_status(:unauthorized)
-    |> json(ApiResponse.error(:invalid_credential, "MFA 验证码错误"))
+    |> json(ApiResponse.error(:mfa_invalid_code, "MFA 验证码错误"))
   end
 
   defp render_mfa_error(conn, :invalid_challenge) do
@@ -418,7 +418,7 @@ defmodule KeystonePhoenixWeb.AuthController do
        when reason in [:mfa_not_enrolled, :mfa_already_enabled, :mfa_enrollment_required] do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:precondition_required, "MFA 状态不满足当前操作"))
+    |> json(ApiResponse.error(:mfa_state_conflict, "MFA 状态不满足当前操作"))
   end
 
   defp render_mfa_error(conn, :already_logged_in),

@@ -15,10 +15,20 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       message_key: "auth.invalid_credentials"
     },
     "mfa_required" => %{status: 401, retryable: false, message_key: "auth.mfa_required"},
+    "mfa_invalid_code" => %{
+      status: 401,
+      retryable: false,
+      message_key: "auth.mfa_invalid_code"
+    },
     "mfa_step_up_required" => %{
       status: 403,
       retryable: false,
       message_key: "auth.mfa_step_up_required"
+    },
+    "mfa_state_conflict" => %{
+      status: 409,
+      retryable: false,
+      message_key: "auth.mfa_state_conflict"
     },
     "mfa_challenge_invalid" => %{
       status: 401,
@@ -45,6 +55,11 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       status: 413,
       retryable: false,
       message_key: "request.payload_too_large"
+    },
+    "https_required" => %{
+      status: 426,
+      retryable: false,
+      message_key: "request.https_required"
     },
     "validation_failed" => %{
       status: 422,

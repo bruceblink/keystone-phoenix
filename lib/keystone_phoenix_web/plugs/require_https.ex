@@ -15,9 +15,7 @@ defmodule KeystonePhoenixWeb.Plugs.RequireHttps do
       |> put_resp_header("x-frame-options", "DENY")
       |> send_resp(
         426,
-        Jason.encode!(
-          KeystonePhoenixWeb.ApiResponse.error(:authorization_unavailable, "HTTPS is required")
-        )
+        Jason.encode!(KeystonePhoenixWeb.ApiResponse.error(:https_required, "HTTPS is required"))
       )
       |> halt()
     else
