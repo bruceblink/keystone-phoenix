@@ -135,6 +135,112 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
     |> Repo.update!()
   end
 
+  @tag :integration
+  test "管理资源新增保留 admin-web 传入的停用状态" do
+    token = admin_token()
+    suffix = System.unique_integer([:positive])
+
+    department_response =
+      post(authorized(build_conn(), token), "/api/v1/departments", %{
+        "code" => "HTTP_DISABLED_DEPT_#{suffix}",
+        "name" => "HTTP 停用组织",
+        "parentId" => nil,
+        "sortOrder" => 1,
+        "enabled" => false
+      })
+
+    assert department_response.status == 201
+    department = json_response(department_response, 201)["data"]
+    assert department["enabled"] == false
+
+    assert delete(authorized(build_conn(), token), "/api/v1/departments/#{department["id"]}").status ==
+             200
+
+    post_response =
+      post(authorized(build_conn(), token), "/api/v1/posts", %{
+        "code" => "HTTP_DISABLED_POST_#{suffix}",
+        "name" => "HTTP 停用岗位",
+        "sortOrder" => 1,
+        "enabled" => false
+      })
+
+    assert post_response.status == 201
+    post_row = json_response(post_response, 201)["data"]
+    assert post_row["enabled"] == false
+
+    assert delete(authorized(build_conn(), token), "/api/v1/posts/#{post_row["id"]}").status ==
+             200
+
+    menu_response =
+      post(authorized(build_conn(), token), "/api/v1/menus", %{
+        "code" => "http_disabled_menu_#{suffix}",
+        "name" => "HTTP 停用菜单",
+        "parentId" => nil,
+        "path" => "/http-disabled-menu-#{suffix}",
+        "component" => nil,
+        "menuType" => "MENU",
+        "permission" => nil,
+        "sortOrder" => 1,
+        "enabled" => false
+      })
+
+    assert menu_response.status == 201
+    menu = json_response(menu_response, 201)["data"]
+    assert menu["enabled"] == false
+    assert delete(authorized(build_conn(), token), "/api/v1/menus/#{menu["id"]}").status == 200
+
+    config_key = "http.disabled.config.#{suffix}"
+
+    config_response =
+      post(authorized(build_conn(), token), "/api/v1/configs", %{
+        "key" => config_key,
+        "value" => "disabled",
+        "description" => "HTTP 停用配置",
+        "enabled" => false
+      })
+
+    assert config_response.status == 201
+    config = json_response(config_response, 201)["data"]
+    assert config["enabled"] == false
+    assert delete(authorized(build_conn(), token), "/api/v1/configs/#{config_key}").status == 200
+
+    dict_code = "http_disabled_dict_#{suffix}"
+
+    dict_response =
+      post(authorized(build_conn(), token), "/api/v1/dictionaries", %{
+        "code" => dict_code,
+        "name" => "HTTP 停用字典",
+        "enabled" => false
+      })
+
+    assert dict_response.status == 201
+    dict_type = json_response(dict_response, 201)["data"]
+    assert dict_type["enabled"] == false
+
+    assert put(authorized(build_conn(), token), "/api/v1/dictionaries/types/#{dict_code}", %{
+             "name" => "HTTP 启用字典",
+             "enabled" => true
+           }).status == 200
+
+    item_response =
+      post(authorized(build_conn(), token), "/api/v1/dictionaries/#{dict_code}/items", %{
+        "value" => "disabled",
+        "label" => "停用",
+        "sortOrder" => 1,
+        "enabled" => false
+      })
+
+    assert item_response.status == 201
+    item = json_response(item_response, 201)["data"]
+    assert item["enabled"] == false
+
+    assert delete(authorized(build_conn(), token), "/api/v1/dictionaries/items/#{item["id"]}").status ==
+             200
+
+    assert delete(authorized(build_conn(), token), "/api/v1/dictionaries/types/#{dict_code}").status ==
+             200
+  end
+
   defp admin_token do
     role =
       %SysRole{}
@@ -148,7 +254,7 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
       |> Repo.insert!()
 
     for permission <-
-          ~w(config:read config:create config:update dictionary:read dictionary:create dictionary:delete notice:read notice:create notice:update notice:delete) do
+          ~w(config:read config:create config:update department:read department:create department:update department:delete dictionary:read dictionary:create dictionary:update dictionary:delete menu:read menu:create menu:update menu:delete menu:manage post:read post:create post:update post:delete notice:read notice:create notice:update notice:delete) do
       permission_id = Repo.get_by!(SysPermission, permission: permission).permission_id
       Repo.insert!(%SysRolePermission{role_id: role.role_id, permission_id: permission_id})
     end

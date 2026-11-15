@@ -69,7 +69,7 @@ defmodule KeystonePhoenixWeb.PostController do
 
   @doc "Creates a post."
   def create(conn, params) do
-    params = params |> ManagementContract.post_params() |> Map.delete("enabled")
+    params = ManagementContract.post_params(params)
 
     case Post.create_post(params, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, post} ->

@@ -66,7 +66,7 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   @doc "Creates a menu or button permission."
   def create(conn, params) do
-    params = params |> ManagementContract.menu_params() |> Map.delete("enabled")
+    params = ManagementContract.menu_params(params)
 
     if Authz.menu_metadata_allowed?(conn.assigns.current_user, params) do
       case Menu.create_menu(params,

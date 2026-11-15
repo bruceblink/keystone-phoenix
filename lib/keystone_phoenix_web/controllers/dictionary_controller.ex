@@ -47,7 +47,7 @@ defmodule KeystonePhoenixWeb.DictionaryController do
   end
 
   def create_type(conn, params) do
-    params = params |> ManagementContract.dictionary_type_params() |> Map.delete("enabled")
+    params = ManagementContract.dictionary_type_params(params)
 
     case Dictionary.create_dict_type(params,
            authorization: %{principal: conn.assigns.current_user}
@@ -108,7 +108,6 @@ defmodule KeystonePhoenixWeb.DictionaryController do
       params
       |> Map.put_new("dictType", dict_type)
       |> ManagementContract.dictionary_item_params()
-      |> Map.delete("enabled")
 
     case Dictionary.create_dict_data(params,
            authorization: %{principal: conn.assigns.current_user}

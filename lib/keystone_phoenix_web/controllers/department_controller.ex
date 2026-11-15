@@ -38,7 +38,7 @@ defmodule KeystonePhoenixWeb.DepartmentController do
 
   @doc "Creates a department."
   def create(conn, params) do
-    params = params |> ManagementContract.department_params() |> Map.delete("enabled")
+    params = ManagementContract.department_params(params)
 
     case Department.create_dept(params, authorization: %{principal: conn.assigns.current_user}) do
       {:ok, dept} ->

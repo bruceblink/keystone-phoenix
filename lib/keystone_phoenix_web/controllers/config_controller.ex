@@ -44,7 +44,7 @@ defmodule KeystonePhoenixWeb.ConfigController do
 
   @doc "Creates a system configuration entry."
   def create(conn, params) do
-    params = params |> ManagementContract.config_params() |> Map.delete("enabled")
+    params = ManagementContract.config_params(params)
 
     case Config.create_config(params,
            authorization: %{principal: conn.assigns.current_user}

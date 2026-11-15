@@ -109,6 +109,8 @@ defmodule KeystonePhoenixWeb.ManagementContract do
   @doc "把 Native 菜单写入字段转换为 Phoenix 领域字段。"
   def menu_params(params) do
     params
+    # Native/admin-web 允许菜单没有组件；Phoenix 数据库字段使用空字符串保存该状态。
+    |> Map.update("component", "", &(&1 || ""))
     |> copy("code", "menuCode")
     |> copy("name", "menuName")
     |> copy("component", "routerName")
