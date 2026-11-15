@@ -2,6 +2,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OperationsTest do
   use ExUnit.Case, async: true
 
   alias KeystonePhoenixWeb.Live.AdminEvents.Operations
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
 
   test "selects and clears the current page jobs" do
     socket = %Phoenix.LiveView.Socket{
@@ -32,5 +33,22 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OperationsTest do
              )
 
     assert cleared.assigns.selected_job_ids == []
+  end
+
+  test "missing task edit uses a stable resource error code" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{
+        __changed__: %{},
+        current_user: %{},
+        permissions: ["job:update"],
+        job_rows: []
+      }
+    }
+
+    assert {:noreply, result} =
+             Operations.handle_event("edit-job", %{"job-id" => "missing"}, socket)
+
+    assert Feedback.code(result.assigns.job_feedback) == "resource_not_found"
+    assert Feedback.message(result.assigns.job_feedback) == "找不到指定任务"
   end
 end

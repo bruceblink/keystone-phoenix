@@ -128,7 +128,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     if Support.permission_socket?(socket, "dictionary:update") do
       case Enum.find(socket.assigns.dict_type_rows, &(to_string(&1["dictId"]) == dict_id)) do
         nil ->
-          {:noreply, assign(socket, dict_feedback: Feedback.error("找不到指定字典类型"))}
+          {:noreply,
+           assign(socket,
+             dict_feedback: Feedback.error(:resource_not_found, "找不到指定字典类型")
+           )}
 
         dict_type ->
           {:noreply,
@@ -220,7 +223,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     if Support.permission_socket?(socket, "dictionary:update") do
       case Enum.find(socket.assigns.dict_data_rows, &(to_string(&1["dictCode"]) == dict_code)) do
         nil ->
-          {:noreply, assign(socket, dict_feedback: Feedback.error("找不到指定字典数据"))}
+          {:noreply,
+           assign(socket,
+             dict_feedback: Feedback.error(:resource_not_found, "找不到指定字典数据")
+           )}
 
         dict_data ->
           form =
@@ -372,7 +378,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     if Support.permission_socket?(socket, "notice:update") do
       case Enum.find(socket.assigns.notice_rows, &(to_string(&1["noticeId"]) == notice_id)) do
         nil ->
-          {:noreply, assign(socket, notice_feedback: Feedback.error("找不到指定公告"))}
+          {:noreply,
+           assign(socket,
+             notice_feedback: Feedback.error(:resource_not_found, "找不到指定公告")
+           )}
 
         notice ->
           {:noreply,
@@ -458,7 +467,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
            )}
 
         {:error, :not_found} ->
-          {:noreply, assign(socket, notice_feedback: Feedback.error("找不到指定公告"))}
+          {:noreply,
+           assign(socket,
+             notice_feedback: Feedback.error(:resource_not_found, "找不到指定公告")
+           )}
 
         {:error, changeset} ->
           {:noreply, assign(socket, notice_feedback: Support.form_error(changeset))}
@@ -490,7 +502,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
            )}
 
         {:error, :not_found} ->
-          {:noreply, assign(socket, notice_feedback: Feedback.error("找不到指定公告"))}
+          {:noreply,
+           assign(socket,
+             notice_feedback: Feedback.error(:resource_not_found, "找不到指定公告")
+           )}
 
         {:error, changeset} ->
           {:noreply, assign(socket, notice_feedback: Support.form_error(changeset))}
@@ -545,10 +560,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
            )}
 
         {:error, :not_found} ->
-          {:noreply, assign(socket, notice_feedback: Feedback.error("找不到指定公告"))}
+          {:noreply,
+           assign(socket,
+             notice_feedback: Feedback.error(:resource_not_found, "找不到指定公告")
+           )}
 
         {:error, :invalid_ids} ->
-          {:noreply, assign(socket, notice_feedback: Feedback.error("公告编号无效"))}
+          {:noreply,
+           assign(socket,
+             notice_feedback: Feedback.error(:validation_failed, "公告编号无效")
+           )}
       end
     else
       {:noreply, socket}

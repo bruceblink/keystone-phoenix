@@ -13,6 +13,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.LoginLimiter
   alias KeystonePhoenixWeb.Live.AdminSupport
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.LoginState
@@ -316,11 +317,23 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_info({:admin_job_finished, _job_id, result}, socket) do
     feedback =
       case result do
-        :ok -> "任务已执行并写入运行日志"
-        {:skipped, :already_running} -> "任务正在执行，本次触发已跳过"
-        {:error, :not_found} -> "找不到指定任务"
-        {:error, reason} -> "任务执行失败：#{inspect(reason)}"
-        _ -> "任务状态未知，请检查运行日志"
+        :ok ->
+          "任务已执行并写入运行日志"
+
+        {:skipped, :already_running} ->
+          "任务正在执行，本次触发已跳过"
+
+        {:error, :not_found} ->
+          Feedback.error(:resource_not_found, "找不到指定任务")
+
+        {:error, reason} ->
+          Feedback.error(
+            Feedback.code(Feedback.from_reason(reason)),
+            "任务执行失败：#{inspect(reason)}"
+          )
+
+        _ ->
+          Feedback.error(:internal_error, "任务状态未知，请检查运行日志")
       end
 
     reload =

@@ -146,7 +146,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
     if Support.permission_socket?(socket, "job:update") do
       case Enum.find(socket.assigns.job_rows, &(to_string(&1["jobId"]) == job_id)) do
         nil ->
-          {:noreply, assign(socket, job_feedback: Feedback.error("找不到指定任务"))}
+          {:noreply, assign(socket, job_feedback: Feedback.error(:resource_not_found, "找不到指定任务"))}
 
         job ->
           {:noreply,
@@ -215,7 +215,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
     if Support.permission_socket?(socket, "job:run") do
       case Job.get_job(job_id, Support.authorization_options(socket, "job:read")) do
         {:ok, %{status: 0}} ->
-          {:noreply, assign(socket, job_feedback: Feedback.error("任务已暂停，无法手动执行"))}
+          {:noreply,
+           assign(
+             socket,
+             job_feedback: Feedback.error(:resource_conflict, "任务已暂停，无法手动执行")
+           )}
 
         {:ok, _job} ->
           live_view = self()
@@ -229,17 +233,20 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
             {:error, reason} ->
               {:noreply,
-               assign(socket, job_feedback: Feedback.error("任务无法启动：#{inspect(reason)}"))}
+               assign(
+                 socket,
+                 job_feedback: Feedback.error(:service_unavailable, "任务无法启动：#{inspect(reason)}")
+               )}
           end
 
         {:error, :not_found} ->
-          {:noreply, assign(socket, job_feedback: Feedback.error("找不到指定任务"))}
+          {:noreply, assign(socket, job_feedback: Feedback.error(:resource_not_found, "找不到指定任务"))}
 
         {:error, :data_scope_denied} ->
-          {:noreply, assign(socket, job_feedback: Feedback.error("找不到指定任务"))}
+          {:noreply, assign(socket, job_feedback: Feedback.error(:resource_not_found, "找不到指定任务"))}
 
         {:error, :permission_denied} ->
-          {:noreply, assign(socket, job_feedback: Feedback.error("找不到指定任务"))}
+          {:noreply, assign(socket, job_feedback: Feedback.error(:resource_not_found, "找不到指定任务"))}
       end
     else
       {:noreply, socket}
@@ -251,8 +258,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
       feedback =
         case Job.cancel_job(job_id, authorization(socket, "job:run")) do
           :ok -> "任务已取消"
-          {:error, :invalid_id} -> Feedback.error("任务编号无效")
-          :not_found -> Feedback.error("没有正在运行的任务")
+          {:error, :invalid_id} -> Feedback.error(:validation_failed, "任务编号无效")
+          :not_found -> Feedback.error(:resource_conflict, "没有正在运行的任务")
         end
 
       {:noreply,
@@ -270,8 +277,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
                status,
                authorization(socket, "job:update-status")
              ) do
-          {:ok, _job} -> "任务状态已更新"
-          {:error, reason} -> Feedback.error("任务状态更新失败：#{inspect(reason)}")
+          {:ok, _job} ->
+            "任务状态已更新"
+
+          {:error, reason} ->
+            Feedback.error(
+              Feedback.code(Feedback.from_reason(reason)),
+              "任务状态更新失败：#{inspect(reason)}"
+            )
         end
 
       {:noreply,

@@ -17,6 +17,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Feedback do
 
   def from_reason(reason), do: error(code_for_reason(reason), message_for_reason(reason))
 
+  def import_error(:mfa_required), do: error(:mfa_state_conflict, "导入用户需要完成二次认证")
+  def import_error(reason), do: error(:validation_failed, import_error_message(reason))
+
   def message({:error, _code, message}), do: message
   def message({:error, message}), do: message
   def message(message) when is_binary(message), do: message
@@ -131,4 +134,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Feedback do
   defp message_for_reason(:mfa_not_enrolled), do: "MFA 状态不满足当前操作"
   defp message_for_reason(:mfa_enrollment_required), do: "MFA 状态不满足当前操作"
   defp message_for_reason(_reason), do: "操作失败"
+
+  defp import_error_message(:invalid_headers), do: "Excel 表头无效"
+  defp import_error_message(:empty_sheet), do: "Excel 工作表为空"
+  defp import_error_message(:invalid_workbook), do: "Excel 文件无效或超过大小限制"
+  defp import_error_message(_reason), do: "Excel 文件导入失败"
 end

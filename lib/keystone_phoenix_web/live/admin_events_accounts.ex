@@ -84,7 +84,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
            })}
 
         {:error, _reason} ->
-          {:noreply, assign(socket, user_feedback: Feedback.error("Excel 导出失败"))}
+          {:noreply,
+           assign(socket, user_feedback: Feedback.error(:service_unavailable, "Excel 导出失败"))}
       end
     else
       {:noreply, socket}
@@ -170,7 +171,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     if Support.permission_socket?(socket, "user:update") do
       case Enum.find(socket.assigns.user_rows, &(to_string(&1["userId"]) == user_id)) do
         nil ->
-          {:noreply, assign(socket, user_feedback: Feedback.error("找不到指定用户"))}
+          {:noreply,
+           assign(socket, user_feedback: Feedback.error(:resource_not_found, "找不到指定用户"))}
 
         user ->
           user_form =
@@ -438,7 +440,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
            )}
 
         [] ->
-          {:noreply, assign(socket, profile_feedback: Feedback.error("请选择头像文件"))}
+          {:noreply,
+           assign(socket, profile_feedback: Feedback.error(:validation_failed, "请选择头像文件"))}
       end
     else
       {:noreply, socket}
@@ -473,10 +476,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
          )}
 
       [{:error, reason}] ->
-        {:noreply, assign(socket, user_feedback: Feedback.error(import_error_message(reason)))}
+        {:noreply, assign(socket, user_feedback: Feedback.import_error(reason))}
 
       [] ->
-        {:noreply, assign(socket, user_feedback: Feedback.error("请选择用户导入文件"))}
+        {:noreply, assign(socket, user_feedback: Feedback.error(:validation_failed, "请选择用户导入文件"))}
     end
   end
 
@@ -488,13 +491,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
     case results do
       [] ->
-        {:noreply, assign(socket, user_feedback: Feedback.error(import_error_message(reason)))}
+        {:noreply, assign(socket, user_feedback: Feedback.import_error(reason))}
 
       [{:error, ^reason}] ->
-        {:noreply, assign(socket, user_feedback: Feedback.error(import_error_message(reason)))}
+        {:noreply, assign(socket, user_feedback: Feedback.import_error(reason))}
 
       _ ->
-        {:noreply, assign(socket, user_feedback: Feedback.error(import_error_message(reason)))}
+        {:noreply, assign(socket, user_feedback: Feedback.import_error(reason))}
     end
   end
 
@@ -504,12 +507,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       _ -> false
     end
   end
-
-  defp import_error_message(:mfa_required), do: "导入用户需要完成二次认证"
-  defp import_error_message(:invalid_headers), do: "Excel 表头无效"
-  defp import_error_message(:empty_sheet), do: "Excel 工作表为空"
-  defp import_error_message(:invalid_workbook), do: "Excel 文件无效或超过大小限制"
-  defp import_error_message(reason), do: Support.human_error(reason)
 
   defp principal(socket) do
     Map.put(socket.assigns.current_user, :permissions, List.wrap(socket.assigns[:permissions]))
