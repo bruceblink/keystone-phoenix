@@ -110,7 +110,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <div class="dictionaries-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-dict-type-filter">重置</button></div>
         </form>
       </section>
-      <p :if={filtered_dict_type_rows(@dict_type_rows, @dict_type_filter) == [] and @dict_data_rows == []} class="dictionaries-empty table-empty" role="status"><strong>暂无字典数据</strong><span>字典类型和可选值加载后会显示在这里。</span></p>
       <%= if @active_modal == "dict-type" do %>
         <.modal id="dict-type-modal" title={if @dict_type_form["dictId"] == "", do: "新建字典类型", else: "编辑字典类型"} description="维护字典类型和状态。">
     <form :if={!@read_only} aria-describedby="dict-feedback" phx-submit="save-dict-type">
@@ -131,8 +130,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <span class="badge badge-info">系统 API</span>
         </header>
         <div class="dictionary-types-list" role="region" tabindex="0" aria-label="字典类型列表">
+          <%= if filtered_dict_type_rows(@dict_type_rows, @dict_type_filter) == [] do %>
+            <div class="dictionaries-empty" role="status"><strong><%= if @dict_type_filter["keyword"] in [nil, ""], do: "暂无字典类型", else: "没有匹配的字典类型" %></strong><p>调整筛选条件后重试。</p></div>
+          <% else %>
           <%= for dict <- filtered_dict_type_rows(@dict_type_rows, @dict_type_filter) do %>
             <div class={"dictionary-type-row#{if dict["dictType"] == @selected_dict_type, do: " dictionary-type-row-selected", else: ""}"}><button type="button" class="dictionary-type-select" phx-click="select-dict-type" phx-value-dict-type={dict["dictType"]} phx-disable-with="加载中…"><span><strong><%= dict["dictName"] %></strong><small><%= dict["dictType"] %></small></span><span class={"badge #{if dict["status"] == 1, do: "badge-success", else: "badge-neutral"}"}><%= if dict["status"] == 1, do: "启用", else: "停用" %></span></button><div class="table-actions"><button :if={!@read_only} type="button" class="button button-ghost button-sm" phx-click="edit-dict-type" phx-value-dict-id={dict["dictId"]} phx-disable-with="加载中…" aria-label="编辑字典类型">编辑</button><button :if={!@read_only} type="button" class="button button-ghost button-sm" phx-confirm="确认删除此字典类型吗？" phx-click="delete-dict-type" phx-value-dict-id={dict["dictId"]} phx-disable-with="删除中…">删除</button></div></div>
+          <% end %>
           <% end %>
         </div>
       </section>

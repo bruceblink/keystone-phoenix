@@ -81,15 +81,27 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
   def handle_event("filter-dict-types", params, socket) do
     if Support.panel_allowed?(socket, "dicts") do
       keyword = String.trim(to_string(params["dictTypeKeyword"] || ""))
+      dictionary = Support.load_dictionary_for_socket(socket, "", %{})
+      filtered_types = filter_dict_types(dictionary.types, keyword)
 
-      dictionary = Support.load_dictionary_for_socket(socket, socket.assigns.selected_dict_type)
+      selected_type =
+        if Enum.any?(filtered_types, &(&1["dictType"] == socket.assigns.selected_dict_type)) do
+          socket.assigns.selected_dict_type
+        else
+          List.first(filtered_types, %{})["dictType"] || ""
+        end
+
+      dict_data_rows =
+        if selected_type == "",
+          do: [],
+          else: Support.load_dict_data_for_socket(socket, selected_type)
 
       {:noreply,
        assign(socket,
          dict_type_filter: %{"keyword" => keyword},
-         dict_type_rows: dictionary.types,
-         dict_data_rows: dictionary.data,
-         selected_dict_type: dictionary.selected,
+         dict_type_rows: filtered_types,
+         dict_data_rows: dict_data_rows,
+         selected_dict_type: selected_type,
          page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
          dict_feedback: nil
        )}
@@ -103,6 +115,19 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
 
   def handle_event("export-login-logs", _params, socket), do: export_logs(socket, :login)
   def handle_event("export-operation-logs", _params, socket), do: export_logs(socket, :operation)
+
+  # 过滤字典类型时同时匹配名称和编码，并在无匹配结果时清空当前条目选择。
+  defp filter_dict_types(rows, keyword) do
+    normalized = String.downcase(keyword)
+
+    Enum.filter(rows, fn row ->
+      normalized == "" or
+        String.contains?(
+          String.downcase("#{row["dictName"] || ""} #{row["dictType"] || ""}"),
+          normalized
+        )
+    end)
+  end
 
   defp export_logs(socket, kind) do
     permission = if kind == :login, do: "login-log:export", else: "operation-log:export"

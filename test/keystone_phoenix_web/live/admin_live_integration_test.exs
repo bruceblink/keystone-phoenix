@@ -297,6 +297,12 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
     render_click(view, "show-panel", %{"panel" => "dicts"})
 
+    render_submit(view, "filter-dict-types", %{"dictTypeKeyword" => "no-such-dictionary-type"})
+    assert live_socket(view).assigns.selected_dict_type == ""
+    assert render(view) =~ "没有匹配的字典类型"
+    assert render(view) =~ "选择一个字典类型"
+    render_click(view, "reset-dict-type-filter")
+
     render_submit(view, "save-dict-type", %{
       "dictId" => "",
       "dictName" => "Live 字典",
