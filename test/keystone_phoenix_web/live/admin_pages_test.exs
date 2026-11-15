@@ -215,18 +215,22 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       role_rows: [],
       read_only: true,
       page_num: 1,
-      page_size: 50
+      page_size: 20
     }
 
     html = render_component(&Accounts.users/1, assigns)
 
     assert html =~ ~s(phx-click="paginate" phx-value-panel="users")
-    assert html =~ "第 1 / 2 页，共 51 条"
+    assert html =~ "第 1 / 3 页，共 51 条"
     assert html =~ "user_1"
-    refute html =~ "user_51"
+    refute html =~ "user_21"
 
     second_page = render_component(&Accounts.users/1, %{assigns | page_num: 2})
-    assert second_page =~ "user_51"
+    assert second_page =~ "user_21"
+    refute second_page =~ "user_41"
+
+    third_page = render_component(&Accounts.users/1, %{assigns | page_num: 3})
+    assert third_page =~ "user_51"
   end
 
   test "account, system, and operations panels render without a dashboard process" do

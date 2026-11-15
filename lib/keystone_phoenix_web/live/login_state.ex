@@ -71,7 +71,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
         "role-users-unallocated" => 1
       },
       page_sizes: %{
-        "users" => 50,
+        "users" => 20,
         "posts" => 20,
         "jobs" => 50,
         "job-logs" => 50,
