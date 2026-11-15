@@ -16,6 +16,14 @@
 
 本轮完成了错误码反查、Phoenix 两类 LiveView 读取失败和 admin-web 公告刷新失败。其余页面的完整加载失败、编辑、分页、批量写入和详情返回矩阵仍需逐页补齐；错误反馈目录验证不替代真实浏览器、OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理链验收。
 
+## 2026-11-16 第二批页面读取闭环增量
+
+- Phoenix `4cbfcdf` 将系统公告、字典类型和字典条目的 LiveView 刷新与选择事件改为结果式读取。读取失败时保留已有 rows，反馈使用稳定业务错误码；成功读取后清除反馈。
+- admin-web `8b302f0` 补齐字典类型和字典条目的旧数据刷新失败状态，并新增字典条目刷新入口；`d090f13` 将错误码、业务含义和请求标识接入所有已有旧数据刷新面板；`db884f3` 继续补齐字典页面的诊断标识。
+- 本批定向验证：Phoenix 系统和 LiveView 回归 `21 passed, 1 excluded`；admin-web StaleQueryError、用户、公告和字典页面回归 `20 passed`，类型检查通过；跨项目错误码静态检查通过。
+
+第二批关闭了 Phoenix 系统字典/公告和 admin-web 字典的读取刷新缺口。仍未完成的范围是其他页面逐页的编辑、分页、批量写入、详情返回矩阵，以及真实可视浏览器、OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理链验收。
+
 ## 2026-11-16 闭环修复增量
 
 - Phoenix API Key 已将已撤销和不存在的资源错误分别统一为 `resource_conflict` 与 `resource_not_found`，保留原有 409/404 状态；任务并发跳过仍返回 `200` 和 `triggered=true`，与 Native 一致。对应提交为 `f9edf97`、`a5de81e`。
