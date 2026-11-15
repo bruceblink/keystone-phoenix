@@ -14,11 +14,11 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   @tag :integration
   test "permission catalog returns dynamic entries and current grant state", %{conn: conn} do
     role = insert_role()
-    insert_menu(role.role_id, "permission:read")
+    insert_menu(role.role_id, "api-key:create")
     insert_menu(role.role_id, "user:read")
     user = insert_user(role.role_id)
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
-    assert "permission:read" in tokens.current_user["permissions"]
+    assert "api-key:create" in tokens.current_user["permissions"]
     authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
 
     response = get(authorized_conn, "/api/v1/permissions/catalog")
