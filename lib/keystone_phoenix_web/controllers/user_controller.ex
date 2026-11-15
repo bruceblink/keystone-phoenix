@@ -231,7 +231,7 @@ defmodule KeystonePhoenixWeb.UserController do
 
   defp native_user(user) do
     legacy = User.user_to_map_with_relations(user)
-    Map.merge(NativeContract.user(legacy), legacy)
+    NativeContract.user(legacy)
   end
 
   defp native_user_params(params) do

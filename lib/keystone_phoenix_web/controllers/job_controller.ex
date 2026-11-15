@@ -173,7 +173,7 @@ defmodule KeystonePhoenixWeb.JobController do
 
   defp native_job(job) do
     legacy = Job.job_to_map(job)
-    Map.merge(NativeContract.job(legacy), legacy)
+    NativeContract.job(legacy)
   end
 
   defp render_error(conn, :not_found) do
