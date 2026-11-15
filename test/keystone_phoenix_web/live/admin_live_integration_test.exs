@@ -63,6 +63,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert has_element?(view, "button[aria-label='打开个人资料'] .profile-chevron")
     assert has_element?(view, "button.logout-button svg")
     assert has_element?(view, "nav[aria-label='主导航'] .nav-item .nav-icon")
+    refute has_element?(view, ".nav-section-title", "系统")
     refute has_element?(view, ".dashboard-topbar h2")
     assert has_element?(view, "button[aria-label='打开导航']")
     refute has_element?(view, "nav[aria-label='主导航'].sidebar-open")
