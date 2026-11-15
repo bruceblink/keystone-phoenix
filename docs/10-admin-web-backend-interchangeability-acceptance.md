@@ -76,6 +76,8 @@ Phoenix LiveView 已完成共享壳、登录、账号组织和系统页面的主
 2026-11-15 登录页视觉复核使用同一内置浏览器视口分别打开 `http://127.0.0.1:5173/login` 和
 `http://127.0.0.1:4000/`。两端的登录布局、logo、标题、登录卡片、输入框图标、按钮和脚注关键元素位置与尺寸一致；两端 `document.documentElement.scrollHeight` 均等于 `clientHeight`，登录页没有页面滚动条。Phoenix 对应提交为 `b975a6c`、`bc9ae1d`，admin-web 对应提交为 `904ffe1`、`f91b4fb`。
 
+Phoenix 审计页已按 admin-web 的只读约定移除删除按钮和操作列，保留后端事件兼容已有调用；对应提交为 `ace60dd`。Phoenix 个人资料页已按 admin-web 改为只填写新密码，密码更新接口统一使用单个 `password` 字段，并在 AAL2 通过后撤销当前会话；对应提交为 `b4c92cb`。重启当前 Phoenix 服务后，内置浏览器确认个人资料页只渲染 `input[name="password"]`，不再渲染 `oldPassword` 或 `newPassword`。
+
 ## 发布前证据
 
 每个正式版本必须保留以下证据：
