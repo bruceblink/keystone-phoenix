@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 接口路径 | endpoint path | HTTP 方法与 URL 的组合。本文只记录 `/api/v1` 对外入口。 |
 | 响应结构 | DTO | `success`、`data`、`message`、`error` 信封内的字段结构。路径一致不表示 DTO 一致。 |
-| AAL2 | Authentication Assurance Level 2 | 已完成当前会话二次认证的短时访问令牌。敏感写操作必须使用 AAL2。 |
+| AAL2 | Authentication Assurance Level 2 | 已完成当前会话二次认证的短时访问令牌。账号启用 `mfa_required` 或入口使用 `enforce=true` 时，写操作必须使用 AAL2。 |
 
 ## 已完成的路径和权限对齐
 
@@ -21,7 +21,7 @@ Native 作为 HTTP 入口基准，Phoenix 已完成以下路径处理：
 - 对齐公告公开读取、管理读取和发布：
   `GET /api/v1/notices`、`GET /api/v1/notices/manage`、
   `POST /api/v1/notices/{id}/publish`。
-- 用户、角色、API Key、在线会话下线和个人密码写操作要求 AAL2；API Key 不进入人类认证路径。
+- 用户、角色、API Key、在线会话下线和个人密码写操作按账号的 `mfa_required` 策略检查；用户导入、Passkey 注册和 MFA 管理入口使用 `enforce=true`，始终要求 AAL2。API Key 不进入人类认证路径。
 - Native 的任务触发路径 `/api/v1/jobs/{id}/trigger` 已删除旧的重复 `/run` 入口。
 
 Phoenix 证据：`mix phx.routes` 未发现 `/system`、`/logs`、`auth/passkey`、`health/ready`、`monitor/networkStatus` 和用户导入模板旧入口。路由和权限修改已在 `f8d3db9` 提交。

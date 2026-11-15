@@ -37,7 +37,7 @@ VITE_API_PROXY_TARGET=http://localhost:4000 VITE_ENABLE_MOCK=false pnpm dev
 | 接口范围 | 必须一致的内容 | 当前证据 |
 | --- | --- | --- |
 | 认证和会话 | `accessToken`、`refreshToken`、`sessionId`、`clientId`、401、刷新失效和注销 | Native/Phoenix HTTP 契约测试；需对两个后端分别执行真实窗口流程 |
-| MFA 登录和 step-up | 401 二次认证请求结构、AAL2 短时令牌、敏感写操作拒绝 AAL1 | Phoenix `a5d5320` 已按 `mfa_required` 对齐普通敏感写，并对用户导入和 Passkey 注册使用 `enforce=true`；真实 MFA 仪式仍需补充 |
+| MFA 登录和 step-up | 401 二次认证请求结构、AAL2 短时令牌、策略要求或 `enforce=true` 时拒绝 AAL1 | Phoenix `a5d5320` 已按 `mfa_required` 对齐普通敏感写，并对用户导入和 Passkey 注册使用 `enforce=true`；真实 MFA 仪式仍需补充 |
 | 列表查询 | 字段名称、分页 `items/page/size/total`、筛选参数、空结果 | Native/Phoenix 控制器契约测试；需用同一 admin-web 页面双后端核验 |
 | 写操作 | 请求字段、201/200/204、`deleted`/`triggered` 结果、验证错误 | Native/Phoenix HTTP 回归；需覆盖发布版本构建 |
 | 错误处理 | `success/data/message/error`、401/403/404/422/503 分类 | admin-web 仅对网络错误允许开发 Mock 回退；HTTP 错误必须显示 |
