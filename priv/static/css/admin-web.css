@@ -251,3 +251,18 @@ a { color: inherit; text-decoration: none; }
 /* 窄视口保留必要操作，顶栏上下文使用省略而不是逐字换行。 */
 .topbar .topbar-context { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 40rem) { .topbar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; }.topbar-context .context-kicker, .topbar-context .context-separator { display: none; }.topbar-actions { min-width: 0; gap: 8px; } }
+
+/* 登录页使用父级内宽度，保证窄视口中表单和按钮不会撑开页面。 */
+.login-page, .login-intro, .login-card, .login-form { width: 100%; min-width: 0; max-width: 100%; }
+.login-layout { min-width: 0; max-width: 100%; }
+@media (max-width: 400px) { .login-page { padding: 72px 16px 32px; }.login-card { padding: 18px; }.login-intro h1 { font-size: clamp(32px, 11vw, 39px); } }
+
+/* 平板和手机宽度使用单列登录布局，保持标题、表单和操作的统一内宽。 */
+@media (max-width: 56.25rem) {
+  .login-page { padding: clamp(72px, 10vh, 112px) 20px 48px; }
+  .login-layout { width: min(100%, 560px); grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .login-intro { padding: 12px 0 0; }
+  .login-intro h1 { max-width: 100%; font-size: clamp(38px, 7vw, 54px); }
+  .login-lede, .login-signals { display: none; }
+  .login-card { margin-top: 28px; }
+}
