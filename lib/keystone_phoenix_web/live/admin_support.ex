@@ -3,7 +3,6 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   import Phoenix.Component, only: [assign: 2]
 
-  alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.ApiKey
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Config
@@ -21,7 +20,6 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminReadSupport
-  alias KeystonePhoenixWeb.Live.Authentication
 
   @panel_permissions %{
     "depts" => ["department:read"],
@@ -593,13 +591,10 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   defp scope_panel_allowed?(_user, _panel, _permissions), do: false
 
-  defp panel_scope_context(resource) when resource in [:job, :notice],
-    do: %{defer_owner: true}
+  defp panel_scope_context(resource) when resource in [:job, :notice], do: %{defer_owner: true}
 
   defp panel_scope_context(_resource), do: %{}
 
-  def expire_authentication(socket, message) do
-    Auth.logout(socket.assigns.refresh_token)
-    Authentication.expire(socket, message)
-  end
+  defdelegate expire_authentication(socket, message),
+    to: KeystonePhoenixWeb.Live.AdminAuthentication
 end
