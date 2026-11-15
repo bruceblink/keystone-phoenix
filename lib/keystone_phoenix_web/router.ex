@@ -10,6 +10,12 @@ defmodule KeystonePhoenixWeb.Router do
     plug :put_secure_browser_headers
   end
 
+  pipeline :docs do
+    plug :accepts, ["html", "json"]
+    plug :fetch_session
+    plug :put_secure_browser_headers
+  end
+
   pipeline :api do
     # JSON 请求和 XLSX 下载共用认证、审计和权限管线。
     plug :accepts, ["json", "xlsx"]
@@ -68,6 +74,13 @@ defmodule KeystonePhoenixWeb.Router do
     live "/notices", LoginLive, :notices
     live "/profile", LoginLive, :profile
     get "/profile/avatar/*path", ResourceController, :avatar
+  end
+
+  scope "/", KeystonePhoenixWeb do
+    pipe_through :docs
+
+    get "/swagger", ApiDocsController, :swagger
+    get "/openapi", ApiDocsController, :openapi
   end
 
   scope "/", KeystonePhoenixWeb do
