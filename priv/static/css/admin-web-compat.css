@@ -1,4 +1,10 @@
 /* Phoenix LiveView 只保留认证事件和后端数据，页面外观沿用 admin-web 的组件语义。 */
+.app-shell > .sidebar { min-width: 0; }
+.app-shell > .sidebar > .sidebar-brand { position: static; inset: auto; width: auto; transform: none; grid-column: auto; grid-row: auto; }
+.app-shell > .sidebar > .primary-nav { position: static; top: auto; min-height: 0; margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
+.app-shell > .sidebar > .sidebar-foot { position: static; left: auto; bottom: auto; z-index: auto; width: auto; margin-top: auto; }
+.app-shell > .shell-content > .topbar { margin-bottom: 0; }
+.app-shell > .shell-content > .shell-main { grid-column: auto; grid-row: auto; min-width: 0; }
 .dashboard { width: 100%; min-width: 0; flex: 1 1 auto; }
 .dashboard > .module-nav.primary-nav { display: flex; flex-direction: column; min-width: 0; }
 .dashboard > .module-nav.primary-nav .nav-item { display: flex; width: 100%; align-items: center; gap: 10px; min-width: 0; text-align: left; }
@@ -36,4 +42,11 @@
   .monitor-status-bar { align-items: flex-start; flex-direction: column; gap: 8px; padding: 11px 13px; }
   .status-meta { width: 100%; justify-content: space-between; }
   .status-source { display: none; }
+}
+
+/* 侧栏抽屉由原生 admin-web 壳控制，LiveView 只负责切换 sidebar-open。 */
+@media (max-width: 850px) {
+  .app-shell > .sidebar { position: fixed; inset: 0 auto 0 0; transform: translateX(-100%); }
+  .app-shell > .sidebar.sidebar-open { transform: translateX(0); }
+  .app-shell > .sidebar > .primary-nav { position: static; inset: auto; width: auto; max-height: none; overflow: visible; transform: none; }
 }

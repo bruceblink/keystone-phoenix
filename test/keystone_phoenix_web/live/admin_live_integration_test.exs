@@ -50,6 +50,10 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     })
 
     assert has_element?(view, "nav[aria-label='主导航']")
+    assert has_element?(view, ".app-shell > .sidebar")
+    assert has_element?(view, ".app-shell > .shell-content > header.topbar")
+    assert has_element?(view, ".app-shell > .shell-content > main.shell-main")
+    assert has_element?(view, ".sidebar > .primary-nav")
     shell_html = render(view)
     assert shell_html =~ "Admin Console"
     assert has_element?(view, ".topbar-context .context-kicker", "Keystone")
