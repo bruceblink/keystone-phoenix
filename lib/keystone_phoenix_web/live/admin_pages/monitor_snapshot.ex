@@ -20,6 +20,14 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
     {security_metrics, security_api_keys, security_events, security_event_total, security_error} =
       load_security(admin?, permissions, options)
 
+    error_reason =
+      [server_error, cache_error, online_error, security_error]
+      |> Enum.find(&is_binary/1)
+      |> case do
+        nil -> nil
+        _message -> :service_unavailable
+      end
+
     %{
       server_info: server_info,
       cache_info: cache_info,
@@ -31,6 +39,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
       security_api_keys: security_api_keys,
       security_event_rows: security_events,
       security_event_total: security_event_total,
+      error_reason: error_reason,
       feedback:
         [server_error, cache_error, online_error, security_error]
         |> Enum.find(&is_binary/1)
@@ -104,5 +113,5 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
   end
 
   defp error_feedback(nil), do: nil
-  defp error_feedback(message), do: Feedback.error(message)
+  defp error_feedback(message), do: Feedback.error(:service_unavailable, message)
 end

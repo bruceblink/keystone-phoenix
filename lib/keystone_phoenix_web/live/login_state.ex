@@ -148,6 +148,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       security_api_keys: %{},
       security_event_rows: [],
       security_event_total: 0,
+      monitor_loaded: false,
       monitor_feedback: nil
     )
   end

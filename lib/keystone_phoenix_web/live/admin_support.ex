@@ -189,6 +189,11 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     do: load_authorized(&Config.list_configs/2, options)
 
   def load_configs_for_socket(socket), do: load_configs(authorization_options(socket))
+
+  @doc "读取系统配置并保留失败结果，供 LiveView 刷新反馈使用。"
+  def load_configs_for_socket_result(socket, params \\ %{}),
+    do: AdminReadSupport.configs(socket, params)
+
   def load_jobs, do: load_all(&Job.list_jobs/1)
   def load_jobs(options) when is_list(options), do: load_authorized(&Job.list_jobs/2, options)
   def load_jobs_for_socket(socket), do: load_jobs(authorization_options(socket))
@@ -436,20 +441,28 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
         authorization_options(socket)
       )
 
-    assign(socket,
-      active_panel: "monitor",
-      monitor_server_info: monitor.server_info,
-      monitor_cache_info: monitor.cache_info,
-      online_user_rows: monitor.online_users,
-      online_user_total: monitor.online_user_total,
-      network_status: monitor.network_status,
-      security_access: monitor.security_access,
-      security_metrics: monitor.security_metrics,
-      security_api_keys: monitor.security_api_keys,
-      security_event_rows: monitor.security_event_rows,
-      security_event_total: monitor.security_event_total,
-      monitor_feedback: feedback || monitor.feedback
-    )
+    if monitor.error_reason && socket.assigns[:monitor_loaded] do
+      assign(socket,
+        active_panel: "monitor",
+        monitor_feedback: feedback || monitor.feedback
+      )
+    else
+      assign(socket,
+        active_panel: "monitor",
+        monitor_server_info: monitor.server_info,
+        monitor_cache_info: monitor.cache_info,
+        online_user_rows: monitor.online_users,
+        online_user_total: monitor.online_user_total,
+        network_status: monitor.network_status,
+        security_access: monitor.security_access,
+        security_metrics: monitor.security_metrics,
+        security_api_keys: monitor.security_api_keys,
+        security_event_rows: monitor.security_event_rows,
+        security_event_total: monitor.security_event_total,
+        monitor_loaded: true,
+        monitor_feedback: feedback || monitor.feedback
+      )
+    end
   end
 
   def monitor_access?(socket) do

@@ -72,4 +72,13 @@ defmodule KeystonePhoenixWeb.Live.AdminSupportTest do
 
     assert {:error, :permission_denied} = AdminSupport.load_api_keys_for_socket_result(socket)
   end
+
+  test "preserves config read failures for LiveView feedback" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{__changed__: %{}, current_user: %{}, permissions: []}
+    }
+
+    assert {:error, :permission_denied} =
+             AdminSupport.load_configs_for_socket_result(socket, %{"configKey" => "system"})
+  end
 end

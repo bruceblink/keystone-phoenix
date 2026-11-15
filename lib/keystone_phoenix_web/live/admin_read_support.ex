@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
 
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Auth.ApiKey
+  alias KeystonePhoenix.Config
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Notice
@@ -38,6 +39,17 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
       load_all(&Post.list_posts/1)
     else
       load_authorized(&Post.list_posts(&1, Support.authorization_options(socket)))
+    end
+  end
+
+  @doc "读取系统配置并区分空结果和服务端读取失败。"
+  def configs(socket, params \\ %{}) do
+    options = Support.authorization_options(socket)
+
+    if Support.admin_socket?(socket) do
+      load_all(&Config.list_configs/1, params)
+    else
+      load_authorized(fn page -> Config.list_configs(page, options) end, params)
     end
   end
 

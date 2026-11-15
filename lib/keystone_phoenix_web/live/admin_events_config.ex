@@ -9,15 +9,30 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
   def handle_event("refresh-config", _params, socket) do
     if Support.panel_allowed?(socket, "configs") do
       can_refresh? = Support.permission_socket?(socket, "config:refresh")
-      if can_refresh?, do: Config.refresh_cache(authorization: self_authorization(socket))
 
-      {:noreply,
-       assign(socket,
-         config_rows: Support.load_configs_for_socket(socket),
-         config_form: Support.empty_config_form(),
-         config_feedback: if(can_refresh?, do: "配置缓存已刷新", else: nil),
-         active_modal: nil
-       )}
+      refresh_result =
+        if can_refresh?,
+          do: Config.refresh_cache(authorization: self_authorization(socket)),
+          else: :ok
+
+      case {refresh_result, Support.load_configs_for_socket_result(socket, config_filter(socket))} do
+        {:ok, {:ok, rows}} ->
+          {:noreply,
+           assign(socket,
+             config_rows: rows,
+             config_form: Support.empty_config_form(),
+             config_feedback: if(can_refresh?, do: "配置缓存已刷新", else: nil),
+             active_modal: nil
+           )}
+
+        {{:error, reason}, _} ->
+          {:noreply,
+           assign(socket, config_feedback: Support.read_error_feedback(reason, "配置缓存刷新失败，请重试"))}
+
+        {:ok, {:error, reason}} ->
+          {:noreply,
+           assign(socket, config_feedback: Support.read_error_feedback(reason, "配置列表刷新失败，请重试"))}
+      end
     else
       {:noreply, socket}
     end
@@ -100,13 +115,24 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
 
       case result do
         {:ok, _config} ->
-          {:noreply,
-           assign(socket,
-             config_rows: Support.load_configs_for_socket(socket),
-             config_form: Support.empty_config_form(),
-             active_modal: nil,
-             config_feedback: if(config_id == "", do: "配置已创建", else: "配置已更新")
-           )}
+          case Support.load_configs_for_socket_result(socket, config_filter(socket)) do
+            {:ok, rows} ->
+              {:noreply,
+               assign(socket,
+                 config_rows: rows,
+                 config_form: Support.empty_config_form(),
+                 active_modal: nil,
+                 config_feedback: if(config_id == "", do: "配置已创建", else: "配置已更新")
+               )}
+
+            {:error, reason} ->
+              {:noreply,
+               assign(socket,
+                 config_form: Support.empty_config_form(),
+                 active_modal: nil,
+                 config_feedback: Support.read_error_feedback(reason, "配置已保存，但列表刷新失败，请重试")
+               )}
+          end
 
         error ->
           {:noreply, assign(socket, config_feedback: Support.form_error(error))}
@@ -121,6 +147,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
       do: {:noreply, assign(socket, config_filter: %{"keyword" => keyword})},
       else: {:noreply, socket}
   end
+
+  defp config_filter(socket),
+    do: %{"configKey" => get_in(socket.assigns, [:config_filter, "keyword"]) || ""}
 
   defp self_authorization(socket) do
     principal =
