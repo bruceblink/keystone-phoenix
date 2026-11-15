@@ -121,13 +121,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
           <div><h2 id="job-logs-title">执行日志</h2><p>共 <%= length(@job_log_rows) %> 条记录</p></div>
           <span class="status-badge status-badge--normal">只读</span>
         </header>
-        <p :if={@job_log_rows == []} class="jobs-empty table-empty" role="status"><strong>暂无任务日志</strong><span>任务运行后，日志会显示在这里。</span></p>
-        <div class="table-scroll" role="region" tabindex="0" aria-label="任务日志列表"><table class="jobs-table"><caption class="sr-only">任务日志列表</caption><thead><tr><th scope="col">任务</th><th scope="col">分组</th><th scope="col">调用目标</th><th scope="col">状态</th><th scope="col">消息</th><th scope="col">开始时间</th><th scope="col">结束时间</th></tr></thead><tbody>
-          <%= for log <- page_rows(@job_log_rows, @page_num, @page_size) do %>
-            <tr><td><strong><%= log["jobName"] %></strong></td><td><%= log["jobGroup"] %></td><td><code><%= log["invokeTarget"] %></code></td><td><span class={"status-badge #{Status.job_log(log["status"])}"}><%= log["statusStr"] || if(log["status"] == 1, do: "成功", else: "失败") %></span></td><td><%= log["jobMessage"] || log["exceptionInfo"] || "" %></td><td><%= log["startTime"] || "" %></td><td><%= log["endTime"] || "" %></td></tr>
-          <% end %>
-        </tbody></table></div>
-        <.pagination panel="job-logs" page_num={min(@page_num, page_count(length(@job_log_rows), @page_size))} page_size={@page_size} total={length(@job_log_rows)} />
+        <%= if @job_log_rows == [] do %>
+          <p class="jobs-empty table-empty" role="status"><strong>暂无任务日志</strong><span>任务运行后，日志会显示在这里。</span></p>
+        <% else %>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="任务日志列表"><table class="jobs-table"><caption class="sr-only">任务日志列表</caption><thead><tr><th scope="col">任务</th><th scope="col">分组</th><th scope="col">调用目标</th><th scope="col">状态</th><th scope="col">消息</th><th scope="col">开始时间</th><th scope="col">结束时间</th></tr></thead><tbody>
+            <%= for log <- page_rows(@job_log_rows, @page_num, @page_size) do %>
+              <tr><td><strong><%= log["jobName"] %></strong></td><td><%= log["jobGroup"] %></td><td><code><%= log["invokeTarget"] %></code></td><td><span class={"status-badge #{Status.job_log(log["status"])}"}><%= log["statusStr"] || if(log["status"] == 1, do: "成功", else: "失败") %></span></td><td><%= log["jobMessage"] || log["exceptionInfo"] || "" %></td><td><%= log["startTime"] || "" %></td><td><%= log["endTime"] || "" %></td></tr>
+            <% end %>
+          </tbody></table></div>
+          <.pagination panel="job-logs" page_num={min(@page_num, page_count(length(@job_log_rows), @page_size))} page_size={@page_size} total={length(@job_log_rows)} />
+        <% end %>
       </section>
     </div>
     """

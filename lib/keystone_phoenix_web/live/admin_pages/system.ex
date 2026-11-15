@@ -166,12 +166,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       </form>
         </.modal>
       <% end %>
-        <div class="dictionary-items-wrap" role="region" tabindex="0" aria-label="字典数据列表"><table class="dictionary-items-table"><caption class="sr-only">字典数据列表</caption><thead><tr><th scope="col">值</th><th scope="col">显示名称</th><th scope="col">排序</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody>
-            <%= for data <- page_rows(@dict_data_rows, @dict_data_page_num, @dict_data_page_size) do %>
-            <tr><td><code class="dictionary-item-value"><%= data["dictValue"] %></code></td><td><%= data["dictLabel"] %></td><td><%= data["dictSort"] %></td><td><span class={"badge #{if data["status"] == 1, do: "badge-success", else: "badge-neutral"}"}><%= if data["status"] == 1, do: "启用", else: "停用" %></span></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="edit-dict-data" phx-value-dict-code={data["dictCode"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost button-sm" phx-confirm="确认删除此字典条目吗？" phx-click="delete-dict-data" phx-value-dict-code={data["dictCode"]} phx-disable-with="删除中…">删除</button></td></tr>
-          <% end %>
-        </tbody></table></div>
-        <.pagination panel="dict-data" page_num={min(@dict_data_page_num, page_count(length(@dict_data_rows), @dict_data_page_size))} page_size={@dict_data_page_size} total={length(@dict_data_rows)} />
+        <%= if @dict_data_rows == [] do %>
+          <div class="dictionaries-empty" role="status"><strong>暂无字典条目</strong><p>该字典类型当前没有可用条目。</p></div>
+        <% else %>
+          <div class="dictionary-items-wrap" role="region" tabindex="0" aria-label="字典数据列表"><table class="dictionary-items-table"><caption class="sr-only">字典数据列表</caption><thead><tr><th scope="col">值</th><th scope="col">显示名称</th><th scope="col">排序</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody>
+              <%= for data <- page_rows(@dict_data_rows, @dict_data_page_num, @dict_data_page_size) do %>
+              <tr><td><code class="dictionary-item-value"><%= data["dictValue"] %></code></td><td><%= data["dictLabel"] %></td><td><%= data["dictSort"] %></td><td><span class={"badge #{if data["status"] == 1, do: "badge-success", else: "badge-neutral"}"}><%= if data["status"] == 1, do: "启用", else: "停用" %></span></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="edit-dict-data" phx-value-dict-code={data["dictCode"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost button-sm" phx-confirm="确认删除此字典条目吗？" phx-click="delete-dict-data" phx-value-dict-code={data["dictCode"]} phx-disable-with="删除中…">删除</button></td></tr>
+            <% end %>
+          </tbody></table></div>
+          <.pagination panel="dict-data" page_num={min(@dict_data_page_num, page_count(length(@dict_data_rows), @dict_data_page_size))} page_size={@dict_data_page_size} total={length(@dict_data_rows)} />
+        <% end %>
       <% end %>
       </section>
     </div>
@@ -329,13 +333,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <div><h2 id="login-logs-title">登录日志</h2><p>共 <%= length(@login_log_rows) %> 条记录</p></div>
           <span class="badge badge-info">系统 API</span>
         </header>
-        <p :if={@login_log_rows == []} class="audit-empty table-empty" role="status"><strong>暂无登录日志数据</strong><span>新的登录记录会显示在这里。</span></p>
-        <div class="audit-table-wrap" role="region" tabindex="0" aria-label="登录日志列表"><table class="audit-table"><caption class="sr-only">登录日志列表</caption><thead><tr><th scope="col">时间</th><th scope="col">用户名</th><th scope="col">状态</th><th scope="col">来源地址</th><th scope="col">说明</th><th scope="col">客户端</th></tr></thead><tbody>
-            <%= for log <- page_rows(@login_log_rows, @login_page_num, @page_size) do %>
-            <tr><td class="audit-time"><%= log["loginTime"] || "—" %></td><td class="audit-actor"><%= log["username"] || "—" %></td><td><span class={"status-badge #{Status.success_failure(log["status"])}"}><%= if log["status"] == 1, do: "成功", else: "失败" %></span></td><td><%= log["ipAddress"] || "—" %></td><td class="audit-detail"><%= log["msg"] || "—" %></td><td class="audit-detail"><%= log["browser"] || "—" %></td></tr>
-          <% end %>
-        </tbody></table></div>
-        <.pagination panel="login-logs" page_num={min(@login_page_num, page_count(length(@login_log_rows), @page_size))} page_size={@page_size} total={length(@login_log_rows)} />
+        <%= if @login_log_rows == [] do %>
+          <p class="audit-empty table-empty" role="status"><strong>暂无登录日志数据</strong><span>新的登录记录会显示在这里。</span></p>
+        <% else %>
+          <div class="audit-table-wrap" role="region" tabindex="0" aria-label="登录日志列表"><table class="audit-table"><caption class="sr-only">登录日志列表</caption><thead><tr><th scope="col">时间</th><th scope="col">用户名</th><th scope="col">状态</th><th scope="col">来源地址</th><th scope="col">说明</th><th scope="col">客户端</th></tr></thead><tbody>
+              <%= for log <- page_rows(@login_log_rows, @login_page_num, @page_size) do %>
+              <tr><td class="audit-time"><%= log["loginTime"] || "—" %></td><td class="audit-actor"><%= log["username"] || "—" %></td><td><span class={"status-badge #{Status.success_failure(log["status"])}"}><%= if log["status"] == 1, do: "成功", else: "失败" %></span></td><td><%= log["ipAddress"] || "—" %></td><td class="audit-detail"><%= log["msg"] || "—" %></td><td class="audit-detail"><%= log["browser"] || "—" %></td></tr>
+            <% end %>
+          </tbody></table></div>
+          <.pagination panel="login-logs" page_num={min(@login_page_num, page_count(length(@login_log_rows), @page_size))} page_size={@page_size} total={length(@login_log_rows)} />
+        <% end %>
       </section>
       <% end %>
       <%= if @kind in ["both", "operation"] do %>
@@ -352,13 +359,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <div><h2 id="operation-logs-title">操作审计</h2><p>共 <%= length(@operation_log_rows) %> 条记录</p></div>
           <span class="badge badge-info">系统 API</span>
         </header>
-        <p :if={@operation_log_rows == []} class="audit-empty table-empty" role="status"><strong>暂无操作日志数据</strong><span>新的操作记录会显示在这里。</span></p>
-        <div class="audit-table-wrap" role="region" tabindex="0" aria-label="操作日志列表"><table class="audit-table"><caption class="sr-only">操作日志列表</caption><thead><tr><th scope="col">时间</th><th scope="col">操作用户</th><th scope="col">动作</th><th scope="col">资源</th><th scope="col">资源 ID</th><th scope="col">操作详情</th></tr></thead><tbody>
-            <%= for log <- page_rows(@operation_log_rows, @operation_page_num, @page_size) do %>
-            <tr><td class="audit-time"><%= log["operationTime"] || "—" %></td><td class="audit-actor"><%= log["username"] || "—" %></td><td><span class="badge badge-neutral"><%= log["requestMethod"] || "—" %></span></td><td class="audit-resource"><%= log["requestModule"] || "—" %></td><td class="audit-resource-id"><%= log["requestUrl"] || "—" %></td><td class="audit-detail"><%= if log["status"] == 1, do: "成功", else: "失败" %></td></tr>
-          <% end %>
-        </tbody></table></div>
-        <.pagination panel="operation-logs" page_num={min(@operation_page_num, page_count(length(@operation_log_rows), @page_size))} page_size={@page_size} total={length(@operation_log_rows)} />
+        <%= if @operation_log_rows == [] do %>
+          <p class="audit-empty table-empty" role="status"><strong>暂无操作日志数据</strong><span>新的操作记录会显示在这里。</span></p>
+        <% else %>
+          <div class="audit-table-wrap" role="region" tabindex="0" aria-label="操作日志列表"><table class="audit-table"><caption class="sr-only">操作日志列表</caption><thead><tr><th scope="col">时间</th><th scope="col">操作用户</th><th scope="col">动作</th><th scope="col">资源</th><th scope="col">资源 ID</th><th scope="col">操作详情</th></tr></thead><tbody>
+              <%= for log <- page_rows(@operation_log_rows, @operation_page_num, @page_size) do %>
+              <tr><td class="audit-time"><%= log["operationTime"] || "—" %></td><td class="audit-actor"><%= log["username"] || "—" %></td><td><span class="badge badge-neutral"><%= log["requestMethod"] || "—" %></span></td><td class="audit-resource"><%= log["requestModule"] || "—" %></td><td class="audit-resource-id"><%= log["requestUrl"] || "—" %></td><td class="audit-detail"><%= if log["status"] == 1, do: "成功", else: "失败" %></td></tr>
+            <% end %>
+          </tbody></table></div>
+          <.pagination panel="operation-logs" page_num={min(@operation_page_num, page_count(length(@operation_log_rows), @page_size))} page_size={@page_size} total={length(@operation_log_rows)} />
+        <% end %>
       </section>
       <% end %>
     </div>
