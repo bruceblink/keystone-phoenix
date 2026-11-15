@@ -78,7 +78,7 @@ Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `
 - Phoenix 菜单编辑弹窗已补齐 admin-web 的“可访问角色”复选框，只展示启用角色；编辑时读取现有绑定，保存时替换绑定，空选择会清除绑定。LiveView 集成测试覆盖读取、保存、重新打开和清空，对应提交为 `86a9114`。角色绑定失败时保留编辑弹窗和表单状态。
 - Phoenix 菜单 LiveView 现在兼容 Native 的 `enabled` 布尔字段和 `MENU`、`BUTTON`、`DIRECTORY` 字符串类型，同时保留 Phoenix 的 `status` 和整数类型映射；菜单状态与类型展示已补充组件和数据测试，随提交 `c04db24` 验证。
 - Native/admin-web 真实窗口复核补充了登录加载状态、错误密码反馈、用户筛选和批量选择、角色编辑取消、菜单多级筛选祖先保留，以及 390 窄屏文档/body 宽度检查。Native 使用 MySQL 8.4 和端口 8080；admin-web 代理目标必须显式使用 `http://127.0.0.1:8080`，否则登录请求会返回 502。
-- admin-web 响应式壳已补齐中等窄视口断点：侧栏在 390 和 768 视口切换为抽屉，监控区域切换为单列；1280 视口保留桌面双列。登录页在 390、768、1280 视口分别使用单列、单列和双列布局。真实 Chrome 验证三种宽度的 document/body 均等于视口且无横向溢出，对应提交为 admin-web `3e01da7`。
+- admin-web 响应式壳已补齐中等窄视口断点：侧栏在 390 和 768 视口切换为抽屉，监控区域切换为单列；1280 视口保留桌面双列。登录页在 390、768、1280 视口分别使用单列、单列和双列布局。真实 Chrome 验证三种宽度的 document/body 均等于视口且无横向溢出，对应提交为 admin-web `3e01da7`；Phoenix 已在 `b6b12ac` 移植相同的登录页收缩规则。
 - Native 菜单树读取已补充 `menu:read` 权限检查；无该权限的已认证主体访问 `GET /v1/menus` 返回 `403 permission_denied`，对应提交为 Native `ef129ea`。Phoenix 个人资料读取、更新、头像和密码更新已分别要求 `user:read`、`user:update`、`user:update` 和 `user:reset-password`，对应提交为 `4ea659f`，并补充受限主体 HTTP 回归。
 - Native 已删除 Phoenix 和 admin-web 都不使用的 `DELETE /v1/login-logs?ids=...` 与 `DELETE /v1/operation-logs?ids=...`，同步删除旧权限目录项并增加 `V57__remove_audit_log_delete_permissions.sql`；admin-web 继续使用读取和导出接口。对应提交为 Native `a7e33bb`，定向权限测试和全量 `./gradlew test --no-daemon` 均通过。
 - Phoenix 已删除岗位更新控制器中无法由现行路由触发的 `postId` 参数分支，并将权限测试迁移到 Native/admin-web 使用的规范字段；对应提交为 `a2a6ea4`，定向测试 9 项通过。Phoenix 和 Native 现仅保留 admin-web 使用的批量参数：用户/角色 `ids`、公告 `notice_ids`、任务 `jobIds`；旧别名返回 422 `validation_failed`。对应提交为 Phoenix `592ceb5`、Native `591ac88`。
@@ -97,5 +97,6 @@ Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `
 - 监控页按 Vercel Dashboard 的信息密度重新打磨：状态栏、健康摘要、主证据图表、资源卡片、在线会话和节点详情保持统一层级。admin-web 趋势图增加 80% 关注阈值和数据来源，空趋势显示“暂无采样数据”；Phoenix 当前采样图使用同样的阈值、来源和空态语义，缺失指标显示 `—`，不再显示为 `0%`。监控帮助交互对应 admin-web `379d7f8`、Phoenix `c4f39bd`；admin-web 当前测试为 17 个文件、78 项通过；Phoenix `mix test --include integration` 为 399 项通过，Native 和 Phoenix 真实窗口均已在 280、320、390、768 和 1280 视口检查横向溢出。
 - Phoenix 监控页趋势区域已按 admin-web 的 30 分钟采样结构重实现，支持 CPU/内存折线、80% 阈值、坐标轴和采样时间；Phoenix 当前 API 没有历史采样、网络流量、Reductions 和 Erlang 进程/ETS 指标时显示 `—`，不伪造数据。组件测试 8 项通过，对应提交为 `854caca`。
 - Phoenix 登录 MFA 表单已使用 admin-web 的状态提示、图标输入框、统一按钮和错误反馈；个人资料页移除头像文件上传块，性别值与 admin-web 统一为空值未知、`1` 男、`0` 女，头像地址仍可保存。对应提交为 `c04db24`，相关集成测试 9 项通过。
+- Phoenix 登录页已补齐 admin-web 的窄视口规则：表单和卡片使用父级可收缩宽度，400px 以下缩小内边距和标题字号，900px 以下切换单列；真实 Chrome 在 390、768、1280 宽度确认无横向溢出，登录按钮只显示“登录”。对应提交为 `b6b12ac`。
 
 本次验收仍有明确限制：监控页的部分指标由 Native 接口未提供，页面应显示后端来源和未提供指标；页面通过不表示缺失指标已经补齐。Native 和 Phoenix 已完成真实读取、导航、响应式宽度、筛选空态、新增弹窗打开/关闭、主要 Excel 导出和部分新增/删除检查；Phoenix 和 Native admin-web 均已完成真实 TOTP 登录挑战并进入监控页。Native 还完成了 API Key 敏感操作的真实 step-up 验证；临时用户、令牌、会话和 MFA 挑战已清理，数据库残留计数为 0。菜单权限的 HTTP、组件和 LiveView 回归测试已完成；用户、岗位、任务和审计列表分页也已完成代码与组件验证，Phoenix 用户页、任务页、执行日志页、登录日志和操作审计默认每页 20 条与 admin-web 一致，对应提交为 `dcfaba5`、`2594151`、`1ac38b7`。其余页面仍需补充逐页编辑、加载状态、错误反馈、分页和批量写操作的完整发布窗口记录；OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理链不属于本地窗口验收，不能据此判定通过。
