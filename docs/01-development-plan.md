@@ -8,6 +8,14 @@
 
 本轮静态验证：`python3 scripts/check_error_code_catalog.py --native-root ../keystone-native --admin-root ../keystone-admin-web` 通过，规范服务端代码 `21` 个、客户端本地代码 `4` 个，Phoenix/Native/admin-web 集合和默认状态 `21/21` 一致；Python 语法检查和 `git diff --check` 通过。该静态结果不替代真实 HTTP、数据库、浏览器和生产代理验收。
 
+## 2026-11-16 闭环修复增量
+
+- Phoenix API Key 已将已撤销和不存在的资源错误分别统一为 `resource_conflict` 与 `resource_not_found`，保留原有 409/404 状态；任务并发跳过仍返回 `200` 和 `triggered=true`，与 Native 一致。对应提交为 `f9edf97`、`a5de81e`。
+- Phoenix 字典条目、登录日志、操作审计和任务日志的空结果只显示空态，不再渲染空表头；对应提交为 `84b7b8e`，全量集成测试为 414 项通过。
+- admin-web 菜单角色目录和菜单角色绑定读取失败时显示明确错误、提供重试并禁止保存；已有数据刷新失败时保留旧数据并显示重试入口。对应提交为 `7a88836`、`2c79ff7`，当前全量测试为 95 项通过，并通过类型检查和构建。
+
+当前仍有发布证据缺口：LiveView 部分事件反馈仍未携带统一错误码；其余页面的完整加载、错误、编辑、分页和批量写操作矩阵，以及 URL 查询状态、可视浏览器窗口、OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理检查仍需独立验收。
+
 ## 2026-11-15 当前审查与下一轮主线
 
 本轮审查以 Phoenix `79ce1dc`、admin-web `86ea75a` 和 Native `779d80b` 为代码基线。`/api/v1` 接口集合共 108 条，包含 `/api/v1/health`，业务方法分布为 `GET 42`、`POST 29`、`PUT 20`、`DELETE 17`；标准 JWK Set 另有 1 条路径。归一化后 Native-only、Phoenix-only 和重复 `HTTP method + path` 均为 0。admin-web 当前调用的接口全部存在于两个后端，Swagger 文档入口不计入 `/api/v1` 接口集合。
