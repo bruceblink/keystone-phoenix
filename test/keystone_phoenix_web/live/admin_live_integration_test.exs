@@ -85,7 +85,10 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     render_click(view, "show-panel", %{"panel" => "depts"})
     assert live_socket(view).assigns.active_panel == "depts"
     refute has_element?(view, "nav[aria-label='主导航'].sidebar-open")
-    assert has_element?(view, "button[aria-label='通知'][phx-value-panel='notices']")
+    assert has_element?(view, "button[aria-label='通知'][phx-click='toggle-notifications']")
+    render_click(view, "toggle-notifications")
+    assert has_element?(view, ".notification-popover[aria-label='站内通知']")
+    render_click(view, "close-notifications")
     assert has_element?(view, "button[aria-label='打开个人资料'][phx-value-panel='profile']")
     refute has_element?(view, "nav[aria-label='主导航'] button", "个人资料")
     render_click(view, "show-panel", %{"panel" => "notices"})

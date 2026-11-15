@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   import KeystonePhoenixWeb.Live.AdminPages.Accounts
   import KeystonePhoenixWeb.Live.AdminPages.ApiKeys
   import KeystonePhoenixWeb.Live.AdminPages.Operations
+  import KeystonePhoenixWeb.Live.AdminPages.Notifications
   import KeystonePhoenixWeb.Live.AdminPages.Organization
   import KeystonePhoenixWeb.Live.AdminPages.System
 
@@ -174,6 +175,33 @@ defmodule KeystonePhoenixWeb.LoginLive do
     do: {:noreply, assign(socket, sidebar_open: false)}
 
   @impl true
+  def handle_event("toggle-notifications", _params, socket) do
+    open = not socket.assigns.notifications_open
+
+    {:noreply,
+     assign(socket,
+       notifications_open: open,
+       selected_notification_id: nil,
+       in_app_notifications:
+         if(open,
+           do: AdminSupport.load_public_notifications(),
+           else: socket.assigns.in_app_notifications
+         )
+     )}
+  end
+
+  def handle_event("close-notifications", _params, socket),
+    do: {:noreply, assign(socket, notifications_open: false, selected_notification_id: nil)}
+
+  def handle_event("back-notifications", _params, socket),
+    do: {:noreply, assign(socket, selected_notification_id: nil)}
+
+  def handle_event("open-notification", %{"notification-id" => notification_id}, socket) do
+    if Enum.any?(socket.assigns.in_app_notifications, &(to_string(&1["id"]) == notification_id)),
+      do: {:noreply, assign(socket, selected_notification_id: notification_id)},
+      else: {:noreply, socket}
+  end
+
   def handle_event("show-panel", %{"panel" => panel}, socket)
       when panel in [
              "overview",
@@ -348,6 +376,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
   defp captcha_error(:captcha_invalid), do: "验证码错误，请重试"
   defp captcha_error(:captcha_expired), do: "验证码已过期，请重试"
 
+  defp selected_notification(notifications, notification_id) do
+    Enum.find(notifications, &(to_string(&1["id"]) == to_string(notification_id)))
+  end
+
   defp liveview_ip(socket) do
     Map.get(socket.assigns, :remote_ip)
   end
@@ -415,9 +447,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <span class="context-kicker">Keystone</span><span class="context-separator">/</span><span>管理工作台</span>
                   </div>
                   <div class="topbar-actions">
-                    <button type="button" class="icon-button" phx-click="show-panel" phx-value-panel="notices" aria-label="通知">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg><span class="notification-dot" aria-hidden="true"></span>
-                    </button>
+                    <.menu open={@notifications_open} notifications={@in_app_notifications} selected={selected_notification(@in_app_notifications, @selected_notification_id)} />
                     <button type="button" class="user-menu user-menu-button user-profile-button" phx-click="show-panel" phx-value-panel="profile" aria-label="打开个人资料">
                       <span class="avatar user-avatar" aria-hidden="true"><%= String.first(to_string(@current_user["nickname"] || @current_user["username"])) %></span>
                       <span class="user-copy">
