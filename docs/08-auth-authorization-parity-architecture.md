@@ -117,9 +117,9 @@ scope_allowed(principal, scope, resource, context)
 
 Phoenix 使用 Controller、Plug、LiveView 事件和领域命令作为 PEP；`KeystonePhoenix.Authz`、`PolicyStore` 和 `Principal` 作为 PDP 适配层。Ecto、PostgreSQL 和 Ecto migration 负责持久化。
 
-Phoenix 只提供 `/api/v1` 接口，并统一返回 `{success,data,message,error}`。旧路由、旧三段权限和 `{code,msg,data}` 响应不进入新系统。业务错误码由 `KeystonePhoenixWeb.ErrorCatalog` 集中登记。第一阶段固定 `authentication_required`、`invalid_credential`、`mfa_required`、`mfa_challenge_invalid`、`mfa_step_up_required`、`active_session_conflict`、`permission_denied`、`data_scope_denied`、`session_revoked`、`resource_not_found`、`resource_conflict`、`rate_limited`、`precondition_required`、`payload_too_large`、`validation_failed`、`service_unavailable`、`authorization_unavailable` 和 `internal_error`。错误码用于日志、接口响应和排错索引；可读 message 只用于展示，不能用于反向猜码。HTTP 状态码沿用现有接口约定。两个项目使用相同的错误代码和字段含义；`authorization_unavailable` 是尚未迁移入口的兼容代码，新增入口不得使用旧代码。
+Phoenix 只提供 `/api/v1` 接口，并统一返回 `{success,data,message,error}`。旧路由、旧三段权限和 `{code,msg,data}` 响应不进入新系统。跨项目 21 个业务错误码、反查条件、默认状态和兼容范围见 [`11-business-error-code-catalog.md`](11-business-error-code-catalog.md)，由 `KeystonePhoenixWeb.ErrorCatalog` 集中登记。错误码用于日志、接口响应和排错索引；可读 `message` 只用于展示，不能用于反向猜码。HTTP 状态码沿用现有接口约定；代码迁移必须保持原状态。Native 和 admin-web 使用同一服务端代码集合，客户端本地错误码单独管理。
 
-当前保留的 `authorization_unavailable` 兼容范围如下：`RequireHttps` 的 HTTPS 前置检查、`NoRepeat` 的旧限流服务失败分支、JWK/Passkey/OIDC 外部认证配置或服务不可用分支、任务执行与监控服务的旧不可用分支、个人资料和用户控制器的认证会话不可用分支，以及 API Key 控制器接收授权服务不可用结果的兼容映射。后续迁移这些入口时，只替换响应错误码，不改变既有 HTTP 状态码；领域层内部的 `:invalid_credentials` 和 `:authorization_unavailable` 原子错误保持不变，由边界层映射为目录中的稳定代码。
+当前保留的 `authorization_unavailable` 兼容范围如下：`NoRepeat` 的旧限流服务失败分支、JWK/Passkey/OIDC 外部认证配置或服务不可用分支、任务执行与监控服务的旧不可用分支、个人资料和用户控制器的认证会话不可用分支，以及 API Key 控制器接收授权服务不可用结果的兼容映射。HTTPS 前置检查现在使用专用的 `https_required`。后续迁移其他入口时，只替换响应错误码，不改变既有 HTTP 状态码；领域层内部的 `:invalid_credentials` 和 `:authorization_unavailable` 原子错误保持不变，由边界层映射为目录中的稳定代码。
 
 Phoenix 的 MFA 基础能力由 `KeystonePhoenix.Auth.Mfa` 提供。该领域服务保存加密的
 TOTP 因子、短期 `LOGIN`/`STEP_UP`/`ENROLL`/`RECOVERY` 请求、一次性恢复码摘要和

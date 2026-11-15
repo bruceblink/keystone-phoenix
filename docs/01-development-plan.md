@@ -2,6 +2,12 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
+## 2026-11-16 业务错误码目录基线
+
+跨项目错误码目录见 [`11-business-error-code-catalog.md`](11-business-error-code-catalog.md)。Phoenix `56ba348`、Native `aea1a35`/`7cb6533` 和 admin-web `33c20ff`/`dd1b280` 当前登记相同的 21 个服务端代码；其中 Phoenix `56ba348` 补齐了 `mfa_invalid_code`、`mfa_state_conflict` 和 `https_required`。admin-web 另有 4 个客户端本地代码，不能进入服务端响应。目录规则明确了代码到业务条件的反查、HTTP 状态保持和 `authorization_unavailable`、`invalid_credentials` 的兼容范围。
+
+本轮静态验证：`python3 scripts/check_error_code_catalog.py --native-root ../keystone-native --admin-root ../keystone-admin-web` 通过，规范服务端代码 `21` 个、客户端本地代码 `4` 个，Phoenix/Native/admin-web 集合和默认状态 `21/21` 一致；Python 语法检查和 `git diff --check` 通过。该静态结果不替代真实 HTTP、数据库、浏览器和生产代理验收。
+
 ## 2026-11-15 当前审查与下一轮主线
 
 本轮审查以 Phoenix `79ce1dc`、admin-web `86ea75a` 和 Native `779d80b` 为代码基线。`/api/v1` 接口集合共 108 条，包含 `/api/v1/health`，业务方法分布为 `GET 42`、`POST 29`、`PUT 20`、`DELETE 17`；标准 JWK Set 另有 1 条路径。归一化后 Native-only、Phoenix-only 和重复 `HTTP method + path` 均为 0。admin-web 当前调用的接口全部存在于两个后端，Swagger 文档入口不计入 `/api/v1` 接口集合。
