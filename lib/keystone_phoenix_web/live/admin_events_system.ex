@@ -10,13 +10,22 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("refresh-notices", _params, socket) do
     if Support.panel_allowed?(socket, "notices") do
-      {:noreply,
-       assign(socket,
-         notice_rows: Support.load_notices_for_socket(socket),
-         selected_notice_ids: [],
-         notice_feedback: nil,
-         active_modal: nil
-       )}
+      case Support.load_notices_for_socket_result(socket) do
+        {:ok, rows} ->
+          {:noreply,
+           assign(socket,
+             notice_rows: rows,
+             selected_notice_ids: [],
+             notice_feedback: nil,
+             active_modal: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             notice_feedback: Support.read_error_feedback(reason, "公告列表刷新失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end
@@ -51,19 +60,26 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("refresh-dicts", _params, socket) do
     if Support.panel_allowed?(socket, "dicts") do
-      dictionary = Support.load_dictionary_for_socket(socket, socket.assigns.selected_dict_type)
+      case Support.load_dictionary_for_socket_result(socket, socket.assigns.selected_dict_type) do
+        {:ok, dictionary} ->
+          {:noreply,
+           assign(socket,
+             dict_type_rows: dictionary.types,
+             dict_data_rows: dictionary.data,
+             page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
+             selected_dict_type: dictionary.selected,
+             dict_type_form: Support.empty_dict_type_form(),
+             dict_data_form: Support.empty_dict_data_form(),
+             dict_feedback: nil,
+             active_modal: nil
+           )}
 
-      {:noreply,
-       assign(socket,
-         dict_type_rows: dictionary.types,
-         dict_data_rows: dictionary.data,
-         page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
-         selected_dict_type: dictionary.selected,
-         dict_type_form: Support.empty_dict_type_form(),
-         dict_data_form: Support.empty_dict_data_form(),
-         dict_feedback: nil,
-         active_modal: nil
-       )}
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             dict_feedback: Support.read_error_feedback(reason, "字典数据刷新失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end
@@ -72,14 +88,24 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   def handle_event("select-dict-type", %{"dict-type" => dict_type}, socket) do
     if Support.panel_allowed?(socket, "dicts") and
          Support.dict_type_allowed?(socket, dict_type) do
-      {:noreply,
-       assign(socket,
-         selected_dict_type: dict_type,
-         dict_data_rows: Support.load_dict_data_for_socket(socket, dict_type),
-         dict_data_form: Support.empty_dict_data_form(dict_type),
-         page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
-         active_modal: nil
-       )}
+      case Support.load_dict_data_for_socket_result(socket, dict_type) do
+        {:ok, rows} ->
+          {:noreply,
+           assign(socket,
+             selected_dict_type: dict_type,
+             dict_data_rows: rows,
+             dict_data_form: Support.empty_dict_data_form(dict_type),
+             page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
+             dict_feedback: nil,
+             active_modal: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             dict_feedback: Support.read_error_feedback(reason, "字典条目读取失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end

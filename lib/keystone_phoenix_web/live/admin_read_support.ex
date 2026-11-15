@@ -3,6 +3,8 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
 
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Job
+  alias KeystonePhoenix.Dictionary
+  alias KeystonePhoenix.Notice
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
@@ -25,6 +27,55 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     if Support.admin_socket?(socket),
       do: load_all(&Job.list_job_logs/1),
       else: load_authorized(&Job.list_job_logs(&1, Support.authorization_options(socket)))
+  end
+
+  @doc "读取字典类型和当前类型条目，并保留任一读取失败结果。"
+  def dictionary(socket, selected, params \\ %{}) do
+    options = Support.authorization_options(socket)
+
+    with {:ok, types} <- dictionary_types(socket, options, params),
+         selected <- selected_dictionary_type(selected, types),
+         {:ok, data} <- dictionary_data(socket, selected, options) do
+      {:ok, %{types: types, selected: selected, data: data}}
+    end
+  end
+
+  @doc "读取字典条目，并区分空类型和读取失败。"
+  def dictionary_data(_socket, "", _options), do: {:ok, []}
+
+  def dictionary_data(socket, dict_type, options) when is_binary(dict_type) do
+    params = %{"dictType" => dict_type}
+
+    if Support.admin_socket?(socket) do
+      load_all(&Dictionary.list_dict_data/1, params)
+    else
+      load_authorized(fn page -> Dictionary.list_dict_data(page, options) end, params)
+    end
+  end
+
+  @doc "读取公告列表并保留服务端错误。"
+  def notices(socket, params \\ %{}) do
+    options = Support.authorization_options(socket)
+
+    if Support.admin_socket?(socket) do
+      load_all(&Notice.list_notices/1, params)
+    else
+      load_authorized(fn page -> Notice.list_notices(page, options) end, params)
+    end
+  end
+
+  defp dictionary_types(socket, options, params) do
+    if Support.admin_socket?(socket) do
+      load_all(&Dictionary.list_dict_types/1, params)
+    else
+      load_authorized(fn page -> Dictionary.list_dict_types(page, options) end, params)
+    end
+  end
+
+  defp selected_dictionary_type(selected, types) do
+    if selected != "" and Enum.any?(types, &(&1["dictType"] == selected)),
+      do: selected,
+      else: List.first(types, %{})["dictType"] || ""
   end
 
   # 读取失败必须与空结果区分，避免页面把服务故障显示成“暂无数据”。

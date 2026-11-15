@@ -205,6 +205,10 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def load_notices_for_socket(socket), do: load_notices(authorization_options(socket))
 
+  @doc "读取公告列表并保留失败结果，供 LiveView 刷新反馈使用。"
+  def load_notices_for_socket_result(socket, params \\ %{}),
+    do: AdminReadSupport.notices(socket, params)
+
   @doc "读取已发布且启用的公开通知，供顶栏站内通知使用。"
   def load_public_notifications do
     case load_public_notifications_result() do
@@ -238,6 +242,10 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       else: []
   end
 
+  @doc "读取字典条目并保留失败结果，供 LiveView 选择类型反馈使用。"
+  def load_dict_data_for_socket_result(socket, dict_type),
+    do: AdminReadSupport.dictionary_data(socket, dict_type, authorization_options(socket))
+
   def dict_type_allowed?(socket, dict_type) when is_binary(dict_type) do
     admin_socket?(socket) or
       ("dictionary:read" in List.wrap(socket.assigns[:permissions]) and
@@ -253,6 +261,10 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def load_dictionary_for_socket(socket, selected, params),
     do: load_dictionary(selected, authorization_options(socket), params)
+
+  @doc "读取字典类型和条目并保留失败结果，供 LiveView 刷新反馈使用。"
+  def load_dictionary_for_socket_result(socket, selected, params \\ %{}),
+    do: AdminReadSupport.dictionary(socket, selected, params)
 
   def load_dictionary(selected, options) when is_list(options),
     do: load_dictionary(selected, options, %{})
