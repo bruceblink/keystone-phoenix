@@ -118,6 +118,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       online_user_rows: [],
       online_user_total: 0,
       network_status: %{},
+      monitor_help_open: false,
       security_access: false,
       security_metrics: %{},
       security_api_keys: %{},
