@@ -15,6 +15,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk do
           {:noreply,
            assign(socket,
              role_rows: Support.load_roles_for_socket(socket),
+             selected_role_ids: [],
              role_form: Support.empty_role_form(),
              active_modal: nil,
              role_feedback: "已删除 #{length(role_ids)} 个角色",

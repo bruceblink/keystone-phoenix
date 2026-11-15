@@ -153,6 +153,45 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     assert live_socket(view).assigns.role_user_feedback == nil
   end
 
+  test "role list supports selecting the current result set", ctx do
+    roles =
+      for suffix <- ["one", "two"] do
+        {:ok, role} =
+          Role.create_role(
+            %{
+              "roleName" => unique("选择角色 #{suffix}"),
+              "roleKey" => unique("selection_#{suffix}"),
+              "roleSort" => 7,
+              "dataScope" => "ALL",
+              "status" => 1,
+              "menuIds" => []
+            },
+            authorization: %{principal: ctx.admin, permission: "role:create"}
+          )
+
+        role
+      end
+
+    {:ok, view} = login(ctx.conn, ctx.admin)
+    render_click(view, "show-panel", %{"panel" => "roles"})
+    assert has_element?(view, "input[aria-label='选择当前角色']")
+
+    render_click(view, "toggle-all-role-selection", %{"selected" => "true"})
+    selected_ids = live_socket(view).assigns.selected_role_ids
+    assert Enum.all?(roles, &(to_string(&1.role_id) in selected_ids))
+
+    render_click(view, "toggle-role-selection", %{
+      "role-id" => to_string(hd(roles).role_id),
+      "selected" => "false"
+    })
+
+    refute to_string(hd(roles).role_id) in live_socket(view).assigns.selected_role_ids
+    assert to_string(List.last(roles).role_id) in live_socket(view).assigns.selected_role_ids
+
+    render_click(view, "refresh-roles", %{"reset" => "true"})
+    assert live_socket(view).assigns.selected_role_ids == []
+  end
+
   test "menu edit preserves the ID and saved route fields", ctx do
     {:ok, menu} =
       Menu.create_menu(

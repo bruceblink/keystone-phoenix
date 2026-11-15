@@ -12,6 +12,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationExport
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenuParams
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleSelection
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
@@ -285,6 +286,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
          role_feedback: nil,
          role_filter: filter,
          active_modal: nil,
+         selected_role_ids: [],
          selected_role_id: "",
          selected_role_name: "",
          allocated_role_user_rows: [],
@@ -375,6 +377,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     end
   end
 
+  def handle_event("toggle-role-selection", params, socket),
+    do: OrganizationRoleSelection.handle_event("toggle-role-selection", params, socket)
+
+  def handle_event("toggle-all-role-selection", params, socket),
+    do: OrganizationRoleSelection.handle_event("toggle-all-role-selection", params, socket)
+
   def handle_event("toggle-role-status", %{"role-id" => role_id, "status" => status}, socket) do
     if Support.permission_socket?(socket, "role:update") do
       case Role.change_status(role_id, status, authorization(socket, "role:update")) do
@@ -382,6 +390,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           socket =
             assign(socket,
               role_rows: Support.load_roles_for_socket(socket),
+              selected_role_ids: [],
               role_feedback: "角色状态已更新"
             )
 
@@ -578,6 +587,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   defp clear_role_selection(socket) do
     assign(socket,
+      selected_role_ids: [],
       selected_role_id: "",
       selected_role_name: "",
       allocated_role_user_rows: [],

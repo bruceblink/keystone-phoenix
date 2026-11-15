@@ -83,6 +83,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
         "role-users-unallocated" => 50
       },
       role_rows: [],
+      selected_role_ids: [],
       selected_role_id: "",
       selected_role_name: "",
       allocated_role_user_rows: [],
