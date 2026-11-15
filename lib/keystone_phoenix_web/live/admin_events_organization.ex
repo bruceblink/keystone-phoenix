@@ -9,15 +9,26 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.Role.Permissions
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationExport
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers
+  alias KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
-  def handle_event("refresh-depts", _params, socket) do
+  def handle_event("refresh-depts", params, socket) do
     if Support.panel_allowed?(socket, "depts") do
+      filter =
+        OrganizationFilters.organization_filter(params, socket.assigns[:dept_filter], [
+          "deptKeyword",
+          "deptStatus"
+        ])
+
       {:noreply,
        assign(socket,
          dept_rows: Support.load_depts_for_socket(socket),
          dept_form: Support.empty_dept_form(),
          dept_feedback: nil,
+         dept_filter: filter,
          active_modal: nil
        )}
     else
@@ -128,19 +139,29 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     end
   end
 
-  def handle_event("refresh-posts", _params, socket) do
+  def handle_event("refresh-posts", params, socket) do
     if Support.panel_allowed?(socket, "posts") do
+      filter =
+        OrganizationFilters.organization_filter(params, socket.assigns[:post_filter], [
+          "postKeyword",
+          "postStatus"
+        ])
+
       {:noreply,
        assign(socket,
          post_rows: Support.load_posts_for_socket(socket),
          post_form: Support.empty_post_form(),
          post_feedback: nil,
+         post_filter: filter,
          active_modal: nil
        )}
     else
       {:noreply, socket}
     end
   end
+
+  def handle_event("export-posts", params, socket),
+    do: OrganizationExport.handle_event("export-posts", params, socket)
 
   def handle_event("new-post", _params, socket) do
     if Support.permission_socket?(socket, "post:create") do
@@ -244,13 +265,20 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     end
   end
 
-  def handle_event("refresh-roles", _params, socket) do
+  def handle_event("refresh-roles", params, socket) do
     if Support.panel_allowed?(socket, "roles") do
+      filter =
+        OrganizationFilters.organization_filter(params, socket.assigns[:role_filter], [
+          "roleKeyword",
+          "roleStatus"
+        ])
+
       {:noreply,
        assign(socket,
          role_rows: Support.load_roles_for_socket(socket),
          role_form: Support.empty_role_form(),
          role_feedback: nil,
+         role_filter: filter,
          active_modal: nil,
          selected_role_id: "",
          selected_role_name: "",
@@ -262,6 +290,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       {:noreply, socket}
     end
   end
+
+  def handle_event("export-roles", params, socket),
+    do: OrganizationExport.handle_event("export-roles", params, socket)
 
   def handle_event("new-role", _params, socket) do
     if Support.permission_socket?(socket, "role:create") do
@@ -360,43 +391,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     end
   end
 
-  def handle_event("delete-role", %{"role-id" => role_id}, socket) do
-    if Support.permission_socket?(socket, "role:delete") do
-      case Role.delete_role(role_id, authorization(socket, "role:delete")) do
-        {:ok, _} ->
-          {:noreply,
-           assign(socket,
-             role_rows: Support.load_roles_for_socket(socket),
-             role_form: Support.empty_role_form(),
-             active_modal: nil,
-             role_feedback: "角色已删除",
-             selected_role_id: "",
-             selected_role_name: "",
-             allocated_role_user_rows: [],
-             unallocated_role_user_rows: [],
-             role_user_feedback: nil
-           )}
+  def handle_event("delete-role", %{"role-id" => role_id}, socket),
+    do: OrganizationRoleBulk.delete_roles(socket, [role_id])
 
-        :ok ->
-          {:noreply,
-           assign(socket,
-             role_rows: Support.load_roles_for_socket(socket),
-             role_form: Support.empty_role_form(),
-             active_modal: nil,
-             role_feedback: "角色已删除",
-             selected_role_id: "",
-             selected_role_name: "",
-             allocated_role_user_rows: [],
-             unallocated_role_user_rows: [],
-             role_user_feedback: nil
-           )}
-
-        error ->
-          {:noreply, assign(socket, role_feedback: Support.form_error(error))}
-      end
-    else
-      {:noreply, socket}
-    end
+  def handle_event("delete-role", %{"role-ids" => role_ids}, socket) do
+    OrganizationRoleBulk.delete_roles(
+      socket,
+      List.wrap(role_ids) |> Enum.flat_map(&String.split(to_string(&1), ","))
+    )
   end
 
   def handle_event("select-role", %{"role-id" => role_id}, socket) do
@@ -427,24 +429,23 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("assign-role-user", %{"user-id" => user_id}, socket) do
-    update_role_user_assignment(socket, fn role_id ->
-      Role.assign_users(role_id, [user_id], authorization(socket, "role:update"))
-    end)
+    OrganizationRoleUsers.assign_user(socket, user_id)
   end
 
   def handle_event("unassign-role-user", %{"user-id" => user_id}, socket) do
-    update_role_user_assignment(socket, fn _role_id ->
-      Role.unassign_users([user_id], authorization(socket, "role:update"))
-    end)
+    OrganizationRoleUsers.unassign_user(socket, user_id)
   end
 
-  def handle_event("refresh-menus", _params, socket) do
+  def handle_event("refresh-menus", params, socket) do
     if Support.panel_allowed?(socket, "menus") do
+      filter = OrganizationFilters.menu_filter(params, socket.assigns[:menu_filter])
+
       {:noreply,
        assign(socket,
          menu_rows: Support.load_menus_for_socket(socket),
          menu_form: Support.empty_menu_form(),
          menu_feedback: nil,
+         menu_filter: filter,
          active_modal: nil
        )}
     else
@@ -550,29 +551,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
         error ->
           {:noreply, assign(socket, menu_feedback: Support.form_error(error))}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
-
-  defp update_role_user_assignment(socket, operation) do
-    if Support.permission_socket?(socket, "role:update") and
-         socket.assigns.selected_role_id != "" do
-      role_id = socket.assigns.selected_role_id
-
-      case operation.(role_id) do
-        :ok ->
-          {:noreply,
-           assign(socket,
-             role_rows: Support.load_roles_for_socket(socket),
-             role_feedback: "角色用户已更新",
-             role_user_feedback: "角色用户已更新"
-           )
-           |> clear_role_selection()}
-
-        error ->
-          {:noreply, assign(socket, role_user_feedback: Support.form_error(error))}
       end
     else
       {:noreply, socket}

@@ -260,7 +260,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   def handle_event("paginate", _params, socket), do: {:noreply, socket}
 
-  @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles new-role edit-role save-role toggle-role-status delete-role select-role assign-role-user unassign-role-user refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
+  @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts export-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles export-roles new-role edit-role save-role toggle-role-status delete-role select-role assign-role-user unassign-role-user refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
   @accounts_events ~w(filter-users reset-user-filter refresh-users export-users download-user-template import-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
   @system_events ~w(refresh-config filter-configs reset-config-filter new-config edit-config save-config refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs refresh-login-logs refresh-operation-logs new-notice edit-notice cancel-notice save-notice toggle-notice-status publish-notice delete-notice refresh-notices filter-notices reset-notice-filter delete-login-log delete-operation-log)
   @operations_events ~w(refresh-jobs filter-jobs reset-job-filter new-job edit-job save-job delete-job run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor logout-online-user)
@@ -443,11 +443,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
                         </div>
                       </div>
                     <% "depts" -> %>
-                      <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} active_modal={@active_modal} read_only={@read_only} />
+                      <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} active_modal={@active_modal} read_only={@read_only} permissions={@permissions} />
                     <% "posts" -> %>
-                      <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} active_modal={@active_modal} read_only={@read_only} />
+                      <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} active_modal={@active_modal} read_only={@read_only} permissions={@permissions} />
                     <% "roles" -> %>
-                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} active_modal={@active_modal} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} read_only={@read_only} />
+                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} active_modal={@active_modal} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} read_only={@read_only} permissions={@permissions} />
                     <% "menus" -> %>
                       <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} active_modal={@active_modal} read_only={@read_only} />
                     <% "users" -> %>
