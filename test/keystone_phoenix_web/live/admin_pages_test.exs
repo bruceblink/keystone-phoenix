@@ -472,6 +472,9 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     assert monitor_html =~ "refresh-monitor"
     assert monitor_html =~ "status-badge status-badge--success"
     assert monitor_html =~ "ONLINE"
+    assert monitor_html =~ "暂无采样数据"
+    assert monitor_html =~ "系统 API 未返回资源使用率"
+    refute monitor_html =~ "CPU 使用率</text>"
 
     unknown_monitor_html =
       render_component(

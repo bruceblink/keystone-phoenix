@@ -551,3 +551,6 @@ main.app-main.login-main { width: 100%; max-width: none; margin: 0; padding: 0; 
 .dashboard > .module-nav button:hover .nav-icon { background: rgba(129, 140, 248, 0.24); color: #e0e7ff; }.dashboard > .module-nav button.active .nav-icon { background: rgba(255, 255, 255, 0.18); color: #fff; }
 .sidebar-foot { position: fixed; left: 0; bottom: 0; z-index: 32; width: 244px; padding: 18px 20px 24px; border-top: 1px solid rgba(32,50,75,.72); background: #0a1525; }
 .sidebar-foot .status-dot { display: flex; align-items: center; gap: 7px; color: var(--muted-strong); font-size: 11px; }.sidebar-foot .status-dot span { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(96,219,163,.11); }.sidebar-foot .sidebar-version { display: block; margin-top: 11px; color: #536983; font-size: 10px; }
+
+/* 监控采样缺失时使用中性空状态，避免把缺失数据误读为 0%。 */
+.monitor-chart-empty { display: grid; min-height: 232px; place-items: center; align-content: center; gap: 6px; border: 1px dashed var(--line-strong); border-radius: 12px; background: rgba(8,17,31,.28); color: var(--muted); text-align: center; }.monitor-chart-empty strong { color: var(--text); font-size: 13px; }.monitor-chart-empty span { font-size: 11px; }

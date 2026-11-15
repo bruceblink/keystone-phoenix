@@ -135,6 +135,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       |> assign_new(:security_api_keys, fn -> %{} end)
       |> assign_new(:security_event_rows, fn -> [] end)
       |> assign_new(:security_event_total, fn -> 0 end)
+      |> assign_new(:monitor_metrics, fn ->
+        monitor_metrics(assigns[:monitor_server_info] || %{})
+      end)
 
     ~H"""
     <div class="monitor-page operations-page monitor-workspace">
@@ -174,29 +177,33 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
 
       <div class="monitor-layout">
         <section class="monitor-main-column">
-          <section class="monitor-chart-panel" aria-labelledby="monitor-chart-title">
+            <section class="monitor-chart-panel" aria-labelledby="monitor-chart-title">
             <header class="monitor-section-heading">
               <div><span class="monitor-kicker">Resource snapshot</span><h4 id="monitor-chart-title">资源使用快照</h4></div>
-              <span class="monitor-window-label">当前采样 · 30 分钟窗口</span>
+              <span class="monitor-window-label">当前采样 · 百分比</span>
             </header>
-            <div class="monitor-chart" role="img" aria-label={monitor_chart_label(@monitor_server_info)}>
+            <%= if monitor_metrics_empty?(@monitor_metrics) do %>
+              <div class="monitor-chart monitor-chart-empty" role="status" aria-live="polite"><strong>暂无采样数据</strong><span>系统 API 未返回资源使用率。</span></div>
+            <% else %>
+            <div class="monitor-chart" role="img" aria-label={monitor_chart_label(@monitor_metrics)}>
               <svg viewBox="0 0 720 232" preserveAspectRatio="none" aria-hidden="true">
                 <g class="monitor-chart-grid">
                   <line x1="176" y1="18" x2="690" y2="18" /><line x1="176" y1="67" x2="690" y2="67" /><line x1="176" y1="116" x2="690" y2="116" /><line x1="176" y1="165" x2="690" y2="165" /><line x1="176" y1="214" x2="690" y2="214" />
                   <line class="monitor-chart-threshold" x1="587" y1="8" x2="587" y2="224" />
                 </g>
                 <text class="monitor-chart-threshold-label" x="591" y="14">80% 阈值</text>
-                <%= for {metric, index} <- Enum.with_index(monitor_metrics(@monitor_server_info)) do %>
+                <%= for {metric, index} <- Enum.with_index(@monitor_metrics) do %>
                   <g class="monitor-chart-row">
                     <text class="monitor-chart-label" x="0" y={monitor_metric_y(index)}><%= metric.label %></text>
                     <rect class="monitor-chart-track" x="176" y={monitor_metric_bar_y(index)} width="514" height="18" rx="9" />
                     <rect class={"monitor-chart-bar #{metric.tone}"} x="176" y={monitor_metric_bar_y(index)} width={monitor_metric_width(metric.value)} height="18" rx="9" />
-                    <text class="monitor-chart-value" x="700" y={monitor_metric_y(index)} text-anchor="end"><%= metric.value %>%</text>
+                    <text class="monitor-chart-value" x="700" y={monitor_metric_y(index)} text-anchor="end"><%= monitor_value_label(metric.value) %></text>
                   </g>
                 <% end %>
               </svg>
             </div>
-            <div class="monitor-chart-footer"><span><i class="monitor-legend-dot monitor-legend-dot--primary"></i>当前使用率</span><span><i class="monitor-legend-line"></i>建议关注阈值</span><span class="monitor-source">来源：Monitor snapshot · 当前值来自节点采样</span></div>
+            <% end %>
+            <div class="monitor-chart-footer"><span><i class="monitor-legend-dot monitor-legend-dot--primary"></i>当前使用率</span><span><i class="monitor-legend-line"></i>建议关注阈值 80%</span><span class="monitor-source">来源：系统 API · 当前值来自节点采样</span></div>
           </section>
 
           <section class="monitor-session-panel" aria-labelledby="online-session-title">
@@ -284,15 +291,21 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
   defp monitor_percent(value) when is_binary(value) do
     case Float.parse(value) do
       {number, _} -> monitor_percent(number)
-      :error -> 0
+      :error -> nil
     end
   end
 
-  defp monitor_percent(_value), do: 0
+  defp monitor_percent(_value), do: nil
 
   defp monitor_metric_y(index), do: 31 + index * 49
   defp monitor_metric_bar_y(index), do: 12 + index * 49
-  defp monitor_metric_width(value), do: round(value * 5.14)
+  defp monitor_metric_width(value) when is_number(value), do: round(value * 5.14)
+  defp monitor_metric_width(_value), do: 0
+
+  defp monitor_value_label(value) when is_number(value), do: "#{value}%"
+  defp monitor_value_label(_value), do: "—"
+
+  defp monitor_metrics_empty?(metrics), do: Enum.all?(metrics, &is_nil(&1.value))
 
   defp monitor_state_class(%{"status" => "ONLINE"}), do: "monitor-live-state--live"
   defp monitor_state_class(%{"status" => "OFFLINE"}), do: "monitor-live-state--offline"
@@ -310,7 +323,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
   defp monitor_health_title(_status, _server_info), do: "等待最新快照"
 
   defp monitor_health_detail(%{"status" => "ONLINE"}, server_info),
-    do: "节点已响应，CPU #{monitor_percent(get_in(server_info, ["cpuInfo", "used"]))}% 使用率。"
+    do:
+      "节点已响应，CPU #{monitor_value_label(monitor_percent(get_in(server_info, ["cpuInfo", "used"])))} 使用率。"
 
   defp monitor_health_detail(%{"status" => "DEGRADED"}, _server_info), do: "当前数据不完整，请检查节点与网络状态。"
   defp monitor_health_detail(%{"status" => "OFFLINE"}, _server_info), do: "保留最近可见数据，恢复连接后可再次刷新。"
@@ -324,9 +338,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
     end
   end
 
-  defp monitor_chart_label(server_info) do
-    metrics = monitor_metrics(server_info) |> Enum.map_join("、", &"#{&1.label} #{&1.value}%")
-    "资源使用快照：#{metrics}。当前值来自节点采样，80% 为建议关注阈值。"
+  defp monitor_chart_label(metrics) do
+    values = Enum.map_join(metrics, "、", &"#{&1.label} #{monitor_value_label(&1.value)}")
+    "资源使用快照：#{values}。当前值来自节点采样，80% 为建议关注阈值。"
   end
 
   defp monitor_data_status(server_info, cache_info, network_status) do

@@ -107,6 +107,8 @@
   .sidebar-scrim:hover { background: rgba(2, 7, 14, .68); box-shadow: none; transform: none; }
 }
 
+@media (max-width: 640px) { .monitor-chart-empty { min-height: 215px; margin-inline: -4px; } }
+
 @media (max-width: 640px) {
   .dashboard-topbar .user-profile-button > span:not(.user-avatar) { display: none; }
   .dashboard-topbar .logout-button { min-height: 34px; padding-inline: 8px; }
