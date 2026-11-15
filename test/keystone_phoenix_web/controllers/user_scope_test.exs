@@ -148,7 +148,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert json_response(
              get(authorized(tokens.token), "/api/v1/users/#{ctx.oldest.user_id}"),
              200
-           )["data"]["userId"] == ctx.oldest.user_id
+           )["data"]["id"] == ctx.oldest.user_id
 
     assert json_response(
              get(authorized(tokens.token), "/api/v1/users/#{hd(ctx.outside_ids)}"),
