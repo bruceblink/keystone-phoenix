@@ -195,10 +195,8 @@ defmodule KeystonePhoenixWeb.Router do
     delete "/notices/:notice_id", NoticeController, :delete
     get "/login-logs", LogController, :login_logs
     get "/login-logs/export", LogController, :export_login_logs
-    delete "/login-logs", LogController, :delete_login_logs
     get "/operation-logs", LogController, :operation_logs
     get "/operation-logs/export", LogController, :export_operation_logs
-    delete "/operation-logs", LogController, :delete_operation_logs
     get "/profile", ProfileController, :show
     put "/profile", ProfileController, :update
     put "/profile/password", ProfileController, :update_password

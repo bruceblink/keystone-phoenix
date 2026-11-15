@@ -15,7 +15,7 @@
 Native 作为 HTTP 入口基准，Phoenix 已完成以下路径处理：
 
 - 删除 Native 没有的用户导入模板、部门详情、岗位详情、菜单详情、角色详情、旧字典读取、角色状态和数据范围入口。
-- 删除旧 `/system/*` 和 `/logs/*` 管理路径，保留 Native 同样存在的登录日志和操作日志删除入口。
+- 删除旧 `/system/*` 和 `/logs/*` 管理路径；审计接口只保留 Native 同样存在的查询和导出入口。
 - 保留并补齐任务单项删除 `DELETE /api/v1/jobs/{id}`。
 - 补齐菜单角色绑定 `PUT /api/v1/menus/{id}/roles` 和查询 `GET /api/v1/menus/{id}/roles`。
 - 菜单管理主体通过 `GET /api/v1/menus` 读取完整的未删除多级菜单树，包括停用和未绑定节点；普通菜单读取仍只返回已启用且已绑定节点。
@@ -31,8 +31,8 @@ Phoenix 证据：`mix phx.routes` 未发现 `/system`、`/logs`、`auth/passkey`
 
 2026-11-15 对两个后端的业务路由做了静态集合核对。Native 的 JAX-RS 类级路径与
 `quarkus.http.root-path=/api` 合并后，再与 Phoenix 的 `mix phx.routes` 结果比较；参数
-占位符 `{id}` 与 `:id` 先归一为同一形状。两边均有 109 条业务路由，方法分布均为
-`GET 41`、`POST 29`、`PUT 20`、`DELETE 19`。归一化后 Native-only 和 Phoenix-only
+占位符 `{id}` 与 `:id` 先归一为同一形状。两边均有 108 条业务路由，方法分布均为
+`GET 42`、`POST 29`、`PUT 20`、`DELETE 17`。归一化后 Native-only 和 Phoenix-only
 业务路由均为 0，也没有重复的 `HTTP method + path`。Phoenix 额外的 3 条 GET 路由是
 LiveView 页面和头像资源，不属于后端业务接口。
 

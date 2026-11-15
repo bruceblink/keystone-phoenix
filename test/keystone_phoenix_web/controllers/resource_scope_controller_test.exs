@@ -4,7 +4,6 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Authz.{PolicyCache, SysPermission, SysRolePermission}
   alias KeystonePhoenix.Identity
-  alias KeystonePhoenix.Log.{SysLoginInfo, SysOperationLog}
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
@@ -326,44 +325,6 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
   end
 
   @tag :integration
-  test "audit deletion rolls back through HTTP when one id is missing" do
-    {token, _ids} = authenticated_scope_user("TENANT")
-    login_id = Identity.v7()
-    operation_id = Identity.v7()
-    missing_id = Identity.v7()
-    now = DateTime.utc_now()
-
-    Repo.insert!(%SysLoginInfo{info_id: login_id, username: "http-mixed-delete", login_time: now})
-
-    Repo.insert!(%SysOperationLog{
-      operation_id: operation_id,
-      operation_time: now
-    })
-
-    login_response =
-      delete(
-        authorized(build_conn(), token),
-        "/api/v1/login-logs?ids=#{login_id},#{missing_id}",
-        %{}
-      )
-
-    assert login_response.status == 404
-    assert json_response(login_response, 404)["error"]["code"] == "validation_failed"
-    assert Repo.get!(SysLoginInfo, login_id).deleted == false
-
-    operation_response =
-      delete(
-        authorized(build_conn(), token),
-        "/api/v1/operation-logs?operationIds=#{operation_id},#{missing_id}",
-        %{}
-      )
-
-    assert operation_response.status == 404
-    assert json_response(operation_response, 404)["error"]["code"] == "validation_failed"
-    assert Repo.get!(SysOperationLog, operation_id).deleted == false
-  end
-
-  @tag :integration
   test "export endpoints enforce scope and render an authorized workbook" do
     export_cases = export_cases()
     {department_token, _ids} = authenticated_scope_user("DEPARTMENT")
@@ -436,8 +397,8 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
       menu:read menu:create menu:update menu:delete
       config:read config:create config:update config:refresh
       dictionary:read dictionary:create dictionary:update dictionary:delete dictionary:refresh
-      login-log:read login-log:export login-log:delete
-      operation-log:read operation-log:export operation-log:delete
+      login-log:read login-log:export
+      operation-log:read operation-log:export
       cache:refresh server:read online-session:read online-session:revoke
       job:read job:create job:update job:update-status job:run job:delete
       notice:read notice:create notice:update notice:delete
@@ -463,7 +424,6 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
       {"dictionary delete", :delete, "/api/v1/dictionaries/types/#{uuid}", %{}},
       {"audit list", :get, "/api/v1/login-logs", %{}},
       {"audit detail", :get, "/api/v1/operation-logs", %{}},
-      {"audit delete", :delete, "/api/v1/login-logs?ids=#{uuid}", %{}},
       {"session list", :get, "/api/v1/monitor/onlineUsers", %{}},
       {"session detail", :get, "/api/v1/monitor/serverInfo", %{}},
       {"session write", :get, "/api/v1/monitor/cacheInfo", %{}},

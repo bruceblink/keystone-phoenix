@@ -6,17 +6,13 @@ defmodule KeystonePhoenixWeb.LogController do
          permissions: %{
            login_logs: "login-log:read",
            export_login_logs: "login-log:export",
-           delete_login_logs: "login-log:delete",
            operation_logs: "operation-log:read",
-           export_operation_logs: "operation-log:export",
-           delete_operation_logs: "operation-log:delete"
+           export_operation_logs: "operation-log:export"
          }
        ]
        when action in [
               :login_logs,
               :operation_logs,
-              :delete_login_logs,
-              :delete_operation_logs,
               :export_login_logs,
               :export_operation_logs
             ]
@@ -26,8 +22,6 @@ defmodule KeystonePhoenixWeb.LogController do
        when action in [
               :login_logs,
               :operation_logs,
-              :delete_login_logs,
-              :delete_operation_logs,
               :export_login_logs,
               :export_operation_logs
             ]
@@ -73,28 +67,6 @@ defmodule KeystonePhoenixWeb.LogController do
         render_error(conn, reason)
     end
   end
-
-  @doc "Soft deletes login audit records."
-  def delete_login_logs(conn, %{"ids" => ids}) do
-    case Log.delete_login_logs(String.split(ids, ","),
-           authorization: %{principal: conn.assigns.current_user}
-         ) do
-      :ok ->
-        count =
-          ids
-          |> String.split(",", trim: true)
-          |> Enum.map(&String.trim/1)
-          |> Enum.uniq()
-          |> length()
-
-        json(conn, ApiResponse.ok(%{"deleted" => count}))
-
-      {:error, reason} ->
-        render_error(conn, reason)
-    end
-  end
-
-  def delete_login_logs(conn, _params), do: render_error(conn, :invalid_ids)
 
   @doc "Returns operation audit records."
   def operation_logs(conn, params) do
@@ -159,34 +131,6 @@ defmodule KeystonePhoenixWeb.LogController do
           {:error, reason} ->
             render_error(conn, reason)
         end
-
-      {:error, reason} ->
-        render_error(conn, reason)
-    end
-  end
-
-  @doc "Soft deletes operation audit records."
-  def delete_operation_logs(conn, %{"operationIds" => ids}) do
-    delete_operation_logs_by_ids(conn, ids)
-  end
-
-  def delete_operation_logs(conn, %{"ids" => ids}), do: delete_operation_logs_by_ids(conn, ids)
-
-  def delete_operation_logs(conn, _params), do: render_error(conn, :invalid_ids)
-
-  defp delete_operation_logs_by_ids(conn, ids) do
-    case Log.delete_operation_logs(String.split(ids, ","),
-           authorization: %{principal: conn.assigns.current_user}
-         ) do
-      :ok ->
-        count =
-          ids
-          |> String.split(",", trim: true)
-          |> Enum.map(&String.trim/1)
-          |> Enum.uniq()
-          |> length()
-
-        json(conn, ApiResponse.ok(%{"deleted" => count}))
 
       {:error, reason} ->
         render_error(conn, reason)

@@ -39,6 +39,12 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
     assert html_response(get(build_conn(), "/login"), 200) =~ "login-form"
     assert get(build_conn(), "/system/users").status == 404
     assert get(build_conn(), "/health").status == 404
+
+    assert delete(build_conn(), "/api/v1/login-logs?ids=00000000-0000-0000-0000-000000000000").status ==
+             404
+
+    assert delete(build_conn(), "/api/v1/operation-logs?ids=00000000-0000-0000-0000-000000000000").status ==
+             404
   end
 
   @tag :integration
