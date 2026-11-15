@@ -177,8 +177,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       |> assign_new(:security_access, fn -> false end)
       |> assign_new(:monitor_feedback, fn -> nil end)
       |> assign_new(:monitor_help_open, fn -> false end)
-      |> assign_new(:monitor_metrics, fn ->
-        monitor_metrics(assigns[:monitor_server_info] || %{})
+      |> assign_new(:monitor_trend, fn ->
+        monitor_trend(assigns[:monitor_server_info] || %{}, assigns[:network_status] || %{})
       end)
 
     ~H"""
@@ -221,27 +221,28 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
         <section class="monitor-main">
           <section class="card trend-card">
             <header class="card-header">
-              <div><h2>主机资源趋势</h2><p>当前节点资源使用率</p></div>
+              <div><h2>主机资源趋势</h2><p>最近 30 分钟 · 采样百分比</p></div>
               <span class="node-chip"><span aria-hidden="true">●</span><%= monitor_node_name(@monitor_server_info) %></span>
             </header>
-            <%= if monitor_metrics_empty?(@monitor_metrics) do %>
+            <%= if monitor_trend_empty?(@monitor_trend) do %>
               <div class="trend-chart trend-chart-empty" role="status" aria-live="polite"><strong>暂无采样数据</strong><span>系统 API 尚未返回 CPU 或内存趋势。</span></div>
             <% else %>
-              <div class="trend-chart" role="img" aria-label={monitor_chart_label(@monitor_metrics)}>
+              <div class="trend-chart" role="img" aria-label={monitor_chart_label(@monitor_trend)}>
                 <svg viewBox="0 0 720 232" preserveAspectRatio="none" aria-hidden="true">
-                  <g class="monitor-chart-grid">
-                    <line x1="176" y1="18" x2="690" y2="18" /><line x1="176" y1="67" x2="690" y2="67" /><line x1="176" y1="116" x2="690" y2="116" /><line x1="176" y1="165" x2="690" y2="165" /><line x1="176" y1="214" x2="690" y2="214" />
-                    <line class="monitor-chart-threshold" x1="587" y1="8" x2="587" y2="224" />
+                  <g class="trend-chart-grid">
+                    <line x1="42" y1="18" x2="704" y2="18" /><line x1="42" y1="67" x2="704" y2="67" /><line x1="42" y1="116" x2="704" y2="116" /><line x1="42" y1="165" x2="704" y2="165" /><line x1="42" y1="214" x2="704" y2="214" />
+                    <line class="trend-chart-threshold" x1="42" y1="55.2" x2="704" y2="55.2" />
                   </g>
-                  <text class="monitor-chart-threshold-label" x="591" y="14">80% 关注阈值</text>
-                  <%= for {metric, index} <- Enum.with_index(@monitor_metrics) do %>
-                    <g class="monitor-chart-row">
-                      <text class="monitor-chart-label" x="0" y={monitor_metric_y(index)}><%= metric.label %></text>
-                      <rect class="monitor-chart-track" x="176" y={monitor_metric_bar_y(index)} width="514" height="18" rx="9" />
-                      <rect class={"monitor-chart-bar #{metric.tone}"} x="176" y={monitor_metric_bar_y(index)} width={monitor_metric_width(metric.value)} height="18" rx="9" />
-                      <text class="monitor-chart-value" x="700" y={monitor_metric_y(index)} text-anchor="end"><%= monitor_value_label(metric.value) %></text>
-                    </g>
+                  <g class="trend-chart-axis"><text x="4" y="22">100%</text><text x="13" y="71">75%</text><text x="13" y="120">50%</text><text x="13" y="169">25%</text><text x="22" y="218">0%</text></g>
+                  <text class="trend-chart-threshold-label" x="548" y="49">80% 关注阈值</text>
+                  <polyline class="trend-chart-line trend-chart-line-cyan" points={monitor_trend_points(@monitor_trend, :cpu)} />
+                  <polyline class="trend-chart-line trend-chart-line-indigo" points={monitor_trend_points(@monitor_trend, :memory)} />
+                  <%= for {point, index} <- Enum.with_index(@monitor_trend) do %>
+                    <%= if is_number(point.cpu) do %><circle class="trend-chart-point trend-chart-point-cyan" cx={monitor_trend_x(index, length(@monitor_trend))} cy={monitor_trend_y(point.cpu)} r="2.5" /><% end %>
+                    <%= if is_number(point.memory) do %><circle class="trend-chart-point trend-chart-point-indigo" cx={monitor_trend_x(index, length(@monitor_trend))} cy={monitor_trend_y(point.memory)} r="2.5" /><% end %>
                   <% end %>
+                  <text class="trend-chart-time" x="42" y="230"><%= monitor_trend_time(List.first(@monitor_trend)) %></text>
+                  <text class="trend-chart-time" x="704" y="230" text-anchor="end"><%= monitor_trend_time(List.last(@monitor_trend)) %></text>
                 </svg>
               </div>
             <% end %>
@@ -295,16 +296,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
             <header class="card-header"><div><h2>节点详情</h2><p>当前健康快照</p></div></header>
             <div class="inspector-list">
               <div class="info-row"><span class="info-icon" aria-hidden="true">◆</span><div><span>节点</span><strong><%= monitor_node_name(@monitor_server_info) %></strong></div></div>
-              <div class="info-row"><span class="info-icon" aria-hidden="true">↕</span><div><span>系统版本</span><strong><%= get_in(@monitor_server_info, ["systemInfo", "osName"]) || "—" %></strong></div></div>
-              <div class="info-row"><span class="info-icon" aria-hidden="true">⌁</span><div><span>运行时间</span><strong><%= get_in(@monitor_server_info, ["jvmInfo", "runTime"]) || "—" %></strong></div></div>
+              <div class="info-row"><span class="info-icon" aria-hidden="true">↕</span><div><span>网络入口</span><strong>—</strong><small>系统 API 未提供流量采样</small></div></div>
+              <div class="info-row"><span class="info-icon" aria-hidden="true">⌁</span><div><span>处理器</span><strong><%= get_in(@monitor_server_info, ["cpuInfo", "cpuNum"]) || "—" %></strong><small>逻辑处理器数量</small></div></div>
               <div class="info-row"><span class="info-icon" aria-hidden="true">◇</span><div><span>活动会话</span><strong><%= @online_user_total %></strong><small>系统 API 当前活动会话</small></div></div>
             </div>
           </section>
           <section class="card beam-card">
             <header class="card-header"><div><h2>运行时指标</h2><p>系统 API 当前可用指标</p></div></header>
-            <div class="beam-stat"><span>缓存后端</span><strong><%= @monitor_cache_info["backend"] || "—" %></strong></div>
-            <div class="beam-stat"><span>缓存条目</span><strong><%= @monitor_cache_info["cacheEntries"] || "—" %></strong></div>
-            <div class="beam-stat"><span>验证码条目</span><strong><%= @monitor_cache_info["captchaEntries"] || "—" %></strong></div>
+            <div class="beam-stat"><span>BEAM 内存使用率</span><strong><%= monitor_value_label(monitor_percent(get_in(@monitor_server_info, ["jvmInfo", "usage"]))) %></strong></div>
+            <div class="beam-stat"><span>Reductions</span><strong>—</strong></div>
+            <div class="beam-stat"><span>网络流量</span><strong>—</strong></div>
           </section>
         </aside>
       </div>
@@ -312,29 +313,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
     """
   end
 
-  defp monitor_metrics(server_info) do
-    [
-      %{
-        label: "CPU 使用率",
-        value: monitor_percent(get_in(server_info, ["cpuInfo", "used"])),
-        tone: "monitor-chart-bar--primary"
-      },
-      %{
-        label: "主机内存",
-        value: monitor_percent(get_in(server_info, ["memoryInfo", "usage"])),
-        tone: "monitor-chart-bar--cyan"
-      },
-      %{
-        label: "BEAM 内存",
-        value: monitor_percent(get_in(server_info, ["jvmInfo", "usage"])),
-        tone: "monitor-chart-bar--violet"
-      },
-      %{
-        label: "磁盘使用率",
-        value: monitor_percent(get_in(server_info, ["diskInfos", Access.at(0), "usage"])),
-        tone: "monitor-chart-bar--amber"
-      }
-    ]
+  # 现有 Phoenix API 只返回当前快照。保留一个真实采样点，未来可直接替换为历史列表。
+  defp monitor_trend(server_info, network_status) do
+    cpu = monitor_percent(get_in(server_info, ["cpuInfo", "used"]))
+    memory = monitor_percent(get_in(server_info, ["memoryInfo", "usage"]))
+
+    if is_nil(cpu) and is_nil(memory) do
+      []
+    else
+      [%{timestamp: network_status["checkedAt"], cpu: cpu, memory: memory}]
+    end
   end
 
   # 将后端快照转换为 admin-web 使用的状态标签，缺失值保持中性显示。
@@ -377,18 +365,39 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
 
   defp monitor_percent(_value), do: nil
 
-  defp monitor_metric_y(index), do: 31 + index * 49
-  defp monitor_metric_bar_y(index), do: 12 + index * 49
-  defp monitor_metric_width(value) when is_number(value), do: round(value * 5.14)
-  defp monitor_metric_width(_value), do: 0
-
   defp monitor_value_label(value) when is_number(value), do: "#{value}%"
   defp monitor_value_label(_value), do: "—"
 
-  defp monitor_metrics_empty?(metrics), do: Enum.all?(metrics, &is_nil(&1.value))
+  defp monitor_trend_empty?(trend), do: Enum.all?(trend, &(is_nil(&1.cpu) and is_nil(&1.memory)))
 
-  defp monitor_chart_label(metrics) do
-    values = Enum.map_join(metrics, "、", &"#{&1.label} #{monitor_value_label(&1.value)}")
-    "资源使用快照：#{values}。当前值来自节点采样，80% 为建议关注阈值。"
+  defp monitor_trend_x(_index, count) when count <= 1, do: 373
+  defp monitor_trend_x(index, count), do: 42 + round(index * 662 / (count - 1))
+
+  defp monitor_trend_y(value) when is_number(value), do: 214 - value * 1.96
+
+  defp monitor_trend_points(trend, key) do
+    trend
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {point, index} ->
+      value = Map.get(point, key)
+
+      if is_number(value),
+        do: ["#{monitor_trend_x(index, length(trend))},#{monitor_trend_y(value)}"],
+        else: []
+    end)
+    |> Enum.join(" ")
+  end
+
+  defp monitor_trend_time(%{timestamp: timestamp}) when is_binary(timestamp) do
+    case DateTime.from_iso8601(timestamp) do
+      {:ok, datetime, _offset} -> Calendar.strftime(datetime, "%H:%M")
+      _ -> "当前"
+    end
+  end
+
+  defp monitor_trend_time(_point), do: "当前"
+
+  defp monitor_chart_label(trend) do
+    "CPU 和内存 30 分钟趋势图，共 #{length(trend)} 个采样点；80% 为建议关注阈值。"
   end
 end
