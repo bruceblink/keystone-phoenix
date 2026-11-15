@@ -61,7 +61,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
             <h2 id="departments-table-title">组织结构</h2>
             <p>当前匹配 <%= length(OrganizationFilters.filtered_depts(@dept_rows, @dept_filter)) %> 个组织节点。</p>
           </div>
-          <span class="badge badge-info">LiveView</span>
+          <span class="badge badge-info">系统 API</span>
         </div>
         <%= if OrganizationFilters.filtered_depts(@dept_rows, @dept_filter) == [] do %>
           <div class="departments-empty" role="status"><strong>没有匹配的组织</strong><p>调整筛选条件后重试，或清空筛选条件查看完整组织结构。</p></div>
@@ -131,7 +131,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
             <h2 id="posts-table-title">岗位列表</h2>
             <p>当前匹配 <%= length(filtered_post_rows) %> 个岗位。</p>
           </div>
-          <span class="badge badge-info">LiveView</span>
+          <span class="badge badge-info">系统 API</span>
         </div>
         <%= if filtered_post_rows == [] do %>
           <div class="posts-empty" role="status"><strong>没有匹配的岗位</strong><p>调整筛选条件后重试，或清空筛选条件查看全部岗位。</p></div>
@@ -202,7 +202,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
             <h2 id="roles-table-title">角色列表</h2>
             <p>当前匹配 <%= length(OrganizationFilters.filtered_roles(@role_rows, @role_filter)) %> 个角色。</p>
           </div>
-          <span class="badge badge-info">LiveView</span>
+          <span class="badge badge-info">系统 API</span>
         </div>
         <%= if OrganizationFilters.filtered_roles(@role_rows, @role_filter) == [] do %>
           <div class="roles-empty" role="status"><strong>没有匹配的角色</strong><p>调整筛选条件后重试，或清空筛选条件查看全部角色。</p></div>
@@ -298,7 +298,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
             <h2 id="menus-table-title">菜单目录</h2>
             <p>当前匹配 <%= length(OrganizationFilters.filtered_menus(@menu_rows, @menu_filter)) %> 个菜单节点。</p>
           </div>
-          <span class="badge badge-info">LiveView</span>
+          <span class="badge badge-info">系统 API</span>
         </div>
         <%= if OrganizationFilters.filtered_menus(@menu_rows, @menu_filter) == [] do %>
           <div class="menus-empty" role="status"><strong>没有匹配的菜单</strong><p>调整筛选条件后重试，或清空筛选条件查看完整菜单。</p></div>

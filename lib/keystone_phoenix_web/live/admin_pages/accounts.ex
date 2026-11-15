@@ -105,7 +105,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
             <h2 id="users-table-title">用户列表</h2>
             <p>共 <%= length(@user_rows) %> 个用户</p>
           </div>
-          <span class="badge badge-info">LiveView</span>
+          <span class="badge badge-info">系统 API</span>
         </div>
         <% page_user_rows = page_rows(@user_rows, @page_num, @page_size) %>
         <%= if page_user_rows == [] do %>
