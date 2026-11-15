@@ -24,4 +24,41 @@ defmodule KeystonePhoenixWeb.Live.OrganizationDataTest do
     assert OrganizationData.menu_depth(2, menus, MapSet.new()) == 2
     assert OrganizationData.menu_depth(3, menus, MapSet.new([3])) == 0
   end
+
+  test "orders menu rows as a multi-level tree with mixed root identifiers" do
+    rows = [
+      %{
+        "menuId" => "grandchild",
+        "parentId" => "child",
+        "menuName" => "详情",
+        "sortOrder" => 1,
+        "status" => 1
+      },
+      %{
+        "menuId" => "root",
+        "parentId" => "0",
+        "menuName" => "系统",
+        "sortOrder" => 1,
+        "status" => 1
+      },
+      %{
+        "menuId" => "child",
+        "parentId" => "root",
+        "menuName" => "用户",
+        "sortOrder" => 1,
+        "status" => 1
+      }
+    ]
+
+    assert OrganizationData.menu_tree_rows(rows)
+           |> Enum.map(&{&1["menuName"], &1["depth"]}) ==
+             [{"系统", 0}, {"用户", 1}, {"详情", 2}]
+  end
+
+  test "treats string zero as a root parent when calculating depth" do
+    menus = %{"root" => %{"parentId" => "0"}}
+
+    assert OrganizationData.menu_depth("root", menus, MapSet.new()) == 1
+    assert OrganizationData.menu_depth("0", menus, MapSet.new()) == 0
+  end
 end

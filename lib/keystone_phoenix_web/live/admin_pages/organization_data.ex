@@ -63,15 +63,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
         {:error, _reason} -> []
       end
 
-    enrich_menus(menus)
+    menu_tree_rows(menus)
   end
 
   defp load_menus_full do
-    enrich_menus(Menu.list_menus())
+    menu_tree_rows(Menu.list_menus())
   end
 
+  @doc "按父级关系展开菜单树，并为每个节点补充层级字段。"
+  def menu_tree_rows(menus) when is_list(menus), do: enrich_menus(menus)
+
   defp enrich_menus(menus) do
-    by_id = Map.new(menus, &{&1["menuId"], &1})
+    # API 可能返回整数根节点、字符串根节点或 UUID 字符串；树计算统一使用字符串键。
+    by_id = Map.new(menus, &{menu_key(&1["menuId"] || &1["id"]), &1})
 
     menus
     |> menu_tree_order()
@@ -96,13 +100,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
 
   # 数据库按父级 UUID 排序时会打散树；页面按父级、排序号和 ID 重新展开，保持父子相邻。
   defp menu_tree_order(menus) do
-    children = Enum.group_by(menus, & &1["parentId"])
-    root_menus = Map.get(children, nil, []) ++ Map.get(children, 0, [])
+    children = Enum.group_by(menus, &menu_key(&1["parentId"]))
+    root_menus = Map.get(children, nil, [])
     {roots, visited} = walk_menu_children(root_menus, children, MapSet.new())
 
     leftovers =
       menus
-      |> Enum.reject(&MapSet.member?(visited, &1["menuId"]))
+      |> Enum.reject(&MapSet.member?(visited, menu_key(&1["menuId"] || &1["id"])))
       |> sort_menus()
 
     roots ++ leftovers
@@ -110,7 +114,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
 
   defp walk_menu_children(menus, children, visited) do
     Enum.reduce(sort_menus(menus), {[], visited}, fn menu, {rows, seen} ->
-      id = menu["menuId"]
+      id = menu_key(menu["menuId"] || menu["id"])
 
       if MapSet.member?(seen, id) do
         {rows, seen}
@@ -129,15 +133,18 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
     end)
   end
 
-  def menu_depth(0, _menus, _seen), do: 0
+  def menu_depth(parent_id, _menus, _seen) when parent_id in [nil, "", 0, "0"], do: 0
 
   def menu_depth(parent_id, menus, seen) do
-    if MapSet.member?(seen, parent_id) do
+    parent_key = menu_key(parent_id)
+    seen = MapSet.new(seen, &menu_key/1)
+
+    if is_nil(parent_key) or MapSet.member?(seen, parent_key) do
       0
     else
-      case Map.get(menus, parent_id) do
+      case find_menu(menus, parent_id) do
         nil -> 0
-        parent -> 1 + menu_depth(parent["parentId"], menus, MapSet.put(seen, parent_id))
+        parent -> 1 + menu_depth(parent["parentId"], menus, MapSet.put(seen, parent_key))
       end
     end
   end
@@ -147,6 +154,17 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
   def menu_type_label(1, _is_button), do: "菜单"
   def menu_type_label(0, _is_button), do: "权限"
   def menu_type_label(_type, _is_button), do: "其他"
+
+  defp find_menu(menus, parent_id) do
+    Map.get(menus, parent_id) ||
+      Map.get(menus, menu_key(parent_id)) ||
+      Enum.find_value(menus, fn {key, menu} ->
+        if menu_key(key) == menu_key(parent_id), do: menu
+      end)
+  end
+
+  defp menu_key(value) when value in [nil, "", 0, "0"], do: nil
+  defp menu_key(value), do: to_string(value)
 
   def dept_depth(nil), do: 0
 

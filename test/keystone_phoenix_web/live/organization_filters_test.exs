@@ -54,6 +54,16 @@ defmodule KeystonePhoenixWeb.Live.OrganizationFiltersTest do
     assert OrganizationFilters.filtered_menus(rows, "user:read") == rows
   end
 
+  test "keeps mixed identifier types connected in a filtered menu tree" do
+    rows = [
+      %{"menuId" => 1, "parentId" => "0", "menuName" => "系统"},
+      %{"menuId" => 2, "parentId" => "1", "menuName" => "用户"},
+      %{"menuId" => 3, "parentId" => 2, "menuName" => "详情", "permission" => "user:detail"}
+    ]
+
+    assert OrganizationFilters.filtered_menus(rows, "user:detail") == rows
+  end
+
   test "excludes the current menu and all descendants from parent choices" do
     rows = [
       %{"menuId" => "root", "parentId" => nil},

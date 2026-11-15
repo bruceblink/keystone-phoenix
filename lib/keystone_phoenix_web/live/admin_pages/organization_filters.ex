@@ -14,7 +14,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters do
     if keyword == "" do
       rows
     else
-      by_id = Map.new(rows, &{menu_id(&1), &1})
+      by_id = Map.new(rows, &{menu_key(menu_id(&1)), &1})
 
       matching_rows = Enum.filter(rows, &menu_matches?(&1, keyword))
 
@@ -22,7 +22,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters do
       |> Enum.reduce(MapSet.new(), &add_menu_ancestors(&2, &1, by_id))
       |> then(fn visible_ids ->
         Enum.filter(rows, fn row ->
-          (is_nil(menu_id(row)) and row in matching_rows) or menu_id(row) in visible_ids
+          id = menu_key(menu_id(row))
+          (is_nil(id) and row in matching_rows) or id in visible_ids
         end)
       end)
     end
@@ -87,13 +88,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters do
   defp collect_menu_ancestors(nil, visible_ids, _by_id, _seen), do: visible_ids
 
   defp collect_menu_ancestors(row, visible_ids, by_id, seen) do
-    id = menu_id(row)
+    id = menu_key(menu_id(row))
 
     if is_nil(id) or MapSet.member?(seen, id) do
       visible_ids
     else
       collect_menu_ancestors(
-        Map.get(by_id, parent_id(row)),
+        Map.get(by_id, menu_key(parent_id(row))),
         MapSet.put(visible_ids, id),
         by_id,
         MapSet.put(seen, id)
@@ -117,4 +118,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters do
 
   defp menu_id(row), do: row["menuId"] || row["id"]
   defp parent_id(row), do: row["parentId"]
+  defp menu_key(value) when value in [nil, "", 0, "0"], do: nil
+  defp menu_key(value), do: to_string(value)
 end
