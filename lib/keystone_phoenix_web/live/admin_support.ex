@@ -112,7 +112,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     dashboard = empty_dashboard()
     options = [authorization: %{principal: Map.put(user, :permissions, permissions)}]
     dictionary = if access["dicts"], do: load_dictionary("", options), else: empty_dictionary()
-    logs = logs_for_permissions(permissions, options)
+    logs = logs_for_permissions(permissions, options, %{})
 
     dashboard
     |> Map.put(:dept_rows, if(access["depts"], do: load_depts_for_user(user), else: []))
@@ -213,16 +213,22 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def dict_type_allowed?(_socket, _dict_type), do: false
 
-  def load_dictionary(selected), do: load_dictionary(selected, [])
+  def load_dictionary(selected), do: load_dictionary(selected, [], %{})
 
   def load_dictionary_for_socket(socket, selected),
-    do: load_dictionary(selected, authorization_options(socket))
+    do: load_dictionary(selected, authorization_options(socket), %{})
 
-  def load_dictionary(selected, options) when is_list(options) do
+  def load_dictionary_for_socket(socket, selected, params),
+    do: load_dictionary(selected, authorization_options(socket), params)
+
+  def load_dictionary(selected, options) when is_list(options),
+    do: load_dictionary(selected, options, %{})
+
+  def load_dictionary(selected, options, params) when is_list(options) and is_map(params) do
     types =
       if options == [],
-        do: load_all(&Dictionary.list_dict_types/1),
-        else: load_authorized(&Dictionary.list_dict_types/2, options)
+        do: load_all(&Dictionary.list_dict_types/1, params),
+        else: load_authorized(&Dictionary.list_dict_types/2, options, params)
 
     selected =
       if selected != "" and Enum.any?(types, &(&1["dictType"] == selected)),
@@ -233,43 +239,52 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     %{types: types, selected: selected, data: data}
   end
 
-  def load_logs, do: load_logs([])
+  def load_logs, do: load_logs([], %{})
 
-  def load_logs(options) when is_list(options) do
+  def load_logs(options) when is_list(options), do: load_logs(options, %{})
+
+  def load_logs(options, filters) when is_list(options) and is_map(filters) do
+    login_filter = Map.get(filters, "login", %{})
+    operation_filter = Map.get(filters, "operation", %{})
+
     %{
       login_log_rows:
         if(options == [],
-          do: load_all(&Log.list_login_logs/1),
-          else: load_authorized(&Log.list_login_logs/2, options)
+          do: load_all(&Log.list_login_logs/1, login_filter),
+          else: load_authorized(&Log.list_login_logs/2, options, login_filter)
         ),
       operation_log_rows:
         if(options == [],
-          do: load_all(&Log.list_operation_logs/1),
-          else: load_authorized(&Log.list_operation_logs/2, options)
+          do: load_all(&Log.list_operation_logs/1, operation_filter),
+          else: load_authorized(&Log.list_operation_logs/2, options, operation_filter)
         )
     }
   end
 
-  def load_logs_for_socket(socket) do
+  def load_logs_for_socket(socket), do: load_logs_for_socket(socket, %{})
+
+  def load_logs_for_socket(socket, filters) when is_map(filters) do
     if admin_socket?(socket) do
-      load_logs(authorization_options(socket))
+      load_logs(authorization_options(socket), filters)
     else
-      logs_for_permissions(socket.assigns.permissions, authorization_options(socket))
+      logs_for_permissions(socket.assigns.permissions, authorization_options(socket), filters)
     end
   end
 
-  defp logs_for_permissions(permissions, options) do
+  defp logs_for_permissions(permissions, options, filters) do
     permissions = List.wrap(permissions)
+    login_filter = Map.get(filters, "login", %{})
+    operation_filter = Map.get(filters, "operation", %{})
 
     %{
       login_log_rows:
         if("login-log:read" in permissions,
-          do: load_authorized(&Log.list_login_logs/2, options),
+          do: load_authorized(&Log.list_login_logs/2, options, login_filter),
           else: []
         ),
       operation_log_rows:
         if("operation-log:read" in permissions,
-          do: load_authorized(&Log.list_operation_logs/2, options),
+          do: load_authorized(&Log.list_operation_logs/2, options, operation_filter),
           else: []
         )
     }

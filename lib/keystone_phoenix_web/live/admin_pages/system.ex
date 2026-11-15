@@ -88,6 +88,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:dict_data_page_num, fn -> 1 end)
       |> assign_new(:dict_data_page_size, fn -> 50 end)
+      |> assign_new(:dict_type_filter, fn -> %{"keyword" => ""} end)
 
     ~H"""
     <div class="dictionaries-page system-page">
@@ -103,7 +104,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         </div>
       </header>
       <%= if @dict_feedback do %><p id="dict-feedback" class={Feedback.class(@dict_feedback)} role={Feedback.role(@dict_feedback)} aria-live={Feedback.live(@dict_feedback)}><%= Feedback.message(@dict_feedback) %></p><% end %>
-      <p :if={@dict_type_rows == [] and @dict_data_rows == []} class="dictionaries-empty table-empty" role="status"><strong>暂无字典数据</strong><span>字典类型和可选值加载后会显示在这里。</span></p>
+      <section class="card dictionaries-filter-card filter-card">
+        <form id="dict-type-filter" class="dictionaries-filter-form filter-form" phx-submit="filter-dict-types">
+          <label for="dict-type-filter-keyword"><span>类型编码或名称</span><input id="dict-type-filter-keyword" name="dictTypeKeyword" value={@dict_type_filter["keyword"] || ""} placeholder="按类型编码或名称筛选" autocomplete="off" /></label>
+          <div class="dictionaries-filter-actions filter-actions"><button type="submit" class="refresh">查询</button><button type="button" class="refresh secondary" phx-click="reset-dict-type-filter">重置</button></div>
+        </form>
+      </section>
+      <p :if={filtered_dict_type_rows(@dict_type_rows, @dict_type_filter) == [] and @dict_data_rows == []} class="dictionaries-empty table-empty" role="status"><strong>暂无字典数据</strong><span>字典类型和可选值加载后会显示在这里。</span></p>
       <%= if @active_modal == "dict-type" do %>
         <.modal id="dict-type-modal" title={if @dict_type_form["dictId"] == "", do: "新建字典类型", else: "编辑字典类型"} description="维护字典类型和状态。">
     <form :if={!@read_only} aria-describedby="dict-feedback" phx-submit="save-dict-type">
@@ -120,11 +127,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       <% end %>
       <section class="card dictionary-types-card table-card" aria-labelledby="dict-types-title">
         <header class="card-header table-card-heading">
-          <div><h2 id="dict-types-title">字典类型</h2><p>共 <%= length(@dict_type_rows) %> 个类型</p></div>
+          <div><h2 id="dict-types-title">字典类型</h2><p>共 <%= length(filtered_dict_type_rows(@dict_type_rows, @dict_type_filter)) %> 个匹配类型</p></div>
           <span class="status-badge status-badge--normal">可维护</span>
         </header>
         <div class="table-scroll" role="region" tabindex="0" aria-label="字典类型列表"><table class="dictionary-types-table"><caption class="sr-only">字典类型列表</caption><thead><tr><th scope="col">名称</th><th scope="col">类型</th><th scope="col">状态</th><th scope="col">备注</th><th scope="col">操作</th></tr></thead><tbody>
-          <%= for dict <- @dict_type_rows do %>
+          <%= for dict <- filtered_dict_type_rows(@dict_type_rows, @dict_type_filter) do %>
             <tr><td><strong><%= dict["dictName"] %></strong></td><td><code><%= dict["dictType"] %></code></td><td><span class={"status-badge #{Status.normal_paused(dict["status"])}"}><%= if dict["status"] == 1, do: "正常", else: "停用" %></span></td><td><%= dict["remark"] || "" %></td><td class="table-actions"><button type="button" class="refresh" phx-click="select-dict-type" phx-value-dict-type={dict["dictType"]} phx-disable-with="加载中…">查看数据</button><button :if={!@read_only} type="button" class="refresh" phx-click="edit-dict-type" phx-value-dict-id={dict["dictId"]} phx-disable-with="加载中…">编辑</button><button :if={!@read_only} type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-dict-type" phx-value-dict-id={dict["dictId"]} phx-disable-with="删除中…">删除</button></td></tr>
           <% end %>
         </tbody></table></div>
@@ -162,6 +169,18 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       </section>
     </div>
     """
+  end
+
+  defp filtered_dict_type_rows(rows, filter) do
+    keyword = String.trim(to_string(filter["keyword"] || "")) |> String.downcase()
+
+    Enum.filter(rows, fn dict_type ->
+      keyword == "" or
+        String.contains?(
+          String.downcase("#{dict_type["dictName"] || ""} #{dict_type["dictType"] || ""}"),
+          keyword
+        )
+    end)
   end
 
   def notices(assigns) do
@@ -250,6 +269,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       |> assign_new(:operation_page_num, fn -> 1 end)
       |> assign_new(:page_size, fn -> 50 end)
       |> assign_new(:kind, fn -> "both" end)
+      |> assign_new(:login_log_filter, fn -> %{"username" => "", "status" => ""} end)
+      |> assign_new(:operation_log_filter, fn ->
+        %{"actor" => "", "action" => "", "resource" => ""}
+      end)
 
     ~H"""
     <div class="audit-page system-page">
@@ -261,12 +284,22 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         </div>
         <div class="heading-actions">
           <button :if={@kind == "both"} type="button" class="refresh" phx-click="refresh-logs" phx-disable-with="刷新中…">刷新日志</button>
+          <button :if={@kind == "login"} type="button" class="refresh secondary" phx-click="export-login-logs" phx-disable-with="导出中…">导出 Excel</button>
           <button :if={@kind == "login"} type="button" class="refresh" phx-click="refresh-login-logs" phx-disable-with="刷新中…">刷新登录日志</button>
+          <button :if={@kind == "operation"} type="button" class="refresh secondary" phx-click="export-operation-logs" phx-disable-with="导出中…">导出 Excel</button>
           <button :if={@kind == "operation"} type="button" class="refresh" phx-click="refresh-operation-logs" phx-disable-with="刷新中…">刷新操作日志</button>
         </div>
       </header>
       <%= if @log_feedback do %><p id="log-feedback" class={Feedback.class(@log_feedback)} role={Feedback.role(@log_feedback)} aria-live={Feedback.live(@log_feedback)}><%= Feedback.message(@log_feedback) %></p><% end %>
+      <span id="audit-download-hook" phx-hook="DownloadFile" hidden></span>
       <%= if @kind in ["both", "login"] do %>
+      <section class="card audit-filter-card filter-card">
+        <form id="login-log-filter" class="audit-filter-form filter-form" phx-submit="filter-login-logs">
+          <label for="login-log-filter-username"><span>用户名</span><input id="login-log-filter-username" name="loginUsername" value={@login_log_filter["username"] || ""} placeholder="按用户名筛选" autocomplete="off" /></label>
+          <label for="login-log-filter-status"><span>登录状态</span><input id="login-log-filter-status" name="loginStatus" value={@login_log_filter["status"] || ""} placeholder="例如 SUCCESS、FAILURE" autocomplete="off" /></label>
+          <div class="audit-filter-actions filter-actions"><button type="submit" class="refresh">查询</button><button type="button" class="refresh secondary" phx-click="reset-login-log-filter">重置</button></div>
+        </form>
+      </section>
       <section class="card audit-table-card table-card" aria-labelledby="login-logs-title">
         <header class="card-header table-card-heading">
           <div><h2 id="login-logs-title">登录日志</h2><p>共 <%= length(@login_log_rows) %> 条记录</p></div>
@@ -282,6 +315,14 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       </section>
       <% end %>
       <%= if @kind in ["both", "operation"] do %>
+      <section class="card audit-filter-card filter-card">
+        <form id="operation-log-filter" class="audit-filter-form filter-form" phx-submit="filter-operation-logs">
+          <label for="operation-log-filter-actor"><span>操作用户</span><input id="operation-log-filter-actor" name="operationActor" value={@operation_log_filter["actor"] || ""} placeholder="按用户名筛选" autocomplete="off" /></label>
+          <label for="operation-log-filter-action"><span>操作动作</span><input id="operation-log-filter-action" name="operationAction" value={@operation_log_filter["action"] || ""} placeholder="例如 UPDATE、DELETE" autocomplete="off" /></label>
+          <label for="operation-log-filter-resource"><span>资源类型</span><input id="operation-log-filter-resource" name="operationResource" value={@operation_log_filter["resource"] || ""} placeholder="例如 user、role" autocomplete="off" /></label>
+          <div class="audit-filter-actions filter-actions"><button type="submit" class="refresh">查询</button><button type="button" class="refresh secondary" phx-click="reset-operation-log-filter">重置</button></div>
+        </form>
+      </section>
       <section class="card audit-table-card table-card" aria-labelledby="operation-logs-title">
         <header class="card-header table-card-heading">
           <div><h2 id="operation-logs-title">操作审计</h2><p>共 <%= length(@operation_log_rows) %> 条记录</p></div>
