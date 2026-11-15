@@ -11,11 +11,16 @@ defmodule KeystonePhoenixWeb.PermissionCatalogController do
   def index(conn, _params) do
     entries =
       Enum.map(PermissionCatalog.entries(), fn entry ->
-        Map.put(
-          entry,
-          :allowed,
-          Authz.allowed?(conn.assigns.current_user, entry.permission, %{connection: conn})
-        )
+        %{
+          "permission" => entry.permission,
+          "resource" => entry.resource,
+          "action" => entry.action,
+          "description" => entry.description,
+          "risk" => to_string(entry.risk),
+          "registered" => entry.registered?,
+          "allowed" =>
+            Authz.allowed?(conn.assigns.current_user, entry.permission, %{connection: conn})
+        }
       end)
 
     json(conn, ApiResponse.ok(%{"entries" => entries}))

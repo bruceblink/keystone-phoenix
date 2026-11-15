@@ -26,7 +26,11 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     assert %{"success" => true, "data" => %{"entries" => entries}} = json_response(response, 200)
     assert Enum.any?(entries, &(&1["permission"] == "user:read" and &1["allowed"] == true))
     assert Enum.any?(entries, &(&1["permission"] == "job:run" and &1["allowed"] == false))
-    assert Enum.all?(entries, &Map.has_key?(&1, "description"))
+
+    assert Enum.all?(
+             entries,
+             &(Map.has_key?(&1, "description") and Map.has_key?(&1, "registered"))
+           )
   end
 
   @tag :integration
