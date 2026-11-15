@@ -444,19 +444,19 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <div class="page-content">
                   <%= case @active_panel do %>
                     <% "depts" -> %>
-                      <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} active_modal={@active_modal} read_only={@read_only} permissions={@permissions} />
+                      <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} dept_filter={@dept_filter} active_modal={@active_modal} read_only={@read_only} permissions={@permissions} />
                     <% "posts" -> %>
-                      <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} active_modal={@active_modal} page_num={@page_nums["posts"]} page_size={@page_sizes["posts"]} read_only={@read_only} permissions={@permissions} />
+                      <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} post_filter={@post_filter} active_modal={@active_modal} page_num={@page_nums["posts"]} page_size={@page_sizes["posts"]} read_only={@read_only} permissions={@permissions} />
                     <% "roles" -> %>
-                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} menu_rows={@menu_rows} active_modal={@active_modal} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} read_only={@read_only} permissions={@permissions} />
+                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} role_filter={@role_filter} menu_rows={@menu_rows} active_modal={@active_modal} selected_role_ids={@selected_role_ids} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} read_only={@read_only} permissions={@permissions} />
                     <% "menus" -> %>
-                      <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} active_modal={@active_modal} read_only={@read_only} />
+                      <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} menu_filter={@menu_filter} active_modal={@active_modal} read_only={@read_only} />
                     <% "users" -> %>
-                      <.users user_rows={@user_rows} user_form={@user_form} user_feedback={@user_feedback} active_modal={@active_modal} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} page_num={@page_nums["users"]} page_size={@page_sizes["users"]} read_only={@read_only} permissions={@permissions} user_import_upload={@uploads.user_import} />
+                      <.users user_rows={@user_rows} user_form={@user_form} user_feedback={@user_feedback} user_query={@user_query} user_display_name_query={@user_display_name_query} selected_user_ids={@selected_user_ids} user_import_result={@user_import_result} active_modal={@active_modal} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} page_num={@page_nums["users"]} page_size={@page_sizes["users"]} read_only={@read_only} permissions={@permissions} user_import_upload={@uploads.user_import} />
                     <% "api-keys" -> %>
                       <.api_keys api_key_rows={@api_key_rows} api_key_feedback={@api_key_feedback} api_key_form={@api_key_form} api_key_query={@api_key_query} api_key_status={@api_key_status} issued_api_key={@issued_api_key} permissions={@permissions} active_modal={@active_modal} read_only={@read_only} />
                     <% "configs" -> %>
-                      <.configs config_rows={@config_rows} config_form={@config_form} config_feedback={@config_feedback} active_modal={@active_modal} read_only={@read_only} />
+                      <.configs config_rows={@config_rows} config_form={@config_form} config_feedback={@config_feedback} config_filter={@config_filter} active_modal={@active_modal} read_only={@read_only} />
                     <% "dicts" -> %>
                       <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} active_modal={@active_modal} dict_data_page_num={@page_nums["dict-data"]} dict_data_page_size={@page_sizes["dict-data"]} dict_type_filter={@dict_type_filter} read_only={@read_only} />
                     <% "notices" -> %>
@@ -466,7 +466,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "operation-logs" -> %>
                       <.logs kind="operation" login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_log_filter={@login_log_filter} operation_log_filter={@operation_log_filter} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["operation-logs"]} read_only={@read_only} />
                     <% "jobs" -> %>
-                      <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} active_modal={@active_modal} page_num={@page_nums["jobs"]} page_size={@page_sizes["jobs"]} selected_job_ids={@selected_job_ids} read_only={@read_only} />
+                      <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} job_filter={@job_filter} active_modal={@active_modal} page_num={@page_nums["jobs"]} page_size={@page_sizes["jobs"]} selected_job_ids={@selected_job_ids} selected_job_id={@selected_job_id} read_only={@read_only} />
                     <% "monitor" -> %>
                       <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} online_user_total={@online_user_total} online_user_page_num={@page_nums["online-users"]} online_user_page_size={@page_sizes["online-users"]} network_status={@network_status} monitor_help_open={@monitor_help_open} security_access={@security_access} security_metrics={@security_metrics} security_api_keys={@security_api_keys} security_event_rows={@security_event_rows} security_event_total={@security_event_total} monitor_feedback={@monitor_feedback} read_only={@read_only} />
                     <% "profile" -> %>

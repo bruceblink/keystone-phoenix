@@ -128,7 +128,17 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     filtered_usernames = Enum.map(live_socket(view).assigns.user_rows, & &1["username"])
     assert filtered_usernames != []
     assert Enum.all?(filtered_usernames, &String.contains?(&1, admin.username))
+    assert has_element?(view, "#user-query[value='#{admin.username}']")
+
+    render_click(view, "toggle-user-selection", %{
+      "user-id" => to_string(admin.user_id),
+      "selected" => "true"
+    })
+
+    assert to_string(admin.user_id) in live_socket(view).assigns.selected_user_ids
+    refute has_element?(view, "button[phx-click='delete-users'][disabled]")
     render_click(view, "reset-user-filter")
+    assert live_socket(view).assigns.selected_user_ids == []
     render_click(view, "export-users")
     assert_push_event(view, "download-xlsx", %{filename: "users.xlsx", content: content})
     assert byte_size(content) > 100
