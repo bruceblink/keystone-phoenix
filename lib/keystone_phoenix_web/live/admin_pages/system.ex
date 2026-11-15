@@ -248,7 +248,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
 
     Enum.filter(rows, fn notice ->
       text =
-        "#{notice["noticeTitle"] || ""} #{notice["noticeContent"] || ""}" |> String.downcase()
+        "#{notice["noticeTitle"] || ""} #{notice["noticeContent"] || ""} #{notice_type_filter_text(notice)}"
+        |> String.downcase()
 
       title_match? = title == "" or String.contains?(text, title)
 
@@ -260,6 +261,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       title_match? and published_match?
     end)
   end
+
+  defp notice_type_filter_text(%{"noticeType" => type}) when type in [1, "1"], do: "1 通知"
+  defp notice_type_filter_text(%{"noticeType" => type}) when type in [2, "2"], do: "2 公告"
+  defp notice_type_filter_text(%{"noticeType" => type}), do: to_string(type || "")
+  defp notice_type_filter_text(_notice), do: ""
 
   def logs(assigns) do
     assigns =

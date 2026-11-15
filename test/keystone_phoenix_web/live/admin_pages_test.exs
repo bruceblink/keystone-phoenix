@@ -171,6 +171,28 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     assert html =~ ~s(phx-click="reset-notice-filter")
     assert html =~ ~s(phx-click="publish-notice")
     assert html =~ "发布"
+
+    type_filter_html =
+      render_component(&System.notices/1, %{
+        notice_rows: [
+          %{
+            "noticeId" => "notice-type-filter",
+            "noticeTitle" => "维护",
+            "noticeContent" => "窗口",
+            "noticeType" => 2,
+            "status" => 1,
+            "published" => false,
+            "remark" => "",
+            "createTime" => "2026-11-15"
+          }
+        ],
+        notice_form: %{"noticeId" => ""},
+        notice_feedback: nil,
+        notice_filter: %{"title" => "公告", "published" => "all"},
+        read_only: true
+      })
+
+    assert type_filter_html =~ "<strong>维护</strong>"
   end
 
   test "high-volume account lists render accessible pagination controls" do
