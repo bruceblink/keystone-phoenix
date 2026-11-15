@@ -244,6 +244,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("paginate", %{"panel" => panel, "page" => page}, socket)
       when panel in [
              "users",
+             "posts",
              "jobs",
              "job-logs",
              "dict-data",
@@ -445,7 +446,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "depts" -> %>
                       <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} active_modal={@active_modal} read_only={@read_only} permissions={@permissions} />
                     <% "posts" -> %>
-                      <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} active_modal={@active_modal} read_only={@read_only} permissions={@permissions} />
+                      <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} active_modal={@active_modal} page_num={@page_nums["posts"]} page_size={@page_sizes["posts"]} read_only={@read_only} permissions={@permissions} />
                     <% "roles" -> %>
                       <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} menu_rows={@menu_rows} active_modal={@active_modal} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} read_only={@read_only} permissions={@permissions} />
                     <% "menus" -> %>

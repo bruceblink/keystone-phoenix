@@ -60,6 +60,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       job_log_feedback: nil,
       page_nums: %{
         "users" => 1,
+        "posts" => 1,
         "jobs" => 1,
         "job-logs" => 1,
         "dict-data" => 1,
@@ -71,6 +72,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       },
       page_sizes: %{
         "users" => 50,
+        "posts" => 20,
         "jobs" => 50,
         "job-logs" => 50,
         "dict-data" => 50,

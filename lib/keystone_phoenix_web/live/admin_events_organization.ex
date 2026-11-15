@@ -151,6 +151,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       {:noreply,
        assign(socket,
          post_rows: Support.load_posts_for_socket(socket),
+         page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
          post_form: Support.empty_post_form(),
          post_feedback: nil,
          post_filter: filter,
@@ -211,6 +212,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           {:noreply,
            assign(socket,
              post_rows: Support.load_posts_for_socket(socket),
+             page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
              post_form: Support.empty_post_form(),
              active_modal: nil,
              post_feedback: if(post_id == "", do: "岗位已创建", else: "岗位已更新")
@@ -235,6 +237,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           {:noreply,
            assign(socket,
              post_rows: Support.load_posts_for_socket(socket),
+             page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
              post_feedback: "岗位状态已更新"
            )}
 
@@ -253,6 +256,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           {:noreply,
            assign(socket,
              post_rows: Support.load_posts_for_socket(socket),
+             page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
              post_form: Support.empty_post_form(),
              active_modal: nil,
              post_feedback: "岗位已删除"
