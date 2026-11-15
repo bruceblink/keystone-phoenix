@@ -6,11 +6,16 @@ defmodule KeystonePhoenixWeb.ApiDocsControllerTest do
     assert swagger.status == 200
     assert swagger.resp_body =~ "SwaggerUIBundle"
 
+    assert get(build_conn(), "/api/swagger").status == 200
+
     openapi = get(build_conn(), "/openapi")
     body = json_response(openapi, 200)
     assert body["openapi"] == "3.0.3"
     assert is_map(body["paths"])
     assert Map.has_key?(body["paths"], "/api/v1/users")
+
+    api_openapi = get(build_conn(), "/api/openapi")
+    assert json_response(api_openapi, 200)["openapi"] == "3.0.3"
   end
 
   test "does not expose the old documentation path" do

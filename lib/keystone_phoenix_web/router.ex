@@ -83,6 +83,13 @@ defmodule KeystonePhoenixWeb.Router do
     get "/openapi", ApiDocsController, :openapi
   end
 
+  scope "/api", KeystonePhoenixWeb do
+    pipe_through :docs
+
+    get "/swagger", ApiDocsController, :swagger
+    get "/openapi", ApiDocsController, :openapi
+  end
+
   scope "/", KeystonePhoenixWeb do
     pipe_through [:browser, :protected_profile_resources]
 

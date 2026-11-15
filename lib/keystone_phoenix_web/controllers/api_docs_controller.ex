@@ -15,7 +15,7 @@ defmodule KeystonePhoenixWeb.ApiDocsController do
       <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
       <script>
         window.onload = () => window.ui = SwaggerUIBundle({
-          url: '/openapi',
+          url: '/api/openapi',
           dom_id: '#swagger-ui',
           deepLinking: true,
           presets: [SwaggerUIBundle.presets.apis],
