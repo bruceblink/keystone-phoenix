@@ -159,4 +159,6 @@ Phoenix 角色控制器的 `unassign_users` 权限声明也已统一为 `role:as
 4. 两个后端的路由集合差异、旧接口搜索和数据库迁移状态。
 5. 未完成的 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理检查必须单独标记为证据缺口，不能写成页面通过。
 
+API Key scope 现在通过两端统一的 `GET /api/v1/permissions/catalog` 动态目录逐项选择。目录返回 `allowed` 标记，前端只显示当前主体可授予的权限，并在提交前阻止越权 scope。对应提交为 Native `884a9cb`、Phoenix `50e1828`、Phoenix LiveView `7a8e16f`、`380aa63` 和 admin-web `090dc21`。
+
 当前状态：后端业务路由集合、DTO 适配和 Native/Phoenix HTTP 接口对齐已完成；旧接口和重复接口已从正式业务路由集合删除；同一份 admin-web 已在 `VITE_ENABLE_MOCK=false` 下分别连接 Native 和 Phoenix，两个后端均完成真实浏览器登录、导航、个人资料入口和 280、320、390、768、1280 宽度检查。Native 和 Phoenix 的用户新增、列表刷新、选择、删除确认和测试数据清理已完成真实窗口验收；两端还完成了 9 个列表页的无结果筛选与重置、9 类新增弹窗的打开和取消关闭、用户/角色/岗位/操作审计/登录日志的 Excel 导出、角色/组织/岗位新增删除和角色页批量删除确认的取消检查。菜单权限的多级树、角色绑定和后端边界已由 Native HTTP、Phoenix HTTP、Phoenix LiveView 和 admin-web 测试覆盖。Phoenix 和 Native admin-web 已完成真实 TOTP 登录挑战，Native API Key 敏感操作的真实 step-up 也已通过。用户可见后端来源和错误文案已泛化为系统 API。Phoenix LiveView 已增加 admin-web 对齐的深链接、页面模板和响应式壳；其他批量操作、加载状态、错误反馈、分页、编辑和逐页写操作矩阵以及 OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理链仍是发布证据缺口。

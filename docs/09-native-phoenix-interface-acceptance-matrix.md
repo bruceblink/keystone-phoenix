@@ -49,7 +49,7 @@ Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。�
 
 ## UI 验收边界
 
-Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（78 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 399 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
+Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（79 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 401 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
 
 个人资料密码更新已与 Native/admin-web 接口对齐：`PUT /api/v1/profile/password` 在 AAL2 会话中接收单个 `password` 字段，并在成功后撤销当前会话。Phoenix LiveView 个人资料页也只显示新密码字段。
 
@@ -90,6 +90,7 @@ Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `
 - Native 和 Phoenix 的用户、角色、岗位、操作审计和登录日志页面均通过真实“导出 Excel”检查，下载操作没有显示错误反馈。Phoenix 角色导出的 `406` 已在 `220fdde` 修复：API 管道现在接受 XLSX MIME，并登记 `xlsx` 格式。
 - Native 和 Phoenix 的角色页、Native 任务页还完成了选择记录、打开批量删除确认并取消的真实窗口检查，未执行删除。
 - Native 和 Phoenix 的角色、组织、岗位页面均完成真实新增、列表显示、删除确认和测试数据清理。Phoenix 未登记菜单权限的错误已从 500 修复为 422 `validation_failed`，对应提交为 `55e92fe`；API Key 缺失和重复轮换状态已在 `b3a1af9` 对齐 Native。菜单非法 UUID 的 422/404 边界已在 `c39f335` 和 `47a26a1` 对齐 Native。
+- API Key 授权范围已改为动态目录选择：Native `884a9cb`、Phoenix `50e1828` 提供 `GET /api/v1/permissions/catalog`，返回权限标识、资源、动作、说明、风险和当前主体 `allowed` 状态；admin-web `090dc21` 与 Phoenix LiveView `7a8e16f`、`380aa63` 新增“配置接口权限”入口，按资源分组搜索并逐项选择，提交时只发送允许的 `scopes`。
 
 - Phoenix LiveView 已按 admin-web 的共享壳和页面组件结构重实现。已验证深色页面令牌、流式侧栏和内容区、统一卡片、筛选表格、徽标、模态框、用户图形个人资料入口，以及侧栏移除“工作台”、个人资料菜单和“系统”分组标题。LiveView 壳已改为 `app-shell`、`sidebar`、`shell-content`、`topbar`、`shell-main` 原生结构，并保持侧栏抽屉事件。内置浏览器在 280、320、390、768 和 1280 视口验证了 Phoenix 无横向溢出，顶栏上下文不换行，内容区随视口拉伸；窄屏侧边抽屉可以打开，选择导航后自动收起。当前可见 LiveView 菜单为 13 项；`/dashboard` 和旧任务日志状态保留为兼容路径或内部分支，不作为侧栏菜单。LiveView 另已修复配置删除、通知类型筛选、字典切换分页、任务编码筛选和新建弹窗取消按钮，提交分别为 `205fd85`、`15b782b`、`e7ac3d2`、`8d22f85`、`3752575`。Native admin-web 已完成同样的真实浏览器宽度矩阵，两个后端均保留逐页写操作、筛选、导出、批量操作、空态、错误反馈和模态框结果验收项。
 - 菜单权限专项已完成：Native、Phoenix 和 admin-web 均支持多级菜单树、父级选择防环、停用/未绑定节点的管理读取、菜单角色绑定查询和替换。Native 菜单更新支持父级重排，并拒绝不存在的父级、自身引用和后代环引用。Phoenix LiveView 角色编辑提供按层级缩进的 `menuIds[]` 多选树，菜单编辑弹窗也提供启用角色复选框和绑定替换；菜单筛选保留匹配节点的祖先。admin-web 菜单表单提供同样的父级防环、启用角色选择和多级筛选祖先保留。对应提交为 Phoenix `86a9114`、`763feb7`、`eb847a7`、`9fb9d33`，Native `4198d1c`、`44cb524`、`8c06179`，admin-web `efb9133`、`65413f4`、`734279d`、`c38d343`。
