@@ -153,6 +153,14 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   @impl true
+  def handle_event("toggle-sidebar", _params, socket),
+    do: {:noreply, update(socket, :sidebar_open, &(!&1))}
+
+  @impl true
+  def handle_event("close-sidebar", _params, socket),
+    do: {:noreply, assign(socket, sidebar_open: false)}
+
+  @impl true
   def handle_event("show-panel", %{"panel" => panel}, socket)
       when panel in [
              "overview",
@@ -174,6 +182,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
              "monitor"
            ] do
     if AdminSupport.panel_allowed?(socket, panel) do
+      socket = assign(socket, sidebar_open: false)
+
       cond do
         panel == "profile" ->
           {:noreply, AdminSupport.assign_profile(socket)}
@@ -356,13 +366,14 @@ defmodule KeystonePhoenixWeb.LoginLive do
         <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
         <title>Keystone Admin</title>
         <link rel="stylesheet" href="/css/keystone.css" />
+        <link rel="stylesheet" href="/css/keystone-responsive.css" />
       </head>
       <body>
         <main class={if @current_user, do: "app-main dashboard-main", else: "app-main"}>
           <section class={if @current_user, do: "shell app-shell dashboard-shell", else: "login-page"}>
             <%= if @current_user do %>
               <div class="dashboard">
-                  <div class="sidebar-brand sidebar-head">
+                  <div class={"sidebar-brand sidebar-head#{if @sidebar_open, do: " sidebar-open", else: ""}"}>
                   <div class="brand-mark" aria-hidden="true">KP</div>
                   <div>
                     <strong>KEYSTONE</strong>
@@ -370,6 +381,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   </div>
                 </div>
                 <div class="topbar dashboard-topbar">
+                  <button type="button" class="mobile-menu" phx-click="toggle-sidebar" aria-label={if @sidebar_open, do: "关闭导航", else: "打开导航"} aria-expanded={@sidebar_open}>☰</button>
                   <div>
                     <p class="eyebrow">Keystone / 管理工作台</p>
                     <h2><%= if @read_only, do: "个人中心", else: "管理概览" %></h2>
@@ -388,6 +400,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <button type="button" class="button button-ghost logout-button secondary" phx-click="logout" phx-disable-with="退出中…">退出</button>
                   </div>
                 </div>
+                <button :if={@sidebar_open} type="button" class="sidebar-scrim" phx-click="close-sidebar" aria-label="关闭导航"></button>
                 <p :if={@mfa_step_up_notice} id="mfa-step-up-notice" class="notice" role="status"><%= @mfa_step_up_notice %></p>
                 <div :if={@mfa_step_up_required} id="mfa-step-up-panel" class="card" role="alert">
                   <h3>需要二次认证</h3>
@@ -405,7 +418,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <% end %>
                 </div>
                 <%= if Enum.any?(Map.values(@panel_access)) do %>
-                  <nav class="module-nav" aria-label="管理模块">
+                  <nav class={"module-nav#{if @sidebar_open, do: " sidebar-open", else: ""}"} aria-label="管理模块">
                     <span class="nav-section-title">工作台</span>
                     <button data-icon="⌂" type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "overview", do: "page"} phx-value-panel="overview">概览</button>
                     <span class="nav-section-title">组织与权限</span>
