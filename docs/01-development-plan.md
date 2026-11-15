@@ -12,7 +12,7 @@
 
 - 错误码反查入口已在三端统一。Phoenix `27fd9bd` 增加 `ErrorCatalog.lookup/1` 和 `ApiResponse.error_lookup/1`；Native `f282c99` 增加 `ErrorCode.find(String)`，未知代码返回空结果并保留原兼容降级；admin-web `adc3db0` 增加 `lookupBusinessError(code)`，`errorDiagnostic` 同时输出错误码、业务含义和请求标识。三端都可以从稳定错误码找到唯一业务条件，不依赖可读 `message` 猜测。
 - Phoenix `b45e40d` 补齐用户列表、任务列表和任务日志的读取失败结果。刷新失败时保留旧数据，显示带业务错误码的重试反馈；成功刷新后清除反馈。admin-web `e1fc667` 补齐通知公告旧数据刷新失败反馈，保留原列表并支持重试。
-- 本轮验证：Phoenix `MIX_ENV=test mix test --include integration` 为 `420 passed`；admin-web `pnpm test:run` 为 `21 files / 100 tests passed`，`pnpm typecheck` 和 `pnpm build` 通过；Native `./gradlew test --no-daemon --rerun-tasks` 与 `./gradlew quarkusBuild -x test --no-daemon` 均 `BUILD SUCCESSFUL`；跨项目错误码静态检查继续通过。
+- 本轮验证：Phoenix `MIX_ENV=test mix test --include integration` 为 `422 passed`；admin-web `pnpm test:run` 为 `21 files / 107 tests passed`，`pnpm typecheck` 和 `pnpm build` 通过；Native `./gradlew test --no-daemon --rerun-tasks` 与 `./gradlew quarkusBuild -x test --no-daemon` 均 `BUILD SUCCESSFUL`；跨项目错误码静态检查继续通过。
 
 本轮完成了错误码反查、Phoenix 两类 LiveView 读取失败和 admin-web 公告刷新失败。其余页面的完整加载失败、编辑、分页、批量写入和详情返回矩阵仍需逐页补齐；错误反馈目录验证不替代真实浏览器、OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理链验收。
 
