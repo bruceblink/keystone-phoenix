@@ -61,7 +61,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     response =
       put(authorized(token), assign_path, %{"userIds" => [target.user_id, missing_id]})
 
-    assert get_in(json_response(response, 404), ["error", "code"]) == "validation_failed"
+    assert get_in(json_response(response, 404), ["error", "code"]) == "resource_not_found"
     assert Repo.get!(SysUser, target.user_id).role_id == nil
 
     assert %{"success" => true} =
@@ -89,7 +89,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     response =
       delete(authorized(token), unassign_path, %{"userIds" => [target.user_id, missing_id]})
 
-    assert get_in(json_response(response, 404), ["error", "code"]) == "validation_failed"
+    assert get_in(json_response(response, 404), ["error", "code"]) == "resource_not_found"
     assert Repo.get!(SysUser, target.user_id).role_id == target_role.role_id
   end
 
@@ -144,7 +144,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
         %{"ids" => Enum.join([first_role.role_id, missing_id, second_role.role_id], ",")}
       )
 
-    assert get_in(json_response(rejected, 404), ["error", "code"]) == "validation_failed"
+    assert get_in(json_response(rejected, 404), ["error", "code"]) == "resource_not_found"
     assert Repo.get!(SysRole, first_role.role_id).deleted == false
     assert Repo.get!(SysRole, second_role.role_id).deleted == false
 

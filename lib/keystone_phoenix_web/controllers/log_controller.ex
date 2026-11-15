@@ -238,7 +238,7 @@ defmodule KeystonePhoenixWeb.LogController do
   end
 
   defp render_error(conn, :not_found) do
-    conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "找不到请求的日志"))
+    conn |> put_status(:not_found) |> json(ApiResponse.error(:resource_not_found, "找不到请求的日志"))
   end
 
   defp render_error(conn, :invalid_log) do

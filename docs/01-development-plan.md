@@ -463,7 +463,9 @@ GitHub Test 工作流运行 `43107017286` 的 test job `130813004766` 已通过�
 
 验收必须覆盖 UUIDv7 生成、固定 UUIDv5 测试向量、MySQL 二进制往返、索引可用性、非法 UUID、空值、全量主键/外键类型检查和重复迁移。旧整数输入必须拒绝，不提供兼容转换。
 
-新系统固定使用 `ALL`、`TENANT`、`SELF`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM`、`OWNER` 和 `MEMBER` 八种数据范围。每个资源必须登记支持的范围；未登记的范围和缺少 `tenant_id` 的请求默认拒绝。错误代码和 HTTP 状态固定为 `invalid_credential=401`、`permission_denied=403`、`data_scope_denied=403`、`session_revoked=401`、`authorization_unavailable=503`、`validation_failed=422`。
+新系统固定使用 `ALL`、`TENANT`、`SELF`、`DEPARTMENT`、`DEPARTMENT_AND_CHILDREN`、`CUSTOM`、`OWNER` 和 `MEMBER` 八种数据范围。每个资源必须登记支持的范围；未登记的范围和缺少 `tenant_id` 的请求默认拒绝。错误码由集中目录登记，并按业务条件唯一反查；HTTP 状态码保持现有接口约定。新增入口使用 `authentication_required`、`invalid_credential`、`mfa_required`、`mfa_challenge_invalid`、`mfa_step_up_required`、`active_session_conflict`、`permission_denied`、`data_scope_denied`、`session_revoked`、`resource_not_found`、`resource_conflict`、`rate_limited`、`precondition_required`、`payload_too_large`、`validation_failed`、`service_unavailable`、`authorization_unavailable` 和 `internal_error`；旧兼容代码必须记录迁移范围。
+
+当前 `authorization_unavailable` 仅保留在 HTTPS、旧限流、JWK/Passkey/OIDC、任务与监控服务、个人资料/用户认证会话及 API Key 授权服务的旧边界映射。迁移时保持原 HTTP 状态，只替换边界错误码；领域层的内部原子错误名不作为外部错误码。
 
 ### 阶段二：收紧角色授权
 

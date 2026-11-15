@@ -268,7 +268,7 @@ defmodule KeystonePhoenixWeb.RoleController do
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(ApiResponse.error(:validation_failed, "找不到请求的角色"))
+    |> json(ApiResponse.error(:resource_not_found, "找不到请求的角色"))
   end
 
   defp render_error(conn, reason) when reason in [:protected_role, :has_users] do
@@ -276,13 +276,13 @@ defmodule KeystonePhoenixWeb.RoleController do
 
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, message))
+    |> json(ApiResponse.error(:resource_conflict, message))
   end
 
   defp render_error(conn, :role_unavailable) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "角色已停用"))
+    |> json(ApiResponse.error(:resource_conflict, "角色已停用"))
   end
 
   defp render_error(conn, :forbidden) do

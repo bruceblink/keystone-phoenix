@@ -58,13 +58,13 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
              "error",
              "code"
            ]) ==
-             "validation_failed"
+             "resource_not_found"
 
     assert get_in(json_response(get(authorized.(), "/api/v1/jobs/abc"), 404), [
              "error",
              "code"
            ]) ==
-             "validation_failed"
+             "resource_not_found"
 
     assert get_in(json_response(post(authorized.(), "/api/v1/file/upload", %{}), 422), [
              "error",

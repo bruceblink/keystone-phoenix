@@ -74,7 +74,7 @@ defmodule KeystonePhoenixWeb.AuthController do
             |> put_status(:unauthorized)
             |> json(
               ApiResponse.error(
-                :invalid_credential,
+                :mfa_required,
                 "需要二次认证",
                 challenge_to_map(challenge)
               )
@@ -395,11 +395,20 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   defp render_mfa_error(conn, reason)
        when reason in [
-              :invalid_mfa_code,
-              :invalid_challenge,
-              :invalid_credentials,
-              :user_not_found
+              :invalid_mfa_code
             ] do
+    conn
+    |> put_status(:unauthorized)
+    |> json(ApiResponse.error(:invalid_credential, "MFA 验证码错误"))
+  end
+
+  defp render_mfa_error(conn, :invalid_challenge) do
+    conn
+    |> put_status(:unauthorized)
+    |> json(ApiResponse.error(:mfa_challenge_invalid, "MFA 验证请求已失效"))
+  end
+
+  defp render_mfa_error(conn, reason) when reason in [:invalid_credentials, :user_not_found] do
     conn
     |> put_status(:unauthorized)
     |> json(ApiResponse.error(:invalid_credential, "MFA 验证失败"))
@@ -409,7 +418,7 @@ defmodule KeystonePhoenixWeb.AuthController do
        when reason in [:mfa_not_enrolled, :mfa_already_enabled, :mfa_enrollment_required] do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "MFA 状态不满足当前操作"))
+    |> json(ApiResponse.error(:precondition_required, "MFA 状态不满足当前操作"))
   end
 
   defp render_mfa_error(conn, :already_logged_in),
@@ -418,7 +427,7 @@ defmodule KeystonePhoenixWeb.AuthController do
   defp render_mfa_error(conn, :rate_limited) do
     conn
     |> put_status(:too_many_requests)
-    |> json(ApiResponse.error(:validation_failed, "MFA 验证次数过多，请稍后重试"))
+    |> json(ApiResponse.error(:rate_limited, "MFA 验证次数过多，请稍后重试"))
   end
 
   defp render_mfa_error(conn, reason) when reason in [:unavailable, :authorization_unavailable],
@@ -468,30 +477,30 @@ defmodule KeystonePhoenixWeb.AuthController do
   defp render_error(conn, :already_logged_in) do
     conn
     |> put_status(:conflict)
-    |> json(ApiResponse.error(:validation_failed, "该账号已经登录"))
+    |> json(ApiResponse.error(:active_session_conflict, "该账号已经登录"))
   end
 
   defp render_error(conn, :unavailable) do
     conn
     |> put_status(:service_unavailable)
-    |> json(ApiResponse.error(:authorization_unavailable, "认证会话暂不可用"))
+    |> json(ApiResponse.error(:service_unavailable, "认证会话暂不可用"))
   end
 
   defp render_error(conn, :token_configuration) do
     conn
     |> put_status(:service_unavailable)
-    |> json(ApiResponse.error(:authorization_unavailable, "认证密钥配置无效"))
+    |> json(ApiResponse.error(:service_unavailable, "认证密钥配置无效"))
   end
 
   defp render_error(conn, :rate_limited) do
     conn
     |> put_status(:too_many_requests)
-    |> json(ApiResponse.error(:validation_failed, "登录尝试过于频繁，请稍后再试"))
+    |> json(ApiResponse.error(:rate_limited, "登录尝试过于频繁，请稍后再试"))
   end
 
   defp render_error(conn, :rate_limited_unavailable) do
     conn
     |> put_status(:service_unavailable)
-    |> json(ApiResponse.error(:authorization_unavailable, "限流服务暂不可用，请稍后重试"))
+    |> json(ApiResponse.error(:service_unavailable, "限流服务暂不可用，请稍后重试"))
   end
 end

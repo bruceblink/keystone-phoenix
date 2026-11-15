@@ -52,7 +52,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       })
 
     assert conn.status == 409
-    assert get_in(json_response(conn, 409), ["error", "code"]) == "validation_failed"
+    assert get_in(json_response(conn, 409), ["error", "code"]) == "active_session_conflict"
   end
 
   test "accepts the plain password format used by admin-web", %{user: user} do
@@ -167,7 +167,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
 
     conn = build_conn() |> post("/api/v1/auth/login", params)
     assert conn.status == 429
-    assert get_in(json_response(conn, 429), ["error", "code"]) == "validation_failed"
+    assert get_in(json_response(conn, 429), ["error", "code"]) == "rate_limited"
     assert [retry_after] = get_resp_header(conn, "retry-after")
     assert String.to_integer(retry_after) >= 1
   end

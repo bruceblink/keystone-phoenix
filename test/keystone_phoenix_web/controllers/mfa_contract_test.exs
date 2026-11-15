@@ -151,7 +151,7 @@ defmodule KeystonePhoenixWeb.MfaContractTest do
       })
       |> json_response(401)
 
-    assert login["error"]["code"] == "invalid_credential"
+    assert login["error"]["code"] == "mfa_required"
     [challenge_code | _] = verified["data"]["recoveryCodes"]
 
     completed =

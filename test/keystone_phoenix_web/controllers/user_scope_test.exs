@@ -281,7 +281,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
       )
 
     assert response.status == 404
-    assert json_response(response, 404)["error"]["code"] == "validation_failed"
+    assert json_response(response, 404)["error"]["code"] == "resource_not_found"
     assert {:ok, _user} = User.get_user(ctx.oldest.user_id)
     assert {:ok, _session} = Auth.session_context(target_tokens.token)
 
@@ -383,7 +383,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     }
 
     response = post(authorized(tokens.token), "/api/v1/users/import", %{"file" => upload})
-    assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
+    assert get_in(json_response(response, 403), ["error", "code"]) == "mfa_step_up_required"
 
     # 通过真实 HTTP TOTP enrollment 和 step-up 流程获取短时 AAL2 访问令牌。
     enrollment =

@@ -6,14 +6,7 @@ defmodule KeystonePhoenixWeb.ApiResponse do
   `error.code` 只使用跨项目约定的错误分类，不把内部数字错误码暴露给客户端。
   """
 
-  @error_codes ~w(
-    invalid_credential
-    permission_denied
-    data_scope_denied
-    session_revoked
-    authorization_unavailable
-    validation_failed
-  )
+  alias KeystonePhoenixWeb.ErrorCatalog
 
   @spec ok(term()) :: map()
   def ok(data \\ nil) do
@@ -24,7 +17,7 @@ defmodule KeystonePhoenixWeb.ApiResponse do
   def error(code, message, data \\ nil) when is_atom(code) or is_binary(code) do
     normalized = normalize_code(code)
 
-    if normalized in @error_codes do
+    if ErrorCatalog.valid?(normalized) do
       %{success: false, data: data, message: message, error: %{code: normalized}}
     else
       raise ArgumentError, "unsupported API error code: #{normalized}"
@@ -34,9 +27,12 @@ defmodule KeystonePhoenixWeb.ApiResponse do
   defp normalize_code(code) when is_atom(code), do: Atom.to_string(code)
   defp normalize_code(code), do: String.trim(code)
 
-  @doc "返回跨项目约定的错误分类。"
-  def error_codes, do: @error_codes
+  @doc "返回跨项目约定的业务错误码。"
+  def error_codes, do: ErrorCatalog.codes()
 
   @doc "检查错误分类是否已登记。"
-  def valid_error_code?(code), do: normalize_code(code) in @error_codes
+  def valid_error_code?(code), do: ErrorCatalog.valid?(code)
+
+  @doc "返回错误码的排错元数据。"
+  def error_metadata(code), do: ErrorCatalog.metadata(code)
 end

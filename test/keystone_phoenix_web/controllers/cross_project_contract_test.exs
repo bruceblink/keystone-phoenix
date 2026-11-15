@@ -26,11 +26,23 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
   )
 
   @error_codes ~w(
-    invalid_credential
-    permission_denied
-    data_scope_denied
-    session_revoked
+    active_session_conflict
+    authentication_required
     authorization_unavailable
+    data_scope_denied
+    invalid_credential
+    internal_error
+    mfa_challenge_invalid
+    mfa_required
+    mfa_step_up_required
+    permission_denied
+    payload_too_large
+    precondition_required
+    rate_limited
+    resource_conflict
+    resource_not_found
+    session_revoked
+    service_unavailable
     validation_failed
   )
 

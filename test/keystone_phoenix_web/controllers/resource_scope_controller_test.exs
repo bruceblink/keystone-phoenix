@@ -243,12 +243,12 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     assert json_response(
              get(authorized(build_conn(), owner_token), "/api/v1/jobs/#{other_job_id}"),
              404
-           )["error"]["code"] == "validation_failed"
+           )["error"]["code"] == "resource_not_found"
 
     assert json_response(
              delete(authorized(build_conn(), owner_token), "/api/v1/notices/#{other_notice_id}"),
              404
-           )["error"]["code"] == "validation_failed"
+           )["error"]["code"] == "resource_not_found"
 
     assert json_response(
              delete(
@@ -257,7 +257,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
                %{}
              ),
              404
-           )["error"]["code"] == "validation_failed"
+           )["error"]["code"] == "resource_not_found"
 
     assert json_response(
              delete(
@@ -266,7 +266,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
                %{}
              ),
              404
-           )["error"]["code"] == "validation_failed"
+           )["error"]["code"] == "resource_not_found"
 
     assert get(authorized(build_conn(), owner_token), "/api/v1/jobs/#{owner_job_id}").status ==
              200

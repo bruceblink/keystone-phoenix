@@ -177,7 +177,7 @@ defmodule KeystonePhoenixWeb.JobController do
   end
 
   defp render_error(conn, :not_found) do
-    conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "找不到请求的定时任务"))
+    conn |> put_status(:not_found) |> json(ApiResponse.error(:resource_not_found, "找不到请求的定时任务"))
   end
 
   defp render_error(conn, :invalid_ids) do

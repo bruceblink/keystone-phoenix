@@ -32,4 +32,16 @@ defmodule KeystonePhoenixWeb.ApiResponseContractTest do
       ApiResponse.error(:legacy_numeric_code, "invalid")
     end
   end
+
+  test "catalog metadata makes every business code searchable" do
+    assert %{status: 409, retryable: false, message_key: "auth.active_session_conflict"} =
+             ApiResponse.error_metadata(:active_session_conflict)
+
+    assert %{status: 429, retryable: true} = ApiResponse.error_metadata(:rate_limited)
+
+    assert Enum.all?(
+             ApiResponse.error_codes(),
+             &(is_binary(&1) and ApiResponse.valid_error_code?(&1))
+           )
+  end
 end

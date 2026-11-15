@@ -83,7 +83,7 @@ defmodule KeystonePhoenixWeb.DepartmentController do
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(ApiResponse.error(:validation_failed, "找不到请求的部门"))
+    |> json(ApiResponse.error(:resource_not_found, "找不到请求的部门"))
   end
 
   defp render_error(conn, reason)

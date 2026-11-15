@@ -139,7 +139,7 @@ defmodule KeystonePhoenixWeb.PostController do
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(ApiResponse.error(:validation_failed, "找不到请求的岗位"))
+    |> json(ApiResponse.error(:resource_not_found, "找不到请求的岗位"))
   end
 
   defp render_error(conn, :invalid_ids) do

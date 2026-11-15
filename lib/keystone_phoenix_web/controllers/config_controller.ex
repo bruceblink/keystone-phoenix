@@ -105,7 +105,7 @@ defmodule KeystonePhoenixWeb.ConfigController do
   defp render_error(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(ApiResponse.error(:validation_failed, "找不到请求的系统配置"))
+    |> json(ApiResponse.error(:resource_not_found, "找不到请求的系统配置"))
   end
 
   defp render_error(conn, :not_allow_change) do
