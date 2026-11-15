@@ -78,6 +78,8 @@ Phoenix LiveView 已完成共享壳、登录、账号组织和系统页面的主
 
 Phoenix 审计页已按 admin-web 的只读约定移除删除按钮和操作列，保留后端事件兼容已有调用；对应提交为 `ace60dd`。Phoenix 个人资料页已按 admin-web 改为只填写新密码，密码更新接口统一使用单个 `password` 字段，并在 AAL2 通过后撤销当前会话；对应提交为 `b4c92cb`。重启当前 Phoenix 服务后，内置浏览器确认个人资料页只渲染 `input[name="password"]`，不再渲染 `oldPassword` 或 `newPassword`。
 
+Phoenix 任务页已补齐与 admin-web 一致的当前页勾选、全选、批量删除确认、删除反馈和筛选后选择状态清理；对应提交为 `4ac1dc7`。原有单项编辑、启停、执行、取消和权限检查保持不变。
+
 ## 发布前证据
 
 每个正式版本必须保留以下证据：
