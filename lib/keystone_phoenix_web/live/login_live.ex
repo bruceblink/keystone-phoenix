@@ -502,12 +502,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
             <% else %>
               <section class="login-intro">
                 <div class="brand-mark" aria-hidden="true">KP</div>
-                <p class="eyebrow">KEYSTONE NATIVE / ADMIN</p>
+                <p class="eyebrow">KEYSTONE / ADMIN</p>
                 <h1>把平台状态，<span>放在一个清晰的工作台。</span></h1>
                 <p class="login-lede">从登录、授权到运行监控，管理前端只保留完成运维判断所需的证据。</p>
                 <div class="login-signals" aria-label="平台能力">
                   <div><strong>30s</strong><span>健康快照刷新</span></div>
-                  <div><strong>99.9%</strong><span>API 可用目标</span></div>
+                  <div><strong>99.9%</strong><span>系统 API 可用目标</span></div>
                 </div>
               </section>
               <div class="card login-card">
