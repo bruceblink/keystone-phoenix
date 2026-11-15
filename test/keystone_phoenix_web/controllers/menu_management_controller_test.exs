@@ -76,6 +76,24 @@ defmodule KeystonePhoenixWeb.MenuManagementControllerTest do
     refute Enum.any?(dropdown, &(&1["id"] == unassigned.menu_id))
   end
 
+  @tag :integration
+  test "menu role assignment rejects missing or non-list role codes" do
+    role = insert_role(["menu:manage"])
+    user = insert_user(role.role_id)
+    menu = insert_menu("assignment_validation", 1)
+    token = login(user)
+    conn = fn -> authorized(build_conn(), token) end
+
+    assert json_response(put(conn.(), "/api/v1/menus/#{menu.menu_id}/roles", %{}), 422)
+           |> get_in(["error", "code"]) == "validation_failed"
+
+    assert json_response(
+             put(conn.(), "/api/v1/menus/#{menu.menu_id}/roles", %{"roleCodes" => "ADMIN"}),
+             422
+           )
+           |> get_in(["message"]) == "角色编码无效"
+  end
+
   defp insert_role(permissions) do
     role =
       %SysRole{}
