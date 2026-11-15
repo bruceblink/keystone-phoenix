@@ -585,4 +585,11 @@ main.app-main.dashboard-main { width: 100%; max-width: none; margin: 0; padding:
 .login-submit { width: 100%; min-height: 46px; margin-top: 6px; }
 .login-footnote { display: flex; margin: 19px 0 0; color: #71859f; font-size: 10px; line-height: 1.6; }
 .user-profile-button { display: flex; align-items: center; gap: 10px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; }
+.dashboard-topbar .topbar-actions { display: flex; align-items: center; gap: 18px; }
+.icon-button { position: relative; display: grid; width: 34px; height: 34px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted-strong); font-size: 22px; line-height: 1; }
+.icon-button:hover { background: var(--surface-soft); box-shadow: none; transform: none; }
+.notification-dot { position: absolute; top: 7px; right: 7px; width: 5px; height: 5px; border-radius: 50%; background: var(--red); }
+.user-profile-button .user-avatar { display: grid; width: 30px; height: 30px; place-items: center; border: 0; border-radius: 50%; background: var(--cyan); color: #0b1525; font-size: 11px; font-weight: 800; }
+.user-profile-button > span:not(.user-avatar) strong, .user-profile-button > span:not(.user-avatar) > span { display: block; }
+.user-profile-button > span:not(.user-avatar) > span { margin-top: 2px; color: var(--muted); font-size: 10px; }
 @media (max-width: 850px) { .dashboard { grid-template-columns: 1fr; grid-template-rows: auto auto auto minmax(0,1fr); }.sidebar-brand, .dashboard-topbar, .dashboard > .module-nav, .page-content { grid-column: 1; }.sidebar-brand { grid-row: 1; }.dashboard-topbar { grid-row: 2; }.dashboard > .module-nav { grid-row: 3; min-height: auto; border-right: 0; }.page-content { grid-row: 4; }.login-page { display: block; padding: 24px; }.login-intro { width: 100%; }.login-card { margin: 34px auto 0; } }

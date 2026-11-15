@@ -50,6 +50,11 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     })
 
     assert has_element?(view, "nav[aria-label='管理模块']")
+    assert has_element?(view, "button[aria-label='通知'][phx-value-panel='notices']")
+    assert has_element?(view, "button[aria-label='打开个人资料'][phx-value-panel='profile']")
+    refute has_element?(view, "nav[aria-label='管理模块'] button", "个人资料")
+    render_click(view, "show-panel", %{"panel" => "notices"})
+    assert live_socket(view).assigns.active_panel == "notices"
     assert Log.list_login_logs(%{"username" => admin.username, "pageSize" => 10}).total >= 1
 
     mfa_secret = enroll_liveview_factor(view, admin)

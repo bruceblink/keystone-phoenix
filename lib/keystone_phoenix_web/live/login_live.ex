@@ -375,6 +375,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <h2><%= if @read_only, do: "个人中心", else: "管理概览" %></h2>
                   </div>
                   <div class="user topbar-actions user-menu">
+                    <button type="button" class="icon-button" phx-click="show-panel" phx-value-panel="notices" aria-label="通知">
+                      <span aria-hidden="true">◌</span><span class="notification-dot" aria-hidden="true"></span>
+                    </button>
                     <button type="button" class="user-profile-button" phx-click="show-panel" phx-value-panel="profile" aria-label="打开个人资料">
                       <span class="user-avatar" aria-hidden="true">KP</span>
                       <span>
