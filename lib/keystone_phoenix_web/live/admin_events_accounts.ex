@@ -70,25 +70,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     end
   end
 
-  def handle_event("download-user-template", _params, socket) do
-    if Support.permission_socket?(socket, "user:import") do
-      case UserController.template_workbook() do
-        {:ok, binary} ->
-          {:noreply,
-           push_event(socket, "download-xlsx", %{
-             filename: "user-import-template.xlsx",
-             content: Base.encode64(binary),
-             content_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-           })}
-
-        {:error, _reason} ->
-          {:noreply, assign(socket, user_feedback: Feedback.error("Excel 模板生成失败"))}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
-
   def handle_event("new-user-import", _params, socket) do
     if Support.permission_socket?(socket, "user:import") do
       {:noreply,

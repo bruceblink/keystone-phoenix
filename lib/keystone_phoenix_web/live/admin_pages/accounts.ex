@@ -36,7 +36,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <button :if={!@read_only} type="button" class="button button-primary refresh" phx-click="new-user" phx-disable-with="处理中…">新建用户</button>
           <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…">刷新用户</button>
           <button :if={"user:export" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="export-users" phx-disable-with="导出中…">导出 XLSX</button>
-          <button :if={"user:import" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="download-user-template" phx-disable-with="准备中…">下载导入模板</button>
         </div>
       </div>
       <section class="card filter-card users-filter-card" aria-labelledby="users-filter-title">

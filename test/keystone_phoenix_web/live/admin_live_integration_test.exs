@@ -128,15 +128,6 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert_push_event(view, "download-xlsx", %{filename: "users.xlsx", content: content})
     assert byte_size(content) > 100
 
-    render_click(view, "download-user-template")
-
-    assert_push_event(view, "download-xlsx", %{
-      filename: "user-import-template.xlsx",
-      content: template
-    })
-
-    assert byte_size(template) > 100
-
     {:ok, import_workbook} = Excel.export(["用户名"], [["mfa_blocked_user"]], "users.xlsx")
 
     render_click(view, "new-user-import")

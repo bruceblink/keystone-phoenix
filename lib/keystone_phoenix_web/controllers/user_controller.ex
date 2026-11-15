@@ -90,21 +90,6 @@ defmodule KeystonePhoenixWeb.UserController do
     "备注"
   ]
 
-  @user_import_headers [
-    "部门ID",
-    "用户名",
-    "昵称",
-    "邮件",
-    "电话号码",
-    "性别",
-    "头像",
-    "密码",
-    "状态",
-    "角色ID",
-    "职位ID",
-    "备注"
-  ]
-
   @doc "Returns a paginated list of users."
   def list(conn, params) do
     page = User.list_users(NativeContract.pagination_params(params), conn.assigns.current_user)
@@ -287,12 +272,6 @@ defmodule KeystonePhoenixWeb.UserController do
   def export_workbook(params, actor) when is_map(params) and is_map(actor) do
     rows = Excel.all_rows(&User.list_users(&1, actor), params) |> enrich_export_rows()
     Excel.export(@user_export_headers, Enum.map(rows, &user_export_row/1), "users.xlsx")
-  end
-
-  @doc "Builds the blank user import template for HTTP and LiveView downloads."
-  def template_workbook do
-    blank = List.duplicate("", length(@user_import_headers))
-    Excel.export(@user_import_headers, [blank], "user-import-template.xlsx")
   end
 
   @doc "Imports users from the first worksheet in an XLSX upload."
