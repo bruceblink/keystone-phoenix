@@ -548,9 +548,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
                 <% else %>
                   <form id="login-form" class="login-form" phx-submit="login">
                     <label for="username">用户名</label>
-                    <input id="username" name="username" value={@username} autocomplete="username" required />
+                    <div class="input-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg><input id="username" name="username" value={@username} autocomplete="username" required /></div>
                     <label for="password">密码</label>
-                    <input id="password" name="password" type="password" autocomplete="current-password" required />
+                    <div class="input-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /><path d="M12 14v2" /></svg><input id="password" name="password" type="password" autocomplete="current-password" required /></div>
                     <div :if={@captcha_enabled}>
                       <label for="captcha-code">验证码</label>
                       <img :if={@captcha_image} src={"data:image/gif;base64," <> @captcha_image} alt="登录验证码" width="160" height="60" />
@@ -558,10 +558,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
                       <input id="captcha-code" name="captchaCode" value="" autocomplete="off" required />
                     </div>
                     <%= if @login_error do %><p class="error" role="alert"><%= @login_error %></p><% end %>
-                    <button type="submit" class="login-submit" phx-disable-with="登录中…">登录</button>
+                    <button type="submit" class="login-submit" phx-disable-with="登录中…">登录 <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg></button>
                   </form>
                 <% end %>
-                <p class="login-footnote">访问令牌只保存在当前页面内存，页面刷新后需要重新登录。</p>
+                <p class="login-footnote"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="3.5" /><path d="m10 13 9-9 2 2-2 2 2 2-3 3-2-2-4 4" /></svg>访问令牌只保存在当前页面内存，页面刷新后需要重新登录。</p>
               </div>
               </div>
             <% end %>
