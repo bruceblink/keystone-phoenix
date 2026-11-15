@@ -113,7 +113,8 @@ defmodule KeystonePhoenixWeb.JobController do
         json(conn, ApiResponse.ok(%{"triggered" => true}))
 
       {:skipped, :already_running} ->
-        json(conn, ApiResponse.ok(%{"triggered" => false}))
+        # Native 的 admin-web 契约只确认手动触发请求已接受；跳过本次并发执行仍返回成功提交。
+        json(conn, ApiResponse.ok(%{"triggered" => true}))
 
       {:error, :not_found} ->
         render_error(conn, :not_found)

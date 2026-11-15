@@ -91,6 +91,8 @@ Native 和 Phoenix 的角色页、Native 任务页还完成了选择记录、打
 
 Native 和 Phoenix 的角色、组织、岗位页面均完成真实新增、列表显示、删除确认和测试数据清理。Phoenix 未登记菜单权限的错误已从 500 修复为 422 `validation_failed`（`55e92fe`）；API Key 缺失和重复轮换状态保持 Native 的 404/409，并返回相同的 `resource_not_found`/`resource_conflict` 业务码，对应本次错误码对齐提交。
 
+任务手动触发接口在两个后端都返回 HTTP 200 和 `data.triggered=true`，表示请求已接受；并发锁导致的跳过结果写入执行日志，页面通过日志查看最终状态。Phoenix 已增加并发锁 HTTP 契约测试，与 Native/admin-web 的结果字段保持一致。
+
 Phoenix LiveView 已完成共享壳、登录、账号、组织、系统和任务页面的主要视觉重实现。侧栏、顶栏、
 颜色令牌、卡片、筛选区、按钮、表格、徽标、状态 footer、用户图形个人资料入口和侧栏菜单结构已经按 admin-web
 对齐。Phoenix 壳 DOM 已使用 `app-shell`、`sidebar`、`shell-content`、`topbar` 和 `shell-main` 原生结构，兼容样式只处理 LiveView 的导航和认证差异。窄屏布局使用流式宽度，

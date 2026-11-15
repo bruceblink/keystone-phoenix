@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Identity
+  alias KeystonePhoenix.Job.{Lock, SysJob}
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
@@ -92,6 +93,39 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
       response = delete(authorized.(), path)
       assert response.status == 422, "expected #{path} to reject its deprecated alias"
       assert get_in(json_response(response, 422), ["error", "code"]) == "validation_failed"
+    end
+  end
+
+  @tag :integration
+  test "a skipped concurrent trigger keeps the accepted-result contract", %{conn: conn} do
+    user = insert_admin()
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+
+    job =
+      %SysJob{}
+      |> SysJob.changeset(%{
+        job_code: "contract-trigger-#{System.unique_integer([:positive])}",
+        job_name: "并发触发契约任务",
+        job_group: "契约测试",
+        invoke_target: "demoJobTask.printHeartbeat()",
+        cron_expression: "0/30 * * * * ?",
+        concurrent: 0,
+        status: 1
+      })
+      |> Repo.insert!()
+
+    assert :ok = Lock.acquire(job.job_id)
+
+    try do
+      response =
+        conn
+        |> put_req_header("authorization", "Bearer #{tokens.token}")
+        |> post("/api/v1/jobs/#{job.job_id}/trigger", %{})
+
+      assert response.status == 200
+      assert get_in(json_response(response, 200), ["data", "triggered"]) == true
+    after
+      assert :ok = Lock.release(job.job_id)
     end
   end
 
