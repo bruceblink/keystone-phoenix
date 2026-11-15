@@ -12,7 +12,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Auth.Captcha
   alias KeystonePhoenix.Auth.LoginLimiter
   alias KeystonePhoenix.Log
-  alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.LoginState
@@ -420,13 +419,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <button data-icon="◎" type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "profile", do: "page"} phx-value-panel="profile">个人资料</button>
                   </nav>
                   <div class="page-content">
-                    <div class="page-context">
-                      <div>
-                        <p class="eyebrow">管理模块</p>
-                        <h3><%= Navigation.panel_title(@active_panel) %></h3>
-                      </div>
-                      <span class="access-chip"><%= if @read_only, do: "只读模式", else: "管理员模式" %></span>
-                    </div>
                   <%= case @active_panel do %>
                     <% "overview" -> %>
                       <div class="panel overview-panel">
@@ -492,13 +484,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <button data-icon="◎" type="button" class={if @active_panel == "profile", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "profile", do: "page"} phx-value-panel="profile">个人资料</button>
                   </nav>
                   <div class="page-content">
-                    <div class="page-context">
-                      <div>
-                        <p class="eyebrow">个人中心</p>
-                        <h3>个人资料</h3>
-                      </div>
-                      <span class="access-chip">个人账号</span>
-                    </div>
                   <%= if @active_panel == "profile" do %>
                     <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} avatar_upload={@uploads.avatar} />
                   <% else %>
