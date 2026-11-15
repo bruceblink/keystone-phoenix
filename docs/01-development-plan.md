@@ -4,7 +4,7 @@
 
 ## 2026-11-16 业务错误码目录基线
 
-跨项目错误码目录见 [`11-business-error-code-catalog.md`](11-business-error-code-catalog.md)。Phoenix `56ba348`、Native `aea1a35`/`7cb6533` 和 admin-web `33c20ff`/`dd1b280` 当前登记相同的 21 个服务端代码；其中 Phoenix `56ba348` 补齐了 `mfa_invalid_code`、`mfa_state_conflict` 和 `https_required`。admin-web 另有 4 个客户端本地代码，不能进入服务端响应。目录规则明确了代码到业务条件的反查、HTTP 状态保持和 `authorization_unavailable`、`invalid_credentials` 的兼容范围。
+跨项目错误码目录见 [`11-business-error-code-catalog.md`](11-business-error-code-catalog.md)。Phoenix `56ba348`、Native `aea1a35`/`7cb6533` 和 admin-web `33c20ff`/`dd1b280`/`9e6e5e9` 当前登记相同的 21 个服务端代码；其中 Phoenix `56ba348` 补齐了 `mfa_invalid_code`、`mfa_state_conflict` 和 `https_required`，admin-web `9e6e5e9` 补齐了缺少业务码的失败响应兜底。admin-web 另有 4 个客户端本地代码，不能进入服务端响应。目录规则明确了代码到业务条件的反查、HTTP 状态保持和 `authorization_unavailable`、`invalid_credentials` 的兼容范围。
 
 本轮静态验证：`python3 scripts/check_error_code_catalog.py --native-root ../keystone-native --admin-root ../keystone-admin-web` 通过，规范服务端代码 `21` 个、客户端本地代码 `4` 个，Phoenix/Native/admin-web 集合和默认状态 `21/21` 一致；Python 语法检查和 `git diff --check` 通过。该静态结果不替代真实 HTTP、数据库、浏览器和生产代理验收。
 
