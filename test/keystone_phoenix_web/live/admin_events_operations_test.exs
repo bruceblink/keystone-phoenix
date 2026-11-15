@@ -10,7 +10,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OperationsTest do
         job_rows: [%{"jobId" => "job-1"}, %{"jobId" => "job-2"}],
         job_filter: %{"keyword" => ""},
         page_nums: %{"jobs" => 1},
-        page_sizes: %{"jobs" => 50},
+        page_sizes: %{"jobs" => 20},
         selected_job_ids: []
       }
     }

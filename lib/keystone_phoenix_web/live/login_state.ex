@@ -73,8 +73,8 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       page_sizes: %{
         "users" => 20,
         "posts" => 20,
-        "jobs" => 50,
-        "job-logs" => 50,
+        "jobs" => 20,
+        "job-logs" => 20,
         "dict-data" => 50,
         "login-logs" => 50,
         "operation-logs" => 50,
