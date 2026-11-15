@@ -230,6 +230,62 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     assert updated.router_name == menu.router_name
   end
 
+  test "menu edit reads and replaces role bindings", ctx do
+    {:ok, menu} =
+      Menu.create_menu(
+        %{
+          "code" => unique("role_binding_menu"),
+          "name" => unique("角色绑定菜单"),
+          "menuType" => "MENU",
+          "path" => "/role-binding-menu",
+          "permission" => "menu:read",
+          "enabled" => true
+        },
+        authorization: %{principal: ctx.admin, permission: "menu:create"}
+      )
+
+    {:ok, role} =
+      Role.create_role(
+        %{
+          "roleName" => unique("可访问菜单角色"),
+          "roleKey" => unique("menu_access_role"),
+          "roleSort" => 8,
+          "dataScope" => "ALL",
+          "status" => 1,
+          "menuIds" => []
+        },
+        authorization: %{principal: ctx.admin, permission: "role:create"}
+      )
+
+    {:ok, view} = login(ctx.conn, ctx.admin)
+    render_click(view, "show-panel", %{"panel" => "menus"})
+    render_click(view, "edit-menu", %{"menu-id" => to_string(menu.menu_id)})
+    assert has_element?(view, "#menu-role-codes input[value='#{role.role_key}']")
+    refute has_element?(view, "#menu-role-codes input[value='#{role.role_key}'][checked]")
+
+    render_submit(view, "save-menu", %{
+      "menuId" => to_string(menu.menu_id),
+      "name" => menu.menu_name,
+      "code" => menu.menu_code,
+      "menuRoleCodes[]" => [role.role_key]
+    })
+
+    assert render(view) =~ "菜单已更新"
+    assert Role.menu_ids_for_role(role.role_id) == [menu.menu_id]
+
+    render_click(view, "edit-menu", %{"menu-id" => to_string(menu.menu_id)})
+    assert has_element?(view, "#menu-role-codes input[value='#{role.role_key}'][checked]")
+
+    render_submit(view, "save-menu", %{
+      "menuId" => to_string(menu.menu_id),
+      "name" => menu.menu_name,
+      "code" => menu.menu_code,
+      "menuRoleCodes[]" => []
+    })
+
+    assert Role.menu_ids_for_role(role.role_id) == []
+  end
+
   test "role edit renders and saves selected menu bindings", ctx do
     {:ok, menu} =
       Menu.create_menu(

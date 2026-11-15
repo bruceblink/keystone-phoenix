@@ -105,6 +105,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       menu_feedback: nil,
       menu_form: Support.empty_menu_form(),
       menu_filter: "",
+      menu_role_codes: [],
       api_key_rows: [],
       api_key_feedback: nil,
       api_key_form: %{"name" => "", "scopes" => "", "expiresAt" => ""},

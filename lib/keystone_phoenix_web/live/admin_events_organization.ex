@@ -10,6 +10,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenix.Role.Permissions
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationExport
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenu
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenuParams
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleSelection
@@ -459,6 +460,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
          menu_form: Support.empty_menu_form(),
          menu_feedback: nil,
          menu_filter: filter,
+         menu_role_codes: [],
          active_modal: nil
        )}
     else
@@ -472,6 +474,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
        assign(socket,
          menu_form: Support.empty_menu_form(),
          menu_feedback: nil,
+         menu_role_codes: [],
          active_modal: "menu"
        )}
     else
@@ -479,61 +482,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     end
   end
 
-  def handle_event("edit-menu", %{"menu-id" => menu_id}, socket) do
-    if Support.permission_socket?(socket, "menu:update") do
-      case Enum.find(socket.assigns.menu_rows, &(to_string(&1["menuId"]) == menu_id)) do
-        nil ->
-          {:noreply, assign(socket, menu_feedback: Feedback.error("找不到指定菜单"))}
+  def handle_event("edit-menu", params, socket), do: OrganizationMenu.edit(params, socket)
 
-        menu ->
-          form =
-            Support.empty_menu_form()
-            |> Map.merge(menu)
-            |> Map.put("id", menu["id"] || menu["menuId"])
-            |> Map.put("code", menu["code"] || menu["menuCode"] || menu["menuId"])
-            |> Map.put("name", menu["name"] || menu["menuName"])
-            |> Map.put("component", menu["component"] || menu["routerName"] || "")
-            |> Map.put("sortOrder", menu["sortOrder"] || menu["rank"] || 0)
-            |> Map.put("enabled", menu["enabled"] in [true, 1, "true", "1"])
-            |> Map.put("metaInfo", Jason.encode!(menu["meta"] || %{}))
-            |> Map.put("isButton", if(menu["isButton"], do: "true", else: "false"))
-
-          {:noreply, assign(socket, menu_form: form, menu_feedback: nil, active_modal: "menu")}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("save-menu", params, socket) do
-    if (Support.permission_socket?(socket, "menu:create") or
-          Support.permission_socket?(socket, "menu:update")) and
-         Authz.menu_metadata_allowed?(socket.assigns.current_user, params) do
-      params = OrganizationMenuParams.normalize_menu_params(params, socket.assigns[:menu_form])
-      menu_id = String.trim(params["menuId"] || "")
-
-      result =
-        if menu_id == "",
-          do: Menu.create_menu(params, authorization(socket, "menu:create")),
-          else: Menu.update_menu(menu_id, params, authorization(socket, "menu:update"))
-
-      case result do
-        {:ok, _menu} ->
-          {:noreply,
-           assign(socket,
-             menu_rows: Support.load_menus_for_socket(socket),
-             menu_form: Support.empty_menu_form(),
-             active_modal: nil,
-             menu_feedback: if(menu_id == "", do: "菜单已创建", else: "菜单已更新")
-           )}
-
-        error ->
-          {:noreply, assign(socket, menu_feedback: Support.form_error(error))}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
+  def handle_event("save-menu", params, socket), do: OrganizationMenu.save(params, socket)
 
   def handle_event("toggle-menu-status", %{"menu-id" => menu_id, "status" => status}, socket) do
     if Support.permission_socket?(socket, "menu:update") do
@@ -565,6 +516,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            assign(socket,
              menu_rows: Support.load_menus_for_socket(socket),
              menu_form: Support.empty_menu_form(),
+             menu_role_codes: [],
              active_modal: nil,
              menu_feedback: "菜单已删除"
            )}

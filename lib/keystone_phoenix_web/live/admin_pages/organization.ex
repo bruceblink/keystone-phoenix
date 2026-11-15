@@ -240,6 +240,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       |> assign_new(:read_only, fn -> false end)
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:menu_filter, fn -> "" end)
+      |> assign_new(:menu_role_codes, fn -> [] end)
+      |> assign_new(:role_rows, fn -> [] end)
+      |> assign_new(:permissions, fn -> [] end)
 
     ~H"""
     <div class="menus-page">
@@ -269,6 +272,21 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
           <div><label for="menu-name">菜单名称</label><input id="menu-name" name="name" value={@menu_form["name"] || @menu_form["menuName"]} required /></div><div><label for="menu-code">菜单编码</label><input id="menu-code" name="code" value={@menu_form["code"] || @menu_form["menuCode"]} required /></div><div><label for="menu-parent">上级菜单</label><select id="menu-parent" name="parentId"><option value="">根菜单</option><%= for parent <- OrganizationFilters.menu_parent_rows(@menu_rows, @menu_form["menuId"]) do %><option value={parent["menuId"] || parent["id"]} selected={to_string(@menu_form["parentId"] || "") == to_string(parent["menuId"] || parent["id"])}><%= String.duplicate("　", parent["depth"] || 0) %><%= parent["name"] || parent["menuName"] %></option><% end %></select></div><div><label for="menu-type">菜单类型</label><select id="menu-type" name="menuType"><option value="MENU" selected={@menu_form["menuType"] in [1, "1", "MENU"]}>菜单</option><option value="BUTTON" selected={@menu_form["menuType"] in [0, "0", "BUTTON"]}>按钮</option><option value="DIRECTORY" selected={@menu_form["menuType"] in [2, "2", "DIRECTORY"]}>目录</option></select></div><div><label for="menu-path">路由路径</label><input id="menu-path" name="path" value={@menu_form["path"] || ""} placeholder="/system/users" /></div><div><label for="menu-component">组件路径</label><input id="menu-component" name="component" value={@menu_form["component"] || @menu_form["routerName"] || ""} placeholder="system/users/index" /></div><div><label for="menu-permission">权限标识</label><input id="menu-permission" name="permission" value={@menu_form["permission"] || ""} placeholder="user:read" /></div><div><label for="menu-sort">排序</label><input id="menu-sort" type="number" min="0" name="sortOrder" value={@menu_form["sortOrder"] || 0} /></div>
           <div class="wide"><input type="hidden" name="enabled" value="false" /><label class="checkbox-label" for="menu-enabled"><input id="menu-enabled" type="checkbox" name="enabled" value="true" checked={@menu_form["enabled"] in [true, 1, "true", "1"]} /><span>启用菜单</span></label></div>
         </div>
+        <fieldset :if={"menu:manage" in @permissions} id="menu-role-codes" class="menu-role-access">
+          <legend>可访问角色</legend>
+          <% enabled_menu_roles = Enum.filter(@role_rows, &(&1["status"] in [1, "1", true])) %>
+          <%= if enabled_menu_roles == [] do %>
+            <p class="form-help">暂无启用角色可分配。</p>
+          <% else %>
+            <div class="menu-role-options">
+              <%= for role <- enabled_menu_roles do %>
+                <% role_code = role["roleKey"] || role["code"] %>
+                <label class="checkbox-label"><input type="checkbox" name="menuRoleCodes[]" value={role_code} checked={to_string(role_code) in Enum.map(@menu_role_codes, &to_string/1)} /><span><%= role["roleName"] || role["name"] || role_code %> <small><%= role_code %></small></span></label>
+              <% end %>
+            </div>
+          <% end %>
+          <p class="form-help">保存后会替换该菜单的角色绑定。未选择角色时，菜单不会显示给任何角色。</p>
+        </fieldset>
         <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存菜单</button><button :if={@menu_form["menuId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="menu" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
         </.modal>
