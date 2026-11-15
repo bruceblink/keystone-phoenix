@@ -10,6 +10,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenix.Role.Permissions
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationExport
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenuParams
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters
@@ -336,15 +337,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   def handle_event("save-role", params, socket) do
+    params = OrganizationMenuParams.normalize_role_menu_ids(params)
+
     if (Support.permission_socket?(socket, "role:create") or
           Support.permission_socket?(socket, "role:update")) and
          Authz.role_metadata_allowed?(socket.assigns.current_user, params) do
       role_id = String.trim(params["roleId"] || "")
 
-      params =
-        params
-        |> Map.update("menuIds", "", &String.trim/1)
-        |> Map.update("permissions", "", &String.trim/1)
+      params = Map.update(params, "permissions", "", &String.trim/1)
 
       result =
         if role_id == "",
@@ -476,6 +476,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           form =
             Support.empty_menu_form()
             |> Map.merge(menu)
+            |> Map.put("id", menu["id"] || menu["menuId"])
+            |> Map.put("code", menu["code"] || menu["menuCode"] || menu["menuId"])
+            |> Map.put("name", menu["name"] || menu["menuName"])
+            |> Map.put("component", menu["component"] || menu["routerName"] || "")
+            |> Map.put("sortOrder", menu["sortOrder"] || menu["rank"] || 0)
+            |> Map.put("enabled", menu["enabled"] in [true, 1, "true", "1"])
             |> Map.put("metaInfo", Jason.encode!(menu["meta"] || %{}))
             |> Map.put("isButton", if(menu["isButton"], do: "true", else: "false"))
 
@@ -490,6 +496,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if (Support.permission_socket?(socket, "menu:create") or
           Support.permission_socket?(socket, "menu:update")) and
          Authz.menu_metadata_allowed?(socket.assigns.current_user, params) do
+      params = OrganizationMenuParams.normalize_menu_params(params, socket.assigns[:menu_form])
       menu_id = String.trim(params["menuId"] || "")
 
       result =

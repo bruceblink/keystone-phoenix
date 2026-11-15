@@ -73,11 +73,59 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
   defp enrich_menus(menus) do
     by_id = Map.new(menus, &{&1["menuId"], &1})
 
-    Enum.map(menus, fn menu ->
+    menus
+    |> menu_tree_order()
+    |> Enum.map(fn menu ->
+      code = menu["code"] || menu["menuCode"] || menu["menuId"]
+      name = menu["name"] || menu["menuName"]
+      component = menu["component"] || menu["routerName"]
+      enabled = if Map.has_key?(menu, "enabled"), do: menu["enabled"], else: menu["status"] == 1
+
       menu
+      |> Map.put("code", code)
+      |> Map.put("menuCode", code)
+      |> Map.put("name", name)
+      |> Map.put("component", component)
+      |> Map.put("sortOrder", menu["sortOrder"] || menu["menuSort"] || menu["rank"] || 0)
+      |> Map.put("enabled", enabled)
       |> Map.put("depth", menu_depth(menu["parentId"], by_id, MapSet.new([menu["menuId"]])))
       |> Map.put("menuTypeStr", menu_type_label(menu["menuType"], menu["isButton"]))
       |> Map.put("statusStr", if(menu["status"] == 1, do: "正常", else: "停用"))
+    end)
+  end
+
+  # 数据库按父级 UUID 排序时会打散树；页面按父级、排序号和 ID 重新展开，保持父子相邻。
+  defp menu_tree_order(menus) do
+    children = Enum.group_by(menus, & &1["parentId"])
+    root_menus = Map.get(children, nil, []) ++ Map.get(children, 0, [])
+    {roots, visited} = walk_menu_children(root_menus, children, MapSet.new())
+
+    leftovers =
+      menus
+      |> Enum.reject(&MapSet.member?(visited, &1["menuId"]))
+      |> sort_menus()
+
+    roots ++ leftovers
+  end
+
+  defp walk_menu_children(menus, children, visited) do
+    Enum.reduce(sort_menus(menus), {[], visited}, fn menu, {rows, seen} ->
+      id = menu["menuId"]
+
+      if MapSet.member?(seen, id) do
+        {rows, seen}
+      else
+        {descendants, seen} =
+          walk_menu_children(Map.get(children, id, []), children, MapSet.put(seen, id))
+
+        {rows ++ [menu | descendants], seen}
+      end
+    end)
+  end
+
+  defp sort_menus(menus) do
+    Enum.sort_by(menus, fn menu ->
+      {menu["sortOrder"] || menu["menuSort"] || menu["rank"] || 0, to_string(menu["menuId"])}
     end)
   end
 

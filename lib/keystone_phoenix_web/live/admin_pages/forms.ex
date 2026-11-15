@@ -60,15 +60,21 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Forms do
   def empty_menu_form do
     %{
       "menuId" => "",
+      "id" => "",
+      "code" => "",
+      "name" => "",
       "menuName" => "",
       "menuType" => 1,
       "routerName" => "",
+      "component" => "",
       "parentId" => 0,
       "path" => "",
       "isButton" => "false",
       "permission" => "",
+      "sortOrder" => 0,
       "metaInfo" => "{}",
       "status" => 1,
+      "enabled" => true,
       "remark" => ""
     }
   end

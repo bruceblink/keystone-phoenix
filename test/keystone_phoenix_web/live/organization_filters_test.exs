@@ -37,4 +37,32 @@ defmodule KeystonePhoenixWeb.Live.OrganizationFiltersTest do
     assert OrganizationFilters.filtered_menus(rows, "user:read") == [Enum.at(rows, 0)]
     assert OrganizationFilters.menu_filter(%{"menuKeyword" => " /roles "}, "") == "/roles"
   end
+
+  test "keeps menu ancestors when a descendant matches" do
+    rows = [
+      %{"menuId" => "root", "parentId" => nil, "menuName" => "系统", "depth" => 0},
+      %{"menuId" => "child", "parentId" => "root", "menuName" => "用户", "depth" => 1},
+      %{
+        "menuId" => "grandchild",
+        "parentId" => "child",
+        "menuName" => "用户列表",
+        "permission" => "user:read",
+        "depth" => 2
+      }
+    ]
+
+    assert OrganizationFilters.filtered_menus(rows, "user:read") == rows
+  end
+
+  test "excludes the current menu and all descendants from parent choices" do
+    rows = [
+      %{"menuId" => "root", "parentId" => nil},
+      %{"menuId" => "child", "parentId" => "root"},
+      %{"menuId" => "grandchild", "parentId" => "child"},
+      %{"menuId" => "sibling", "parentId" => "root"}
+    ]
+
+    assert OrganizationFilters.menu_parent_rows(rows, "child") ==
+             [Enum.at(rows, 0), Enum.at(rows, 3)]
+  end
 end

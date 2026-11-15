@@ -109,6 +109,54 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   end
 
   @tag :integration
+  test "menu management returns the full tree and supports role binding lookup", %{conn: conn} do
+    role = insert_role()
+    insert_menu(role.role_id, "menu:read")
+    insert_menu(role.role_id, "menu:create")
+    insert_menu(role.role_id, "menu:manage")
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+    authorization = "Bearer #{tokens.token}"
+    authorized_conn = put_req_header(conn, "authorization", authorization)
+    fresh_conn = fn -> put_req_header(build_conn(), "authorization", authorization) end
+    code = unique("management_menu")
+
+    response =
+      post(authorized_conn, "/api/v1/menus", %{
+        "code" => code,
+        "name" => "停用菜单",
+        "menuType" => "MENU",
+        "enabled" => false
+      })
+
+    assert %{"success" => true, "data" => created} = json_response(response, 201)
+
+    assert %{"success" => true, "data" => rows} =
+             json_response(get(fresh_conn.(), "/api/v1/menus"), 200)
+
+    assert Enum.any?(rows, &(&1["id"] == created["id"] and &1["enabled"] == false))
+
+    assert %{"success" => true, "data" => %{"updated" => true}} =
+             json_response(
+               put(fresh_conn.(), "/api/v1/menus/#{created["id"]}/roles", %{
+                 "roleCodes" => [role.role_key]
+               }),
+               200
+             )
+
+    assert %{"success" => true, "data" => %{"roleCodes" => role_codes}} =
+             json_response(
+               get(fresh_conn.(), "/api/v1/menus/#{created["id"]}/roles"),
+               200
+             )
+
+    assert role_codes == [role.role_key]
+
+    put(fresh_conn.(), "/api/v1/menus/#{created["id"]}/roles", %{"roleCodes" => []})
+    delete(fresh_conn.(), "/api/v1/menus/#{created["id"]}")
+  end
+
+  @tag :integration
   test "role permission metadata needs a separate delegated permission", %{conn: conn} do
     role = insert_role()
     target_role = insert_role()

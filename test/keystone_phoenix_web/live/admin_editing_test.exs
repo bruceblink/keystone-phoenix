@@ -179,7 +179,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     count = Repo.aggregate(SysMenu, :count)
 
     view
-    |> form("form[phx-submit='save-menu']", %{"menuName" => "菜单已修改"})
+    |> form("form[phx-submit='save-menu']", %{"name" => "菜单已修改"})
     |> render_submit()
 
     assert render(view) =~ "菜单已更新"
@@ -189,6 +189,111 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     assert updated.menu_name == "菜单已修改"
     assert updated.path == "/editing-route"
     assert updated.router_name == menu.router_name
+  end
+
+  test "role edit renders and saves selected menu bindings", ctx do
+    {:ok, menu} =
+      Menu.create_menu(
+        %{
+          "code" => unique("binding_menu"),
+          "name" => unique("绑定菜单"),
+          "menuType" => "MENU",
+          "path" => "/binding-menu",
+          "permission" => "menu:read",
+          "enabled" => true
+        },
+        authorization: %{principal: ctx.admin, permission: "menu:create"}
+      )
+
+    {:ok, role} =
+      Role.create_role(
+        %{
+          "roleName" => unique("菜单绑定角色"),
+          "roleKey" => unique("menu_binding_role"),
+          "roleSort" => 7,
+          "dataScope" => "ALL",
+          "status" => 1,
+          "menuIds" => ""
+        },
+        authorization: %{principal: ctx.admin, permission: "role:create"}
+      )
+
+    {:ok, view} = login_with_step_up(ctx.conn, ctx.admin)
+    render_click(view, "show-panel", %{"panel" => "roles"})
+    render_click(view, "edit-role", %{"role-id" => to_string(role.role_id)})
+
+    assert has_element?(view, "#role-menu-ids option[value='#{menu.menu_id}']")
+    refute has_element?(view, "#role-menu-ids option[value='#{menu.menu_id}'][selected]")
+
+    view
+    |> form("form[phx-submit='save-role']", %{"menuIds" => [to_string(menu.menu_id)]})
+    |> render_submit()
+
+    assert render(view) =~ "角色已更新"
+    assert Role.menu_ids_for_role(role.role_id) == [menu.menu_id]
+  end
+
+  test "menu hierarchy keeps three levels and rejects a descendant parent", ctx do
+    {:ok, root} =
+      Menu.create_menu(
+        %{
+          "code" => unique("tree_root"),
+          "name" => unique("树根"),
+          "menuType" => "DIRECTORY",
+          "permission" => "menu:read",
+          "enabled" => true
+        },
+        authorization: %{principal: ctx.admin, permission: "menu:create"}
+      )
+
+    {:ok, child} =
+      Menu.create_menu(
+        %{
+          "code" => unique("tree_child"),
+          "name" => unique("树子"),
+          "parentId" => root.menu_id,
+          "menuType" => "DIRECTORY",
+          "permission" => "menu:read",
+          "enabled" => true
+        },
+        authorization: %{principal: ctx.admin, permission: "menu:create"}
+      )
+
+    {:ok, grandchild} =
+      Menu.create_menu(
+        %{
+          "code" => unique("tree_grandchild"),
+          "name" => unique("树孙"),
+          "parentId" => child.menu_id,
+          "menuType" => "MENU",
+          "path" => "/tree-grandchild",
+          "permission" => "menu:read",
+          "enabled" => true
+        },
+        authorization: %{principal: ctx.admin, permission: "menu:create"}
+      )
+
+    {:ok, view} = login(ctx.conn, ctx.admin)
+    render_click(view, "show-panel", %{"panel" => "menus"})
+    html = render(view)
+    assert html =~ root.menu_name
+    assert html =~ child.menu_name
+    assert html =~ grandchild.menu_name
+    assert :binary.match(html, root.menu_name) < :binary.match(html, child.menu_name)
+    assert :binary.match(html, child.menu_name) < :binary.match(html, grandchild.menu_name)
+
+    render_click(view, "edit-menu", %{"menu-id" => to_string(root.menu_id)})
+    refute has_element?(view, "#menu-parent option[value='#{child.menu_id}']")
+    refute has_element?(view, "#menu-parent option[value='#{grandchild.menu_id}']")
+
+    assert {:error, :invalid_parent} =
+             Menu.update_menu(
+               root.menu_id,
+               %{"parentId" => grandchild.menu_id},
+               authorization: %{principal: ctx.admin, permission: "menu:update"}
+             )
+
+    assert Repo.get!(SysMenu, root.menu_id).parent_id == nil
   end
 
   test "non-default dictionary data stays false after editing", ctx do
