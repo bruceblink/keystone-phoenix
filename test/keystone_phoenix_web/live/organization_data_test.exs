@@ -8,6 +8,48 @@ defmodule KeystonePhoenixWeb.Live.OrganizationDataTest do
     assert OrganizationData.data_scope_label(99) == "未知"
     assert OrganizationData.menu_type_label(2, false) == "目录"
     assert OrganizationData.menu_type_label(0, true) == "按钮"
+    assert OrganizationData.menu_type_label("DIRECTORY", false) == "目录"
+    assert OrganizationData.menu_type_label("MENU", false) == "菜单"
+    assert OrganizationData.menu_type_label("BUTTON", false) == "按钮"
+  end
+
+  test "normalizes native enabled and string menu fields" do
+    assert OrganizationData.menu_enabled?(%{"status" => "1"})
+    refute OrganizationData.menu_enabled?(%{"status" => "0"})
+
+    rows = [
+      %{
+        "id" => "root",
+        "parentId" => nil,
+        "code" => "system",
+        "name" => "系统",
+        "menuType" => "MENU",
+        "enabled" => true,
+        "sortOrder" => 1
+      },
+      %{
+        "id" => "button",
+        "parentId" => "root",
+        "code" => "system:button",
+        "name" => "操作",
+        "menuType" => "BUTTON",
+        "enabled" => false,
+        "sortOrder" => 1
+      },
+      %{
+        "id" => "directory",
+        "parentId" => "root",
+        "code" => "system:directory",
+        "name" => "目录",
+        "menuType" => "DIRECTORY",
+        "status" => "1",
+        "sortOrder" => 2
+      }
+    ]
+
+    assert OrganizationData.menu_tree_rows(rows)
+           |> Enum.map(&{&1["id"], &1["enabled"], &1["status"], &1["menuTypeStr"]}) ==
+             [{"root", true, 1, "菜单"}, {"button", false, 0, "按钮"}, {"directory", true, 1, "目录"}]
   end
 
   test "calculates department and menu depth safely" do

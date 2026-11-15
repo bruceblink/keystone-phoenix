@@ -48,4 +48,29 @@ defmodule KeystonePhoenixWeb.Live.MenuTreeRenderTest do
     assert html =~ "--menu-depth: 2"
     assert html =~ "详情"
   end
+
+  test "menu panel renders native enabled and type fields" do
+    html =
+      render_component(&Organization.menus/1, %{
+        menu_rows: [
+          %{
+            "id" => "native-menu",
+            "parentId" => nil,
+            "name" => "用户",
+            "code" => "user",
+            "depth" => 0,
+            "enabled" => true,
+            "menuType" => "MENU"
+          }
+        ],
+        menu_form: %{"menuId" => ""},
+        menu_feedback: nil,
+        read_only: true
+      })
+
+    assert html =~ ~s(data-menu-id="native-menu")
+    assert html =~ "菜单"
+    assert html =~ "启用"
+    assert html =~ "status-badge--normal"
+  end
 end

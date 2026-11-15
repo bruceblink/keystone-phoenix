@@ -326,10 +326,17 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     assert feedback_html =~ ~s(aria-live="assertive")
     assert feedback_html =~ "保存失败"
 
-    assert render_component(
-             &Accounts.profile/1,
-             Map.take(account_assigns, [:profile_form, :password_form, :profile_feedback])
-           ) =~ "save-profile"
+    profile_html =
+      render_component(
+        &Accounts.profile/1,
+        Map.take(account_assigns, [:profile_form, :password_form, :profile_feedback])
+      )
+
+    assert profile_html =~ "save-profile"
+    assert profile_html =~ ~s(<option value="" selected)
+    assert profile_html =~ ~s(<option value="1")
+    assert profile_html =~ ~s(<option value="0")
+    refute profile_html =~ "profile-avatar-upload-form"
 
     system_assigns = %{
       config_rows: [],

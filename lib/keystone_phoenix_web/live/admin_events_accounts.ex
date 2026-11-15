@@ -299,7 +299,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     if Support.authenticated_socket?(socket) do
       user_id = socket.assigns.current_user["userId"]
 
-      case User.update_profile(user_id, params, authorization: self_authorization(socket)) do
+      case User.update_profile(user_id, normalize_profile_params(params),
+             authorization: self_authorization(socket)
+           ) do
         {:ok, _user} ->
           case User.profile(user_id) do
             {:ok, profile} ->
@@ -419,6 +421,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       end
     else
       {:noreply, socket}
+    end
+  end
+
+  # 将 admin-web 的空性别选项映射为 Phoenix 数据模型使用的未知值 2。
+  defp normalize_profile_params(params) when is_map(params) do
+    case Map.get(params, "sex") do
+      "" -> Map.put(params, "sex", "2")
+      _ -> params
     end
   end
 

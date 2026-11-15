@@ -100,28 +100,20 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert has_element?(view, "nav[aria-label='主导航']")
 
     render_click(view, "show-panel", %{"panel" => "profile"})
-    render_submit(view, "save-profile-avatar-upload", %{})
-    assert has_element?(view, "#profile-feedback[role='alert']")
-    assert render(view) =~ "请选择头像文件"
+    refute has_element?(view, "#profile-avatar-upload-form")
 
-    avatar_content = <<137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0>>
+    render_submit(view, "save-profile", %{
+      "nickname" => "Live 管理员",
+      "email" => "live-profile@example.com",
+      "phoneNumber" => "13900000000",
+      "avatar" => "https://example.com/avatar.png",
+      "sex" => ""
+    })
 
-    avatar =
-      file_input(view, "#profile-avatar-upload-form", :avatar, [
-        %{
-          last_modified: 1_700_000_000_000,
-          name: "avatar.png",
-          content: avatar_content,
-          size: byte_size(avatar_content),
-          type: "image/png"
-        }
-      ])
-
-    render_upload(avatar, "avatar.png")
-    render_submit(view, "save-profile-avatar-upload", %{})
-    assert render(view) =~ "头像已上传"
-    assert {:ok, uploaded_admin} = User.get_user(admin.user_id)
-    assert String.starts_with?(uploaded_admin.avatar, "/profile/avatar/")
+    assert render(view) =~ "个人资料已保存"
+    assert {:ok, updated_admin} = User.get_user(admin.user_id)
+    assert updated_admin.avatar == "https://example.com/avatar.png"
+    assert updated_admin.sex == 2
 
     render_click(view, "show-panel", %{"panel" => "users"})
     render_submit(view, "filter-users", %{"username" => admin.username, "displayName" => ""})

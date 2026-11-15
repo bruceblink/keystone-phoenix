@@ -73,6 +73,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
   @doc "按父级关系展开菜单树，并为每个节点补充层级字段。"
   def menu_tree_rows(menus) when is_list(menus), do: enrich_menus(menus)
 
+  @doc "将 Native 与 Phoenix 菜单返回的启用字段统一为布尔值。"
+  def menu_enabled?(menu) when is_map(menu) do
+    case Map.fetch(menu, "enabled") do
+      {:ok, value} -> truthy_value?(value)
+      :error -> truthy_value?(Map.get(menu, "status"))
+    end
+  end
+
+  def menu_enabled?(_menu), do: false
+
   defp enrich_menus(menus) do
     # API 可能返回整数根节点、字符串根节点或 UUID 字符串；树计算统一使用字符串键。
     by_id = Map.new(menus, &{menu_key(&1["menuId"] || &1["id"]), &1})
@@ -80,10 +90,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
     menus
     |> menu_tree_order()
     |> Enum.map(fn menu ->
-      code = menu["code"] || menu["menuCode"] || menu["menuId"]
+      code = menu["code"] || menu["menuCode"] || menu["menuId"] || menu["id"]
       name = menu["name"] || menu["menuName"]
       component = menu["component"] || menu["routerName"]
-      enabled = if Map.has_key?(menu, "enabled"), do: menu["enabled"], else: menu["status"] == 1
+      enabled = menu_enabled?(menu)
+      status = if enabled, do: 1, else: 0
 
       menu
       |> Map.put("code", code)
@@ -92,9 +103,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
       |> Map.put("component", component)
       |> Map.put("sortOrder", menu["sortOrder"] || menu["menuSort"] || menu["rank"] || 0)
       |> Map.put("enabled", enabled)
-      |> Map.put("depth", menu_depth(menu["parentId"], by_id, MapSet.new([menu["menuId"]])))
+      |> Map.put("status", status)
+      |> Map.put(
+        "depth",
+        menu_depth(menu["parentId"], by_id, MapSet.new([menu["menuId"] || menu["id"]]))
+      )
       |> Map.put("menuTypeStr", menu_type_label(menu["menuType"], menu["isButton"]))
-      |> Map.put("statusStr", if(menu["status"] == 1, do: "正常", else: "停用"))
+      |> Map.put("statusStr", if(enabled, do: "正常", else: "停用"))
     end)
   end
 
@@ -149,11 +164,21 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
     end
   end
 
-  def menu_type_label(_type, true), do: "按钮"
-  def menu_type_label(2, _is_button), do: "目录"
-  def menu_type_label(1, _is_button), do: "菜单"
-  def menu_type_label(0, _is_button), do: "权限"
-  def menu_type_label(_type, _is_button), do: "其他"
+  # Native 使用字符串类型，Phoenix 数据库查询使用整数；这里统一两种编码。
+  def menu_type_label(type, is_button) do
+    cond do
+      truthy_value?(is_button) -> "按钮"
+      type in [2, "2", "DIRECTORY", "directory"] -> "目录"
+      type in [1, "1", "MENU", "menu"] -> "菜单"
+      type in ["BUTTON", "button"] -> "按钮"
+      type in [0, "0"] -> "权限"
+      true -> "其他"
+    end
+  end
+
+  # 兼容 JSON 字符串、数字和布尔值，避免状态字段来源不同导致显示错误。
+  defp truthy_value?(value) when value in [true, 1, "1", "true", "TRUE"], do: true
+  defp truthy_value?(_value), do: false
 
   defp find_menu(menus, parent_id) do
     Map.get(menus, parent_id) ||

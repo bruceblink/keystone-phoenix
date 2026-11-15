@@ -470,7 +470,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "monitor" -> %>
                       <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} online_user_total={@online_user_total} online_user_page_num={@page_nums["online-users"]} online_user_page_size={@page_sizes["online-users"]} network_status={@network_status} monitor_help_open={@monitor_help_open} security_access={@security_access} security_metrics={@security_metrics} security_api_keys={@security_api_keys} security_event_rows={@security_event_rows} security_event_total={@security_event_total} monitor_feedback={@monitor_feedback} read_only={@read_only} />
                     <% "profile" -> %>
-                      <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} avatar_upload={@uploads.avatar} />
+                      <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} />
                     <% _ -> %>
                       <div class="panel"><p>请选择一个管理模块。</p></div>
                   <% end %>
@@ -480,7 +480,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   </nav>
                   <div class="page-content">
                   <%= if @active_panel == "profile" do %>
-                    <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} avatar_upload={@uploads.avatar} />
+                    <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} />
                   <% else %>
                     <div class="card">
                       <h2>登录成功</h2>
@@ -512,13 +512,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
                 </div>
                 <%= if @mfa_challenge do %>
                   <form id="mfa-login-form" class="login-form" phx-submit="verify-login-mfa">
-                    <h2>完成二次认证</h2>
-                    <p class="muted">账号：<%= @mfa_username %></p>
+                    <p class="form-status" role="status">账号密码已验证，请输入认证器中的一次性验证码。</p>
                     <label for="mfa-code">MFA 验证码</label>
-                    <input id="mfa-code" name="code" inputmode="numeric" autocomplete="one-time-code" required />
-                    <p :if={@mfa_error} class="error" role="alert"><%= @mfa_error %></p>
-                    <button type="submit" phx-disable-with="验证中…">验证并登录</button>
-                    <button type="button" class="secondary" phx-click="cancel-login-mfa">返回登录</button>
+                    <div class="input-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 7a5 5 0 1 0 2 9.6L21 13l-2-2 2-2-2-2-2 2-2-2Z" /><circle cx="10" cy="12" r="1" /></svg><input id="mfa-code" name="code" inputmode="numeric" autocomplete="one-time-code" required /></div>
+                    <p :if={@mfa_error} class="form-error" role="alert"><%= @mfa_error %></p>
+                    <button type="submit" class="login-submit" phx-disable-with="验证中…">验证并登录 <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg></button>
+                    <button type="button" class="button button-ghost button-sm" phx-click="cancel-login-mfa">返回账号密码</button>
                   </form>
                 <% else %>
                   <form id="login-form" class="login-form" phx-submit="login">

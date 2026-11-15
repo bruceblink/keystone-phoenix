@@ -135,8 +135,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
   end
 
   def profile(assigns) do
-    assigns = assign_new(assigns, :avatar_upload, fn -> nil end)
-
     ~H"""
     <div class="profile-page">
       <!-- 个人资料只从顶栏头像进入，资料和密码保持两个独立卡片。 -->
@@ -157,17 +155,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <label><span>邮箱</span><input id="profile-email" type="email" name="email" value={@profile_form["email"] || ""} /></label>
           <label><span>联系电话</span><input id="profile-phone" name="phoneNumber" value={@profile_form["phoneNumber"] || ""} /></label>
           <label><span>头像地址</span><input id="profile-avatar" name="avatar" value={@profile_form["avatar"] || ""} placeholder="https://..." /></label>
-          <label><span>性别</span><select id="profile-sex" name="sex"><option value="2" selected={@profile_form["sex"] in [nil, 2, "2"]}>未知</option><option value="0" selected={@profile_form["sex"] in [0, "0"]}>男</option><option value="1" selected={@profile_form["sex"] in [1, "1"]}>女</option></select></label>
+          <label><span>性别</span><select id="profile-sex" name="sex"><option value="" selected={@profile_form["sex"] in [nil, 2, "2", ""]}>未知</option><option value="1" selected={@profile_form["sex"] in [1, "1"]}>男</option><option value="0" selected={@profile_form["sex"] in [0, "0"]}>女</option></select></label>
           <div class="modal-footer"><button type="submit" class="button button-primary" phx-disable-with="保存中…">保存资料</button></div>
         </form>
-        <%= if @avatar_upload do %>
-          <form id="profile-avatar-upload-form" class="profile-upload-form" aria-describedby="profile-feedback" phx-submit="save-profile-avatar-upload">
-            <label><span>头像文件</span><.live_file_input upload={@avatar_upload} id="profile-avatar-file" /></label>
-            <%= for entry <- @avatar_upload.entries do %><progress value={entry.progress} max="100"><%= entry.progress %>%</progress><% end %>
-            <%= for entry <- @avatar_upload.errors do %><p class="error" role="alert">头像文件无效：<%= upload_error_message(entry) %></p><% end %>
-            <button type="submit" class="button button-secondary" phx-disable-with="上传中…">上传头像</button>
-          </form>
-        <% end %>
       </section>
       <section class="card profile-card" aria-labelledby="profile-password-title">
         <div class="card-header"><div><h2 id="profile-password-title">修改密码</h2><p>密码更新需要当前会话完成 MFA 二次验证。</p></div></div>

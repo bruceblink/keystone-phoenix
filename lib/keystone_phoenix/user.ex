@@ -284,6 +284,7 @@ defmodule KeystonePhoenix.User do
       |> maybe_put(attrs, "phoneNumber", ["phoneNumber", "phone_number"])
       |> maybe_put(attrs, "email", ["email"])
       |> maybe_put(attrs, "sex", ["sex"])
+      |> maybe_put(attrs, "avatar", ["avatar"])
 
     do_update_user(id, attrs, actor_id)
   end
