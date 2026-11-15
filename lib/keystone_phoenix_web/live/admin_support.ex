@@ -20,6 +20,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenixWeb.Live.AdminPages.Pagination
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
+  alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.Authentication
 
   @panel_permissions %{
@@ -163,6 +164,9 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       else: load_users_for_user(socket.assigns.current_user, params)
   end
 
+  def load_users_for_socket_result(socket, params \\ %{}),
+    do: AdminReadSupport.users(socket, params)
+
   def load_api_keys_for_socket(socket) do
     case ApiKey.list(current_user_id(socket), authorization_options(socket)) do
       {:ok, rows} -> rows
@@ -182,12 +186,17 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def load_jobs, do: load_all(&Job.list_jobs/1)
   def load_jobs(options) when is_list(options), do: load_authorized(&Job.list_jobs/2, options)
   def load_jobs_for_socket(socket), do: load_jobs(authorization_options(socket))
+
+  def load_jobs_for_socket_result(socket), do: AdminReadSupport.jobs(socket)
+
   def load_job_logs, do: load_all(&Job.list_job_logs/1)
 
   def load_job_logs(options) when is_list(options),
     do: load_authorized(&Job.list_job_logs/2, options)
 
   def load_job_logs_for_socket(socket), do: load_job_logs(authorization_options(socket))
+
+  def load_job_logs_for_socket_result(socket), do: AdminReadSupport.job_logs(socket)
 
   def load_notices, do: load_all(&Notice.list_notices/1)
 
@@ -315,7 +324,6 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   defp empty_dictionary, do: %{types: [], selected: "", data: []}
-
   defp load_all(fetcher, params \\ %{}), do: Excel.all_rows(fetcher, params)
 
   defp load_authorized(fetcher, options, params \\ %{}) do
@@ -464,6 +472,9 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def form_error({:error, reason}), do: Feedback.from_reason(reason)
   def form_error(:error), do: Feedback.error(:internal_error, "操作失败")
   def form_error(_other), do: Feedback.error(:internal_error, "操作失败")
+
+  def read_error_feedback(reason, message),
+    do: AdminReadSupport.read_error_feedback(reason, message)
 
   def human_error(reason), do: Feedback.human_error(reason)
 

@@ -16,16 +16,27 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     if Support.panel_allowed?(socket, "users") do
       filters = user_filter_params(params)
 
-      {:noreply,
-       assign(socket,
-         user_rows: Support.load_users_for_socket(socket, filters),
-         user_query: filters["username"],
-         user_display_name_query: filters["displayName"],
-         selected_user_ids: [],
-         page_nums: Map.put(socket.assigns.page_nums, "users", 1),
-         user_feedback: nil,
-         active_modal: nil
-       )}
+      case Support.load_users_for_socket_result(socket, filters) do
+        {:ok, rows} ->
+          {:noreply,
+           assign(socket,
+             user_rows: rows,
+             user_query: filters["username"],
+             user_display_name_query: filters["displayName"],
+             selected_user_ids: [],
+             page_nums: Map.put(socket.assigns.page_nums, "users", 1),
+             user_feedback: nil,
+             active_modal: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             user_query: filters["username"],
+             user_display_name_query: filters["displayName"],
+             user_feedback: Support.read_error_feedback(reason, "用户列表查询失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end
@@ -36,17 +47,26 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   def handle_event("refresh-users", _params, socket) do
     if Support.panel_allowed?(socket, "users") do
-      {:noreply,
-       assign(socket,
-         user_rows: Support.load_users_for_socket(socket, %{}),
-         page_nums: Map.put(socket.assigns.page_nums, "users", 1),
-         user_query: "",
-         user_display_name_query: "",
-         selected_user_ids: [],
-         user_form: Support.empty_user_form(),
-         user_feedback: nil,
-         active_modal: nil
-       )}
+      case Support.load_users_for_socket_result(socket, %{}) do
+        {:ok, rows} ->
+          {:noreply,
+           assign(socket,
+             user_rows: rows,
+             page_nums: Map.put(socket.assigns.page_nums, "users", 1),
+             user_query: "",
+             user_display_name_query: "",
+             selected_user_ids: [],
+             user_form: Support.empty_user_form(),
+             user_feedback: nil,
+             active_modal: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             user_feedback: Support.read_error_feedback(reason, "用户列表刷新失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end

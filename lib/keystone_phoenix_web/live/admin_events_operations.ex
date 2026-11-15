@@ -9,15 +9,24 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("refresh-jobs", _params, socket) do
     if Support.panel_allowed?(socket, "jobs") do
-      {:noreply,
-       assign(socket,
-         job_rows: Support.load_jobs_for_socket(socket),
-         selected_job_ids: [],
-         page_nums: Map.put(socket.assigns.page_nums, "jobs", 1),
-         job_form: Support.empty_job_form(),
-         job_feedback: nil,
-         active_modal: nil
-       )}
+      case Support.load_jobs_for_socket_result(socket) do
+        {:ok, rows} ->
+          {:noreply,
+           assign(socket,
+             job_rows: rows,
+             selected_job_ids: [],
+             page_nums: Map.put(socket.assigns.page_nums, "jobs", 1),
+             job_form: Support.empty_job_form(),
+             job_feedback: nil,
+             active_modal: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             job_feedback: Support.read_error_feedback(reason, "任务列表刷新失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end
@@ -79,13 +88,23 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("select-job", %{"job-id" => job_id}, socket) do
     if Support.panel_allowed?(socket, "jobs") do
-      {:noreply,
-       assign(socket,
-         selected_job_id: job_id,
-         job_log_rows: Support.load_job_logs_for_socket(socket),
-         page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
-         job_log_feedback: nil
-       )}
+      case Support.load_job_logs_for_socket_result(socket) do
+        {:ok, rows} ->
+          {:noreply,
+           assign(socket,
+             selected_job_id: job_id,
+             job_log_rows: rows,
+             page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
+             job_log_feedback: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             selected_job_id: job_id,
+             job_log_feedback: Support.read_error_feedback(reason, "任务日志读取失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end
@@ -264,12 +283,21 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("refresh-job-logs", _params, socket) do
     if Support.panel_allowed?(socket, "job-logs") do
-      {:noreply,
-       assign(socket,
-         job_log_rows: Support.load_job_logs_for_socket(socket),
-         page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
-         job_log_feedback: nil
-       )}
+      case Support.load_job_logs_for_socket_result(socket) do
+        {:ok, rows} ->
+          {:noreply,
+           assign(socket,
+             job_log_rows: rows,
+             page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
+             job_log_feedback: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             job_log_feedback: Support.read_error_feedback(reason, "任务日志刷新失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end

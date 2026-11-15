@@ -26,4 +26,16 @@ defmodule KeystonePhoenixWeb.Live.AdminSupportTest do
     assert AdminSupport.panel_allowed?(socket, "users")
     assert AdminSupport.admin_socket?(socket)
   end
+
+  test "preserves task read failures for LiveView feedback" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{__changed__: %{}, current_user: %{}, permissions: []}
+    }
+
+    assert {:error, :permission_denied} = AdminSupport.load_jobs_for_socket_result(socket)
+
+    feedback = AdminSupport.read_error_feedback(:permission_denied, "任务列表读取失败，请重试")
+    assert KeystonePhoenixWeb.Live.AdminPages.Feedback.code(feedback) == "permission_denied"
+    assert KeystonePhoenixWeb.Live.AdminPages.Feedback.message(feedback) == "任务列表读取失败，请重试"
+  end
 end
