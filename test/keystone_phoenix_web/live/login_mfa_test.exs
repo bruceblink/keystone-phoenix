@@ -59,6 +59,28 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
              Auth.session_context(live_socket(view).assigns.access_token)
   end
 
+  test "MFA session conflict opens force-login confirmation and retries the challenge", %{
+    conn: conn
+  } do
+    {:ok, user} = create_user(%{})
+    {:ok, initial} = Auth.login_plaintext(user.username, @password, true)
+    secret = enroll_mfa_with_session(user, initial)
+    assert {:ok, :ok} = Mfa.set_required(user.user_id, true)
+
+    {:ok, view, _html} = live(conn, "/")
+    render_submit(view, "login", %{"username" => user.username, "password" => @password})
+
+    code = Totp.code(secret, System.system_time(:second) + Totp.step_seconds())
+    render_submit(view, "verify-login-mfa", %{"code" => code})
+
+    assert has_element?(view, "section[role='dialog']", "账号已有活动会话")
+    refute has_element?(view, "nav[aria-label='主导航']")
+
+    render_click(view, "force-login")
+
+    assert has_element?(view, "nav[aria-label='主导航']")
+  end
+
   test "sensitive LiveView events require step-up before the handler runs", %{conn: conn} do
     role = create_admin_role()
     {:ok, admin} = create_user(%{"role_id" => role.role_id})
@@ -112,5 +134,24 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
 
     Auth.logout(initial.refresh_token)
     {enrollment.secret, initial}
+  end
+
+  # 保留已有 AAL1 会话，验证 MFA 冲突时 challenge 可以在事务回滚后重试。
+  defp enroll_mfa_with_session(user, initial) do
+    {:ok, claims} = Token.verify(initial.token, Token.access_type())
+
+    {:ok, enrollment} =
+      Mfa.begin_enrollment(user.user_id, user.username, claims["client_id"], claims["sid"])
+
+    {:ok, _verification} =
+      Mfa.verify_enrollment(
+        user.user_id,
+        enrollment.challenge_id,
+        claims["client_id"],
+        claims["sid"],
+        Totp.code(enrollment.secret, System.system_time(:second))
+      )
+
+    enrollment.secret
   end
 end

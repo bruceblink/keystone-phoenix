@@ -13,8 +13,6 @@ defmodule KeystonePhoenix.Authz.PermissionCatalog do
     api-key:read
     api-key:revoke
     api-key:rotate
-    audit:delete
-    audit:export
     audit:read
     cache:refresh
     config:create

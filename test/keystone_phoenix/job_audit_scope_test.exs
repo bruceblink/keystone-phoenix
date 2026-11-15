@@ -87,7 +87,8 @@ defmodule KeystonePhoenix.JobAuditScopeTest do
 
     assert {:error, :data_scope_denied} = Log.list_login_logs(%{}, blocked)
     assert {:error, :data_scope_denied} = Log.list_operation_logs(%{}, blocked)
-    assert KeystonePhoenix.Authz.PermissionCatalog.registered?("audit:delete")
+    refute KeystonePhoenix.Authz.PermissionCatalog.registered?("audit:delete")
+    refute KeystonePhoenix.Authz.PermissionCatalog.registered?("audit:export")
     refute KeystonePhoenix.Authz.PermissionCatalog.registered?("login-log:delete")
     refute KeystonePhoenix.Authz.PermissionCatalog.registered?("operation-log:delete")
   end

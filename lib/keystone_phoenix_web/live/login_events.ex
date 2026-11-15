@@ -49,7 +49,40 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
         )
 
       _ ->
-        {:noreply, assign(socket, login_confirm_open: false, login_error: "登录确认已失效，请重新提交登录")}
+        handle_force_mfa_login(socket)
+    end
+  end
+
+  defp handle_force_mfa_login(socket) do
+    challenge = socket.assigns[:mfa_challenge]
+    resolved_challenge_id = challenge_id(challenge)
+
+    if socket.assigns[:pending_mfa_login] and is_binary(socket.assigns[:mfa_code]) and
+         resolved_challenge_id do
+      client_id =
+        Map.get(challenge || %{}, :client_id) || Map.get(challenge || %{}, "clientId") || "web"
+
+      case Auth.complete_mfa_login(
+             socket.assigns.mfa_username,
+             resolved_challenge_id,
+             client_id,
+             String.trim(socket.assigns.mfa_code),
+             true,
+             liveview_ip(socket)
+           ) do
+        {:ok, %{tokens: tokens}} ->
+          {:noreply, authenticated_socket(socket, socket.assigns.mfa_username, tokens)}
+
+        {:error, reason} ->
+          {:noreply, assign(socket, mfa_error: login_mfa_error(reason))}
+      end
+    else
+      {:noreply,
+       assign(socket,
+         login_confirm_open: false,
+         pending_mfa_login: false,
+         login_error: "登录确认已失效，请重新提交登录"
+       )}
     end
   end
 
@@ -70,6 +103,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
        login_error: nil,
        login_confirm_open: false,
        pending_login: nil,
+       pending_mfa_login: false,
        mfa_challenge: challenge,
        mfa_username: challenge_username,
        mfa_force_login: force_login,
@@ -85,6 +119,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
      assign(socket,
        login_confirm_open: true,
        pending_login: %{username: username, password: password},
+       pending_mfa_login: false,
        login_error: nil
      )}
   end
@@ -149,7 +184,8 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
        password: "",
        login_error: message,
        login_confirm_open: false,
-       pending_login: nil
+       pending_login: nil,
+       pending_mfa_login: false
      )}
   end
 
@@ -178,6 +214,17 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
           {:ok, %{tokens: tokens}} ->
             {:noreply, authenticated_socket(socket, socket.assigns.mfa_username, tokens)}
 
+          {:error, :already_logged_in} ->
+            Log.record_login_event(socket.assigns.mfa_username, 0, "该账号已经登录")
+
+            {:noreply,
+             assign(socket,
+               login_confirm_open: true,
+               pending_mfa_login: true,
+               mfa_error: nil,
+               mfa_code: String.trim(code)
+             )}
+
           {:error, reason} ->
             {:noreply, assign(socket, mfa_error: login_mfa_error(reason), mfa_code: "")}
         end
@@ -197,6 +244,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
        mfa_force_login: false,
        mfa_code: "",
        mfa_error: nil,
+       pending_mfa_login: false,
        login_error: nil
      )}
   end
@@ -290,6 +338,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       login_error: nil,
       login_confirm_open: false,
       pending_login: nil,
+      pending_mfa_login: false,
       mfa_challenge: nil,
       mfa_username: "",
       mfa_force_login: false,
@@ -309,6 +358,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       refresh_token: tokens.refresh_token,
       active_panel: "monitor",
       notifications_open: false,
+      notifications_error: nil,
       selected_notification_id: nil,
       in_app_notifications: dashboard.in_app_notifications,
       active_modal: nil,

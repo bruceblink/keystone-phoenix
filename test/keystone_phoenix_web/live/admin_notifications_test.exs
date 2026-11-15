@@ -21,6 +21,7 @@ defmodule KeystonePhoenixWeb.AdminNotificationsTest do
       render_component(&Notifications.menu/1, %{
         open: true,
         notifications: notifications,
+        error: nil,
         selected: nil
       })
 
@@ -33,11 +34,31 @@ defmodule KeystonePhoenixWeb.AdminNotificationsTest do
       render_component(&Notifications.menu/1, %{
         open: true,
         notifications: notifications,
+        error: nil,
         selected: hd(notifications)
       })
 
     assert detail_html =~ "通知详情"
     assert detail_html =~ "今晚进行系统维护。"
     assert detail_html =~ ~s(phx-click="back-notifications")
+  end
+
+  test "renders a retry action when public notifications fail" do
+    html =
+      render_component(&Notifications.menu/1, %{
+        open: true,
+        notifications: [],
+        error: "站内通知暂时无法读取，请重试",
+        selected: nil
+      })
+
+    assert html =~ ~s(role="alert")
+    assert html =~ "站内通知暂时无法读取，请重试"
+    assert html =~ ~s(phx-click="retry-notifications")
+    refute html =~ "暂无站内通知"
+  end
+
+  test "formats ISO notification timestamps like admin-web" do
+    assert Notifications.notification_time("2026-11-15T02:00:00Z") == "2026-11-15 02:00:00"
   end
 end

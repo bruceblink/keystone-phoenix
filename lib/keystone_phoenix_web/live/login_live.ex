@@ -71,7 +71,13 @@ defmodule KeystonePhoenixWeb.LoginLive do
     do: LoginEvents.handle_force_login(params, socket)
 
   def handle_event("cancel-force-login", _params, socket),
-    do: {:noreply, assign(socket, login_confirm_open: false, pending_login: nil)}
+    do:
+      {:noreply,
+       assign(socket,
+         login_confirm_open: false,
+         pending_login: nil,
+         pending_mfa_login: false
+       )}
 
   def handle_event("verify-login-mfa", params, socket),
     do: LoginEvents.handle_event("verify-login-mfa", params, socket)
@@ -117,20 +123,27 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("toggle-notifications", _params, socket) do
     open = not socket.assigns.notifications_open
 
-    {:noreply,
-     assign(socket,
-       notifications_open: open,
-       selected_notification_id: nil,
-       in_app_notifications:
-         if(open,
-           do: AdminSupport.load_public_notifications(),
-           else: socket.assigns.in_app_notifications
-         )
-     )}
+    if open,
+      do: load_notifications(socket),
+      else:
+        {:noreply,
+         assign(socket,
+           notifications_open: false,
+           notifications_error: nil,
+           selected_notification_id: nil
+         )}
   end
 
+  def handle_event("retry-notifications", _params, socket), do: load_notifications(socket)
+
   def handle_event("close-notifications", _params, socket),
-    do: {:noreply, assign(socket, notifications_open: false, selected_notification_id: nil)}
+    do:
+      {:noreply,
+       assign(socket,
+         notifications_open: false,
+         notifications_error: nil,
+         selected_notification_id: nil
+       )}
 
   def handle_event("back-notifications", _params, socket),
     do: {:noreply, assign(socket, selected_notification_id: nil)}
@@ -277,6 +290,28 @@ defmodule KeystonePhoenixWeb.LoginLive do
   @impl true
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
+  defp load_notifications(socket) do
+    case AdminSupport.load_public_notifications_result() do
+      {:ok, notifications} ->
+        {:noreply,
+         assign(socket,
+           notifications_open: true,
+           notifications_error: nil,
+           selected_notification_id: nil,
+           in_app_notifications: notifications
+         )}
+
+      {:error, message} ->
+        {:noreply,
+         assign(socket,
+           notifications_open: true,
+           notifications_error: message,
+           selected_notification_id: nil,
+           in_app_notifications: []
+         )}
+    end
+  end
+
   @impl true
   def handle_info({:admin_job_finished, _job_id, result}, socket) do
     feedback =
@@ -375,7 +410,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <span class="context-kicker">Keystone</span><span class="context-separator">/</span><span>管理工作台</span>
                   </div>
                   <div class="topbar-actions">
-                    <.menu open={@notifications_open} notifications={@in_app_notifications} selected={selected_notification(@in_app_notifications, @selected_notification_id)} />
+                    <.menu open={@notifications_open} notifications={@in_app_notifications} error={@notifications_error} selected={selected_notification(@in_app_notifications, @selected_notification_id)} />
                     <button type="button" class="user-menu user-menu-button user-profile-button" phx-click="show-panel" phx-value-panel="profile" aria-label="打开个人资料">
                       <span class="avatar user-avatar" aria-hidden="true"><%= String.first(to_string(@current_user["nickname"] || @current_user["username"])) %></span>
                       <span class="user-copy">

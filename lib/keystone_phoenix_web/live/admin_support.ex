@@ -198,9 +198,17 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   @doc "读取已发布且启用的公开通知，供顶栏站内通知使用。"
   def load_public_notifications do
-    Notice.list_public_notices()
+    case load_public_notifications_result() do
+      {:ok, notifications} -> notifications
+      {:error, _reason} -> []
+    end
+  end
+
+  @doc "读取公开通知并保留错误结果，供站内通知弹层显示重试入口。"
+  def load_public_notifications_result do
+    {:ok, Notice.list_public_notices()}
   rescue
-    _ -> []
+    _ -> {:error, "站内通知暂时无法读取，请重试"}
   end
 
   def page_rows(rows, page_num, page_size), do: Pagination.page_rows(rows, page_num, page_size)

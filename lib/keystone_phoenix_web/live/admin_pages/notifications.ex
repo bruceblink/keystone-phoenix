@@ -18,25 +18,29 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Notifications do
           <div><strong><%= if @selected, do: "通知详情", else: "站内通知" %></strong><span><%= if @selected, do: "查看通知内容", else: "#{length(@notifications)} 条可见通知" %></span></div>
           <button type="button" class="button button-ghost button-sm" phx-click="close-notifications" aria-label="关闭通知">×</button>
         </header>
-        <%= if @selected do %>
+        <%= if @error do %>
+          <div class="notification-state notification-state-error" role="alert"><span><%= @error %></span><button type="button" class="button button-ghost button-sm" phx-click="retry-notifications">重试</button></div>
+        <% else %>
+          <%= if @selected do %>
           <article class="notification-detail">
             <p class="notification-detail-meta"><%= notification_time(@selected["publishAt"] || @selected["createdAt"]) %> · <%= @selected["noticeType"] || "通知" %></p>
             <h3><%= @selected["title"] %></h3>
             <p><%= @selected["content"] %></p>
           </article>
-        <% else %>
-          <div class="notification-list" role="list">
-            <%= if @notifications == [] do %>
-              <div class="notification-state" role="status">暂无站内通知</div>
-            <% else %>
-              <%= for notification <- @notifications do %>
-                <button type="button" class="notification-list-item" phx-click="open-notification" phx-value-notification-id={notification["id"]}>
-                  <span class="notification-list-dot" aria-hidden="true"></span>
-                  <span><strong><%= notification["title"] %></strong><small><%= notification_time(notification["publishAt"] || notification["createdAt"]) %></small></span>
-                </button>
+          <% else %>
+            <div class="notification-list" role="list">
+              <%= if @notifications == [] do %>
+                <div class="notification-state" role="status">暂无站内通知</div>
+              <% else %>
+                <%= for notification <- @notifications do %>
+                  <button type="button" class="notification-list-item" phx-click="open-notification" phx-value-notification-id={notification["id"]}>
+                    <span class="notification-list-dot" aria-hidden="true"></span>
+                    <span><strong><%= notification["title"] %></strong><small><%= notification_time(notification["publishAt"] || notification["createdAt"]) %></small></span>
+                  </button>
+                <% end %>
               <% end %>
-            <% end %>
-          </div>
+            </div>
+          <% end %>
         <% end %>
       </section>
     </div>
@@ -44,5 +48,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Notifications do
   end
 
   def notification_time(nil), do: "刚刚"
+
+  def notification_time(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, datetime, _offset} -> Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
+      _ -> value
+    end
+  end
+
   def notification_time(value), do: to_string(value)
 end
