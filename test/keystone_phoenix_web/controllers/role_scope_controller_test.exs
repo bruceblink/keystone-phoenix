@@ -44,10 +44,19 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     target_role = create_role("TENANT")
     actor = create_user(actor_role.role_id)
     target = create_user(nil)
+    alias_target = create_user(nil)
     missing_id = Identity.v7()
     token = step_up_token(actor)
 
     assign_path = "/api/v1/roles/#{target_role.role_id}/users"
+
+    deprecated_assign =
+      put(authorized(token), assign_path, %{"user_ids" => [alias_target.user_id]})
+
+    assert get_in(json_response(deprecated_assign, 422), ["error", "code"]) ==
+             "validation_failed"
+
+    assert Repo.get!(SysUser, alias_target.user_id).role_id == nil
 
     response =
       put(authorized(token), assign_path, %{"userIds" => [target.user_id, missing_id]})
@@ -68,6 +77,14 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     assert Repo.get!(SysUser, target.user_id).role_id == target_role.role_id
 
     unassign_path = "/api/v1/roles/#{target_role.role_id}/users"
+
+    deprecated_revoke =
+      delete(authorized(token), unassign_path, %{"user_ids" => [target.user_id]})
+
+    assert get_in(json_response(deprecated_revoke, 422), ["error", "code"]) ==
+             "validation_failed"
+
+    assert Repo.get!(SysUser, target.user_id).role_id == target_role.role_id
 
     response =
       delete(authorized(token), unassign_path, %{"userIds" => [target.user_id, missing_id]})
@@ -96,10 +113,8 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
         %{"allocated" => "true", "username" => allocated.username}
       )
 
-    assert %{
-             "success" => true,
-             "data" => %{"total" => 1, "rows" => [%{"userId" => ^allocated_id}]}
-           } = json_response(allocated_response, 200)
+    assert %{"success" => true, "data" => [^allocated_id]} =
+             json_response(allocated_response, 200)
 
     unallocated_response =
       get(
@@ -108,10 +123,8 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
         %{"allocated" => "false", "username" => unallocated.username}
       )
 
-    assert %{
-             "success" => true,
-             "data" => %{"total" => 1, "rows" => [%{"userId" => ^unallocated_id}]}
-           } = json_response(unallocated_response, 200)
+    assert %{"success" => true, "data" => [^unallocated_id]} =
+             json_response(unallocated_response, 200)
   end
 
   @tag :integration

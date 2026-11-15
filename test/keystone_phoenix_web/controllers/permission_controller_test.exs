@@ -167,7 +167,6 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
 
     assert json_response(
              put(authorized_conn, "/api/v1/roles/#{target_role.role_id}", %{
-               "roleId" => target_role.role_id,
                "roleName" => target_role.role_name,
                "roleKey" => target_role.role_key,
                "roleSort" => target_role.role_sort,
@@ -185,7 +184,6 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     assert %{"success" => true} =
              json_response(
                put(refreshed_conn, "/api/v1/roles/#{target_role.role_id}", %{
-                 "roleId" => target_role.role_id,
                  "roleName" => target_role.role_name,
                  "roleKey" => target_role.role_key,
                  "roleSort" => target_role.role_sort,

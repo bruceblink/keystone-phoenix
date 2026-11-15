@@ -103,7 +103,7 @@ defmodule KeystonePhoenixWeb.RoleController do
 
     if Authz.role_metadata_allowed?(conn.assigns.current_user, attrs) do
       case Role.update_role(
-             params["role_id"] || params["roleId"] || params[:role_id],
+             params["role_id"],
              attrs,
              authorization: %{
                principal: conn.assigns.current_user,
@@ -181,7 +181,7 @@ defmodule KeystonePhoenixWeb.RoleController do
 
     json(
       conn,
-      ApiResponse.ok(role_users_response(page, params))
+      ApiResponse.ok(role_users_response(page))
     )
   end
 
@@ -191,19 +191,13 @@ defmodule KeystonePhoenixWeb.RoleController do
 
     json(
       conn,
-      ApiResponse.ok(role_users_response(page, params))
+      ApiResponse.ok(role_users_response(page))
     )
   end
 
   @doc "Assigns users to a role."
-  def assign_users(conn, %{"role_id" => role_id} = params) do
-    user_ids = params["userIds"] || params["user_ids"]
-
-    if is_nil(user_ids) do
-      render_error(conn, :invalid_ids)
-    else
-      assign_users_to_role(conn, role_id, user_ids)
-    end
+  def assign_users(conn, %{"role_id" => role_id, "userIds" => user_ids}) do
+    assign_users_to_role(conn, role_id, user_ids)
   end
 
   def assign_users(conn, _params), do: render_error(conn, :invalid_ids)
@@ -221,17 +215,13 @@ defmodule KeystonePhoenixWeb.RoleController do
   end
 
   @doc "Removes role assignments from users."
-  def revoke_users(conn, %{"role_id" => _role_id} = params) do
-    user_ids = params["userIds"] || params["user_ids"]
-
-    if is_nil(user_ids) do
-      render_error(conn, :invalid_ids)
-    else
-      unassign_users(conn, %{"user_ids" => user_ids})
-    end
+  def revoke_users(conn, %{"role_id" => _role_id, "userIds" => user_ids}) do
+    revoke_users_from_role(conn, user_ids)
   end
 
-  def unassign_users(conn, %{"user_ids" => user_ids}) do
+  def revoke_users(conn, _params), do: render_error(conn, :invalid_ids)
+
+  defp revoke_users_from_role(conn, user_ids) do
     case Role.unassign_users(user_ids,
            authorization: %{
              principal: conn.assigns.current_user,
@@ -246,8 +236,6 @@ defmodule KeystonePhoenixWeb.RoleController do
     end
   end
 
-  def unassign_users(conn, _params), do: render_error(conn, :invalid_ids)
-
   defp native_role(role) do
     role
     |> Role.role_to_map()
@@ -261,17 +249,8 @@ defmodule KeystonePhoenixWeb.RoleController do
     |> NativeContract.role()
   end
 
-  # Native 只查询用户 ID。保留带筛选条件的旧分页响应，供 LiveView 兼容入口使用。
-  defp role_users_response(page, params) do
-    if legacy_role_user_query?(params), do: page, else: NativeContract.role_user_ids(page)
-  end
-
-  defp legacy_role_user_query?(params) do
-    Enum.any?(
-      ["username", "phoneNumber", "page", "pageNum", "pageSize", "size"],
-      &Map.has_key?(params, &1)
-    )
-  end
+  # Native 只返回角色成员的用户 ID；LiveView 直接使用领域查询，不依赖旧分页响应。
+  defp role_users_response(page), do: NativeContract.role_user_ids(page)
 
   defp role_export_row(row) do
     [
