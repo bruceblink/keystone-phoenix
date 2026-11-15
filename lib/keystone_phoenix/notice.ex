@@ -249,8 +249,6 @@ defmodule KeystonePhoenix.Notice do
       "noticeType" => notice.notice_type,
       "noticeContent" => notice.notice_content,
       "status" => notice.status,
-      "published" => notice.published,
-      "publishAt" => format_native_datetime(notice.publish_at),
       "creatorName" => Map.get(creator_names, notice.creator_id, ""),
       "remark" => notice.remark,
       "createTime" => format_datetime(notice.create_time)
