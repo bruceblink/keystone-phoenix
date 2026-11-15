@@ -212,7 +212,7 @@ defmodule KeystonePhoenixWeb.RoleController do
     case Role.assign_users(role_id, user_ids,
            authorization: %{
              principal: conn.assigns.current_user,
-             permission: "role:update"
+             permission: "role:assign"
            }
          ) do
       :ok -> json(conn, ApiResponse.ok(%{"updated" => true}))
@@ -235,7 +235,7 @@ defmodule KeystonePhoenixWeb.RoleController do
     case Role.unassign_users(user_ids,
            authorization: %{
              principal: conn.assigns.current_user,
-             permission: "role:update"
+             permission: "role:assign"
            }
          ) do
       :ok -> json(conn, ApiResponse.ok(%{"updated" => true}))

@@ -40,7 +40,6 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
   @tag :integration
   test "role user batch HTTP commands roll back mixed targets" do
     actor_role = create_role("TENANT")
-    grant_permission(actor_role.role_id, "role:update")
     grant_permission(actor_role.role_id, "role:assign")
     target_role = create_role("TENANT")
     actor = create_user(actor_role.role_id)
