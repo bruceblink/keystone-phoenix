@@ -37,7 +37,7 @@ VITE_API_PROXY_TARGET=http://localhost:4000 VITE_ENABLE_MOCK=false pnpm dev
 | 接口范围 | 必须一致的内容 | 当前证据 |
 | --- | --- | --- |
 | 认证和会话 | `accessToken`、`refreshToken`、`sessionId`、`clientId`、401、刷新失效和注销 | Native/Phoenix HTTP 契约测试；需对两个后端分别执行真实窗口流程 |
-| MFA 登录和 step-up | 401 二次认证请求结构、AAL2 短时令牌、策略要求或 `enforce=true` 时拒绝 AAL1 | Phoenix `a5d5320` 已按 `mfa_required` 对齐普通敏感写，并对用户导入和 Passkey 注册使用 `enforce=true`；真实 MFA 仪式仍需补充 |
+| MFA 登录和 step-up | 401 二次认证请求结构、AAL2 短时令牌、策略要求或 `enforce=true` 时拒绝 AAL1 | Phoenix `a5d5320` 已按 `mfa_required` 对齐普通敏感写，并对用户导入和 Passkey 注册使用 `enforce=true`；Phoenix admin-web 已完成真实 TOTP 登录挑战，Native 真实 MFA 浏览器流程仍需补充 |
 | 列表查询 | 字段名称、分页 `items/page/size/total`、筛选参数、空结果 | Native/Phoenix 控制器契约测试；需用同一 admin-web 页面双后端核验 |
 | 写操作 | 请求字段、201/200/204、`deleted`/`triggered` 结果、验证错误 | Native/Phoenix HTTP 回归；需覆盖发布版本构建 |
 | 错误处理 | `success/data/message/error`、401/403/404/422/503 分类 | admin-web 仅对网络错误允许开发 Mock 回退；HTTP 错误必须显示 |
@@ -85,6 +85,8 @@ Phoenix 角色导出的 `406` 已在 `220fdde` 修复，API 管道现在接受 X
 
 Native 和 Phoenix 的角色页、Native 任务页还完成了选择记录、打开批量删除确认并取消的真实窗口检查，未执行删除。
 
+Native 和 Phoenix 的角色、组织、岗位页面均完成真实新增、列表显示、删除确认和测试数据清理。Phoenix 未登记菜单权限的错误已从 500 修复为 422 `validation_failed`（`55e92fe`），API Key 缺失和重复轮换状态已在 `b3a1af9` 对齐 Native。
+
 Phoenix LiveView 已完成共享壳、登录、账号、组织、系统和任务页面的主要视觉重实现。侧栏、顶栏、
 颜色令牌、卡片、筛选区、按钮、表格、徽标、状态 footer、用户图形个人资料入口和侧栏菜单结构已经按 admin-web
 对齐。页面使用同一份 admin-web 样式基准，兼容样式只处理 LiveView 的导航和认证差异。窄屏布局使用流式宽度，
@@ -93,7 +95,7 @@ Phoenix 和 admin-web 可见菜单均为 13 项，已移除“工作台”、个
 
 监控帮助按钮已在两个前端实现展开和关闭，显示系统 API、缺失指标和 `PARTIAL` 状态的阅读说明。侧栏仅保留“运维审计”分组标题；系统配置、字典管理和通知公告直接列在其后，两个前端的菜单结构一致。
 
-监控页的状态栏、资源卡片、在线会话、节点详情、80% 关注阈值、系统 API 来源和无采样空态已按 admin-web 组件层级重实现。Phoenix 缺失资源字段统一显示 `—`，不会把缺失值误读为 `0%`。Phoenix 监控页、任务页、组织页和系统页分别在提交 `f4c4e7b`、`65d0cd2` 和 `9431783` 中完成页面模板重实现；admin-web 响应式修复已在 `661fb2a` 推送，工作台入口移除在 `0d34206` 推送，通知发布错误反馈在 `193ec91` 推送，监控帮助和侧栏分组对齐分别在 `379d7f8` 和 `80031cc` 推送，Phoenix 监控帮助状态修复在 `c4f39bd` 推送，Phoenix MFA parity 在 `a5d5320` 推送，两个前端删除“系统”分组标题分别在 `13bcfeb` 和 `65ac3cf` 推送。
+监控页的状态栏、资源卡片、在线会话、节点详情、80% 关注阈值、系统 API 来源和无采样空态已按 admin-web 组件层级重实现。Phoenix 缺失资源字段统一显示 `—`，不会把缺失值误读为 `0%`。Phoenix 监控页、任务页、组织页和系统页分别在提交 `f4c4e7b`、`65d0cd2` 和 `9431783` 中完成页面模板重实现；admin-web 响应式修复已在 `661fb2a` 推送，工作台入口移除在 `0d34206` 推送，通知发布错误反馈在 `193ec91` 推送，监控帮助和侧栏分组对齐分别在 `379d7f8` 和 `80031cc` 推送，Phoenix 监控帮助状态修复在 `c4f39bd` 推送，Phoenix MFA parity 在 `a5d5320` 推送，两个前端删除“系统”分组标题分别在 `13bcfeb` 和 `65ac3cf` 推送。LiveView 配置删除、通知类型筛选、字典切换分页、任务编码筛选和新建弹窗取消按钮分别在 `205fd85`、`15b782b`、`e7ac3d2`、`8d22f85`、`3752575` 推送。
 
 2026-11-15 登录页视觉复核使用同一内置浏览器视口分别打开 `http://127.0.0.1:5173/login` 和
 `http://127.0.0.1:4000/`。两端的登录布局、logo、标题、登录卡片、输入框图标、按钮和脚注关键元素位置与尺寸一致；两端 `document.documentElement.scrollHeight` 均等于 `clientHeight`，登录页没有页面滚动条。Phoenix 对应提交为 `b975a6c`、`bc9ae1d`，admin-web 对应提交为 `904ffe1`、`f91b4fb`。
@@ -112,4 +114,4 @@ Phoenix 任务页已补齐与 admin-web 一致的当前页勾选、全选、批�
 4. 两个后端的路由集合差异、旧接口搜索和数据库迁移状态。
 5. 未完成的 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理检查必须单独标记为证据缺口，不能写成页面通过。
 
-当前状态：后端业务路由集合、DTO 适配和 Native/Phoenix HTTP 接口对齐已完成；旧接口和重复接口已从正式业务路由集合删除；同一份 admin-web 已在 `VITE_ENABLE_MOCK=false` 下分别连接 Native 和 Phoenix，两个后端均完成真实浏览器登录、导航、个人资料入口和 280、320、390、768、1280 宽度检查。Native 和 Phoenix 的用户新增、列表刷新、选择、删除确认和测试数据清理已完成真实窗口验收；两端还完成了 9 个列表页的无结果筛选与重置、9 类新增弹窗的打开和取消关闭、用户/角色/岗位/操作审计/登录日志的 Excel 导出，以及角色页批量删除确认的取消检查。用户可见后端来源和错误文案已泛化为系统 API。Phoenix LiveView 已增加 admin-web 对齐的深链接、页面模板和响应式壳；其他批量操作、加载状态、错误反馈、分页、编辑和逐页写操作矩阵、真实 MFA 仪式以及 OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理链仍是发布证据缺口。
+当前状态：后端业务路由集合、DTO 适配和 Native/Phoenix HTTP 接口对齐已完成；旧接口和重复接口已从正式业务路由集合删除；同一份 admin-web 已在 `VITE_ENABLE_MOCK=false` 下分别连接 Native 和 Phoenix，两个后端均完成真实浏览器登录、导航、个人资料入口和 280、320、390、768、1280 宽度检查。Native 和 Phoenix 的用户新增、列表刷新、选择、删除确认和测试数据清理已完成真实窗口验收；两端还完成了 9 个列表页的无结果筛选与重置、9 类新增弹窗的打开和取消关闭、用户/角色/岗位/操作审计/登录日志的 Excel 导出、角色/组织/岗位新增删除和角色页批量删除确认的取消检查。Phoenix admin-web 已完成真实 TOTP 登录挑战。用户可见后端来源和错误文案已泛化为系统 API。Phoenix LiveView 已增加 admin-web 对齐的深链接、页面模板和响应式壳；其他批量操作、加载状态、错误反馈、分页、编辑和逐页写操作矩阵、Native 真实 MFA 浏览器流程以及 OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理链仍是发布证据缺口。
