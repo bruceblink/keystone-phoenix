@@ -42,7 +42,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
   test "admin login and user management persist through LiveView", %{conn: conn, admin: admin} do
     {:ok, view, html} = live(conn, "/")
 
-    assert html =~ "企业运营管理平台"
+    assert html =~ "把平台状态"
 
     render_submit(view, "login", %{
       "username" => admin.username,
@@ -107,6 +107,8 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert byte_size(template) > 100
 
     {:ok, import_workbook} = Excel.export(["用户名"], [["mfa_blocked_user"]], "users.xlsx")
+
+    render_click(view, "new-user-import")
 
     import_file =
       file_input(view, "#user-import-form", :user_import, [
