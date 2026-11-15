@@ -7,6 +7,7 @@ defmodule KeystonePhoenixWeb.LoginLiveTest do
     {:ok, view, html} = live(conn, "/")
 
     assert html =~ "把平台状态"
+    assert html =~ "<title>Keystone Admin</title>"
     assert html =~ ~s(href="/css/keystone.css")
     assert html =~ ~s(src="/js/live_socket.js")
     assert has_element?(view, "#login-form")

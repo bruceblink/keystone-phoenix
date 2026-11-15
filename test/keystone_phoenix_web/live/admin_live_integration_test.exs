@@ -50,6 +50,11 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     })
 
     assert has_element?(view, "nav[aria-label='管理模块']")
+    shell_html = render(view)
+    assert shell_html =~ "Admin Console"
+    assert shell_html =~ "Keystone / 管理工作台"
+    refute shell_html =~ "Phoenix LiveView"
+    refute shell_html =~ "Keystone Phoenix"
     assert has_element?(view, "button[aria-label='通知'][phx-value-panel='notices']")
     assert has_element?(view, "button[aria-label='打开个人资料'][phx-value-panel='profile']")
     refute has_element?(view, "nav[aria-label='管理模块'] button", "个人资料")

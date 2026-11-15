@@ -354,7 +354,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
-        <title>Keystone Phoenix</title>
+        <title>Keystone Admin</title>
         <link rel="stylesheet" href="/css/keystone.css" />
       </head>
       <body>
@@ -366,12 +366,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <div class="brand-mark" aria-hidden="true">KP</div>
                   <div>
                     <strong>KEYSTONE</strong>
-                    <span>Phoenix LiveView</span>
+                    <span>Admin Console</span>
                   </div>
                 </div>
                 <div class="topbar dashboard-topbar">
                   <div>
-                    <p class="eyebrow">Keystone Phoenix · 管理平台</p>
+                    <p class="eyebrow">Keystone / 管理工作台</p>
                     <h2><%= if @read_only, do: "个人中心", else: "管理概览" %></h2>
                   </div>
                   <div class="user topbar-actions user-menu">
