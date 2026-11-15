@@ -30,7 +30,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
           <p class="page-description">查询当前账号的机器凭据、授权范围和生命周期状态。密钥明文只在签发时返回一次。</p>
         </div>
         <div class="heading-actions form-actions">
-          <button :if={"api-key:create" in @permissions} type="button" class="button button-secondary refresh" phx-click="new-api-key" phx-disable-with="处理中…">配置接口权限</button>
           <button :if={"api-key:create" in @permissions} type="button" class="button button-primary refresh" phx-click="new-api-key" phx-disable-with="处理中…">签发 API Key</button>
           <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-api-keys" phx-disable-with="刷新中…">刷新列表</button>
         </div>

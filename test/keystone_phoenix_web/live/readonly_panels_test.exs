@@ -267,7 +267,8 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
 
     render_click(view, "show-panel", %{"panel" => "api-keys"})
     assert has_element?(view, "button[phx-click='new-api-key']")
-    assert render(view) =~ "配置接口权限"
+    assert render(view) =~ "签发 API Key"
+    refute render(view) =~ "配置接口权限"
 
     render_click(view, "new-api-key")
     assert has_element?(view, "fieldset.api-key-scope-picker")
