@@ -52,4 +52,12 @@ defmodule KeystonePhoenixWeb.Live.AdminSupportTest do
     assert {:error, :permission_denied} =
              AdminSupport.load_dictionary_for_socket_result(socket, "")
   end
+
+  test "preserves organization post read failures for LiveView feedback" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{__changed__: %{}, current_user: %{}, permissions: []}
+    }
+
+    assert {:error, :permission_denied} = AdminSupport.load_posts_for_socket_result(socket)
+  end
 end

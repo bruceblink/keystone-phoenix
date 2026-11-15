@@ -150,15 +150,25 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           "postStatus"
         ])
 
-      {:noreply,
-       assign(socket,
-         post_rows: Support.load_posts_for_socket(socket),
-         page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
-         post_form: Support.empty_post_form(),
-         post_feedback: nil,
-         post_filter: filter,
-         active_modal: nil
-       )}
+      case Support.load_posts_for_socket_result(socket) do
+        {:ok, rows} ->
+          {:noreply,
+           assign(socket,
+             post_rows: rows,
+             page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
+             post_form: Support.empty_post_form(),
+             post_feedback: nil,
+             post_filter: filter,
+             active_modal: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             post_filter: filter,
+             post_feedback: Support.read_error_feedback(reason, "岗位列表刷新失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end

@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenix.Notice
+  alias KeystonePhoenix.Post
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
@@ -27,6 +28,15 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     if Support.admin_socket?(socket),
       do: load_all(&Job.list_job_logs/1),
       else: load_authorized(&Job.list_job_logs(&1, Support.authorization_options(socket)))
+  end
+
+  @doc "读取岗位列表并区分空结果和服务端读取失败。"
+  def posts(socket) do
+    if Support.admin_socket?(socket) do
+      load_all(&Post.list_posts/1)
+    else
+      load_authorized(&Post.list_posts(&1, Support.authorization_options(socket)))
+    end
   end
 
   @doc "读取字典类型和当前类型条目，并保留任一读取失败结果。"
