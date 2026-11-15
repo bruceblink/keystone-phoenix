@@ -80,7 +80,7 @@ Native 和 Phoenix 的同一份 admin-web 还完成了角色、组织、岗位�
 系统配置和字典页面的无结果筛选与重置；用户、角色、组织、岗位、菜单、系统配置、字典、通知和定时任务的
 新增弹窗均能打开并取消关闭。两端的空态、查询和模态框关闭结果一致。
 
-菜单权限接口已完成替换验收：`GET /menus` 对 `menu:manage` 返回完整未删除树，对普通 `menu:read` 返回已启用且已绑定树；`GET/PUT /menus/:id/roles` 均返回或接收 `{roleCodes}`。缺失、空值、非数组、未知角色和停用角色均返回 422 `validation_failed`，空数组用于清除绑定。admin-web 和 LiveView 均提供多级菜单父级选择、角色绑定和父级防环。
+菜单权限接口已完成替换验收：`GET /menus` 对 `menu:manage` 返回完整未删除树，对普通 `menu:read` 返回已启用且已绑定树；`GET/PUT /menus/:id/roles` 均返回或接收 `{roleCodes}`。缺失、空值、非数组、未知角色和停用角色均返回 422 `validation_failed`，空数组用于清除绑定。Native、admin-web 和 LiveView 均提供多级菜单父级选择、角色绑定和父级防环；Native 更新还支持父级重排并拒绝不存在父级、自身引用和后代环引用。
 
 用户、角色、岗位、操作审计和登录日志页面的“导出 Excel”在 Native 和 Phoenix 均通过真实窗口检查。
 Phoenix 角色导出的 `406` 已在 `220fdde` 修复，API 管道现在接受 XLSX MIME。
