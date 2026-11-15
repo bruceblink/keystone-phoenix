@@ -369,7 +369,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     {department_token, _ids} = authenticated_scope_user("DEPARTMENT")
 
     for {label, method, path, _filename} <- export_cases do
-      response = request(authorized(build_conn(), department_token), method, path, %{})
+      response = request(file_authorized(build_conn(), department_token), method, path, %{})
 
       assert response.status == 403, "#{label} returned #{response.status}"
       assert json_response(response, 403)["error"]["code"] == "data_scope_denied", label
@@ -378,7 +378,7 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
     {tenant_token, _ids} = authenticated_scope_user("TENANT")
 
     for {label, method, path, filename} <- export_cases do
-      response = request(authorized(build_conn(), tenant_token), method, path, %{})
+      response = request(file_authorized(build_conn(), tenant_token), method, path, %{})
 
       assert response.status == 200, "#{label} returned #{response.status}"
 
@@ -403,6 +403,15 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
   end
 
   defp authorized(conn, token), do: put_req_header(conn, "authorization", "Bearer #{token}")
+
+  defp file_authorized(conn, token) do
+    conn
+    |> authorized(token)
+    |> put_req_header(
+      "accept",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+  end
 
   defp authenticated_scope_user(data_scope) do
     permissions = resource_permissions()

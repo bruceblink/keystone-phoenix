@@ -11,7 +11,8 @@ defmodule KeystonePhoenixWeb.Router do
   end
 
   pipeline :api do
-    plug :accepts, ["json"]
+    # JSON 请求和 XLSX 下载共用认证、审计和权限管线。
+    plug :accepts, ["json", "xlsx"]
 
     # 业务接口支持 Bearer 和 API Key；敏感的人类会话入口由 RejectApiKey 拒绝。
     plug KeystonePhoenixWeb.Plugs.ApiKeyAuthenticate

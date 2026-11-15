@@ -99,10 +99,10 @@ config :phoenix, :filter_parameters, [
   "Captcha"
 ]
 
-# Phoenix's Accept plug uses MIME extensions as route formats. Register the
-# server-sent events media type so the monitoring stream can negotiate it.
+# Phoenix Accept 插件按 MIME 扩展名协商路由格式；这里登记监控事件流和 Excel 下载响应。
 config :mime, :types, %{
-  "text/event-stream" => ["sse"]
+  "text/event-stream" => ["sse"],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => ["xlsx"]
 }
 
 # Import environment specific config. This must remain at the bottom
