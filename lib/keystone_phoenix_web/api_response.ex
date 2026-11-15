@@ -35,4 +35,7 @@ defmodule KeystonePhoenixWeb.ApiResponse do
 
   @doc "返回错误码的排错元数据。"
   def error_metadata(code), do: ErrorCatalog.metadata(code)
+
+  @doc "按错误码反查包含代码和业务条件的完整目录项。"
+  def error_lookup(code), do: ErrorCatalog.lookup(code)
 end

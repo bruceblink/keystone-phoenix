@@ -39,6 +39,11 @@ defmodule KeystonePhoenixWeb.ApiResponseContractTest do
 
     assert %{status: 429, retryable: true} = ApiResponse.error_metadata(:rate_limited)
 
+    assert %{code: "active_session_conflict", status: 409} =
+             ApiResponse.error_lookup(" active_session_conflict ")
+
+    assert ApiResponse.error_lookup("unknown_code") == nil
+
     assert Enum.all?(
              ApiResponse.error_codes(),
              &(is_binary(&1) and ApiResponse.valid_error_code?(&1))

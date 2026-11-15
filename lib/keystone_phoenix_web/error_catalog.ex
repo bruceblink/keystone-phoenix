@@ -88,6 +88,16 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
   @doc "返回错误码的排错元数据。"
   def metadata(code), do: Map.get(@entries, normalize(code))
 
+  @doc "按错误码返回包含代码本身的完整目录项；未知代码返回 nil。"
+  def lookup(code) do
+    normalized = normalize(code)
+
+    case Map.fetch(@entries, normalized) do
+      {:ok, metadata} -> Map.put(metadata, :code, normalized)
+      :error -> nil
+    end
+  end
+
   defp normalize(code) when is_atom(code), do: Atom.to_string(code)
   defp normalize(code) when is_binary(code), do: String.trim(code)
   defp normalize(_code), do: ""

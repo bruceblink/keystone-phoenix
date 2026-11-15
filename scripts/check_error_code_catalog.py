@@ -88,7 +88,7 @@ def parse_phoenix(path: Path, errors: list[str]) -> tuple[list[str], dict[str, i
         else:
             statuses[code] = int(status.group(1))
 
-    for required in ("def metadata", "def valid?"):
+    for required in ("def lookup", "def metadata", "def valid?"):
         if required not in text:
             errors.append(f"Phoenix 缺少代码反查入口 {required}: {path}")
     return codes, statuses
