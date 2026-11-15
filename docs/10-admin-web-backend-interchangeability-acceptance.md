@@ -144,6 +144,8 @@ Phoenix 角色成员分配和移除现在与 Native 一样统一使用 `role:ass
 
 Phoenix LiveView 角色页面的用户分配和移除事件也已改为检查并传递 `role:assign`，与 HTTP 接口和 Native 权限边界一致；LiveView 管理集成测试通过，对应提交为 `5e5c759`。
 
+Phoenix 角色控制器的 `unassign_users` 权限声明也已统一为 `role:assign`，避免内部动作声明和 Native/HTTP 权限边界不一致；角色权限回归测试通过，对应提交为 `bfda55e`。
+
 ## 发布前证据
 
 每个正式版本必须保留以下证据：
