@@ -6,13 +6,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
   import KeystonePhoenixWeb.Live.AdminPages.ApiKeys
   import KeystonePhoenixWeb.Live.AdminPages.Operations
   import KeystonePhoenixWeb.Live.AdminPages.Notifications
+  import KeystonePhoenixWeb.Live.AdminPages.LoginConfirmation
   import KeystonePhoenixWeb.Live.AdminPages.Organization
   import KeystonePhoenixWeb.Live.AdminPages.System
 
   alias KeystonePhoenix.Auth
-  alias KeystonePhoenix.Auth.Captcha
   alias KeystonePhoenix.Auth.LoginLimiter
-  alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.Authentication
@@ -65,74 +64,14 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   @impl true
-  def handle_event("login", %{"username" => username, "password" => password} = params, socket) do
-    username = String.trim(username)
+  def handle_event("login", params, socket),
+    do: LoginEvents.handle_login(params, socket, liveview_ip(socket))
 
-    result =
-      case LoginLimiter.check_liveview(username, liveview_ip(socket)) do
-        :allow ->
-          case Captcha.validate(params["captchaCode"], socket.assigns.captcha_key) do
-            :ok -> Auth.login_plaintext(username, password)
-            error -> error
-          end
+  def handle_event("force-login", params, socket),
+    do: LoginEvents.handle_force_login(params, socket)
 
-        {:deny, retry_after} ->
-          {:error, {:rate_limited, retry_after}}
-
-        {:error, reason} when reason in [:capacity, :unavailable] ->
-          {:error, :login_limiter_unavailable}
-      end
-
-    case result do
-      {:ok, tokens} ->
-        {:noreply, LoginEvents.authenticated_socket(socket, username, tokens)}
-
-      {:mfa_required, %{challenge: challenge, username: challenge_username}} ->
-        {:noreply,
-         assign(socket,
-           username: challenge_username,
-           password: "",
-           login_error: nil,
-           mfa_challenge: challenge,
-           mfa_username: challenge_username,
-           mfa_code: "",
-           mfa_error: nil
-         )}
-
-      {:error, :already_logged_in} ->
-        Log.record_login_event(username, 0, "该账号已经登录")
-        login_error(socket, username, "该账号已经登录，请先退出或使用 API 的 forceLogin 接管")
-
-      {:error, {:rate_limited, retry_after}} ->
-        Log.record_login_event(username, 0, "登录尝试过于频繁")
-        login_error(socket, username, "登录尝试过于频繁，请在 #{retry_after} 秒后重试")
-
-      {:error, :login_limiter_unavailable} ->
-        Log.record_login_event(username, 0, "限流服务暂不可用")
-        login_error(socket, username, "登录服务暂不可用，请稍后重试")
-
-      {:error, reason} when reason in [:capacity, :unavailable] ->
-        Log.record_login_event(username, 0, "认证会话暂不可用")
-        login_error(socket, username, "认证会话暂不可用，请稍后重试")
-
-      {:error, :mfa_enrollment_required} ->
-        Log.record_login_event(username, 0, "账号尚未完成 MFA 注册")
-        login_error(socket, username, "账号需要先完成 MFA 注册")
-
-      {:error, reason} when reason in [:captcha_required, :captcha_invalid, :captcha_expired] ->
-        message = captcha_error(reason)
-        Log.record_login_event(username, 0, message)
-        login_error(socket, username, message)
-
-      _ ->
-        Log.record_login_event(username, 0, "用户名或密码错误")
-        login_error(socket, username, "用户名或密码错误")
-    end
-  end
-
-  def handle_event("login", _params, socket) do
-    {:noreply, assign(socket, login_error: "请输入用户名和密码")}
-  end
+  def handle_event("cancel-force-login", _params, socket),
+    do: {:noreply, assign(socket, login_confirm_open: false, pending_login: nil)}
 
   def handle_event("verify-login-mfa", params, socket),
     do: LoginEvents.handle_event("verify-login-mfa", params, socket)
@@ -365,17 +304,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
     {:noreply, assign(socket, Keyword.put(reload, :job_feedback, feedback))}
   end
 
-  defp login_error(socket, username, message) do
-    {:noreply,
-     socket
-     |> Authentication.refresh_captcha()
-     |> assign(username: username, password: "", login_error: message)}
-  end
-
-  defp captcha_error(:captcha_required), do: "请输入验证码"
-  defp captcha_error(:captcha_invalid), do: "验证码错误，请重试"
-  defp captcha_error(:captcha_expired), do: "验证码已过期，请重试"
-
   defp selected_notification(notifications, notification_id) do
     Enum.find(notifications, &(to_string(&1["id"]) == to_string(notification_id)))
   end
@@ -568,6 +496,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                 <% end %>
                 <p class="login-footnote"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="3.5" /><path d="m10 13 9-9 2 2-2 2 2 2-3 3-2-2-4 4" /></svg>访问令牌只保存在当前页面内存，页面刷新后需要重新登录。</p>
               </div>
+              <.modal open={@login_confirm_open} />
               </div>
             <% end %>
           </section>

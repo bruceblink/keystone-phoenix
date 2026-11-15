@@ -295,3 +295,5 @@ a { color: inherit; text-decoration: none; }
   .threshold-note { display: block; margin-left: 0; width: 100%; }
   .notification-popover { position: fixed; top: 72px; right: 14px; }
 }
+.modal-sm { width: min(100%, 500px); }
+.login-session-warning { margin: 0; color: var(--muted-strong); font-size: 12px; line-height: 1.7; }

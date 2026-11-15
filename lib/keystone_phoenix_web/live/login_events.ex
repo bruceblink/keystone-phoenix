@@ -4,12 +4,158 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
   import Phoenix.Component, only: [assign: 2]
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Auth.Captcha
+  alias KeystonePhoenix.Auth.LoginLimiter
   alias KeystonePhoenix.Auth.Mfa
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.Authentication
+
+  def handle_login(%{"username" => username, "password" => password} = params, socket, remote_ip) do
+    username = String.trim(username)
+
+    result =
+      case LoginLimiter.check_liveview(username, remote_ip) do
+        :allow ->
+          case Captcha.validate(params["captchaCode"], socket.assigns.captcha_key) do
+            :ok -> Auth.login_plaintext(username, password)
+            error -> error
+          end
+
+        {:deny, retry_after} ->
+          {:error, {:rate_limited, retry_after}}
+
+        {:error, reason} when reason in [:capacity, :unavailable] ->
+          {:error, :login_limiter_unavailable}
+      end
+
+    handle_login_result(result, username, password, false, socket)
+  end
+
+  def handle_login(_params, socket, _remote_ip),
+    do: {:noreply, assign(socket, login_error: "请输入用户名和密码")}
+
+  def handle_force_login(_params, socket) do
+    case socket.assigns[:pending_login] do
+      %{username: username, password: password} ->
+        handle_login_result(
+          Auth.login_plaintext(username, password, true),
+          username,
+          password,
+          true,
+          socket
+        )
+
+      _ ->
+        {:noreply, assign(socket, login_confirm_open: false, login_error: "登录确认已失效，请重新提交登录")}
+    end
+  end
+
+  defp handle_login_result({:ok, tokens}, username, _password, _force_login, socket),
+    do: {:noreply, authenticated_socket(socket, username, tokens)}
+
+  defp handle_login_result(
+         {:mfa_required, %{challenge: challenge, username: challenge_username}},
+         _username,
+         password,
+         force_login,
+         socket
+       ) do
+    {:noreply,
+     assign(socket,
+       username: challenge_username,
+       password: password,
+       login_error: nil,
+       login_confirm_open: false,
+       pending_login: nil,
+       mfa_challenge: challenge,
+       mfa_username: challenge_username,
+       mfa_force_login: force_login,
+       mfa_code: "",
+       mfa_error: nil
+     )}
+  end
+
+  defp handle_login_result({:error, :already_logged_in}, username, password, _force_login, socket) do
+    Log.record_login_event(username, 0, "该账号已经登录")
+
+    {:noreply,
+     assign(socket,
+       login_confirm_open: true,
+       pending_login: %{username: username, password: password},
+       login_error: nil
+     )}
+  end
+
+  defp handle_login_result(
+         {:error, {:rate_limited, retry_after}},
+         username,
+         _password,
+         _force_login,
+         socket
+       ) do
+    Log.record_login_event(username, 0, "登录尝试过于频繁")
+    login_error(socket, username, "登录尝试过于频繁，请在 #{retry_after} 秒后重试")
+  end
+
+  defp handle_login_result(
+         {:error, :login_limiter_unavailable},
+         username,
+         _password,
+         _force_login,
+         socket
+       ) do
+    Log.record_login_event(username, 0, "限流服务暂不可用")
+    login_error(socket, username, "登录服务暂不可用，请稍后重试")
+  end
+
+  defp handle_login_result({:error, reason}, username, _password, _force_login, socket)
+       when reason in [:capacity, :unavailable] do
+    Log.record_login_event(username, 0, "认证会话暂不可用")
+    login_error(socket, username, "认证会话暂不可用，请稍后重试")
+  end
+
+  defp handle_login_result(
+         {:error, :mfa_enrollment_required},
+         username,
+         _password,
+         _force_login,
+         socket
+       ) do
+    Log.record_login_event(username, 0, "账号尚未完成 MFA 注册")
+    login_error(socket, username, "账号需要先完成 MFA 注册")
+  end
+
+  defp handle_login_result({:error, reason}, username, _password, _force_login, socket)
+       when reason in [:captcha_required, :captcha_invalid, :captcha_expired] do
+    message = captcha_error(reason)
+    Log.record_login_event(username, 0, message)
+    login_error(socket, username, message)
+  end
+
+  defp handle_login_result(_result, username, _password, _force_login, socket) do
+    Log.record_login_event(username, 0, "用户名或密码错误")
+    login_error(socket, username, "用户名或密码错误")
+  end
+
+  defp login_error(socket, username, message) do
+    {:noreply,
+     socket
+     |> Authentication.refresh_captcha()
+     |> assign(
+       username: username,
+       password: "",
+       login_error: message,
+       login_confirm_open: false,
+       pending_login: nil
+     )}
+  end
+
+  defp captcha_error(:captcha_required), do: "请输入验证码"
+  defp captcha_error(:captcha_invalid), do: "验证码错误，请重试"
+  defp captcha_error(:captcha_expired), do: "验证码已过期，请重试"
 
   def handle_event("verify-login-mfa", %{"code" => code}, socket) when is_binary(code) do
     challenge = socket.assigns[:mfa_challenge]
@@ -26,7 +172,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
                challenge_id,
                client_id,
                String.trim(code),
-               false,
+               socket.assigns[:mfa_force_login] || false,
                liveview_ip(socket)
              ) do
           {:ok, %{tokens: tokens}} ->
@@ -48,6 +194,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
      |> assign(
        mfa_challenge: nil,
        mfa_username: "",
+       mfa_force_login: false,
        mfa_code: "",
        mfa_error: nil,
        login_error: nil
@@ -141,8 +288,11 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       username: username,
       password: "",
       login_error: nil,
+      login_confirm_open: false,
+      pending_login: nil,
       mfa_challenge: nil,
       mfa_username: "",
+      mfa_force_login: false,
       mfa_code: "",
       mfa_error: nil,
       mfa_step_up_required: false,
