@@ -369,12 +369,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
         <link rel="stylesheet" href="/css/keystone-responsive.css" />
       </head>
       <body>
-        <main class={if @current_user, do: "app-main dashboard-main", else: "app-main"}>
+        <main class={if @current_user, do: "app-main dashboard-main", else: "app-main login-main"}>
           <section class={if @current_user, do: "shell app-shell dashboard-shell", else: "login-page"}>
             <%= if @current_user do %>
               <div class="dashboard">
                   <div class={"sidebar-brand sidebar-head#{if @sidebar_open, do: " sidebar-open", else: ""}"}>
-                  <div class="brand-mark" aria-hidden="true">KP</div>
+                  <div class="brand-mark" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg></div>
                   <div>
                     <strong>KEYSTONE</strong>
                     <span>Admin Console</span>
@@ -516,8 +516,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
                 <% end %>
               </div>
             <% else %>
+              <div class="login-glow login-glow-one" aria-hidden="true"></div>
+              <div class="login-glow login-glow-two" aria-hidden="true"></div>
+              <div class="login-layout">
               <section class="login-intro">
-                <div class="brand-mark" aria-hidden="true">KP</div>
+                <div class="brand-mark" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg></div>
                 <p class="eyebrow">KEYSTONE / ADMIN</p>
                 <h1>把平台状态，<span>放在一个清晰的工作台。</span></h1>
                 <p class="login-lede">从登录、授权到运行监控，管理前端只保留完成运维判断所需的证据。</p>
@@ -528,7 +531,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
               </section>
               <div class="card login-card">
                 <div class="login-card-header">
-                  <div class="brand-mark brand-mark-small" aria-hidden="true">KP</div>
+                  <div class="brand-mark brand-mark-small" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg></div>
                   <div><p class="eyebrow">安全登录</p><h2>进入管理台</h2></div>
                 </div>
                 <%= if @mfa_challenge do %>
@@ -558,6 +561,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   </form>
                 <% end %>
                 <p class="login-footnote">访问令牌只保存在当前页面内存，页面刷新后需要重新登录。</p>
+              </div>
               </div>
             <% end %>
           </section>
