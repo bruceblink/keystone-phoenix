@@ -3,9 +3,10 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
     permissions: %{
-      list: "menu:read",
+      list: ["menu:read", "menu:manage"],
       dropdown: "menu:read",
       assign_roles: "menu:manage",
+      roles: "menu:manage",
       create: "menu:create",
       update: "menu:update",
       delete: "menu:delete"
@@ -20,9 +21,21 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   @doc "Returns the menu and permission list."
   def list(conn, params) do
-    case Menu.list_menus(params, authorization: %{principal: conn.assigns.current_user}) do
+    permission =
+      if Authz.allowed?(conn.assigns.current_user, "menu:manage"),
+        do: "menu:manage",
+        else: "menu:read"
+
+    case Menu.list_menus(params,
+           authorization: %{principal: conn.assigns.current_user},
+           permission: permission
+         ) do
       {:ok, rows} ->
-        rows = visible_rows(rows, conn.assigns.current_user)
+        rows =
+          if permission == "menu:manage",
+            do: rows,
+            else: visible_rows(rows, conn.assigns.current_user)
+
         json(conn, ApiResponse.ok(ManagementContract.menu_tree(rows)))
 
       {:error, reason} ->
@@ -54,6 +67,18 @@ defmodule KeystonePhoenixWeb.MenuController do
   end
 
   def assign_roles(conn, _params), do: render_error(conn, :invalid_role_codes)
+
+  @doc "Returns the role codes currently assigned to a menu."
+  def roles(conn, %{"menu_id" => menu_id}) do
+    case KeystonePhoenix.Menu.RoleAssignment.list(menu_id,
+           authorization: %{principal: conn.assigns.current_user}
+         ) do
+      {:ok, role_codes} -> json(conn, ApiResponse.ok(%{"roleCodes" => role_codes}))
+      {:error, reason} -> render_error(conn, reason)
+    end
+  end
+
+  def roles(conn, _params), do: render_error(conn, :not_found)
 
   defp visible_rows(rows, user) do
     allowed_ids =

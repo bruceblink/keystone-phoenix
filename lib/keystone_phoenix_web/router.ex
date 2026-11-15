@@ -184,6 +184,7 @@ defmodule KeystonePhoenixWeb.Router do
     post "/menus", MenuController, :create
     put "/menus/:menu_id", MenuController, :update
     put "/menus/:menu_id/roles", MenuController, :assign_roles
+    get "/menus/:menu_id/roles", MenuController, :roles
     delete "/menus/:menu_id", MenuController, :delete
     get "/notices", NoticeController, :public_list
     get "/notices/manage", NoticeController, :manage_list

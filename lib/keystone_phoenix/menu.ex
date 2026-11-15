@@ -52,7 +52,9 @@ defmodule KeystonePhoenix.Menu do
 
   @doc "在检查菜单权限和资源范围后查询菜单。"
   def list_menus(params, options) when is_map(params) and is_list(options) do
-    with :ok <- Command.authorize_resource(options, "menu:read", :menu) do
+    permission = Keyword.get(options, :permission, "menu:read")
+
+    with :ok <- Command.authorize_resource(options, permission, :menu) do
       {:ok, list_menus(params)}
     end
   end

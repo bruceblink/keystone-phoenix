@@ -82,8 +82,17 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
 
   defp permission_allowed?(user, conn, permissions) do
     case Map.get(permissions, conn.private[:phoenix_action]) do
-      nil -> false
-      permission -> Authz.allowed?(user, permission, %{connection: conn})
+      nil ->
+        false
+
+      permission when is_binary(permission) ->
+        Authz.allowed?(user, permission, %{connection: conn})
+
+      permissions when is_list(permissions) ->
+        Enum.any?(permissions, &(is_binary(&1) and Authz.allowed?(user, &1, %{connection: conn})))
+
+      _permission ->
+        false
     end
   end
 
