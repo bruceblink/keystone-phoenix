@@ -87,10 +87,6 @@ defmodule KeystonePhoenixWeb.PostController do
     update_post(conn, post_id, params)
   end
 
-  def update(conn, %{"postId" => post_id} = params) do
-    update_post(conn, post_id, params)
-  end
-
   def update(conn, _params), do: render_error(conn, :invalid_id)
 
   defp update_post(conn, post_id, params) do

@@ -47,7 +47,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     assert %{"success" => true} =
              json_response(
                put(update_conn, "/api/v1/posts/#{post_record.post_id}", %{
-                 "postId" => post_record.post_id,
+                 "name" => "岗位更新",
                  "postCode" => post_record.post_code,
                  "postName" => "新岗位",
                  "postSort" => 1,
