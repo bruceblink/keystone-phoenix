@@ -13,7 +13,7 @@ defmodule KeystonePhoenix.Menu.RoleAssignment do
   @doc "按 Native API 的角色编码替换菜单绑定，并在事务成功后刷新策略缓存。"
   def replace(menu_id, role_codes, options) when is_list(role_codes) and is_list(options) do
     with :ok <- Command.authorize_resource(options, "menu:manage", :menu),
-         {:ok, menu_id} <- Params.parse_uuid(menu_id),
+         {:ok, menu_id} <- parse_menu_id(menu_id),
          {:ok, role_ids} <- role_ids(role_codes) do
       Repo.transaction(fn ->
         ensure_menu!(menu_id)
@@ -56,7 +56,7 @@ defmodule KeystonePhoenix.Menu.RoleAssignment do
       {:ok, role_codes}
     else
       false -> {:error, :not_found}
-      {:error, :invalid_menu_id} -> {:error, :not_found}
+      {:error, :invalid_menu_id} -> {:error, :invalid_menu_id}
       {:error, reason} -> {:error, reason}
     end
   end

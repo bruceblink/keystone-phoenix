@@ -50,6 +50,18 @@ defmodule KeystonePhoenixWeb.MenuManagementControllerTest do
              get(authorized(build_conn(), token), "/api/v1/menus/#{Identity.v7()}/roles"),
              404
            )["success"] == false
+
+    assert json_response(
+             put(authorized(build_conn(), token), "/api/v1/menus/not-a-uuid/roles", %{
+               "roleCodes" => []
+             }),
+             422
+           )["message"] == "id must be a UUID"
+
+    assert json_response(
+             get(authorized(build_conn(), token), "/api/v1/menus/not-a-uuid/roles"),
+             422
+           )["message"] == "id must be a UUID"
   end
 
   @tag :integration

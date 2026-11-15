@@ -176,6 +176,7 @@ defmodule KeystonePhoenixWeb.MenuController do
 
   defp render_error(conn, reason)
        when reason in [
+              :invalid_menu_id,
               :parent_not_found,
               :invalid_parent,
               :name_exists,
@@ -187,6 +188,7 @@ defmodule KeystonePhoenixWeb.MenuController do
               :external_link_invalid
             ] do
     messages = %{
+      invalid_menu_id: "id must be a UUID",
       parent_not_found: "父菜单不存在",
       invalid_parent: "父菜单无效",
       name_exists: "同级菜单名称已存在",
