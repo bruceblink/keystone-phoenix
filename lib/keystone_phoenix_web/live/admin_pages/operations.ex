@@ -15,12 +15,28 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:page_num, fn -> 1 end)
       |> assign_new(:page_size, fn -> 50 end)
+      |> assign_new(:job_filter, fn -> %{"keyword" => ""} end)
 
     ~H"""
-    <div class="panel">
-      <div class="form-actions"><button :if={!@read_only} type="button" class="refresh" phx-click="new-job" phx-disable-with="处理中…">新建任务</button><button type="button" class="refresh secondary" phx-click="refresh-jobs" phx-disable-with="刷新中…">刷新任务</button></div>
+    <div class="jobs-page operations-page">
+      <header class="page-heading">
+        <div>
+          <p class="eyebrow">OPERATIONS / JOBS</p>
+          <h1>定时任务</h1>
+          <p class="page-description">查询任务配置、运行状态和执行日志。新增、编辑、启停和手动执行使用独立操作入口。</p>
+        </div>
+        <div class="heading-actions">
+          <button :if={!@read_only} type="button" class="refresh" phx-click="new-job" phx-disable-with="处理中…">新建任务</button>
+          <button type="button" class="refresh secondary" phx-click="refresh-jobs" phx-disable-with="刷新中…">刷新任务</button>
+        </div>
+      </header>
       <%= if @job_feedback do %><p id="job-feedback" class={Feedback.class(@job_feedback)} role={Feedback.role(@job_feedback)} aria-live={Feedback.live(@job_feedback)}><%= Feedback.message(@job_feedback) %></p><% end %>
-      <p :if={@job_rows == []} class="table-empty" role="status">暂无定时任务</p>
+      <section class="card jobs-filter-card filter-card">
+        <form id="jobs-filter" class="jobs-filter-form filter-form" phx-change="filter-jobs" phx-submit="filter-jobs">
+          <label for="jobs-filter-keyword"><span>任务名称、编码或分组</span><input id="jobs-filter-keyword" name="jobKeyword" value={@job_filter["keyword"] || ""} placeholder="按任务名称、调用目标或分组筛选" autocomplete="off" /></label>
+          <div class="jobs-filter-actions filter-actions"><button type="submit" class="refresh">查询</button><button type="button" class="refresh secondary" phx-click="reset-job-filter">重置</button></div>
+        </form>
+      </section>
       <%= if @active_modal == "job" do %>
         <.modal id="job-modal" title={if @job_form["jobId"] == "", do: "新建任务", else: "编辑任务"} description="维护调度目标、执行计划和运行状态。">
     <form :if={!@read_only} aria-describedby="job-feedback" phx-submit="save-job">
@@ -39,12 +55,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       </form>
         </.modal>
       <% end %>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="定时任务列表"><table><caption class="sr-only">定时任务列表</caption><thead><tr><th scope="col">任务名称</th><th scope="col">分组</th><th scope="col">调用目标</th><th scope="col">Cron</th><th scope="col">并发</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody>
-        <%= for job <- page_rows(@job_rows, @page_num, @page_size) do %>
-          <tr><td><%= job["jobName"] %></td><td><%= job["jobGroup"] %></td><td><%= job["invokeTarget"] %></td><td><%= job["cronExpression"] %></td><td><%= if job["concurrent"] in [1, "1"], do: "是", else: "否" %></td><td><span class={"status-badge #{Status.normal_paused(job["status"])}"}><%= job["statusStr"] || if(job["status"] == 1, do: "正常", else: "暂停") %></span></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-job" phx-value-job-id={job["jobId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="run-job" phx-value-job-id={job["jobId"]} phx-disable-with="执行中…">立即执行</button><button type="button" class="refresh secondary" phx-click="cancel-job" phx-value-job-id={job["jobId"]} phx-disable-with="处理中…">取消执行</button><button type="button" class="refresh" phx-click="toggle-job-status" phx-value-job-id={job["jobId"]} phx-value-status={if job["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if job["status"] == 1, do: "暂停", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-job" phx-value-job-id={job["jobId"]} phx-disable-with="删除中…">删除</button></td></tr>
-        <% end %>
-      </tbody></table></div>
-      <.pagination panel="jobs" page_num={min(@page_num, page_count(length(@job_rows), @page_size))} page_size={@page_size} total={length(@job_rows)} />
+      <section class="card jobs-table-card table-card" aria-labelledby="jobs-table-title">
+        <header class="card-header table-card-heading">
+          <div><h2 id="jobs-table-title">任务列表</h2><p>共 <%= length(filtered_job_rows(@job_rows, @job_filter)) %> 个匹配任务</p></div>
+          <span class="status-badge status-badge--normal">LiveView</span>
+        </header>
+        <p :if={filtered_job_rows(@job_rows, @job_filter) == []} class="jobs-empty table-empty" role="status"><strong>暂无定时任务</strong><span>没有匹配的任务，调整筛选条件后重试。</span></p>
+        <div class="table-scroll" role="region" tabindex="0" aria-label="定时任务列表"><table class="jobs-table"><caption class="sr-only">定时任务列表</caption><thead><tr><th scope="col">任务名称</th><th scope="col">分组</th><th scope="col">调用目标</th><th scope="col">Cron</th><th scope="col">并发</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody>
+          <%= for job <- page_rows(filtered_job_rows(@job_rows, @job_filter), @page_num, @page_size) do %>
+            <tr><td><strong><%= job["jobName"] %></strong></td><td><%= job["jobGroup"] %></td><td><code><%= job["invokeTarget"] %></code></td><td><code><%= job["cronExpression"] %></code></td><td><%= if job["concurrent"] in [1, "1"], do: "是", else: "否" %></td><td><span class={"status-badge #{Status.normal_paused(job["status"])}"}><%= job["statusStr"] || if(job["status"] == 1, do: "正常", else: "暂停") %></span></td><td :if={!@read_only} class="table-actions"><button type="button" class="refresh" phx-click="edit-job" phx-value-job-id={job["jobId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="refresh" phx-click="run-job" phx-value-job-id={job["jobId"]} phx-disable-with="执行中…">立即执行</button><button type="button" class="refresh secondary" phx-click="cancel-job" phx-value-job-id={job["jobId"]} phx-disable-with="处理中…">取消执行</button><button type="button" class="refresh" phx-click="toggle-job-status" phx-value-job-id={job["jobId"]} phx-value-status={if job["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if job["status"] == 1, do: "暂停", else: "启用" %></button><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-job" phx-value-job-id={job["jobId"]} phx-disable-with="删除中…">删除</button></td></tr>
+          <% end %>
+        </tbody></table></div>
+        <.pagination panel="jobs" page_num={min(@page_num, page_count(length(filtered_job_rows(@job_rows, @job_filter)), @page_size))} page_size={@page_size} total={length(filtered_job_rows(@job_rows, @job_filter))} />
+      </section>
     </div>
     """
   end
@@ -57,18 +80,45 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       |> assign_new(:page_size, fn -> 50 end)
 
     ~H"""
-    <div class="panel">
-      <div class="form-actions"><button type="button" class="refresh" phx-click="refresh-job-logs" phx-disable-with="刷新中…">刷新任务日志</button></div>
+    <div class="job-logs-page operations-page">
+      <header class="page-heading">
+        <div>
+          <p class="eyebrow">OPERATIONS / JOB LOGS</p>
+          <h1>任务日志</h1>
+          <p class="page-description">查看调度任务的执行结果、消息和时间信息。日志页面保持只读。</p>
+        </div>
+        <div class="heading-actions"><button type="button" class="refresh secondary" phx-click="refresh-job-logs" phx-disable-with="刷新中…">刷新任务日志</button></div>
+      </header>
       <%= if @job_log_feedback do %><p id="job-log-feedback" class={Feedback.class(@job_log_feedback)} role={Feedback.role(@job_log_feedback)} aria-live={Feedback.live(@job_log_feedback)}><%= Feedback.message(@job_log_feedback) %></p><% end %>
-      <p :if={@job_log_rows == []} class="table-empty" role="status">暂无任务日志</p>
-      <div class="table-scroll" role="region" tabindex="0" aria-label="任务日志列表"><table><caption class="sr-only">任务日志列表</caption><thead><tr><th scope="col">任务</th><th scope="col">分组</th><th scope="col">调用目标</th><th scope="col">状态</th><th scope="col">消息</th><th scope="col">开始时间</th><th scope="col">结束时间</th></tr></thead><tbody>
-        <%= for log <- page_rows(@job_log_rows, @page_num, @page_size) do %>
-          <tr><td><%= log["jobName"] %></td><td><%= log["jobGroup"] %></td><td><%= log["invokeTarget"] %></td><td><span class={"status-badge #{Status.job_log(log["status"])}"}><%= log["statusStr"] || if(log["status"] == 1, do: "成功", else: "失败") %></span></td><td><%= log["jobMessage"] || log["exceptionInfo"] || "" %></td><td><%= log["startTime"] || "" %></td><td><%= log["endTime"] || "" %></td></tr>
-        <% end %>
-      </tbody></table></div>
-      <.pagination panel="job-logs" page_num={min(@page_num, page_count(length(@job_log_rows), @page_size))} page_size={@page_size} total={length(@job_log_rows)} />
+      <section class="card job-logs-card table-card" aria-labelledby="job-logs-title">
+        <header class="card-header table-card-heading">
+          <div><h2 id="job-logs-title">执行日志</h2><p>共 <%= length(@job_log_rows) %> 条记录</p></div>
+          <span class="status-badge status-badge--normal">只读</span>
+        </header>
+        <p :if={@job_log_rows == []} class="jobs-empty table-empty" role="status"><strong>暂无任务日志</strong><span>任务运行后，日志会显示在这里。</span></p>
+        <div class="table-scroll" role="region" tabindex="0" aria-label="任务日志列表"><table class="jobs-table"><caption class="sr-only">任务日志列表</caption><thead><tr><th scope="col">任务</th><th scope="col">分组</th><th scope="col">调用目标</th><th scope="col">状态</th><th scope="col">消息</th><th scope="col">开始时间</th><th scope="col">结束时间</th></tr></thead><tbody>
+          <%= for log <- page_rows(@job_log_rows, @page_num, @page_size) do %>
+            <tr><td><strong><%= log["jobName"] %></strong></td><td><%= log["jobGroup"] %></td><td><code><%= log["invokeTarget"] %></code></td><td><span class={"status-badge #{Status.job_log(log["status"])}"}><%= log["statusStr"] || if(log["status"] == 1, do: "成功", else: "失败") %></span></td><td><%= log["jobMessage"] || log["exceptionInfo"] || "" %></td><td><%= log["startTime"] || "" %></td><td><%= log["endTime"] || "" %></td></tr>
+          <% end %>
+        </tbody></table></div>
+        <.pagination panel="job-logs" page_num={min(@page_num, page_count(length(@job_log_rows), @page_size))} page_size={@page_size} total={length(@job_log_rows)} />
+      </section>
     </div>
     """
+  end
+
+  defp filtered_job_rows(rows, filter) do
+    keyword = String.trim(to_string(filter["keyword"] || "")) |> String.downcase()
+
+    Enum.filter(rows, fn job ->
+      keyword == "" or
+        String.contains?(
+          String.downcase(
+            "#{job["jobName"] || ""} #{job["jobGroup"] || ""} #{job["invokeTarget"] || ""}"
+          ),
+          keyword
+        )
+    end)
   end
 
   def monitor(assigns) do
@@ -85,7 +135,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       |> assign_new(:security_event_total, fn -> 0 end)
 
     ~H"""
-    <div class="monitor-workspace">
+    <div class="monitor-page operations-page monitor-workspace">
       <header class="monitor-command-bar">
         <div>
           <p class="eyebrow">运行监控 · Monitor snapshot</p>

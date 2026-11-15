@@ -22,6 +22,30 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
     end
   end
 
+  def handle_event("filter-jobs", params, socket) do
+    if Support.panel_allowed?(socket, "jobs") do
+      {:noreply,
+       assign(socket,
+         job_filter: %{"keyword" => String.trim(to_string(params["jobKeyword"] || ""))},
+         page_nums: Map.put(socket.assigns.page_nums, "jobs", 1)
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("reset-job-filter", _params, socket) do
+    if Support.panel_allowed?(socket, "jobs") do
+      {:noreply,
+       assign(socket,
+         job_filter: %{"keyword" => ""},
+         page_nums: Map.put(socket.assigns.page_nums, "jobs", 1)
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("new-job", _params, socket) do
     if Support.permission_socket?(socket, "job:create") do
       {:noreply,

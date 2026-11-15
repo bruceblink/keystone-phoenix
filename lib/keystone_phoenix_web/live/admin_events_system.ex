@@ -26,6 +26,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     end
   end
 
+  def handle_event("filter-configs", params, socket),
+    do: update_config_filter(socket, String.trim(to_string(params["configKeyword"] || "")))
+
+  def handle_event("reset-config-filter", _params, socket), do: update_config_filter(socket, "")
+
   def handle_event("new-config", _params, socket) do
     if Support.permission_socket?(socket, "config:create") do
       {:noreply,
@@ -575,6 +580,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     else
       {:noreply, socket}
     end
+  end
+
+  defp update_config_filter(socket, keyword) do
+    if Support.panel_allowed?(socket, "configs"),
+      do: {:noreply, assign(socket, config_filter: %{"keyword" => keyword})},
+      else: {:noreply, socket}
   end
 
   defp self_authorization(socket) do
