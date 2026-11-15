@@ -76,8 +76,8 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
         "jobs" => 20,
         "job-logs" => 20,
         "dict-data" => 50,
-        "login-logs" => 50,
-        "operation-logs" => 50,
+        "login-logs" => 20,
+        "operation-logs" => 20,
         "online-users" => 50,
         "role-users-allocated" => 50,
         "role-users-unallocated" => 50
