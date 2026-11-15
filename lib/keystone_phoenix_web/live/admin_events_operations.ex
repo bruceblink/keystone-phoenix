@@ -12,6 +12,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
       {:noreply,
        assign(socket,
          job_rows: Support.load_jobs_for_socket(socket),
+         selected_job_ids: [],
          page_nums: Map.put(socket.assigns.page_nums, "jobs", 1),
          job_form: Support.empty_job_form(),
          job_feedback: nil,
@@ -27,6 +28,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
       {:noreply,
        assign(socket,
          job_filter: %{"keyword" => String.trim(to_string(params["jobKeyword"] || ""))},
+         selected_job_ids: [],
          page_nums: Map.put(socket.assigns.page_nums, "jobs", 1)
        )}
     else
@@ -39,8 +41,60 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
       {:noreply,
        assign(socket,
          job_filter: %{"keyword" => ""},
+         selected_job_ids: [],
          page_nums: Map.put(socket.assigns.page_nums, "jobs", 1)
        )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("toggle-job-selection", %{"job-id" => job_id, "selected" => selected}, socket) do
+    selected_ids = Map.get(socket.assigns, :selected_job_ids, [])
+
+    selected_ids =
+      if selected == "true",
+        do: Enum.uniq([job_id | selected_ids]),
+        else: List.delete(selected_ids, job_id)
+
+    {:noreply, assign(socket, selected_job_ids: selected_ids)}
+  end
+
+  def handle_event("toggle-all-job-selection", %{"selected" => selected}, socket) do
+    page_ids =
+      socket.assigns.job_rows
+      |> filtered_job_rows(socket.assigns[:job_filter] || %{})
+      |> page_rows(socket.assigns.page_nums["jobs"], socket.assigns.page_sizes["jobs"])
+      |> Enum.map(&to_string(&1["jobId"]))
+
+    selected_ids = Map.get(socket.assigns, :selected_job_ids, [])
+
+    selected_ids =
+      if selected == "true",
+        do: Enum.uniq(selected_ids ++ page_ids),
+        else: selected_ids -- page_ids
+
+    {:noreply, assign(socket, selected_job_ids: selected_ids)}
+  end
+
+  def handle_event("delete-jobs", %{"job-ids" => job_ids}, socket) do
+    if Support.permission_socket?(socket, "job:delete") do
+      ids = String.split(job_ids, ",", trim: true)
+
+      case Job.delete_jobs(ids, authorization(socket, "job:delete")) do
+        :ok ->
+          {:noreply,
+           assign(socket,
+             job_rows: Support.load_jobs_for_socket(socket),
+             selected_job_ids: [],
+             job_form: Support.empty_job_form(),
+             active_modal: nil,
+             job_feedback: "已删除 #{length(ids)} 个任务"
+           )}
+
+        error ->
+          {:noreply, assign(socket, job_feedback: Support.form_error(error))}
+      end
     else
       {:noreply, socket}
     end
@@ -89,6 +143,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
           {:noreply,
            assign(socket,
              job_rows: Support.load_jobs_for_socket(socket),
+             selected_job_ids: [],
              job_form: Support.empty_job_form(),
              active_modal: nil,
              job_feedback: if(job_id == "", do: "任务已创建", else: "任务已更新")
@@ -109,6 +164,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
           {:noreply,
            assign(socket,
              job_rows: Support.load_jobs_for_socket(socket),
+             selected_job_ids: [],
              job_form: Support.empty_job_form(),
              active_modal: nil,
              job_feedback: "任务已删除"
@@ -236,5 +292,25 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
       |> Map.put(:permissions, List.wrap(socket.assigns[:permissions]))
 
     [authorization: %{principal: principal, permission: permission}]
+  end
+
+  defp filtered_job_rows(rows, filter) do
+    keyword = String.trim(to_string(filter["keyword"] || "")) |> String.downcase()
+
+    Enum.filter(rows, fn job ->
+      keyword == "" or
+        String.contains?(
+          String.downcase(
+            "#{job["jobName"] || ""} #{job["jobGroup"] || ""} #{job["invokeTarget"] || ""}"
+          ),
+          keyword
+        )
+    end)
+  end
+
+  defp page_rows(rows, page_num, page_size) do
+    rows
+    |> Enum.drop(max(page_num - 1, 0) * page_size)
+    |> Enum.take(page_size)
   end
 end

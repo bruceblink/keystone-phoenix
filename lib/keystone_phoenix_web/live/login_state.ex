@@ -52,6 +52,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       dict_data_form: Support.empty_dict_data_form(),
       selected_dict_type: "",
       job_rows: [],
+      selected_job_ids: [],
       job_feedback: nil,
       job_form: Support.empty_job_form(),
       job_targets: Job.invoke_targets(),

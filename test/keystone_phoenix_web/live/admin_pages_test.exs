@@ -438,14 +438,19 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       monitor_feedback: nil
     }
 
-    assert render_component(
-             &Operations.jobs/1,
-             Map.put(
-               Map.take(operations_assigns, [:job_rows, :job_form, :job_targets, :job_feedback]),
-               :active_modal,
-               "job"
-             )
-           ) =~ "cancel-job"
+    jobs_html =
+      render_component(
+        &Operations.jobs/1,
+        Map.put(
+          Map.take(operations_assigns, [:job_rows, :job_form, :job_targets, :job_feedback]),
+          :active_modal,
+          "job"
+        )
+      )
+
+    assert jobs_html =~ "cancel-job"
+    assert jobs_html =~ "toggle-all-job-selection"
+    assert jobs_html =~ "delete-jobs"
 
     assert render_component(
              &Operations.job_logs/1,
