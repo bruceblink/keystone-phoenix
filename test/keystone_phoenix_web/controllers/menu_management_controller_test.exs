@@ -62,6 +62,7 @@ defmodule KeystonePhoenixWeb.MenuManagementControllerTest do
              get(authorized(build_conn(), token), "/api/v1/menus/not-a-uuid/roles"),
              422
            )["message"] == "id must be a UUID"
+
   end
 
   @tag :integration
@@ -104,6 +105,26 @@ defmodule KeystonePhoenixWeb.MenuManagementControllerTest do
              422
            )
            |> get_in(["message"]) == "角色编码无效"
+  end
+
+  @tag :integration
+  test "menu writes reject malformed ids with the Native validation status" do
+    role = insert_role(["menu:update", "menu:delete"])
+    user = insert_user(role.role_id)
+    token = login(user)
+    conn = fn -> authorized(build_conn(), token) end
+
+    assert json_response(
+             put(conn.(), "/api/v1/menus/not-a-uuid", %{
+               "name" => "无效菜单",
+               "menuType" => "MENU"
+             }),
+             422
+           )
+           |> get_in(["message"]) == "id must be a UUID"
+
+    assert json_response(delete(conn.(), "/api/v1/menus/not-a-uuid"), 422)
+           |> get_in(["message"]) == "id must be a UUID"
   end
 
   @tag :integration

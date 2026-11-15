@@ -132,7 +132,8 @@ defmodule KeystonePhoenix.Menu do
   def update_menu(_id, _attrs, _options), do: {:error, :authorization_required}
 
   defp do_update_menu(id, attrs, actor_id) when is_map(attrs) do
-    with {:ok, menu} <- get_menu(id) do
+    with {:ok, menu_id} <- parse_menu_id(id),
+         {:ok, menu} <- get_menu(menu_id) do
       attrs = normalize_attrs(attrs)
 
       with {:ok, parent_id} <- parent_id(Map.get(attrs, :parent_id, menu.parent_id)) do
@@ -164,7 +165,8 @@ defmodule KeystonePhoenix.Menu do
   def delete_menu(_id, _options), do: {:error, :authorization_required}
 
   defp do_delete_menu(id, actor_id) do
-    with {:ok, menu} <- get_menu(id) do
+    with {:ok, menu_id} <- parse_menu_id(id),
+         {:ok, menu} <- get_menu(menu_id) do
       cond do
         child_count(menu.menu_id) > 0 ->
           {:error, :has_children}
@@ -185,6 +187,14 @@ defmodule KeystonePhoenix.Menu do
               {:error, changeset}
           end
       end
+    end
+  end
+
+  # HTTP 写入口需要区分格式错误和格式正确但不存在的菜单 ID。
+  defp parse_menu_id(id) do
+    case Params.parse_uuid(id) do
+      {:ok, value} -> {:ok, value}
+      :error -> {:error, :invalid_menu_id}
     end
   end
 
