@@ -79,7 +79,9 @@ defmodule KeystonePhoenixWeb.AdminEventsAccountsScopeTest do
                socket
              )
 
-    assert updated_socket.assigns.user_feedback == {:error, "没有数据权限"}
+    assert updated_socket.assigns.user_feedback ==
+             Feedback.error(:data_scope_denied, "没有数据权限")
+
     assert Repo.get!(SysUser, target.user_id).nickname == "原昵称"
   end
 
@@ -131,7 +133,7 @@ defmodule KeystonePhoenixWeb.AdminEventsAccountsScopeTest do
              )
 
     assert updated_socket.assigns.user_feedback ==
-             Feedback.error("操作失败：:role_codes_unsupported")
+             Feedback.error(:validation_failed, "角色编码不受支持")
   end
 
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"

@@ -459,36 +459,13 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   # 将服务端失败转换为带级别的反馈，页面据此选择警示语义和视觉样式。
   def form_error({:error, %Ecto.Changeset{} = changeset}),
-    do: Feedback.error(notice_form_error(changeset))
+    do: Feedback.error(:validation_failed, notice_form_error(changeset))
 
-  def form_error({:error, reason}), do: Feedback.error(human_error(reason))
-  def form_error(:error), do: Feedback.error("操作失败")
-  def form_error(other), do: Feedback.error(inspect(other))
+  def form_error({:error, reason}), do: Feedback.from_reason(reason)
+  def form_error(:error), do: Feedback.error(:internal_error, "操作失败")
+  def form_error(_other), do: Feedback.error(:internal_error, "操作失败")
 
-  def human_error(:not_found), do: "记录不存在"
-  def human_error(:invalid_ids), do: "编号无效"
-  def human_error(:invalid_id), do: "编号无效"
-  def human_error(:has_users), do: "记录仍被用户使用"
-  def human_error(:has_children), do: "记录仍有下级数据"
-  def human_error(:parent_not_found), do: "上级记录不存在"
-  def human_error(:invalid_parent), do: "上级记录无效"
-  def human_error(:protected_role), do: "管理员角色不能删除"
-  def human_error(:protected_user), do: "当前用户或管理员不能删除"
-  def human_error(:update_failed), do: "更新失败"
-  def human_error(:has_data), do: "字典类型仍有数据"
-  def human_error(:invalid_params), do: "参数无效"
-  def human_error(:invalid_status), do: "状态无效"
-  def human_error(:role_unavailable), do: "角色已停用"
-  def human_error(:menu_not_found), do: "菜单不存在"
-  def human_error(:invalid_log), do: "日志参数无效"
-  def human_error(:unavailable), do: "服务暂不可用"
-  def human_error(:invalid_upload), do: "头像文件无效"
-  def human_error(:empty_upload), do: "头像文件不能为空"
-  def human_error(:file_too_large), do: "头像文件不能超过 50 MB"
-  def human_error(:filename_too_long), do: "头像文件名过长"
-  def human_error(:type_not_allowed), do: "头像文件类型不支持"
-  def human_error(:storage_error), do: "头像文件保存失败"
-  def human_error(reason), do: "操作失败：#{inspect(reason)}"
+  def human_error(reason), do: Feedback.human_error(reason)
 
   def admin_socket?(socket) do
     case socket.assigns[:current_user] do

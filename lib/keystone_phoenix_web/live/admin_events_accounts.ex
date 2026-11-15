@@ -212,7 +212,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
                )}
 
             {:error, :data_scope_denied} ->
-              {:noreply, assign(socket, user_feedback: Feedback.error("没有数据权限"))}
+              {:noreply,
+               assign(socket, user_feedback: Feedback.error(:data_scope_denied, "没有数据权限"))}
 
             error ->
               {:noreply, assign(socket, user_feedback: Support.form_error(error))}
@@ -248,7 +249,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           end
 
         {:error, :data_scope_denied} ->
-          {:noreply, assign(socket, user_feedback: Feedback.error("没有数据权限"))}
+          {:noreply, assign(socket, user_feedback: Feedback.error(:data_scope_denied, "没有数据权限"))}
 
         error ->
           {:noreply, assign(socket, user_feedback: Support.form_error(error))}
@@ -285,7 +286,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           end
 
         {:error, :data_scope_denied} ->
-          {:noreply, assign(socket, user_feedback: Feedback.error("没有数据权限"))}
+          {:noreply, assign(socket, user_feedback: Feedback.error(:data_scope_denied, "没有数据权限"))}
 
         error ->
           {:noreply, assign(socket, user_feedback: Support.form_error(error))}
@@ -561,7 +562,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
            )}
 
         {:error, :data_scope_denied} ->
-          {:noreply, assign(socket, user_feedback: Feedback.error("没有数据权限"))}
+          {:noreply, assign(socket, user_feedback: Feedback.error(:data_scope_denied, "没有数据权限"))}
 
         error ->
           {:noreply, assign(socket, user_feedback: Support.form_error(error))}
