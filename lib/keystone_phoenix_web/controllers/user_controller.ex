@@ -157,13 +157,11 @@ defmodule KeystonePhoenixWeb.UserController do
   end
 
   @doc "Soft deletes one or more local users."
-  def delete(conn, %{"user_ids" => user_ids}) do
-    delete_users(conn, user_ids, false)
-  end
-
   def delete(conn, %{"ids" => ids}), do: delete_users(conn, ids, false)
 
   def delete(conn, %{"user_id" => user_id}), do: delete_users(conn, user_id, true)
+
+  def delete(conn, _params), do: render_error(conn, :invalid_ids)
 
   def delete_single(conn, %{"user_id" => user_id}), do: delete_users(conn, user_id, true)
 

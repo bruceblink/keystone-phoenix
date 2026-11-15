@@ -77,8 +77,6 @@ defmodule KeystonePhoenixWeb.NoticeController do
     delete_notices(conn, notice_ids, false)
   end
 
-  def delete(conn, %{"ids" => ids}), do: delete_notices(conn, ids, false)
-
   def delete(conn, %{"notice_id" => notice_id}), do: delete_notices(conn, notice_id, true)
 
   def delete(conn, _params), do: render_error(conn, :invalid_ids)

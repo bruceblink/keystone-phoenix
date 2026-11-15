@@ -129,7 +129,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
       delete(
         authorized(token),
         "/api/v1/roles",
-        %{"role_ids" => Enum.join([first_role.role_id, missing_id, second_role.role_id], ",")}
+        %{"ids" => Enum.join([first_role.role_id, missing_id, second_role.role_id], ",")}
       )
 
     assert get_in(json_response(rejected, 404), ["error", "code"]) == "validation_failed"
@@ -141,8 +141,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
         authorized(token),
         "/api/v1/roles",
         %{
-          "role_ids" =>
-            Enum.join([first_role.role_id, first_role.role_id, second_role.role_id], ",")
+          "ids" => Enum.join([first_role.role_id, first_role.role_id, second_role.role_id], ",")
         }
       )
 

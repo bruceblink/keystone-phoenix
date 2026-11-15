@@ -120,10 +120,6 @@ defmodule KeystonePhoenixWeb.RoleController do
   end
 
   @doc "Soft deletes a role."
-  def delete(conn, %{"role_ids" => role_ids}) do
-    delete_roles(conn, role_ids)
-  end
-
   def delete(conn, %{"ids" => ids}), do: delete_roles(conn, ids)
 
   def delete(conn, %{"role_id" => role_id}) do
@@ -138,6 +134,8 @@ defmodule KeystonePhoenixWeb.RoleController do
       {:error, reason} -> render_error(conn, reason)
     end
   end
+
+  def delete(conn, _params), do: render_error(conn, :invalid_role_ids)
 
   defp delete_roles(conn, role_ids) do
     case Role.delete_roles(String.split(to_string(role_ids), ","),

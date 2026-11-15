@@ -2,6 +2,7 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
@@ -73,6 +74,25 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
 
     assert %{"success" => true} =
              json_response(get(authorized.(), "/api/v1/monitor/serverInfo"), 200)
+  end
+
+  @tag :integration
+  test "deprecated batch deletion query aliases are rejected", %{} do
+    user = insert_admin()
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+    authorized = fn -> put_req_header(build_conn(), "authorization", "Bearer #{tokens.token}") end
+    id = Identity.v7()
+
+    for path <- [
+          "/api/v1/users?user_ids=#{id}",
+          "/api/v1/roles?role_ids=#{id}",
+          "/api/v1/notices?ids=#{id}",
+          "/api/v1/jobs?ids=#{id}"
+        ] do
+      response = delete(authorized.(), path)
+      assert response.status == 422, "expected #{path} to reject its deprecated alias"
+      assert get_in(json_response(response, 422), ["error", "code"]) == "validation_failed"
+    end
   end
 
   defp insert_admin do

@@ -147,8 +147,6 @@ defmodule KeystonePhoenixWeb.JobController do
     delete_jobs(conn, job_ids)
   end
 
-  def delete(conn, %{"ids" => ids}), do: delete_jobs(conn, ids)
-
   def delete(conn, _params), do: render_error(conn, :invalid_ids)
 
   @doc "Deletes one scheduled job."
