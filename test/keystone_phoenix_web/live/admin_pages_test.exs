@@ -460,6 +460,23 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     assert system_html =~ "系统配置列表"
     assert system_html =~ "暂无配置数据"
 
+    config_table_html =
+      render_component(&System.configs/1, %{
+        config_rows: [
+          %{
+            "configId" => "config-1",
+            "configKey" => "site.name",
+            "configValue" => "Keystone",
+            "isAllowChange" => 1
+          }
+        ],
+        config_form: %{"configId" => ""},
+        config_feedback: nil,
+        read_only: false
+      })
+
+    assert config_table_html =~ "delete-config"
+
     operations_assigns = %{
       job_rows: [
         %{

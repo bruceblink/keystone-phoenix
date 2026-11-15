@@ -290,6 +290,9 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
     assert config["configValue"] == "alpha"
 
+    render_click(view, "delete-config", %{"config-id" => to_string(config["configId"])})
+    assert render(view) =~ "配置已删除"
+
     dict_type = "live.type.#{System.unique_integer([:positive])}"
 
     render_click(view, "show-panel", %{"panel" => "dicts"})
