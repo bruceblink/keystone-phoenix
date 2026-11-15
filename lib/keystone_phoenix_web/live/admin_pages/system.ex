@@ -214,7 +214,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       </header>
       <%= if @notice_feedback do %><p id="notice-feedback" class={Feedback.class(@notice_feedback)} role={Feedback.role(@notice_feedback)} aria-live={Feedback.live(@notice_feedback)}><%= Feedback.message(@notice_feedback) %></p><% end %>
       <section class="card notices-filter-card filter-card">
-        <form id="notice-filter" class="notices-filter-form filter-form" phx-change="filter-notices" phx-submit="filter-notices">
+        <form id="notice-filter" class="notices-filter-form filter-form" phx-submit="filter-notices">
           <label for="notice-filter-title"><span>标题或内容</span><input id="notice-filter-title" name="noticeTitle" value={@notice_filter["title"] || ""} placeholder="按标题、内容或类型筛选" /></label>
           <label for="notice-filter-published"><span>发布状态</span><select id="notice-filter-published" name="published"><option value="all" selected={@notice_filter["published"] in [nil, "all"]}>全部状态</option><option value="true" selected={@notice_filter["published"] == "true"}>已发布</option><option value="false" selected={@notice_filter["published"] == "false"}>未发布</option></select></label>
           <div class="notices-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-notice-filter">重置</button></div>

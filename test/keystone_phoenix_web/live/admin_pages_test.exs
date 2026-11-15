@@ -165,7 +165,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
         read_only: false
       })
 
-    assert html =~ ~s(phx-change="filter-notices")
+    assert html =~ ~s(phx-submit="filter-notices")
     assert html =~ ~s(name="noticeTitle")
     assert html =~ ~s(name="published")
     assert html =~ ~s(phx-click="reset-notice-filter")
