@@ -188,6 +188,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       assigns
       |> assign_new(:read_only, fn -> false end)
       |> assign_new(:active_modal, fn -> nil end)
+      |> assign_new(:selected_notice_ids, fn -> [] end)
       |> assign_new(:notice_filter, fn -> %{"title" => "", "published" => "all"} end)
 
     ~H"""
@@ -199,6 +200,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <p class="page-description">查询公告内容、状态和发布时间。新增和编辑在模态框中完成。</p>
         </div>
         <div class="heading-actions">
+          <button :if={!@read_only} type="button" class="button button-danger button-sm" phx-click="delete-notices" phx-value-notice-ids={Enum.join(@selected_notice_ids, ",")} phx-confirm="确认删除选中的公告吗？" disabled={@selected_notice_ids == []} phx-disable-with="删除中…">删除公告（<%= length(@selected_notice_ids) %>）</button>
           <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-notice" phx-disable-with="处理中…">新增公告</button>
           <button type="button" class="button button-secondary button-sm" phx-click="refresh-notices" phx-disable-with="刷新中…">刷新公告</button>
         </div>
@@ -211,6 +213,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <div class="notices-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-notice-filter">重置</button></div>
         </form>
       </section>
+      <% filtered_notices = filtered_notice_rows(@notice_rows, @notice_filter) %>
+      <% all_notices_selected = filtered_notices != [] and Enum.all?(filtered_notices, &(to_string(&1["noticeId"]) in @selected_notice_ids)) %>
       <%= if @active_modal == "notice" do %>
         <.modal id="notice-modal" title={if @notice_form["noticeId"] == "", do: "新建公告", else: "编辑公告"} description="维护公告内容、状态和备注。">
     <form :if={!@read_only} aria-describedby="notice-feedback" phx-submit="save-notice">
@@ -231,10 +235,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <div><h2 id="notices-table-title">公告列表</h2><p>共 <%= length(filtered_notice_rows(@notice_rows, @notice_filter)) %> 条匹配公告</p></div>
           <span class="badge badge-info">系统 API</span>
         </header>
-        <p :if={filtered_notice_rows(@notice_rows, @notice_filter) == []} class="notices-empty table-empty" role="status"><strong>暂无公告数据</strong><span>没有匹配的公告，调整筛选条件后重试。</span></p>
-        <div class="notices-table-wrap" role="region" tabindex="0" aria-label="公告列表"><table class="notices-table"><caption class="sr-only">公告列表</caption><thead><tr><th scope="col">公告</th><th scope="col">类型</th><th scope="col">发布状态</th><th scope="col">发布人</th><th scope="col">发布时间</th><th scope="col">创建时间</th><th scope="col">操作</th></tr></thead><tbody>
-          <%= for notice <- filtered_notice_rows(@notice_rows, @notice_filter) do %>
-            <tr><td><div class="notice-cell"><span class="notice-cell-icon" aria-hidden="true">▣</span><div><strong><%= notice["noticeTitle"] %></strong><small title={notice["noticeContent"]}><%= notice["noticeContent"] %></small></div></div></td><td><span class="badge badge-neutral"><%= if notice["noticeType"] == 1, do: "通知", else: "公告" %></span></td><td><span class={"status-badge #{Status.published(notice["published"])}"}><%= if notice["published"], do: "已发布", else: "未发布" %></span></td><td><%= notice["publisherName"] || notice["publisher"] || "—" %></td><td><%= notice["publishTime"] || "—" %></td><td><%= notice["createTime"] || "—" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="edit-notice" phx-value-notice-id={notice["noticeId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost button-sm" phx-click="publish-notice" phx-value-notice-id={notice["noticeId"]} phx-value-published={if notice["published"], do: "false", else: "true"} phx-disable-with="处理中…"><%= if notice["published"], do: "取消发布", else: "发布" %></button></td></tr>
+        <p :if={filtered_notices == []} class="notices-empty table-empty" role="status"><strong>暂无公告数据</strong><span>没有匹配的公告，调整筛选条件后重试。</span></p>
+        <div class="notices-table-wrap" role="region" tabindex="0" aria-label="公告列表"><table class="notices-table"><caption class="sr-only">公告列表</caption><thead><tr><th scope="col"><input :if={!@read_only} type="checkbox" aria-label="选择当前公告" checked={all_notices_selected} phx-click="toggle-all-notice-selection" phx-value-selected={if all_notices_selected, do: "false", else: "true"} /></th><th scope="col">公告</th><th scope="col">类型</th><th scope="col">发布状态</th><th scope="col">发布人</th><th scope="col">发布时间</th><th scope="col">创建时间</th><th scope="col">操作</th></tr></thead><tbody>
+          <%= for notice <- filtered_notices do %>
+            <tr><td><input :if={!@read_only} type="checkbox" aria-label={"选择公告 #{notice["noticeTitle"]}"} checked={to_string(notice["noticeId"]) in @selected_notice_ids} phx-click="toggle-notice-selection" phx-value-notice-id={notice["noticeId"]} phx-value-selected={if to_string(notice["noticeId"]) in @selected_notice_ids, do: "false", else: "true"} /></td><td><div class="notice-cell"><span class="notice-cell-icon" aria-hidden="true">▣</span><div><strong><%= notice["noticeTitle"] %></strong><small title={notice["noticeContent"]}><%= notice["noticeContent"] %></small></div></div></td><td><span class="badge badge-neutral"><%= if notice["noticeType"] == 1, do: "通知", else: "公告" %></span></td><td><span class={"status-badge #{Status.published(notice["published"])}"}><%= if notice["published"], do: "已发布", else: "未发布" %></span></td><td><%= notice["publisherName"] || notice["publisher"] || "—" %></td><td><%= notice["publishTime"] || "—" %></td><td><%= notice["createTime"] || "—" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="edit-notice" phx-value-notice-id={notice["noticeId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost button-sm" phx-click="publish-notice" phx-value-notice-id={notice["noticeId"]} phx-value-published={if notice["published"], do: "false", else: "true"} phx-disable-with="处理中…"><%= if notice["published"], do: "取消发布", else: "发布" %></button></td></tr>
           <% end %>
         </tbody></table></div>
       </section>
@@ -242,7 +246,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
     """
   end
 
-  defp filtered_notice_rows(rows, filter) do
+  def filtered_notice_rows(rows, filter) do
     title = String.trim(to_string(filter["title"] || "")) |> String.downcase()
     published = filter["published"] || "all"
 

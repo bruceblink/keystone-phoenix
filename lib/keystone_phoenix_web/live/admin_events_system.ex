@@ -6,6 +6,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   alias KeystonePhoenix.Log
   alias KeystonePhoenix.Notice
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
+  alias KeystonePhoenixWeb.Live.AdminPages.System, as: NoticePage
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-notices", _params, socket) do
@@ -13,6 +14,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
       {:noreply,
        assign(socket,
          notice_rows: Support.load_notices_for_socket(socket),
+         selected_notice_ids: [],
          notice_feedback: nil,
          active_modal: nil
        )}
@@ -25,6 +27,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     if Support.panel_allowed?(socket, "notices") do
       {:noreply,
        assign(socket,
+         selected_notice_ids: [],
          notice_filter: %{
            "title" => String.trim(params["noticeTitle"] || ""),
            "published" => params["published"] || "all"
@@ -37,7 +40,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("reset-notice-filter", _params, socket) do
     if Support.panel_allowed?(socket, "notices") do
-      {:noreply, assign(socket, notice_filter: %{"title" => "", "published" => "all"})}
+      {:noreply,
+       assign(socket,
+         selected_notice_ids: [],
+         notice_filter: %{"title" => "", "published" => "all"}
+       )}
     else
       {:noreply, socket}
     end
@@ -365,6 +372,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
           {:noreply,
            assign(socket,
              notice_rows: Support.load_notices_for_socket(socket),
+             selected_notice_ids: [],
              notice_form: Support.empty_notice_form(),
              active_modal: nil,
              notice_feedback: if(notice_id == "", do: "公告已创建", else: "公告已更新")
@@ -391,6 +399,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
           {:noreply,
            assign(socket,
              notice_rows: Support.load_notices_for_socket(socket),
+             selected_notice_ids: [],
              notice_feedback: "公告状态已更新"
            )}
 
@@ -422,6 +431,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
           {:noreply,
            assign(socket,
              notice_rows: Support.load_notices_for_socket(socket),
+             selected_notice_ids: [],
              notice_feedback: message
            )}
 
@@ -436,13 +446,46 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     end
   end
 
-  def handle_event("delete-notice", %{"notice-id" => notice_id}, socket) do
+  def handle_event(
+        "toggle-notice-selection",
+        %{"notice-id" => notice_id, "selected" => selected},
+        socket
+      ) do
+    selected_ids = Map.get(socket.assigns, :selected_notice_ids, [])
+
+    selected_ids =
+      if selected == "true",
+        do: Enum.uniq([notice_id | selected_ids]),
+        else: List.delete(selected_ids, notice_id)
+
+    {:noreply, assign(socket, selected_notice_ids: selected_ids)}
+  end
+
+  def handle_event("toggle-all-notice-selection", %{"selected" => selected}, socket) do
+    rows =
+      NoticePage.filtered_notice_rows(socket.assigns.notice_rows, socket.assigns.notice_filter)
+
+    page_ids = Enum.map(rows, &to_string(&1["noticeId"]))
+    selected_ids = Map.get(socket.assigns, :selected_notice_ids, [])
+
+    selected_ids =
+      if selected == "true",
+        do: Enum.uniq(selected_ids ++ page_ids),
+        else: selected_ids -- page_ids
+
+    {:noreply, assign(socket, selected_notice_ids: selected_ids)}
+  end
+
+  def handle_event("delete-notices", %{"notice-ids" => ids}, socket) do
     if Support.permission_socket?(socket, "notice:delete") do
-      case Notice.delete_notices([notice_id], authorization: self_authorization(socket)) do
+      notice_ids = String.split(ids || "", ",", trim: true)
+
+      case Notice.delete_notices(notice_ids, authorization: self_authorization(socket)) do
         :ok ->
           {:noreply,
            assign(socket,
              notice_rows: Support.load_notices_for_socket(socket),
+             selected_notice_ids: [],
              notice_feedback: "公告已删除",
              active_modal: nil
            )}
@@ -456,6 +499,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     else
       {:noreply, socket}
     end
+  end
+
+  def handle_event("delete-notice", %{"notice-id" => notice_id}, socket) do
+    handle_event("delete-notices", %{"notice-ids" => notice_id}, socket)
   end
 
   def handle_event("delete-login-log", %{"log-id" => log_id}, socket) do

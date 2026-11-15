@@ -369,6 +369,36 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
     assert render(view) =~ "公告已取消发布"
 
+    render_click(view, "toggle-all-notice-selection", %{"selected" => "true"})
+    selected_notice_ids = live_socket(view).assigns.selected_notice_ids
+    assert notice["noticeId"] in selected_notice_ids
+    assert length(selected_notice_ids) == length(live_socket(view).assigns.notice_rows)
+    assert has_element?(view, "button[phx-click='delete-notices']")
+
+    render_click(view, "toggle-all-notice-selection", %{"selected" => "false"})
+    assert live_socket(view).assigns.selected_notice_ids == []
+
+    render_click(view, "toggle-notice-selection", %{
+      "notice-id" => notice["noticeId"],
+      "selected" => "true"
+    })
+
+    remaining_notice_ids =
+      live_socket(view).assigns.notice_rows
+      |> Enum.map(&to_string(&1["noticeId"]))
+      |> Enum.reject(&(&1 == to_string(notice["noticeId"])))
+
+    render_click(view, "delete-notices", %{"notice-ids" => notice["noticeId"]})
+    assert render(view) =~ "公告已删除"
+    assert Notice.list_notices(%{"noticeTitle" => notice_title, "pageSize" => 10}).rows == []
+
+    refreshed_notice_ids =
+      live_socket(view).assigns.notice_rows
+      |> Enum.map(&to_string(&1["noticeId"]))
+
+    refute to_string(notice["noticeId"]) in refreshed_notice_ids
+    assert Enum.all?(remaining_notice_ids, &(&1 in refreshed_notice_ids))
+
     render_click(view, "show-panel", %{"panel" => "logs"})
     assert has_element?(view, "button[phx-click='refresh-operation-logs']")
     render_click(view, "show-panel", %{"panel" => "job-logs"})
