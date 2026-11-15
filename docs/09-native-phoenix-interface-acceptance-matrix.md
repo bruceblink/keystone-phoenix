@@ -1,5 +1,7 @@
 # Native 与 Phoenix 接口验收矩阵
 
+正式版本的同一份 admin-web 必须能够替换连接 Native 或 Phoenix。发布验收条件、双后端页面流程和证据要求见 [`10-admin-web-backend-interchangeability-acceptance.md`](10-admin-web-backend-interchangeability-acceptance.md)。
+
 ## 术语和命名
 
 | 术语 | English | 职责和边界 |
