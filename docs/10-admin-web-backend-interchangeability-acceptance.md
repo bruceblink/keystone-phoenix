@@ -41,7 +41,7 @@ VITE_API_PROXY_TARGET=http://localhost:4000 VITE_ENABLE_MOCK=false pnpm dev
 | 列表查询 | 字段名称、分页 `items/page/size/total`、筛选参数、空结果 | Native/Phoenix 控制器契约测试；需用同一 admin-web 页面双后端核验 |
 | 写操作 | 请求字段、201/200/204、`deleted`/`triggered` 结果、验证错误 | Native/Phoenix HTTP 回归；需覆盖发布版本构建 |
 | 错误处理 | `success/data/message/error`、401/403/404/422/503 分类 | admin-web 仅对网络错误允许开发 Mock 回退；HTTP 错误必须显示 |
-| 路由集合 | 业务方法与路径集合相同，无重复和过时入口 | 108 条业务路由加 1 条健康接口；业务集合核对已通过 |
+| 路由集合 | 方法与路径集合相同，无重复和过时入口 | `/api/v1` 共 108 条接口（含 health），标准 JWK Set 另计 1 条；集合核对已通过 |
 
 ## 页面验收条件
 

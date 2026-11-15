@@ -31,12 +31,12 @@ Phoenix 证据：`mix phx.routes` 未发现 `/system`、`/logs`、`auth/passkey`
 
 2026-11-15 对两个后端的业务路由做了静态集合核对。Native 的 JAX-RS 类级路径与
 `quarkus.http.root-path=/api` 合并后，再与 Phoenix 的 `mix phx.routes` 结果比较；参数
-占位符 `{id}` 与 `:id` 先归一为同一形状。两边均有 108 条业务路由，方法分布均为
-`GET 42`、`POST 29`、`PUT 20`、`DELETE 17`。归一化后 Native-only 和 Phoenix-only
-业务路由均为 0，也没有重复的 `HTTP method + path`。Phoenix 额外的 3 条 GET 路由是
+占位符 `{id}` 与 `:id` 先归一为同一形状。两边均有 108 条 `/api/v1` 接口（含
+`/api/v1/health`），方法分布均为 `GET 42`、`POST 29`、`PUT 20`、`DELETE 17`。归一化后
+Native-only 和 Phoenix-only 接口均为 0，也没有重复的 `HTTP method + path`。Phoenix 额外的 3 条 GET 路由是
 LiveView 页面和头像资源，不属于后端业务接口。
 
-完整接口口径为 109 条：上述 108 条业务接口加 `/api/v1/health` 1 条健康接口。健康接口用于运行状态检查，不参与业务资源替换或权限目录核对。
+标准 JWK Set 另有 `/api/.well-known/jwks.json` 1 条路径。健康接口用于运行状态检查，但属于 `/api/v1` 接口集合，不单独重复计数。
 
 Native 还有 `/api/openapi` 和 `/api/swagger` 文档入口。Phoenix 提供相同的 `/api/openapi`
 和 `/api/swagger` 兼容入口，admin-web 的“接口文档”菜单统一打开 `/api/swagger`。这些文档
@@ -52,7 +52,7 @@ Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。�
 
 ## UI 验收边界
 
-Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（81 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 405 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
+Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（86 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 408 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon --rerun-tasks` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
 
 个人资料密码更新已与 Native/admin-web 接口对齐：`PUT /api/v1/profile/password` 在 AAL2 会话中接收单个 `password` 字段，并在成功后撤销当前会话。Phoenix LiveView 个人资料页也只显示新密码字段。
 

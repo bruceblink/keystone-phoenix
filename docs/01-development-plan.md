@@ -4,11 +4,11 @@
 
 ## 2026-11-15 当前审查与下一轮主线
 
-本轮审查以 Phoenix `ce57fe9`、admin-web `6efd9a2` 和 Native `2376eb0` 为代码基线。接口集合已核对为 108 条业务接口加 1 条健康接口，业务方法分布为 `GET 42`、`POST 29`、`PUT 20`、`DELETE 17`；归一化后 Native-only、Phoenix-only 和重复 `HTTP method + path` 均为 0。admin-web 当前调用的接口全部存在于两个后端，Swagger 文档入口不计入业务接口集合。
+本轮审查以 Phoenix `8a5a00c`、admin-web `a7f95a4` 和 Native `779d80b` 为代码基线。`/api/v1` 接口集合共 108 条，包含 `/api/v1/health`，业务方法分布为 `GET 42`、`POST 29`、`PUT 20`、`DELETE 17`；标准 JWK Set 另有 1 条路径。归一化后 Native-only、Phoenix-only 和重复 `HTTP method + path` 均为 0。admin-web 当前调用的接口全部存在于两个后端，Swagger 文档入口不计入 `/api/v1` 接口集合。
 
 前端闭环要求已写入全局记忆并作为本阶段验收条件：每个页面必须完成入口、查询或筛选、加载、成功、错误、空态、分页、编辑/删除/批量操作、详情和结果回到当前页面的完整逻辑；按钮不能只改变视觉状态，也不能跳转到错误的管理页面。通知铃铛只展开站内通知列表，点击列表项显示详情；登录在当前浏览器已有有效会话时直接进入 dashboard，其他活动会话返回 409 时显示取消/强制登录弹窗，强制选项继续传递到 API 和 MFA 流程。
 
-本轮已完成通知列表/详情、活动会话登录确认、旧审计删除权限与迁移清理、Swagger Try-it-out 地址和 CSP 修复，以及 LiveView 来源徽标和 admin-web 窄屏标题布局修复。Phoenix 集成测试当前为 405 项通过；admin-web `pnpm test:run` 为 81 项通过，并已通过 `pnpm typecheck` 和 `pnpm build`。Native 最新权限目录对齐提交为 `2376eb0`，其完整 Gradle 回归此前已通过。
+本轮已完成通知列表/详情、通知读取错误重试、活动会话登录确认、MFA 阶段活动会话强制接管、旧审计删除权限与迁移清理、无对应接口的审计权限标识清理、Swagger Try-it-out 地址和 CSP 修复，以及 LiveView 来源徽标和 admin-web 窄屏标题布局修复。Phoenix 集成测试当前为 408 项通过；admin-web `pnpm test:run` 为 86 项通过，并已通过 `pnpm typecheck` 和 `pnpm build`。Native `./gradlew test --no-daemon --rerun-tasks` 返回 `BUILD SUCCESSFUL`。
 
 下一轮按以下顺序执行：
 
