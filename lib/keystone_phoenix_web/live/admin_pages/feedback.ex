@@ -22,7 +22,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Feedback do
   def message(message) when is_binary(message), do: message
   def message(other), do: inspect(other)
   def code({:error, code, _message}), do: code
-  def code({:error, _message}), do: :internal_error
+  def code({:error, _message}), do: "internal_error"
   def code(_feedback), do: nil
   def class({:error, _code, _message}), do: "feedback feedback--error"
   def class({:error, _message}), do: "feedback feedback--error"
@@ -40,7 +40,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Feedback do
     if ErrorCatalog.valid?(code), do: normalize_code_value(code), else: :internal_error
   end
 
-  defp normalize_code_value(code) when is_binary(code), do: String.to_atom(code)
+  defp normalize_code_value(code) when is_atom(code), do: Atom.to_string(code)
   defp normalize_code_value(code), do: code
 
   defp code_for_reason(reason)
