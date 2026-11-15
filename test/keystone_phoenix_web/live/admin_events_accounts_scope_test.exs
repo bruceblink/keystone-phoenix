@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.AdminEventsAccountsScopeTest do
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
   alias KeystonePhoenixWeb.Live.AdminEvents.Accounts
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
 
   test "user edit permission still respects the actor role data scope" do
     actor_dept =
@@ -80,6 +81,57 @@ defmodule KeystonePhoenixWeb.AdminEventsAccountsScopeTest do
 
     assert updated_socket.assigns.user_feedback == {:error, "没有数据权限"}
     assert Repo.get!(SysUser, target.user_id).nickname == "原昵称"
+  end
+
+  test "user form rejects multiple role codes before persistence" do
+    role =
+      Repo.insert!(%SysRole{
+        role_id: Ecto.UUID.generate(),
+        role_name: unique("role_code_role"),
+        role_key: unique("role_code_key"),
+        role_sort: 1,
+        data_scope: "ALL",
+        status: 1
+      })
+
+    actor =
+      Repo.insert!(%SysUser{
+        user_id: Ecto.UUID.generate(),
+        username: unique("role_code_actor"),
+        password: "password-hash",
+        role_id: role.role_id,
+        status: 1
+      })
+
+    target =
+      Repo.insert!(%SysUser{
+        user_id: Ecto.UUID.generate(),
+        username: unique("role_code_target"),
+        password: "password-hash",
+        status: 1
+      })
+
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{
+        __changed__: %{},
+        current_user: %{"userId" => actor.user_id, "roleId" => role.role_id},
+        permissions: ["user:update"]
+      }
+    }
+
+    assert {:noreply, updated_socket} =
+             Accounts.handle_event(
+               "save-user",
+               %{
+                 "userId" => to_string(target.user_id),
+                 "username" => target.username,
+                 "roleCodes" => "first,second"
+               },
+               socket
+             )
+
+    assert updated_socket.assigns.user_feedback ==
+             Feedback.error("操作失败：:role_codes_unsupported")
   end
 
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"

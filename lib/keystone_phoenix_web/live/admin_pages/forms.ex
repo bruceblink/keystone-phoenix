@@ -84,7 +84,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Forms do
       "roleId" => "",
       "email" => "",
       "phoneNumber" => "",
-      "sex" => 2,
+      "roleCodes" => "",
+      "enabled" => true,
+      "clearDept" => false,
       "status" => 1,
       "remark" => ""
     }

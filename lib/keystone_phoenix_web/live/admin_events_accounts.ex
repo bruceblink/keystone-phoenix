@@ -7,6 +7,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Upload
   alias KeystonePhoenix.User
+  alias KeystonePhoenixWeb.Live.AdminEventsAccountsParams, as: AccountParams
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.UserController
@@ -152,9 +153,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           {:noreply, assign(socket, user_feedback: Feedback.error("找不到指定用户"))}
 
         user ->
+          user_form =
+            Support.empty_user_form()
+            |> Map.merge(user)
+            |> Map.put("enabled", user["status"] in [1, "1", true])
+            |> Map.put("roleCodes", user["roleKey"] || "")
+
           {:noreply,
            assign(socket,
-             user_form: Map.merge(Support.empty_user_form(), user),
+             user_form: user_form,
              user_feedback: nil,
              active_modal: "user"
            )}
@@ -167,50 +174,52 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   def handle_event("save-user", params, socket) do
     if Support.permission_socket?(socket, "user:create") or
          Support.permission_socket?(socket, "user:update") do
-      user_id = String.trim(params["userId"] || "")
-      params = if user_id == "", do: params, else: Map.delete(params, "password")
+      case AccountParams.normalize_user_params(params) do
+        {:ok, params} ->
+          user_id = String.trim(params["userId"] || "")
+          params = if user_id == "", do: params, else: Map.delete(params, "password")
 
-      result =
-        cond do
-          user_id == "" and
-              Authz.scope_allowed?(
-                socket.assigns.current_user,
-                :dept,
-                params["deptId"]
-              ) ->
-            User.create_user(params,
-              authorization: authorization(socket, "user:create")
-            )
+          result =
+            cond do
+              user_id == "" and
+                  Authz.scope_allowed?(socket.assigns.current_user, :dept, params["deptId"]) ->
+                User.create_user(params, authorization: authorization(socket, "user:create"))
 
-          user_id != "" and
-              Authz.scope_allowed?(
-                socket.assigns.current_user,
-                :user_update,
-                user_id,
-                %{attrs: params}
-              ) ->
-            User.update_user(user_id, params, authorization: authorization(socket, "user:update"))
+              user_id != "" and
+                  Authz.scope_allowed?(
+                    socket.assigns.current_user,
+                    :user_update,
+                    user_id,
+                    %{attrs: params}
+                  ) ->
+                User.update_user(user_id, params,
+                  authorization: authorization(socket, "user:update")
+                )
 
-          true ->
-            {:error, :data_scope_denied}
-        end
+              true ->
+                {:error, :data_scope_denied}
+            end
 
-      case result do
-        {:ok, _user} ->
-          {:noreply,
-           assign(socket,
-             user_rows: reload_users(socket),
-             role_rows: Support.load_roles_for_socket(socket),
-             user_form: Support.empty_user_form(),
-             active_modal: nil,
-             user_feedback: if(user_id == "", do: "用户已创建", else: "用户已更新")
-           )}
+          case result do
+            {:ok, _user} ->
+              {:noreply,
+               assign(socket,
+                 user_rows: reload_users(socket),
+                 role_rows: Support.load_roles_for_socket(socket),
+                 user_form: Support.empty_user_form(),
+                 active_modal: nil,
+                 user_feedback: if(user_id == "", do: "用户已创建", else: "用户已更新")
+               )}
 
-        {:error, :data_scope_denied} ->
-          {:noreply, assign(socket, user_feedback: Feedback.error("没有数据权限"))}
+            {:error, :data_scope_denied} ->
+              {:noreply, assign(socket, user_feedback: Feedback.error("没有数据权限"))}
 
-        error ->
-          {:noreply, assign(socket, user_feedback: Support.form_error(error))}
+            error ->
+              {:noreply, assign(socket, user_feedback: Support.form_error(error))}
+          end
+
+        {:error, reason} ->
+          {:noreply, assign(socket, user_feedback: Support.form_error({:error, reason}))}
       end
     else
       {:noreply, socket}

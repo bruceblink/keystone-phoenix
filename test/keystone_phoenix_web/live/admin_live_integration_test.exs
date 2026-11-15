@@ -193,7 +193,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert created.nickname == "Live 用户"
 
     render_click(view, "edit-user", %{"user-id" => to_string(created.user_id)})
-    assert has_element?(view, "#user-reset-password-form")
+    refute has_element?(view, "#user-reset-password-form")
 
     render_submit(view, "reset-user-password", %{
       "userId" => to_string(created.user_id),

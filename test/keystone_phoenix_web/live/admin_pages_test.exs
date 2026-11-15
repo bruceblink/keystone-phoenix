@@ -249,6 +249,11 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
 
     assert render_component(&Accounts.users/1, account_modal_assigns) =~ "save-user"
 
+    account_modal_html = render_component(&Accounts.users/1, account_modal_assigns)
+    assert account_modal_html =~ "初始密码"
+    assert account_modal_html =~ "角色标识"
+    refute account_modal_html =~ "user-reset-password-form"
+
     account_html =
       render_component(
         &Accounts.users/1,
