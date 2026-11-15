@@ -14,7 +14,7 @@ defmodule KeystonePhoenixWeb.RoleController do
       unallocated_users: "role:read",
       assign_users: "role:assign",
       revoke_users: "role:assign",
-      unassign_users: "role:update"
+      unassign_users: "role:assign"
     }
 
   # 角色和角色成员写操作改变授权结果，必须使用 AAL2 会话。
