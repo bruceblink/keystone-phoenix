@@ -100,8 +100,10 @@ def parse_native(path: Path, errors: list[str]) -> tuple[list[str], dict[str, in
     rows = re.findall(r'^\s*[A-Z][A-Z0-9_]*\("([a-z][a-z0-9_]*)",\s*(\d+),', text, re.MULTILINE)
     codes = [code for code, _ in rows]
     statuses = {code: int(status) for code, status in rows}
+    if "static Optional<ErrorCode> find" not in text:
+        errors.append(f"Native 缺少可区分未知代码的反查入口 find: {path}")
     if "static ErrorCode fromCode" not in text:
-        errors.append(f"Native 缺少代码反查入口 fromCode: {path}")
+        errors.append(f"Native 缺少兼容代码反查入口 fromCode: {path}")
     if "static boolean isRegistered" not in text:
         errors.append(f"Native 缺少代码反查入口 isRegistered: {path}")
     return codes, statuses
@@ -145,8 +147,10 @@ def parse_admin(path: Path, errors: list[str]) -> tuple[list[str], dict[str, int
     else:
         message_codes = set(re.findall(r"\b([a-z][a-z0-9_]*)\s*:", messages_block.group(1)))
 
+    if "lookupBusinessError" not in text:
+        errors.append("admin-web 缺少完整代码反查入口 lookupBusinessError")
     if "getBusinessErrorDefinition" not in text:
-        errors.append("admin-web 缺少代码反查入口 getBusinessErrorDefinition")
+        errors.append("admin-web 缺少兼容代码反查入口 getBusinessErrorDefinition")
     if "class ApiError" not in text:
         errors.append("admin-web 缺少 ApiError")
     missing_messages = sorted(set(EXPECTED_STATUS) - message_codes)

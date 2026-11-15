@@ -72,8 +72,8 @@ admin-web 只把 `invalid_credential` 作为当前服务端凭据错误码。旧
 | 项目 | 目录实现 | 反查入口 | 约束 |
 | --- | --- | --- | --- |
 | Phoenix | `lib/keystone_phoenix_web/error_catalog.ex` | `ErrorCatalog.metadata/1`、`ErrorCatalog.valid?/1` | `ApiResponse.error/3` 拒绝未登记代码；`status` 保持接口现有值 |
-| Native | `src/main/java/app/keystone/ErrorCode.java` | `ErrorCode.fromCode(String)`、`ErrorCode.isRegistered(String)` | `httpStatus()` 只记录默认状态；资源入口决定实际响应状态 |
-| admin-web | `src/shared/api/errors.ts` | `getBusinessErrorDefinition(code)`、`SERVER_ERROR_CODES` | `ApiError` 原样保留服务端状态和代码；客户端本地代码放在 `CLIENT_ERROR_CODES` |
+| Native | `src/main/java/app/keystone/ErrorCode.java` | `ErrorCode.find(String)`、`ErrorCode.fromCode(String)`、`ErrorCode.isRegistered(String)` | `find` 返回可区分未知代码的目录项；`httpStatus()` 只记录默认状态，资源入口决定实际响应状态 |
+| admin-web | `src/shared/api/errors.ts` | `lookupBusinessError(code)`、`getBusinessErrorDefinition(code)`、`SERVER_ERROR_CODES` | `lookupBusinessError` 返回代码和业务含义；`ApiError` 原样保留服务端状态和代码；客户端本地代码放在 `CLIENT_ERROR_CODES` |
 
 admin-web 不执行授权判断，也不根据代码重写 HTTP 状态。页面只使用反查结果生成安全提示和诊断标识。
 
