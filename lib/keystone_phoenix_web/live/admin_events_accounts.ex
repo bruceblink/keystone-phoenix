@@ -20,6 +20,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
          user_rows: Support.load_users_for_socket(socket, filters),
          user_query: filters["username"],
          user_display_name_query: filters["displayName"],
+         selected_user_ids: [],
          page_nums: Map.put(socket.assigns.page_nums, "users", 1),
          user_feedback: nil,
          active_modal: nil
@@ -40,6 +41,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
          page_nums: Map.put(socket.assigns.page_nums, "users", 1),
          user_query: "",
          user_display_name_query: "",
+         selected_user_ids: [],
          user_form: Support.empty_user_form(),
          user_feedback: nil,
          active_modal: nil
@@ -85,6 +87,55 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     else
       {:noreply, socket}
     end
+  end
+
+  def handle_event("new-user-import", _params, socket) do
+    if Support.permission_socket?(socket, "user:import") do
+      {:noreply,
+       assign(socket, active_modal: "user-import", user_feedback: nil, user_import_result: nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event(
+        "toggle-user-selection",
+        %{"user-id" => user_id, "selected" => selected},
+        socket
+      ) do
+    selected_ids = Map.get(socket.assigns, :selected_user_ids, [])
+
+    selected_ids =
+      if selected == "true",
+        do: Enum.uniq([user_id | selected_ids]),
+        else: List.delete(selected_ids, user_id)
+
+    {:noreply, assign(socket, selected_user_ids: selected_ids)}
+  end
+
+  def handle_event("toggle-all-user-selection", %{"selected" => selected}, socket) do
+    page_ids =
+      Enum.map(
+        page_rows(
+          socket.assigns.user_rows,
+          socket.assigns.page_nums["users"],
+          socket.assigns.page_sizes["users"]
+        ),
+        &to_string(&1["userId"])
+      )
+
+    selected_ids = Map.get(socket.assigns, :selected_user_ids, [])
+
+    selected_ids =
+      if selected == "true",
+        do: Enum.uniq(selected_ids ++ page_ids),
+        else: selected_ids -- page_ids
+
+    {:noreply, assign(socket, selected_user_ids: selected_ids)}
+  end
+
+  def handle_event("delete-users", %{"user-ids" => user_ids}, socket) do
+    delete_users(socket, String.split(user_ids, ",", trim: true))
   end
 
   def handle_event("import-users", _params, socket) do
@@ -218,33 +269,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("delete-user", %{"user-id" => user_id}, socket) do
-    if Support.permission_socket?(socket, "user:delete") do
-      case if(Authz.scope_allowed?(socket.assigns.current_user, :users, [user_id]),
-             do:
-               User.delete_users([user_id],
-                 authorization: authorization(socket, "user:delete")
-               ),
-             else: {:error, :data_scope_denied}
-           ) do
-        :ok ->
-          {:noreply,
-           assign(socket,
-             user_rows: reload_users(socket),
-             role_rows: Support.load_roles_for_socket(socket),
-             user_form: Support.empty_user_form(),
-             active_modal: nil,
-             user_feedback: "用户已删除"
-           )}
-
-        {:error, :data_scope_denied} ->
-          {:noreply, assign(socket, user_feedback: Feedback.error("没有数据权限"))}
-
-        error ->
-          {:noreply, assign(socket, user_feedback: Support.form_error(error))}
-      end
-    else
-      {:noreply, socket}
-    end
+    delete_users(socket, [user_id])
   end
 
   def handle_event("reset-user-password", params, socket) do
@@ -418,7 +443,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       [{:ok, %{"total" => total, "success" => success, "failed" => failed}}] ->
         message = "用户导入完成：成功 #{success} 条，失败 #{length(failed)} 条，共 #{total} 条"
 
-        {:noreply, assign(socket, user_rows: reload_users(socket), user_feedback: message)}
+        {:noreply,
+         assign(socket,
+           user_rows: reload_users(socket),
+           user_feedback: message,
+           user_import_result: %{"total" => total, "success" => success, "failed" => failed},
+           active_modal: "user-import"
+         )}
 
       [{:error, reason}] ->
         {:noreply, assign(socket, user_feedback: Feedback.error(import_error_message(reason)))}
@@ -502,4 +533,41 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   defp reload_users(socket),
     do: Support.load_users_for_socket(socket, current_user_filters(socket))
+
+  defp page_rows(rows, page_num, page_size) do
+    rows
+    |> Enum.drop(max(page_num - 1, 0) * page_size)
+    |> Enum.take(page_size)
+  end
+
+  defp delete_users(socket, user_ids) do
+    if Support.permission_socket?(socket, "user:delete") do
+      case if(Authz.scope_allowed?(socket.assigns.current_user, :users, user_ids),
+             do:
+               User.delete_users(user_ids,
+                 authorization: authorization(socket, "user:delete")
+               ),
+             else: {:error, :data_scope_denied}
+           ) do
+        :ok ->
+          {:noreply,
+           assign(socket,
+             user_rows: reload_users(socket),
+             role_rows: Support.load_roles_for_socket(socket),
+             user_form: Support.empty_user_form(),
+             active_modal: nil,
+             selected_user_ids: [],
+             user_feedback: "已删除 #{length(user_ids)} 个用户"
+           )}
+
+        {:error, :data_scope_denied} ->
+          {:noreply, assign(socket, user_feedback: Feedback.error("没有数据权限"))}
+
+        error ->
+          {:noreply, assign(socket, user_feedback: Support.form_error(error))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
 end

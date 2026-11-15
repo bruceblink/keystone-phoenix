@@ -19,6 +19,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       |> assign_new(:user_display_name_query, fn -> "" end)
       |> assign_new(:permissions, fn -> [] end)
       |> assign_new(:user_import_upload, fn -> nil end)
+      |> assign_new(:user_import_result, fn -> nil end)
+      |> assign_new(:selected_user_ids, fn -> [] end)
 
     ~H"""
     <div class="panel users-page">
@@ -29,6 +31,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <p class="page-description">查询用户身份、组织归属和授权角色。新增和编辑在模态框中完成。</p>
         </div>
         <div class="heading-actions form-actions">
+          <button :if={!@read_only and "user:delete" in @permissions} type="button" class="button button-danger refresh danger-action" phx-click="delete-users" phx-value-user-ids={Enum.join(@selected_user_ids, ",")} phx-confirm="确认删除选中的用户吗？" disabled={@selected_user_ids == []} phx-disable-with="删除中…">删除用户（<%= length(@selected_user_ids) %>）</button>
+          <button :if={!@read_only and "user:import" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="new-user-import" phx-disable-with="处理中…">导入 Excel</button>
           <button :if={!@read_only} type="button" class="button button-primary refresh" phx-click="new-user" phx-disable-with="处理中…">新建用户</button>
           <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…">刷新用户</button>
           <button :if={"user:export" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="export-users" phx-disable-with="导出中…">导出 XLSX</button>
@@ -84,18 +88,31 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       </form>
         </.modal>
       <% end %>
+      <%= if @active_modal == "user-import" and @user_import_upload do %>
+        <.modal id="user-import-modal" title="导入用户" description="上传 Excel Open XML 工作簿。按行校验后返回成功和失败结果。">
+          <form id="user-import-form" aria-describedby="user-feedback" phx-submit="import-users">
+            <label for="user-import-file">用户导入文件</label>
+            <.live_file_input upload={@user_import_upload} id="user-import-file" />
+            <%= for entry <- @user_import_upload.entries do %>
+              <progress value={entry.progress} max="100"><%= entry.progress %>%</progress>
+            <% end %>
+            <%= for entry <- @user_import_upload.errors do %>
+              <p class="error" role="alert">用户导入文件无效：<%= user_import_error_message(entry) %></p>
+            <% end %>
+            <%= if @user_import_result do %>
+              <section class="user-import-result" aria-label="导入结果">
+                <div class="user-import-summary"><span><strong><%= @user_import_result["success"] %></strong><small>成功</small></span><span><strong><%= length(@user_import_result["failed"]) %></strong><small>失败</small></span><span><strong><%= @user_import_result["total"] %></strong><small>总行数</small></span></div>
+                <p :if={@user_import_result["failed"] == []} class="feedback">全部数据已成功导入。</p>
+              </section>
+            <% else %>
+              <p class="muted">导入要求当前登录会话完成 AAL2 验证。</p>
+            <% end %>
+            <div class="form-actions"><button type="submit" class="button button-primary" phx-disable-with="导入中…">开始导入</button><button type="button" class="button button-ghost secondary" phx-click="close-modal">关闭</button></div>
+          </form>
+        </.modal>
+      <% end %>
       <%= if @user_import_upload && "user:import" in @permissions do %>
-        <form id="user-import-form" aria-describedby="user-feedback" phx-submit="import-users">
-          <label for="user-import-file">批量导入用户（XLSX）</label>
-          <.live_file_input upload={@user_import_upload} id="user-import-file" />
-          <%= for entry <- @user_import_upload.entries do %>
-            <progress value={entry.progress} max="100"><%= entry.progress %>%</progress>
-          <% end %>
-          <%= for entry <- @user_import_upload.errors do %>
-            <p class="error" role="alert">用户导入文件无效：<%= user_import_error_message(entry) %></p>
-          <% end %>
-          <div class="form-actions"><button type="submit" class="secondary" phx-disable-with="导入中…">导入用户</button></div>
-        </form>
+        <span id="user-import-upload-hook" hidden></span>
       <% end %>
       <span id="user-download-hook" phx-hook="DownloadFile" hidden></span>
       <section class="card table-card users-table-card" aria-labelledby="users-table-title">
@@ -106,14 +123,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           </div>
           <span class="badge badge-info">LiveView</span>
         </div>
-        <p :if={@user_rows == []} class="table-empty" role="status">暂无用户数据</p>
+        <div :if={@user_rows == []} class="users-empty empty-state" role="status"><strong>没有匹配的用户</strong><p>暂无用户数据。调整筛选条件后重试，或清空筛选条件查看全部用户。</p></div>
         <div class="table-wrap">
           <div class="table-scroll" role="region" tabindex="0" aria-label="用户列表"><table class="users-table"><caption class="sr-only">用户列表</caption>
-            <thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">部门</th><th scope="col">角色</th><th scope="col">邮箱</th><th scope="col">手机号</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
+            <% page_user_rows = page_rows(@user_rows, @page_num, @page_size) %>
+            <% all_selected = page_user_rows != [] and Enum.all?(page_user_rows, &(to_string(&1["userId"]) in @selected_user_ids)) %>
+            <thead><tr><th scope="col"><input type="checkbox" aria-label="选择当前页用户" checked={all_selected} phx-click="toggle-all-user-selection" phx-value-selected={if all_selected, do: "false", else: "true"} /></th><th scope="col">用户名</th><th scope="col">UUID</th><th scope="col">部门</th><th scope="col">岗位</th><th scope="col">角色</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
             <tbody>
-              <%= for user <- page_rows(@user_rows, @page_num, @page_size) do %>
+              <%= for user <- page_user_rows do %>
                 <tr>
-                  <td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><%= user["deptName"] || "" %></td><td><%= user["roleName"] || "" %></td><td><%= user["email"] || "" %></td><td><%= user["phoneNumber"] || "" %></td><td><span class={"status-badge #{Status.normal_paused(user["status"])}"}><%= if user["status"] == 1, do: "正常", else: "停用" %></span></td>
+                  <td><input type="checkbox" aria-label={"选择用户 #{user["username"]}"} checked={to_string(user["userId"]) in @selected_user_ids} phx-click="toggle-user-selection" phx-value-user-id={user["userId"]} phx-value-selected={if to_string(user["userId"]) in @selected_user_ids, do: "false", else: "true"} /></td><td><div class="user-cell"><span class="user-cell-avatar"><%= String.first(user["nickname"] || user["username"] || "U") %></span><span><strong><%= user["nickname"] || "" %></strong><small><%= user["username"] %></small></span></div></td><td><code class="user-uuid"><%= user["userId"] %></code></td><td><%= user["deptName"] || "" %></td><td><%= user["postName"] || "" %></td><td><%= user["roleName"] || "" %></td><td><span class={"status-badge #{Status.normal_paused(user["status"])}"}><%= if user["status"] == 1, do: "正常", else: "停用" %></span></td>
                   <td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost refresh" phx-click="edit-user" phx-value-user-id={user["userId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost refresh" phx-click="toggle-user-status" phx-value-user-id={user["userId"]} phx-value-status={if user["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if user["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="button button-danger refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-user" phx-value-user-id={user["userId"]} phx-disable-with="删除中…">删除</button></td>
                 </tr>
               <% end %>
