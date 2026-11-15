@@ -111,6 +111,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       api_key_form: %{"name" => "", "scopes" => "", "expiresAt" => ""},
       api_key_query: "",
       api_key_status: "all",
+      api_key_scope_query: "",
       issued_api_key: nil,
       notice_rows: [],
       selected_notice_ids: [],

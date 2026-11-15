@@ -26,6 +26,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
       {:noreply,
        assign(socket,
          api_key_form: ApiKeys.empty_form(),
+         api_key_scope_query: "",
          api_key_feedback: nil,
          issued_api_key: nil,
          active_modal: "api-key"
@@ -46,13 +47,17 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
             |> Enum.map(&String.trim/1)
 
           result =
-            ApiKey.issue(
-              current_user_id(socket),
-              String.trim(params["name"] || ""),
-              scopes,
-              expires_at,
-              authorization(socket)
-            )
+            if Enum.all?(scopes, &scope_allowed?(socket, &1)) do
+              ApiKey.issue(
+                current_user_id(socket),
+                String.trim(params["name"] || ""),
+                scopes,
+                expires_at,
+                authorization(socket)
+              )
+            else
+              {:error, :scope_exceeds_permissions}
+            end
 
           case result do
             {:ok, issued} ->
@@ -118,8 +123,44 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
     {:noreply, assign(socket, api_key_query: query, api_key_status: status)}
   end
 
+  def handle_event("filter-api-key-scopes", %{"scopeQuery" => query}, socket),
+    do: {:noreply, assign(socket, api_key_scope_query: query)}
+
+  def handle_event("filter-api-key-scopes", _params, socket),
+    do: {:noreply, socket}
+
+  def handle_event("toggle-api-key-scope", %{"scope" => scope, "selected" => selected}, socket) do
+    if scope_allowed?(socket, scope) do
+      current = ApiKeys.scope_entries(socket.assigns[:permissions])
+
+      selected_scopes =
+        socket.assigns.api_key_form["scopes"] |> to_string() |> String.split(",", trim: true)
+
+      scopes =
+        if selected == "true",
+          do: Enum.uniq([scope | selected_scopes]),
+          else: List.delete(selected_scopes, scope)
+
+      if Enum.any?(current, &(&1["permission"] == scope)) do
+        {:noreply,
+         assign(socket,
+           api_key_form:
+             Map.put(socket.assigns.api_key_form, "scopes", Enum.sort(scopes) |> Enum.join(","))
+         )}
+      else
+        {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("dismiss-api-key-secret", _params, socket),
     do: {:noreply, assign(socket, issued_api_key: nil)}
+
+  defp scope_allowed?(socket, scope) do
+    Enum.any?(ApiKeys.scope_entries(socket.assigns[:permissions]), &(&1["permission"] == scope))
+  end
 
   defp current_user_id(socket),
     do: socket.assigns.current_user["userId"] || socket.assigns.current_user[:user_id]

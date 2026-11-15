@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
 
   import KeystonePhoenixWeb.Live.AdminPages.Modal
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
+  alias KeystonePhoenix.Authz.PermissionCatalog
 
   def api_keys(assigns) do
     assigns =
@@ -14,6 +15,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
       |> assign_new(:api_key_form, fn -> empty_form() end)
       |> assign_new(:api_key_query, fn -> "" end)
       |> assign_new(:api_key_status, fn -> "all" end)
+      |> assign_new(:api_key_scope_query, fn -> "" end)
+      |> assign_new(:scope_entries, fn -> scope_entries(assigns[:permissions]) end)
       |> assign_new(:issued_api_key, fn -> nil end)
       |> assign_new(:permissions, fn -> [] end)
       |> assign_new(:read_only, fn -> false end)
@@ -27,6 +30,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
           <p class="page-description">查询当前账号的机器凭据、授权范围和生命周期状态。密钥明文只在签发时返回一次。</p>
         </div>
         <div class="heading-actions form-actions">
+          <button :if={"api-key:create" in @permissions} type="button" class="button button-secondary refresh" phx-click="new-api-key" phx-disable-with="处理中…">配置接口权限</button>
           <button :if={"api-key:create" in @permissions} type="button" class="button button-primary refresh" phx-click="new-api-key" phx-disable-with="处理中…">签发 API Key</button>
           <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-api-keys" phx-disable-with="刷新中…">刷新列表</button>
         </div>
@@ -46,12 +50,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
       <% end %>
       <%= if @active_modal == "api-key" do %>
         <.modal id="api-key-modal" title="签发 API Key" description="API Key 只返回一次明文。请在签发成功后立即保存。">
-          <form phx-submit="save-api-key" aria-describedby="api-key-feedback">
+          <form id="api-key-form" phx-change="filter-api-key-scopes" phx-submit="save-api-key" aria-describedby="api-key-feedback">
             <div class="form-grid">
               <div><label for="api-key-name">密钥名称</label><input id="api-key-name" name="name" value={@api_key_form["name"]} required /></div>
               <div><label for="api-key-expires">到期时间</label><input id="api-key-expires" type="datetime-local" name="expiresAt" value={@api_key_form["expiresAt"]} /></div>
-              <div class="wide"><label for="api-key-scopes">授权范围</label><input id="api-key-scopes" name="scopes" value={@api_key_form["scopes"]} placeholder="user:read,role:read" required /></div>
+              <input type="hidden" name="scopes" value={@api_key_form["scopes"]} />
             </div>
+            <fieldset class="api-key-scope-picker"><legend>授权范围 *</legend><div class="api-key-scope-toolbar"><label for="api-key-scope-query">搜索接口权限</label><input id="api-key-scope-query" name="scopeQuery" value={@api_key_scope_query} placeholder="例如 user:read" phx-debounce="200" autocomplete="off" /><span><%= selected_scope_count(@api_key_form["scopes"]) %> 项已选择</span></div><div class="api-key-scope-groups"><%= for {resource, entries} <- grouped_scope_entries(@scope_entries, @api_key_scope_query) do %><section class="api-key-scope-group"><h4><%= scope_resource_label(resource) %></h4><div><%= for entry <- entries do %><label class="checkbox-label"><input type="checkbox" phx-click="toggle-api-key-scope" phx-value-scope={entry["permission"]} phx-value-selected={if scope_selected?(@api_key_form["scopes"], entry["permission"]), do: "false", else: "true"} checked={scope_selected?(@api_key_form["scopes"], entry["permission"])} /><span><%= scope_action_label(entry["action"]) %></span><code><%= entry["permission"] %></code></label><% end %></div></section><% end %></div><p :if={@scope_entries == []} class="form-help" role="status">没有可配置的接口权限。</p><p class="form-help">权限目录来自当前系统；签发时还会检查签发账号当前权限。</p></fieldset>
             <div class="form-actions"><button type="submit" class="button button-primary" phx-disable-with="签发中…">签发密钥</button><button type="button" class="button button-ghost secondary" phx-click="close-modal">取消</button></div>
           </form>
         </.modal>
@@ -92,6 +97,80 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
   end
 
   def empty_form, do: %{"name" => "", "scopes" => "", "expiresAt" => ""}
+
+  def scope_entries(permissions) do
+    allowed = MapSet.new(List.wrap(permissions))
+
+    PermissionCatalog.entries()
+    |> Enum.map(fn entry ->
+      %{
+        "permission" => entry.permission,
+        "resource" => entry.resource,
+        "action" => entry.action,
+        "description" => entry.description,
+        "risk" => to_string(entry.risk),
+        "registered" => entry.registered?,
+        "allowed" => MapSet.member?(allowed, entry.permission)
+      }
+    end)
+    |> Enum.filter(&(&1["registered"] and &1["allowed"]))
+  end
+
+  def grouped_scope_entries(entries, query) do
+    normalized = String.downcase(String.trim(to_string(query)))
+
+    entries
+    |> Enum.filter(fn entry ->
+      normalized == "" or
+        String.contains?(
+          String.downcase("#{entry["permission"]} #{entry["description"]} #{entry["action"]}"),
+          normalized
+        )
+    end)
+    |> Enum.group_by(& &1["resource"])
+    |> Enum.sort_by(&elem(&1, 0))
+  end
+
+  def selected_scope_count(scopes), do: length(parse_scopes(scopes))
+
+  def scope_selected?(scopes, permission), do: permission in parse_scopes(scopes)
+
+  def scope_resource_label("api-key"), do: "API Key"
+  def scope_resource_label("user"), do: "用户管理"
+  def scope_resource_label("role"), do: "角色管理"
+  def scope_resource_label("menu"), do: "菜单与权限"
+  def scope_resource_label("job"), do: "定时任务"
+  def scope_resource_label("notice"), do: "通知公告"
+  def scope_resource_label("audit"), do: "操作审计"
+  def scope_resource_label("login-log"), do: "登录日志"
+  def scope_resource_label("operation-log"), do: "操作日志"
+  def scope_resource_label(resource), do: resource
+
+  def scope_action_label("create"), do: "新增"
+  def scope_action_label("delete"), do: "删除"
+  def scope_action_label("read"), do: "读取"
+  def scope_action_label("update"), do: "修改"
+  def scope_action_label("export"), do: "导出"
+  def scope_action_label("import"), do: "导入"
+  def scope_action_label("manage"), do: "管理"
+  def scope_action_label("refresh"), do: "刷新"
+  def scope_action_label("revoke"), do: "撤销"
+  def scope_action_label("rotate"), do: "轮换"
+  def scope_action_label("run"), do: "执行"
+  def scope_action_label("assign"), do: "分配"
+  def scope_action_label("reset-password"), do: "重置密码"
+  def scope_action_label("update-status"), do: "修改状态"
+  def scope_action_label(action), do: action
+
+  defp parse_scopes(scopes) do
+    scopes
+    |> to_string()
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
 
   defp filtered_rows(rows, query, status) do
     normalized = String.downcase(String.trim(to_string(query)))
