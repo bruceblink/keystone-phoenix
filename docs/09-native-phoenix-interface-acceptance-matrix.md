@@ -82,6 +82,7 @@ Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `
 - Native 已删除 Phoenix 和 admin-web 都不使用的 `DELETE /v1/login-logs?ids=...` 与 `DELETE /v1/operation-logs?ids=...`，同步删除旧权限目录项并增加 `V57__remove_audit_log_delete_permissions.sql`；admin-web 继续使用读取和导出接口。对应提交为 Native `a7e33bb`，定向权限测试和全量 `./gradlew test --no-daemon` 均通过。
 - Phoenix 已删除岗位更新控制器中无法由现行路由触发的 `postId` 参数分支，并将权限测试迁移到 Native/admin-web 使用的规范字段；对应提交为 `a2a6ea4`，定向测试 9 项通过。Phoenix 和 Native 现仅保留 admin-web 使用的批量参数：用户/角色 `ids`、公告 `notice_ids`、任务 `jobIds`；旧别名返回 422 `validation_failed`。对应提交为 Phoenix `592ceb5`、Native `591ac88`。
 - Phoenix 角色成员分配和移除现在与 Native 一样统一使用 `role:assign`；之前控制器传入的 `role:update` 已删除，角色范围集成测试在只授予 `role:assign` 时通过。对应提交为 `c45871a`。
+- Phoenix LiveView 角色页面的用户分配和移除事件也已改为检查并传递 `role:assign`，与 HTTP 接口和 Native 权限边界一致；LiveView 管理集成测试通过，对应提交为 `5e5c759`。
 
 - Native 和 Phoenix 的同一份 admin-web 还完成了真实筛选和模态框检查：角色、组织、岗位、菜单、API Key、操作审计、登录日志、系统配置和字典页面使用无结果条件查询后显示空态，再点击“重置”恢复列表；用户、角色、组织、岗位、菜单、系统配置、字典、通知和定时任务的新增弹窗均能打开并取消关闭。两端的页面标题、查询按钮、空态和弹窗关闭结果一致。
 - Native 和 Phoenix 的用户、角色、岗位、操作审计和登录日志页面均通过真实“导出 Excel”检查，下载操作没有显示错误反馈。Phoenix 角色导出的 `406` 已在 `220fdde` 修复：API 管道现在接受 XLSX MIME，并登记 `xlsx` 格式。

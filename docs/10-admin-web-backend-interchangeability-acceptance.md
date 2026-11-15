@@ -142,6 +142,8 @@ Phoenix 已删除岗位更新控制器中无法由现行路由触发的 `postId`
 
 Phoenix 角色成员分配和移除现在与 Native 一样统一使用 `role:assign`；之前控制器传入的 `role:update` 已删除，角色范围集成测试在只授予 `role:assign` 时通过。对应提交为 `c45871a`。
 
+Phoenix LiveView 角色页面的用户分配和移除事件也已改为检查并传递 `role:assign`，与 HTTP 接口和 Native 权限边界一致；LiveView 管理集成测试通过，对应提交为 `5e5c759`。
+
 ## 发布前证据
 
 每个正式版本必须保留以下证据：
