@@ -62,7 +62,6 @@ defmodule KeystonePhoenixWeb.MenuManagementControllerTest do
              get(authorized(build_conn(), token), "/api/v1/menus/not-a-uuid/roles"),
              422
            )["message"] == "id must be a UUID"
-
   end
 
   @tag :integration
