@@ -280,7 +280,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         <div>
           <p class="eyebrow">OPERATIONS / AUDIT</p>
           <h1><%= if @kind == "login", do: "登录日志", else: if(@kind == "operation", do: "操作审计", else: "审计日志") %></h1>
-          <p class="page-description">查看登录和操作记录，保留分页、删除和只读权限控制。</p>
+          <p class="page-description">查看登录和操作记录，保留分页和只读权限控制，支持导出审计记录。</p>
         </div>
         <div class="heading-actions">
           <button :if={@kind == "both"} type="button" class="refresh" phx-click="refresh-logs" phx-disable-with="刷新中…">刷新日志</button>

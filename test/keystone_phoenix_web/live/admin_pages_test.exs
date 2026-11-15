@@ -392,6 +392,8 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
 
     refute audit_html =~ "delete-login-log"
     refute audit_html =~ "delete-operation-log"
+    assert audit_html =~ "保留分页和只读权限控制，支持导出审计记录"
+    refute audit_html =~ "保留分页、删除和只读权限控制"
 
     system_html =
       render_component(
