@@ -89,7 +89,7 @@ Phoenix 角色导出的 `406` 已在 `220fdde` 修复，API 管道现在接受 X
 
 Native 和 Phoenix 的角色页、Native 任务页还完成了选择记录、打开批量删除确认并取消的真实窗口检查，未执行删除。
 
-Native 和 Phoenix 的角色、组织、岗位页面均完成真实新增、列表显示、删除确认和测试数据清理。Phoenix 未登记菜单权限的错误已从 500 修复为 422 `validation_failed`（`55e92fe`），API Key 缺失和重复轮换状态已在 `b3a1af9` 对齐 Native。
+Native 和 Phoenix 的角色、组织、岗位页面均完成真实新增、列表显示、删除确认和测试数据清理。Phoenix 未登记菜单权限的错误已从 500 修复为 422 `validation_failed`（`55e92fe`）；API Key 缺失和重复轮换状态保持 Native 的 404/409，并返回相同的 `resource_not_found`/`resource_conflict` 业务码，对应本次错误码对齐提交。
 
 Phoenix LiveView 已完成共享壳、登录、账号、组织、系统和任务页面的主要视觉重实现。侧栏、顶栏、
 颜色令牌、卡片、筛选区、按钮、表格、徽标、状态 footer、用户图形个人资料入口和侧栏菜单结构已经按 admin-web

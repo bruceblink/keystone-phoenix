@@ -88,9 +88,17 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
 
     missing_id = Identity.v7()
 
-    assert post(authorized_conn, "/api/v1/api-keys/#{missing_id}/rotate", %{}).status == 404
-    assert delete(authorized_conn, "/api/v1/api-keys/#{missing_id}").status == 404
-    assert post(authorized_conn, "/api/v1/api-keys/#{replacement_id}/rotate", %{}).status == 409
+    missing_rotate = post(authorized_conn, "/api/v1/api-keys/#{missing_id}/rotate", %{})
+    assert missing_rotate.status == 404
+    assert get_in(json_response(missing_rotate, 404), ["error", "code"]) == "resource_not_found"
+
+    missing_revoke = delete(authorized_conn, "/api/v1/api-keys/#{missing_id}")
+    assert missing_revoke.status == 404
+    assert get_in(json_response(missing_revoke, 404), ["error", "code"]) == "resource_not_found"
+
+    revoked_rotate = post(authorized_conn, "/api/v1/api-keys/#{replacement_id}/rotate", %{})
+    assert revoked_rotate.status == 409
+    assert get_in(json_response(revoked_rotate, 409), ["error", "code"]) == "resource_conflict"
 
     final_metadata =
       authorized_conn

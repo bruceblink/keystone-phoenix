@@ -143,10 +143,10 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
           {:service_unavailable, :authorization_unavailable, "授权服务暂不可用"}
 
         :already_revoked ->
-          {:conflict, :validation_failed, "API Key 已撤销"}
+          {:conflict, :resource_conflict, "API Key 已撤销"}
 
         :not_found ->
-          {:not_found, :validation_failed, "API Key 不存在"}
+          {:not_found, :resource_not_found, "API Key 不存在"}
 
         _ ->
           {:unprocessable_entity, :validation_failed, "请求参数无效"}
