@@ -77,6 +77,20 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
     {:noreply, assign(socket, selected_job_ids: selected_ids)}
   end
 
+  def handle_event("select-job", %{"job-id" => job_id}, socket) do
+    if Support.panel_allowed?(socket, "jobs") do
+      {:noreply,
+       assign(socket,
+         selected_job_id: job_id,
+         job_log_rows: Support.load_job_logs_for_socket(socket),
+         page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
+         job_log_feedback: nil
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("delete-jobs", %{"job-ids" => job_ids}, socket) do
     if Support.permission_socket?(socket, "job:delete") do
       ids = String.split(job_ids, ",", trim: true)
