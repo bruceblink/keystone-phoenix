@@ -45,8 +45,14 @@
 }
 
 /* 侧栏抽屉由原生 admin-web 壳控制，LiveView 只负责切换 sidebar-open。 */
-@media (max-width: 850px) {
+@media (max-width: 68.75rem) {
   .app-shell > .sidebar { position: fixed; inset: 0 auto 0 0; transform: translateX(-100%); }
   .app-shell > .sidebar.sidebar-open { transform: translateX(0); }
   .app-shell > .sidebar > .primary-nav { position: static; inset: auto; width: auto; max-height: none; overflow: visible; transform: none; }
+  .app-shell > .sidebar-scrim { display: block; position: fixed; inset: 0; z-index: 10; border: 0; background: rgba(2,7,14,.62); }
+  .app-shell > .shell-content > .topbar { justify-content: flex-start; }
+  .app-shell > .shell-content > .topbar .topbar-actions { margin-left: auto; }
+  .app-shell > .shell-content > .topbar .mobile-menu { display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 8px; color: var(--muted-strong); background: transparent; }
+  .app-shell > .shell-content > .topbar .logout-button span, .app-shell > .shell-content > .topbar .user-copy, .app-shell > .shell-content > .topbar .user-menu > svg { display: none; }
+  .app-shell > .shell-content > .shell-main .monitor-grid { grid-template-columns: minmax(0, 1fr); }
 }
