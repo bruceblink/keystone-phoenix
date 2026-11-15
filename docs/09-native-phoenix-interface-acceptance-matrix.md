@@ -6,7 +6,7 @@
 
 | 术语 | English | 职责和边界 |
 | --- | --- | --- |
-| 接口路径 | endpoint path | HTTP 方法与 URL 的组合。本文只记录 `/api/v1` 对外入口。 |
+| 接口路径 | endpoint path | HTTP 方法与 URL 的组合。本文记录 `/api/v1` 业务入口和标准 JWK Set `/api/.well-known/jwks.json`。 |
 | 响应结构 | DTO | `success`、`data`、`message`、`error` 信封内的字段结构。路径一致不表示 DTO 一致。 |
 | AAL2 | Authentication Assurance Level 2 | 已完成当前会话二次认证的短时访问令牌。账号启用 `mfa_required` 或入口使用 `enforce=true` 时，写操作必须使用 AAL2。 |
 
