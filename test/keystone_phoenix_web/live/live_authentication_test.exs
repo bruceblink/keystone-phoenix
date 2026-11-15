@@ -45,7 +45,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     {:ok, second, _html} = live(conn, "/")
     html = render_submit(second, "login", login_params(admin))
 
-    assert html =~ "该账号已经登录"
+    assert html =~ "账号已有活动会话"
     assert has_element?(first, "nav[aria-label='主导航']")
     assert has_element?(second, "#login-form")
   end
