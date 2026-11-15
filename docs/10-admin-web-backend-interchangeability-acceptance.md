@@ -181,3 +181,5 @@ admin-web `4ccc35d` 已为 Users、Jobs、LoginLogs、OperationsAudit 保存筛�
 第五批闭环证据：Phoenix `06b4708`、`9245e78` 将监控快照、系统配置刷新和保存后的重新读取接入统一错误反馈，并保持源文件行数限制；admin-web `e0d84f6` 将角色和组织筛选状态写入命名 URL 参数，刷新和角色前进/后退可恢复。定向测试均通过；Native/Phoenix HTTP 接口未改变。其余页面矩阵和真实窗口证据仍需继续补齐。
 
 第六批闭环证据：admin-web `720f301` 将配置、公告、字典表单和角色导出失败统一显示安全提示、业务错误码、业务含义和请求标识，未改变后端接口。全量前端回归为 `23 files / 116 tests passed`；其他表单、导出和真实窗口结果仍需继续补齐。
+
+第七批闭环证据：admin-web `bd14dde` 将用户/角色写操作、用户导出和角色删除失败接入统一诊断；Phoenix `a8489cb` 将组织、岗位、角色和菜单缺失反馈映射为稳定的 `resource_not_found`。admin-web 全量回归为 `23 files / 118 tests passed`；其余写操作和真实窗口证据仍需继续补齐。

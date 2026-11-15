@@ -134,3 +134,5 @@ admin-web `4ccc35d` 已将 Users、Jobs、LoginLogs、OperationsAudit 的筛选�
 第五批证据：Phoenix `06b4708`、`9245e78` 补齐监控快照和系统配置刷新/保存后的读取失败保留，并保持源文件行数限制；admin-web `e0d84f6` 为角色和组织页面补齐 URL 查询状态恢复。对应定向回归分别为 Phoenix `26 passed` 和 admin-web `13 passed`。这些修改不改变 Native/Phoenix HTTP 接口，真实可视浏览器窗口仍需单独验收。
 
 第六批证据：admin-web `720f301` 将配置、公告、字典表单和角色导出错误统一接入业务错误码诊断；全量前端回归为 `23 files / 116 tests passed`，类型检查和构建通过。剩余表单和导出入口仍需逐页核对真实结果。
+
+第七批证据：admin-web `bd14dde` 补齐用户/角色保存、用户导出和角色删除错误诊断；Phoenix `a8489cb` 补齐组织、岗位、角色和菜单缺失记录的 `resource_not_found` 反馈。admin-web 全量回归为 `23 files / 118 tests passed`，Phoenix 定向反馈回归 `16 passed`。

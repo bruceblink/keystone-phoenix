@@ -50,6 +50,12 @@ API Key 权限目录模态框和其他写操作仍有少量页面使用旧错误
 - admin-web `720f301` 将配置、公告、字典类型、字典条目表单和角色导出错误接入 `ActionError`。页面显示安全提示、业务错误码、业务含义和 `requestId`，保留校验错误、输入内容和关闭行为。
 - 本批全量验证：admin-web `23 files / 116 tests passed`，类型检查、构建和差异检查通过。剩余少量表单和导出入口仍需按同一组件继续核对。
 
+## 2026-11-16 第七批错误闭环增量
+
+- admin-web `bd14dde` 将用户/角色保存失败、用户导出和角色删除接入统一 ActionError，失败时保留表单和确认上下文。
+- Phoenix `a8489cb` 将组织、岗位、角色、菜单缺失记录统一映射为 `resource_not_found`，保持原文案和 LiveView 行为。
+- 本批验证：admin-web `23 files / 118 tests passed`，类型检查和构建通过；Phoenix 定向反馈与编辑回归 `16 passed`。剩余岗位、任务、菜单等写操作仍需继续核对。
+
 ## 2026-11-16 闭环修复增量
 
 - Phoenix API Key 已将已撤销和不存在的资源错误分别统一为 `resource_conflict` 与 `resource_not_found`，保留原有 409/404 状态；任务并发跳过仍返回 `200` 和 `triggered=true`，与 Native 一致。对应提交为 `f9edf97`、`a5de81e`。
