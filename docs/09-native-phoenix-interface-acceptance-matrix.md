@@ -106,3 +106,7 @@ Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `
 
 本次验收仍有明确限制：监控页的部分指标由 Native 接口未提供，页面应显示后端来源和未提供指标；页面通过不表示缺失指标已经补齐。Native 和 Phoenix 已完成真实读取、导航、响应式宽度、筛选空态、新增弹窗打开/关闭、主要 Excel 导出、通知列表/详情、活动会话登录确认、MFA 继续和注销检查；Phoenix 和 Native admin-web 均已完成真实 TOTP 登录挑战并进入监控页。Native 还完成了 API Key 敏感操作的真实 step-up 验证；临时用户、令牌、会话和 MFA 挑战已清理，数据库残留计数为 0。菜单权限的 HTTP、组件和 LiveView 回归测试已完成；用户、岗位、任务和审计列表分页也已完成代码与组件验证，Phoenix 用户页、任务页、执行日志页、登录日志和操作审计默认每页 20 条与 admin-web 一致，对应提交为 `dcfaba5`、`2594151`、`1ac38b7`。其余页面仍需补充逐页编辑、加载状态、错误反馈、分页和批量写操作的完整发布矩阵；可视浏览器窗口、OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理链不属于本地窗口验收，不能据此判定通过。
 2026-11-16 增量：Phoenix `84b7b8e` 已关闭字典条目、登录日志、操作审计和任务日志空结果仍渲染空表头的问题。admin-web `2c79ff7`、`00a72af` 已覆盖 Users、Jobs、LoginLogs、OperationsAudit、Profile、Monitor 的旧数据刷新失败反馈和重试入口。上述修改不替代其余页面的完整发布矩阵。
+
+2026-11-16 错误码和查询状态增量：Phoenix `27fd9bd`、`c6bebb9`、Native `f282c99`、`27b969d` 和 admin-web `adc3db0` 已补齐错误码的精确反查入口。Phoenix 提供 `ErrorCatalog.lookup/1` 和 `ApiResponse.error_lookup/1`，Native 提供 `ErrorCode.find(String)`，admin-web 提供 `lookupBusinessError(code)`；未知代码可以被识别为未登记项，现有 `error.code`、HTTP 状态和兼容降级行为保持不变。三端静态目录检查通过，结果为 21 个服务端代码、4 个客户端本地代码。该证据覆盖目录和单元测试，不代表所有页面错误反馈已经完成真实窗口验收。
+
+admin-web `4ccc35d` 已将 Users、Jobs、LoginLogs、OperationsAudit 的筛选、分页和任务详情状态写入命名 URL 参数，刷新、复制链接和前进/后退可以恢复状态。该范围已通过前端测试、类型检查和构建；其余页面仍需逐页评估 URL 状态、加载状态、编辑、批量写入和详情返回。

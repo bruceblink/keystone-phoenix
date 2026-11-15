@@ -167,3 +167,7 @@ API Key scope 现在通过两端统一的 `GET /api/v1/permissions/catalog` 动�
 
 当前状态：后端业务路由集合、DTO 适配和 Native/Phoenix HTTP 接口对齐已完成；旧接口和重复接口已从正式业务路由集合删除；同一份 admin-web 已在 `VITE_ENABLE_MOCK=false` 下分别连接 Native 和 Phoenix，两个后端均完成真实浏览器登录、导航、个人资料入口和 280、320、390、768、1280 宽度检查。Native 和 Phoenix 的用户新增、列表刷新、选择、删除确认和测试数据清理已完成真实窗口验收；两端还完成了 9 个列表页的无结果筛选与重置、9 类新增弹窗的打开和取消关闭、用户/角色/岗位/操作审计/登录日志的 Excel 导出、角色/组织/岗位新增删除和角色页批量删除确认的取消检查。菜单权限的多级树、角色绑定和后端边界已由 Native HTTP、Phoenix HTTP、Phoenix LiveView 和 admin-web 测试覆盖。Phoenix 和 Native admin-web 已完成真实 TOTP 登录挑战，Native API Key 敏感操作的真实 step-up 也已通过。用户可见后端来源和错误文案已泛化为系统 API。Phoenix LiveView 已增加 admin-web 对齐的深链接、页面模板和响应式壳；通知列表/详情、当前会话直达 dashboard、409 活动会话确认、MFA 继续、强制登录和注销已通过 Chrome CDP 页面验收。其他批量操作、加载状态、错误反馈、分页、编辑和逐页写操作矩阵以及 OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理链仍是发布证据缺口。
 2026-11-16 增量：Phoenix `84b7b8e` 已关闭四类空结果空表头问题；admin-web `2c79ff7`、`00a72af` 已补充六个页面的旧数据刷新失败反馈和重试入口。LiveView 事件层的统一业务错误码仍需独立切片。
+
+2026-11-16 错误码和查询状态增量：Phoenix `27fd9bd`、`c6bebb9`、Native `f282c99`、`27b969d` 和 admin-web `adc3db0` 已补齐错误码精确反查。调用方可以从稳定的业务错误码取得业务含义和排错元数据；HTTP 状态、响应字段和未知代码的兼容处理保持原约定。三端静态目录检查通过，包含 21 个跨项目服务端错误码和 4 个 admin-web 客户端本地错误码。该结果不替代逐页面的真实错误反馈验收。
+
+admin-web `4ccc35d` 已为 Users、Jobs、LoginLogs、OperationsAudit 保存筛选、分页和任务详情状态到命名 URL 参数，并通过前端测试、类型检查和构建。Native 与 Phoenix 后端替换验收仍需补充其余页面的 URL 状态、加载失败、编辑、批量写入和详情返回矩阵；当前不能把四个页面的状态恢复结果扩展为全站通过。
