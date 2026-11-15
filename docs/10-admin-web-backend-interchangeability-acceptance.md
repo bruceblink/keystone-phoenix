@@ -173,3 +173,5 @@ API Key scope 现在通过两端统一的 `GET /api/v1/permissions/catalog` 动�
 admin-web `4ccc35d` 已为 Users、Jobs、LoginLogs、OperationsAudit 保存筛选、分页和任务详情状态到命名 URL 参数，并通过前端测试、类型检查和构建。Native 与 Phoenix 后端替换验收仍需补充其余页面的 URL 状态、加载失败、编辑、批量写入和详情返回矩阵；当前不能把四个页面的状态恢复结果扩展为全站通过。
 
 2026-11-16 第二批闭环证据：同一份 admin-web 连接 Phoenix 时，用户、任务、任务日志、字典类型、字典条目和公告的 LiveView 读取失败会保留旧数据并显示可重试错误；admin-web 连接 Native 或 Phoenix 时，公告和字典页面的刷新失败也保留旧数据，诊断区域显示错误码、业务含义和请求标识。对应提交为 Phoenix `b45e40d`、`4cbfcdf`，admin-web `e1fc667`、`8b302f0`、`d090f13`、`db884f3`。该批次通过三端全量测试和构建，但尚未完成其余页面的逐页真实编辑、分页、批量写入和详情返回矩阵。
+
+第三批闭环证据：admin-web 的菜单、角色和组织页面在已有数据刷新失败时保留旧内容并提供错误码诊断和重试；Phoenix LiveView 岗位页保留旧列表和筛选条件并提供稳定错误码反馈。对应提交为 admin-web `c79a1b0`、`acee1c3` 和 Phoenix `61617bf`。该批次继续保持相同的后端接口和 HTTP 状态，剩余页面矩阵仍需逐页补齐。
