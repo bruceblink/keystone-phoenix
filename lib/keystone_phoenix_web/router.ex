@@ -136,6 +136,7 @@ defmodule KeystonePhoenixWeb.Router do
     get "/api-keys", ApiKeyController, :index
     post "/api-keys/:id/rotate", ApiKeyController, :rotate
     delete "/api-keys/:id", ApiKeyController, :delete
+    get "/permissions/catalog", PermissionCatalogController, :index
     get "/dictionaries", DictionaryController, :list_types
     get "/dictionaries/:dict_type/items", DictionaryController, :list_data_by_type
     post "/dictionaries", DictionaryController, :create_type

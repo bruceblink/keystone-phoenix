@@ -74,5 +74,9 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     assert Enum.any?(Router.__routes__(), fn route ->
              route.verb == :put and route.path == @role_permission_path
            end)
+
+    assert Enum.any?(Router.__routes__(), fn route ->
+             route.verb == :get and route.path == "/api/v1/permissions/catalog"
+           end)
   end
 end

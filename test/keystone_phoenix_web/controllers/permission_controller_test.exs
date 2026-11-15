@@ -12,6 +12,24 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   alias KeystonePhoenixWeb.Plugs.Authenticate
 
   @tag :integration
+  test "permission catalog returns dynamic entries and current grant state", %{conn: conn} do
+    role = insert_role()
+    insert_menu(role.role_id, "permission:read")
+    insert_menu(role.role_id, "user:read")
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+    assert "permission:read" in tokens.current_user["permissions"]
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
+
+    response = get(authorized_conn, "/api/v1/permissions/catalog")
+
+    assert %{"success" => true, "data" => %{"entries" => entries}} = json_response(response, 200)
+    assert Enum.any?(entries, &(&1["permission"] == "user:read" and &1["allowed"] == true))
+    assert Enum.any?(entries, &(&1["permission"] == "job:run" and &1["allowed"] == false))
+    assert Enum.all?(entries, &Map.has_key?(&1, "description"))
+  end
+
+  @tag :integration
   test "allows a role permission and rejects a missing permission", %{conn: conn} do
     role = insert_role()
     menu = insert_menu(role.role_id, "post:read")
