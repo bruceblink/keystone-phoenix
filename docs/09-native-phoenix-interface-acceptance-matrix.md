@@ -38,6 +38,20 @@ LiveView 页面和头像资源，不属于后端业务接口。
 
 标准 JWK Set 另有 `/api/.well-known/jwks.json` 1 条路径。健康接口用于运行状态检查，但属于 `/api/v1` 接口集合，不单独重复计数。
 
+路由集合现在由 `scripts/check_api_route_contract.py` 固化检查。该脚本从 admin-web 的 `client.ts`、`jobClient.ts` 和 `userFileClient.ts` 提取实际调用，从 Native 的 JAX-RS `@Path` 和 Phoenix 的 `router.ex` 提取路由，统一参数占位符后检查三项：admin-web 调用必须同时存在于两个后端；Native 与 Phoenix 的 `/api/v1` 方法和路径集合必须一致；admin-web 源码不能重新引用已删除的 `/system/`、`/logs/`、`/auth/passkey` 等旧路径标识。当前验证命令和结果如下：
+
+```bash
+python3 scripts/check_api_route_contract.py \
+  --native-root ../keystone-native \
+  --admin-root ../keystone-admin-web
+# OK: admin-web uses 74 API routes
+# OK: Native and Phoenix expose the same 108 /api/v1 routes
+# OK: JWK route set matches (1 route)
+# OK: no legacy admin-web API path markers
+```
+
+该检查是源码集合检查，不替代真实 HTTP 和浏览器验收。后端仍可以保留 admin-web 当前没有调用的认证、健康检查、文件和监控接口；新增或删除业务入口必须同时更新路由集合和验收记录。
+
 Native 还有 `/api/openapi` 和 `/api/swagger` 文档入口。Phoenix 提供相同的 `/api/openapi`
 和 `/api/swagger` 兼容入口，admin-web 的“接口文档”菜单统一打开 `/api/swagger`。这些文档
 入口由各后端生成，不纳入业务接口集合。参数占位符的语言差异不表示接口缺失。
