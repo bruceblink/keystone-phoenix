@@ -56,7 +56,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.permission_socket?(socket, "department:update") do
       case Enum.find(socket.assigns.dept_rows, &(to_string(&1["deptId"]) == dept_id)) do
         nil ->
-          {:noreply, assign(socket, dept_feedback: Feedback.error("找不到指定部门"))}
+          {:noreply,
+           assign(socket, dept_feedback: Feedback.error(:resource_not_found, "找不到指定部门"))}
 
         dept ->
           {:noreply,
@@ -194,7 +195,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.permission_socket?(socket, "post:update") do
       case Enum.find(socket.assigns.post_rows, &(to_string(&1["postId"]) == post_id)) do
         nil ->
-          {:noreply, assign(socket, post_feedback: Feedback.error("找不到指定岗位"))}
+          {:noreply,
+           assign(socket, post_feedback: Feedback.error(:resource_not_found, "找不到指定岗位"))}
 
         post ->
           {:noreply,
@@ -329,7 +331,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.permission_socket?(socket, "role:update") do
       case Enum.find(socket.assigns.role_rows, &(to_string(&1["roleId"]) == role_id)) do
         nil ->
-          {:noreply, assign(socket, role_feedback: Feedback.error("找不到指定角色"))}
+          {:noreply,
+           assign(socket, role_feedback: Feedback.error(:resource_not_found, "找不到指定角色"))}
 
         role ->
           authorization = Support.authorization_options(socket, "role:read")
@@ -345,7 +348,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
             {:noreply, assign(socket, role_form: form, role_feedback: nil, active_modal: "role")}
           else
             {:error, _reason} ->
-              {:noreply, assign(socket, role_feedback: Feedback.error("找不到指定角色"))}
+              {:noreply,
+               assign(socket,
+                 role_feedback: Feedback.error(:resource_not_found, "找不到指定角色")
+               )}
           end
       end
     else
@@ -429,7 +435,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.permission_socket?(socket, "role:read") do
       case Enum.find(socket.assigns.role_rows, &(to_string(&1["roleId"]) == role_id)) do
         nil ->
-          {:noreply, assign(socket, role_user_feedback: Feedback.error("找不到指定角色"))}
+          {:noreply,
+           assign(socket,
+             role_user_feedback: Feedback.error(:resource_not_found, "找不到指定角色")
+           )}
 
         role ->
           users = Support.load_role_users(role_id, socket.assigns.current_user)

@@ -114,6 +114,16 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     assert Repo.get!(SysRole, role.role_id).data_scope == "DEPARTMENT"
   end
 
+  test "organization missing records expose a stable not-found feedback code", ctx do
+    {:ok, view} = login_with_step_up(ctx.conn, ctx.admin)
+    render_click(view, "show-panel", %{"panel" => "roles"})
+    render_click(view, "edit-role", %{"role-id" => Identity.v7()})
+
+    feedback = live_socket(view).assigns.role_feedback
+    assert KeystonePhoenixWeb.Live.AdminPages.Feedback.code(feedback) == "resource_not_found"
+    assert KeystonePhoenixWeb.Live.AdminPages.Feedback.message(feedback) == "找不到指定角色"
+  end
+
   test "refreshing or deleting a role clears its selected users", ctx do
     {:ok, role} =
       Role.create_role(

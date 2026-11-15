@@ -14,7 +14,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenu do
     if Support.permission_socket?(socket, "menu:update") do
       case Enum.find(socket.assigns.menu_rows, &(to_string(&1["menuId"] || &1["id"]) == menu_id)) do
         nil ->
-          {:noreply, assign(socket, menu_feedback: Feedback.error("找不到指定菜单"))}
+          {:noreply,
+           assign(socket, menu_feedback: Feedback.error(:resource_not_found, "找不到指定菜单"))}
 
         menu ->
           form = menu_form(menu)
