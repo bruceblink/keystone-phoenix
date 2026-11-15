@@ -306,9 +306,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <span class="status-badge status-badge--normal">只读审计</span>
         </header>
         <p :if={@login_log_rows == []} class="audit-empty table-empty" role="status"><strong>暂无登录日志数据</strong><span>新的登录记录会显示在这里。</span></p>
-        <div class="table-scroll" role="region" tabindex="0" aria-label="登录日志列表"><table class="audit-table"><caption class="sr-only">登录日志列表</caption><thead><tr><th scope="col">用户</th><th scope="col">IP</th><th scope="col">浏览器</th><th scope="col">状态</th><th scope="col">消息</th><th scope="col">时间</th><th scope="col">操作</th></tr></thead><tbody>
+        <div class="table-scroll" role="region" tabindex="0" aria-label="登录日志列表"><table class="audit-table"><caption class="sr-only">登录日志列表</caption><thead><tr><th scope="col">用户</th><th scope="col">IP</th><th scope="col">浏览器</th><th scope="col">状态</th><th scope="col">消息</th><th scope="col">时间</th></tr></thead><tbody>
             <%= for log <- page_rows(@login_log_rows, @login_page_num, @page_size) do %>
-            <tr><td><strong><%= log["username"] %></strong></td><td><code><%= log["ipAddress"] %></code></td><td><%= log["browser"] %></td><td><span class={"status-badge #{Status.success_failure(log["status"])}"}><%= if log["status"] == 1, do: "成功", else: "失败" %></span></td><td><%= log["msg"] %></td><td><%= log["loginTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-login-log" phx-value-log-id={log["infoId"] || log["id"]} phx-disable-with="删除中…">删除</button></td></tr>
+            <tr><td><strong><%= log["username"] %></strong></td><td><code><%= log["ipAddress"] %></code></td><td><%= log["browser"] %></td><td><span class={"status-badge #{Status.success_failure(log["status"])}"}><%= if log["status"] == 1, do: "成功", else: "失败" %></span></td><td><%= log["msg"] %></td><td><%= log["loginTime"] %></td></tr>
           <% end %>
         </tbody></table></div>
         <.pagination panel="login-logs" page_num={min(@login_page_num, page_count(length(@login_log_rows), @page_size))} page_size={@page_size} total={length(@login_log_rows)} />
@@ -329,9 +329,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <span class="status-badge status-badge--normal">只读审计</span>
         </header>
         <p :if={@operation_log_rows == []} class="audit-empty table-empty" role="status"><strong>暂无操作日志数据</strong><span>新的操作记录会显示在这里。</span></p>
-        <div class="table-scroll" role="region" tabindex="0" aria-label="操作日志列表"><table class="audit-table"><caption class="sr-only">操作日志列表</caption><thead><tr><th scope="col">用户</th><th scope="col">模块</th><th scope="col">方法</th><th scope="col">请求地址</th><th scope="col">状态</th><th scope="col">时间</th><th scope="col">操作</th></tr></thead><tbody>
+        <div class="table-scroll" role="region" tabindex="0" aria-label="操作日志列表"><table class="audit-table"><caption class="sr-only">操作日志列表</caption><thead><tr><th scope="col">用户</th><th scope="col">模块</th><th scope="col">方法</th><th scope="col">请求地址</th><th scope="col">状态</th><th scope="col">时间</th></tr></thead><tbody>
             <%= for log <- page_rows(@operation_log_rows, @operation_page_num, @page_size) do %>
-            <tr><td><strong><%= log["username"] %></strong></td><td><%= log["requestModule"] %></td><td><code><%= log["requestMethod"] %></code></td><td><code><%= log["requestUrl"] %></code></td><td><span class={"status-badge #{Status.success_failure(log["status"])}"}><%= if log["status"] == 1, do: "成功", else: "失败" %></span></td><td><%= log["operationTime"] %></td><td :if={!@read_only}><button type="button" class="refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="delete-operation-log" phx-value-log-id={log["operationId"]} phx-disable-with="删除中…">删除</button></td></tr>
+            <tr><td><strong><%= log["username"] %></strong></td><td><%= log["requestModule"] %></td><td><code><%= log["requestMethod"] %></code></td><td><code><%= log["requestUrl"] %></code></td><td><span class={"status-badge #{Status.success_failure(log["status"])}"}><%= if log["status"] == 1, do: "成功", else: "失败" %></span></td><td><%= log["operationTime"] %></td></tr>
           <% end %>
         </tbody></table></div>
         <.pagination panel="operation-logs" page_num={min(@operation_page_num, page_count(length(@operation_log_rows), @page_size))} page_size={@page_size} total={length(@operation_log_rows)} />

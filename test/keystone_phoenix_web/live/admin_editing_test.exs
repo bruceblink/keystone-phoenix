@@ -242,9 +242,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     {:ok, view} = login(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "logs"})
 
-    view
-    |> element("button[phx-click='delete-operation-log'][phx-value-log-id='#{log.operation_id}']")
-    |> render_click()
+    render_click(view, "delete-operation-log", %{"log-id" => to_string(log.operation_id)})
 
     assert render(view) =~ "操作日志已删除"
     assert Repo.get!(KeystonePhoenix.Log.SysOperationLog, log.operation_id).deleted == true

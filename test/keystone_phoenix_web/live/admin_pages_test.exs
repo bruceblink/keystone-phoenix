@@ -380,6 +380,19 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
              Map.take(system_assigns, [:login_log_rows, :operation_log_rows, :log_feedback])
            ) =~ "refresh-logs"
 
+    audit_html =
+      render_component(&System.logs/1, %{
+        login_log_rows: [%{"infoId" => "login-1", "username" => "admin", "status" => 1}],
+        operation_log_rows: [
+          %{"operationId" => "operation-1", "username" => "admin", "status" => 1}
+        ],
+        log_feedback: nil,
+        read_only: false
+      })
+
+    refute audit_html =~ "delete-login-log"
+    refute audit_html =~ "delete-operation-log"
+
     system_html =
       render_component(
         &System.configs/1,
