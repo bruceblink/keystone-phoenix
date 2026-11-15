@@ -52,7 +52,7 @@ defmodule KeystonePhoenix.Auth do
       when is_binary(username) and is_binary(password) and is_boolean(force_login) and
              is_binary(client_id) do
     with :ok <- Captcha.validate(captcha_code, captcha_key),
-         {:ok, plaintext_password} <- Token.decrypt_password(password),
+         {:ok, plaintext_password} <- api_password(password),
          {:ok, candidate} <- User.get_user_by_username(username),
          {:ok, result} <-
            Session.with_user_lock(candidate.user_id, fn ->
@@ -88,6 +88,14 @@ defmodule KeystonePhoenix.Auth do
 
   def login_api(_username, _password, _force_login, _captcha_code, _captcha_key, _client_id),
     do: {:error, :invalid_credentials}
+
+  # admin-web 与 Native API 直接提交 HTTPS 请求体中的密码；同时保留旧客户端的 RSA 密文兼容。
+  defp api_password(password) do
+    case Token.decrypt_password(password) do
+      {:ok, plaintext} -> {:ok, plaintext}
+      {:error, :invalid_password} -> {:ok, password}
+    end
+  end
 
   @doc "Verifies the initial password and replaces it through the self scope."
   @spec change_initial_password(String.t(), String.t(), String.t()) ::

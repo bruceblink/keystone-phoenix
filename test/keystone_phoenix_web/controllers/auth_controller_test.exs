@@ -55,6 +55,20 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert get_in(json_response(conn, 409), ["error", "code"]) == "validation_failed"
   end
 
+  test "accepts the plain password format used by admin-web", %{user: user} do
+    response =
+      build_conn()
+      |> post("/api/v1/auth/login", %{
+        "username" => user.username,
+        "password" => "Strong!123",
+        "forceLogin" => true
+      })
+      |> json_response(200)
+
+    assert is_binary(response["data"]["accessToken"])
+    assert is_binary(response["data"]["refreshToken"])
+  end
+
   test "changes a flagged initial password and revokes the requirement", %{user: user} do
     user = Repo.update!(Ecto.Changeset.change(user, must_change_password: true))
 
