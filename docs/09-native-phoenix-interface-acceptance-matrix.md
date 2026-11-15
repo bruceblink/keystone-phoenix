@@ -49,7 +49,7 @@ Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。�
 
 ## UI 验收边界
 
-Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（78 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 395 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
+Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（78 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 399 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
 
 个人资料密码更新已与 Native/admin-web 接口对齐：`PUT /api/v1/profile/password` 在 AAL2 会话中接收单个 `password` 字段，并在成功后撤销当前会话。Phoenix LiveView 个人资料页也只显示新密码字段。
 
@@ -94,7 +94,7 @@ Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `
 - Phoenix LiveView 已按 admin-web 的共享壳和页面组件结构重实现。已验证深色页面令牌、流式侧栏和内容区、统一卡片、筛选表格、徽标、模态框、用户图形个人资料入口，以及侧栏移除“工作台”、个人资料菜单和“系统”分组标题。内置浏览器在 280、320、390、768 和 1280 视口验证了 Phoenix 无横向溢出，顶栏上下文不换行，内容区随视口拉伸；窄屏侧边抽屉可以打开，选择导航后自动收起。当前可见 LiveView 菜单为 13 项；`/dashboard` 和旧任务日志状态保留为兼容路径或内部分支，不作为侧栏菜单。LiveView 另已修复配置删除、通知类型筛选、字典切换分页、任务编码筛选和新建弹窗取消按钮，提交分别为 `205fd85`、`15b782b`、`e7ac3d2`、`8d22f85`、`3752575`。Native admin-web 已完成同样的真实浏览器宽度矩阵，两个后端均保留逐页写操作、筛选、导出、批量操作、空态、错误反馈和模态框结果验收项。
 - 菜单权限专项已完成：Native、Phoenix 和 admin-web 均支持多级菜单树、父级选择防环、停用/未绑定节点的管理读取、菜单角色绑定查询和替换。Native 菜单更新支持父级重排，并拒绝不存在的父级、自身引用和后代环引用。Phoenix LiveView 角色编辑提供按层级缩进的 `menuIds[]` 多选树，菜单编辑弹窗也提供启用角色复选框和绑定替换；菜单筛选保留匹配节点的祖先。admin-web 菜单表单提供同样的父级防环、启用角色选择和多级筛选祖先保留。对应提交为 Phoenix `86a9114`、`763feb7`、`eb847a7`、`9fb9d33`，Native `4198d1c`、`44cb524`、`8c06179`，admin-web `efb9133`、`65413f4`、`734279d`、`c38d343`。
 - admin-web 组织结构筛选也已按多级树规则递归保留完整祖先链，并用异常环保护避免筛选死循环；对应提交为 `6b75eba`。
-- 监控页按 Vercel Dashboard 的信息密度重新打磨：状态栏、健康摘要、主证据图表、资源卡片、在线会话和节点详情保持统一层级。admin-web 趋势图增加 80% 关注阈值和数据来源，空趋势显示“暂无采样数据”；Phoenix 当前采样图使用同样的阈值、来源和空态语义，缺失指标显示 `—`，不再显示为 `0%`。监控帮助交互对应 admin-web `379d7f8`、Phoenix `c4f39bd`；admin-web 当前测试为 17 个文件、78 项通过；Phoenix `mix test --include integration` 为 395 项通过，Native 和 Phoenix 真实窗口均已在 280、320、390、768 和 1280 视口检查横向溢出。
+- 监控页按 Vercel Dashboard 的信息密度重新打磨：状态栏、健康摘要、主证据图表、资源卡片、在线会话和节点详情保持统一层级。admin-web 趋势图增加 80% 关注阈值和数据来源，空趋势显示“暂无采样数据”；Phoenix 当前采样图使用同样的阈值、来源和空态语义，缺失指标显示 `—`，不再显示为 `0%`。监控帮助交互对应 admin-web `379d7f8`、Phoenix `c4f39bd`；admin-web 当前测试为 17 个文件、78 项通过；Phoenix `mix test --include integration` 为 399 项通过，Native 和 Phoenix 真实窗口均已在 280、320、390、768 和 1280 视口检查横向溢出。
 - Phoenix 监控页趋势区域已按 admin-web 的 30 分钟采样结构重实现，支持 CPU/内存折线、80% 阈值、坐标轴和采样时间；Phoenix 当前 API 没有历史采样、网络流量、Reductions 和 Erlang 进程/ETS 指标时显示 `—`，不伪造数据。组件测试 8 项通过，对应提交为 `854caca`。
 - Phoenix 登录 MFA 表单已使用 admin-web 的状态提示、图标输入框、统一按钮和错误反馈；个人资料页移除头像文件上传块，性别值与 admin-web 统一为空值未知、`1` 男、`0` 女，头像地址仍可保存。对应提交为 `c04db24`，相关集成测试 9 项通过。
 
