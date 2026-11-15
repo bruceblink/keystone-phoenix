@@ -59,6 +59,17 @@ VITE_API_PROXY_TARGET=http://localhost:4000 VITE_ENABLE_MOCK=false pnpm dev
 
 Phoenix LiveView 管理页面同时以 admin-web 的颜色、布局、筛选栏、表格、卡片、徽标、空态、错误反馈、分页和模态框为视觉基准。LiveView 重实现不改变 `/api/v1` 接口约定。
 
+2026-11-15 的真实窗口记录使用同一份 admin-web 构建分别连接 Native 和 Phoenix，且设置
+`VITE_ENABLE_MOCK=false`。两个后端均已完成登录、监控、总览、用户、角色、组织、岗位、菜单、
+API Key、审计、任务、配置、字典、公告和个人资料页面的真实导航；Phoenix 还完成了任务日志和
+登录日志页面的导航。Native 监控页返回 `PARTIAL`，Phoenix 监控页返回 BEAM/OTP 运行时数据。
+这项记录确认后端可以替换使用同一份 admin-web 页面，不能代替每个写操作的逐项验收。
+
+Phoenix LiveView 已完成共享壳、登录、账号组织和系统页面的主要视觉重实现。侧栏宽度、顶栏高度、
+颜色令牌、卡片、筛选区、按钮、表格、徽标、用户图形个人资料入口和侧栏菜单结构已经按 admin-web
+对齐。发布前必须补做最新提交后的完整 LiveView 真实窗口矩阵，并逐页记录筛选、导出、批量操作、
+空态、错误反馈、分页和模态框结果。
+
 ## 发布前证据
 
 每个正式版本必须保留以下证据：
@@ -69,4 +80,4 @@ Phoenix LiveView 管理页面同时以 admin-web 的颜色、布局、筛选栏�
 4. 两个后端的路由集合差异、旧接口搜索和数据库迁移状态。
 5. 未完成的 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理检查必须单独标记为证据缺口，不能写成页面通过。
 
-当前状态：后端业务路由集合、DTO 适配和 Native/admin-web 基础联调已完成；admin-web 已支持切换 Phoenix 开发代理；Phoenix LiveView 视觉重实现正在按共享壳、账号组织页面和系统页面分片执行。两个后端连接同一份正式 admin-web 的完整真实窗口矩阵仍是未完成项。
+当前状态：后端业务路由集合、DTO 适配和 Native/Phoenix HTTP 接口对齐已完成；旧接口和重复接口已从正式业务路由集合删除；admin-web 已在 `VITE_ENABLE_MOCK=false` 下分别连接两个后端并完成真实窗口页面矩阵。Phoenix LiveView 的共享壳、登录、账号组织和系统页面已完成主要视觉重实现，但最新提交后的完整 LiveView 真实窗口矩阵、真实 MFA 仪式以及 OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理链仍是发布证据缺口。

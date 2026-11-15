@@ -48,14 +48,16 @@ Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。�
 
 ## UI 验收边界
 
-Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 的 `pnpm test:run`、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix `mix test --include integration` 已通过 366 项。
+Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 的 HTTP、LiveView 和集成测试已按当前提交重新执行；发布记录必须保留最终通过数量和命令输出。
 
 ### 真实窗口验收记录
 
-2026-11-15 使用 Codex 内置浏览器，在本机启动 Native、Phoenix 和 admin-web 开发服务后完成页面验收。Native 使用 MySQL 8.4，Phoenix 使用本地 PostgreSQL，admin-web 使用 Vite 代理访问 Native `http://127.0.0.1:8080`。
+2026-11-15 使用 Codex 内置浏览器，在本机启动 Native、Phoenix 和同一份 admin-web 构建后完成双后端页面验收。Native 使用 MySQL 8.4，Phoenix 使用本地 PostgreSQL；通过 `VITE_ENABLE_MOCK=false` 和 Vite 代理分别切换 `http://127.0.0.1:8080` 与 `http://127.0.0.1:4000`。
 
-- admin-web 使用 `admin` 登录成功，进入 `/monitor`。监控页显示 `PARTIAL`，Java 堆和在线会话有数据；CPU、磁盘和网络字段显示 Native 未提供。侧栏、总览别名、用户、角色、组织、岗位、菜单、API Key、操作审计、登录日志、定时任务、系统配置、字典和通知公告页面均能通过真实导航打开，并显示 Native 返回的数据。
+- admin-web 使用 `admin/password` 登录 Native 成功，进入 `/monitor`。监控页显示 `PARTIAL`，Java 堆和在线会话有数据；CPU、磁盘和网络字段显示 Native 未提供。侧栏、总览别名、用户、角色、组织、岗位、菜单、API Key、操作审计、登录日志、定时任务、系统配置、字典、通知公告和个人资料页面均能通过真实导航打开，并显示 Native 返回的数据。
 - admin-web 用户页的用户名筛选返回 2 条记录；新增用户模态框能打开和关闭。角色新增模态框、API Key 签发模态框和通知公告筛选控件均能打开或使用。未在验收中签发真实 API Key，也未提交会改变业务数据的表单。
-- Phoenix 使用 `ag1` 登录成功，概览显示部门、岗位、角色、菜单、公告、用户、配置、字典和任务统计。概览、部门、岗位、角色、菜单、用户、API Key、配置、字典、公告、登录日志、操作审计、定时任务、任务日志、监控和个人资料面板均通过真实导航打开；用户新增表单能打开和关闭。
+- 同一份 admin-web 使用 `ag1/123456` 登录 Phoenix 成功，概览显示部门、岗位、角色、菜单、公告、用户、配置、字典和任务统计。概览、部门、岗位、角色、菜单、用户、API Key、配置、字典、公告、登录日志、操作审计、定时任务、任务日志、监控和个人资料页面均通过真实导航打开；用户新增表单能打开和关闭。该记录证明 admin-web 页面可以在两个后端之间切换，不能替代逐项写操作验收。
 
-本次真实窗口验收仍有明确限制：监控页的部分指标由 Native 接口未提供，admin-web 仍显示静态“Native API 正常”标签；Phoenix 与 admin-web 的页面筛选、导出、批量删除和加载状态并未因此自动等价。MFA 登录挑战已覆盖接口和前端错误兼容测试，但本次没有触发真实 MFA 挑战；OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理链不属于本地窗口验收，不能据此判定通过。
+- Phoenix LiveView 已按 admin-web 的共享壳、登录、账号组织和系统页面重实现。已验证深色页面令牌、244px 侧栏、76px 顶栏、统一卡片和按钮样式，以及用户图形打开个人资料、侧栏移除个人资料菜单、用户导入和批量操作入口。最新 branding 和测试修复后，发布前仍需重新执行一次完整 LiveView 真实窗口矩阵，并记录每个页面的筛选、导出、批量操作、空态、错误反馈和模态框结果。
+
+本次真实窗口验收仍有明确限制：监控页的部分指标由 Native 接口未提供，页面应显示后端来源和未提供指标；页面通过不表示缺失指标已经补齐。双后端页面矩阵已覆盖真实读取和导航，筛选、导出、批量删除、加载状态和错误反馈仍需按页面逐项记录。MFA 登录挑战已覆盖接口和前端错误兼容测试，但本次没有触发真实 MFA 挑战；OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理链不属于本地窗口验收，不能据此判定通过。
