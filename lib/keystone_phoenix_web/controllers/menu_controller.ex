@@ -140,10 +140,13 @@ defmodule KeystonePhoenixWeb.MenuController do
     conn |> put_status(:forbidden) |> json(ApiResponse.error(:data_scope_denied, "没有数据权限"))
   end
 
-  defp render_error(conn, reason) when reason in [:invalid_role_codes, :role_not_found] do
+  defp render_error(conn, reason)
+       when reason in [:invalid_role_codes, :role_not_found, :permission_not_found] do
+    message = if reason == :permission_not_found, do: "权限标识不存在", else: "角色编码无效"
+
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "角色编码无效"))
+    |> json(ApiResponse.error(:validation_failed, message))
   end
 
   defp render_error(conn, reason)

@@ -241,6 +241,24 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
              200
   end
 
+  @tag :integration
+  test "菜单使用未登记权限标识时返回校验错误而不是服务器错误" do
+    token = admin_token()
+
+    response =
+      post(authorized(build_conn(), token), "/api/v1/menus", %{
+        "code" => "http_invalid_permission_#{System.unique_integer([:positive])}",
+        "name" => "HTTP 无效权限菜单",
+        "menuType" => "MENU",
+        "component" => "",
+        "permission" => "unknown:permission",
+        "enabled" => true
+      })
+
+    assert response.status == 422
+    assert get_in(json_response(response, 422), ["error", "code"]) == "validation_failed"
+  end
+
   defp admin_token do
     role =
       %SysRole{}
