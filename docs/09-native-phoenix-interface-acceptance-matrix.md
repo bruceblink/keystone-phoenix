@@ -110,3 +110,5 @@ Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `
 2026-11-16 错误码和查询状态增量：Phoenix `27fd9bd`、`c6bebb9`、Native `f282c99`、`27b969d` 和 admin-web `adc3db0` 已补齐错误码的精确反查入口。Phoenix 提供 `ErrorCatalog.lookup/1` 和 `ApiResponse.error_lookup/1`，Native 提供 `ErrorCode.find(String)`，admin-web 提供 `lookupBusinessError(code)`；未知代码可以被识别为未登记项，现有 `error.code`、HTTP 状态和兼容降级行为保持不变。三端静态目录检查通过，结果为 21 个服务端代码、4 个客户端本地代码。该证据覆盖目录和单元测试，不代表所有页面错误反馈已经完成真实窗口验收。
 
 admin-web `4ccc35d` 已将 Users、Jobs、LoginLogs、OperationsAudit 的筛选、分页和任务详情状态写入命名 URL 参数，刷新、复制链接和前进/后退可以恢复状态。该范围已通过前端测试、类型检查和构建；其余页面仍需逐页评估 URL 状态、加载状态、编辑、批量写入和详情返回。
+
+2026-11-16 第二批闭环证据：Phoenix `b45e40d`、`4cbfcdf` 已将用户、任务、任务日志、字典类型、字典条目和公告的 LiveView 读取失败与空结果分开处理；刷新失败时保留旧 rows，并使用稳定业务错误码显示重试反馈。admin-web `e1fc667`、`8b302f0`、`d090f13`、`db884f3` 已覆盖公告、字典和既有旧数据页面的刷新失败、错误码诊断和重试入口。三端最新验证为 Phoenix `421 passed`，admin-web `21 files / 104 tests passed`，Native 全量测试和生产构建均成功。该证据仍不替代剩余页面逐页编辑、分页、批量写入、详情返回和真实可视窗口验收。
