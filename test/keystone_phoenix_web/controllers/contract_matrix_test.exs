@@ -35,8 +35,8 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
   end
 
   @tag :integration
-  test "clean break removes previous root authentication and health paths", %{} do
-    assert get(build_conn(), "/login").status == 404
+  test "LiveView authentication path is available while old HTTP paths stay removed", %{} do
+    assert html_response(get(build_conn(), "/login"), 200) =~ "login-form"
     assert get(build_conn(), "/system/users").status == 404
     assert get(build_conn(), "/health").status == 404
   end

@@ -22,10 +22,10 @@ defmodule KeystonePhoenixWeb.MfaContractTest do
     assert get_in(json_response(response, 401), ["error", "code"]) == "session_revoked"
   end
 
-  test "old unversioned MFA and login paths are not available" do
+  test "old unversioned MFA paths stay unavailable while LiveView login is available" do
     assert post(build_conn(), "/mfa/verify", %{}).status == 404
     assert post(build_conn(), "/api/v1/mfa/verify", %{}).status == 404
-    assert get(build_conn(), "/login").status == 404
+    assert html_response(get(build_conn(), "/login"), 200) =~ "login-form"
   end
 
   @tag :integration

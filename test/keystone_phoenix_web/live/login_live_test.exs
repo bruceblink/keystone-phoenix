@@ -13,7 +13,7 @@ defmodule KeystonePhoenixWeb.LoginLiveTest do
     assert has_element?(view, ".login-intro .brand-mark svg")
     assert has_element?(view, ".login-card .brand-mark-small svg")
     assert has_element?(view, "#login-form")
-    refute has_element?(view, "nav[aria-label='管理模块']")
+    refute has_element?(view, "nav[aria-label='主导航']")
   end
 
   test "serves the extracted LiveView assets", %{conn: conn} do

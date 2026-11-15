@@ -40,13 +40,13 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     {:ok, first, _html} = live(conn, "/")
 
     render_submit(first, "login", login_params(admin))
-    assert has_element?(first, "nav[aria-label='管理模块']")
+    assert has_element?(first, "nav[aria-label='主导航']")
 
     {:ok, second, _html} = live(conn, "/")
     html = render_submit(second, "login", login_params(admin))
 
     assert html =~ "该账号已经登录"
-    assert has_element?(first, "nav[aria-label='管理模块']")
+    assert has_element?(first, "nav[aria-label='主导航']")
     assert has_element?(second, "#login-form")
   end
 
@@ -59,19 +59,19 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     {:ok, missing_view, _html} = live(conn, "/")
     missing_html = render_submit(missing_view, "login", login_params(admin))
     assert missing_html =~ "请输入验证码"
-    refute has_element?(missing_view, "nav[aria-label='管理模块']")
+    refute has_element?(missing_view, "nav[aria-label='主导航']")
 
     {:ok, invalid_view, _html} = live(conn, "/")
     seed_captcha(invalid_view, "7")
     invalid_html = render_submit(invalid_view, "login", login_params(admin, "wrong"))
     assert invalid_html =~ "验证码错误，请重试"
-    refute has_element?(invalid_view, "nav[aria-label='管理模块']")
+    refute has_element?(invalid_view, "nav[aria-label='主导航']")
 
     {:ok, expired_view, _html} = live(conn, "/")
     seed_captcha(expired_view, "7", System.monotonic_time(:millisecond) - 1)
     expired_html = render_submit(expired_view, "login", login_params(admin, "7"))
     assert expired_html =~ "验证码已过期，请重试"
-    refute has_element?(expired_view, "nav[aria-label='管理模块']")
+    refute has_element?(expired_view, "nav[aria-label='主导航']")
   end
 
   test "a successful login consumes the captcha exactly once", %{conn: conn, admin: admin} do
@@ -81,7 +81,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
 
     render_submit(view, "login", login_params(admin, "7"))
 
-    assert has_element?(view, "nav[aria-label='管理模块']")
+    assert has_element?(view, "nav[aria-label='主导航']")
     assert {:error, :captcha_expired} = Captcha.validate("7", key)
   end
 
@@ -101,7 +101,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     html = render_submit(view, "login", login_params(admin, "7", old_key))
 
     assert html =~ "验证码错误，请重试"
-    refute has_element?(view, "nav[aria-label='管理模块']")
+    refute has_element?(view, "nav[aria-label='主导航']")
     assert :ok = Captcha.validate("7", old_key)
   end
 
@@ -117,7 +117,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     html = render_submit(view, "login", login_params(admin, "7"))
 
     assert html =~ "验证码已过期，请重试"
-    refute has_element?(view, "nav[aria-label='管理模块']")
+    refute has_element?(view, "nav[aria-label='主导航']")
   end
 
   test "a normal profile update leaves the session valid for later events", %{conn: conn} do

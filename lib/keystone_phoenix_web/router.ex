@@ -48,7 +48,24 @@ defmodule KeystonePhoenixWeb.Router do
   scope "/", KeystonePhoenixWeb do
     pipe_through :browser
 
+    # Phoenix LiveView 与 admin-web 使用相同的深链接路径；页面仍由一个认证 LiveView 承载。
     live "/", LoginLive, :index
+    live "/login", LoginLive, :login
+    live "/monitor", LoginLive, :monitor
+    live "/dashboard", LoginLive, :dashboard
+    live "/users", LoginLive, :users
+    live "/roles", LoginLive, :roles
+    live "/departments", LoginLive, :departments
+    live "/posts", LoginLive, :posts
+    live "/menus", LoginLive, :menus
+    live "/api-keys", LoginLive, :api_keys
+    live "/audit/operations", LoginLive, :operations_audit
+    live "/audit/login", LoginLive, :login_audit
+    live "/jobs", LoginLive, :jobs
+    live "/configs", LoginLive, :configs
+    live "/dictionaries", LoginLive, :dictionaries
+    live "/notices", LoginLive, :notices
+    live "/profile", LoginLive, :profile
     get "/profile/avatar/*path", ResourceController, :avatar
   end
 

@@ -157,7 +157,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       read_only: not admin?,
       access_token: tokens.token,
       refresh_token: tokens.refresh_token,
-      active_panel: "overview",
+      active_panel: "monitor",
       active_modal: nil,
       user_rows: dashboard.user_rows,
       dept_rows: dashboard.dept_rows,

@@ -261,7 +261,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
   defp login(conn, user) do
     {:ok, view, _html} = live(conn, "/")
     render_submit(view, "login", %{"username" => user.username, "password" => "Strong!123"})
-    assert has_element?(view, "nav[aria-label='管理模块']")
+    assert has_element?(view, "nav[aria-label='主导航']")
     {:ok, view}
   end
 

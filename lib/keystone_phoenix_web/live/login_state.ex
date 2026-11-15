@@ -32,7 +32,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       captcha_enabled: false,
       captcha_key: nil,
       captcha_image: nil,
-      active_panel: "overview",
+      active_panel: "monitor",
       sidebar_open: false,
       active_modal: nil,
       user_rows: [],

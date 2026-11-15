@@ -120,7 +120,18 @@
   .sidebar-foot.sidebar-open { transform: translateX(0); }
 }
 
+@media (max-width: 40rem) {
+  .dashboard-topbar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; }
+  .dashboard-topbar .topbar-context { min-width: 0; }
+  .dashboard-topbar .context-kicker, .dashboard-topbar .context-separator { display: none; }
+  .dashboard-topbar .topbar-actions { min-width: 0; gap: 8px; }
+  .dashboard-topbar .user-profile-button .profile-chevron { display: none; }
+  .dashboard-topbar .logout-button span { display: none; }
+  .dashboard-topbar .mobile-menu { margin-right: 0; }
+}
+
 main.app-main.login-main { width: 100%; max-width: none; margin: 0; padding: 0; }
+
 
 @media (max-width: 1050px) {
   .login-layout { gap: 5%; }

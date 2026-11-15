@@ -59,7 +59,7 @@ VITE_API_PROXY_TARGET=http://localhost:4000 VITE_ENABLE_MOCK=false pnpm dev
 
 个人资料密码更新的请求体统一为 `{"password": "..."}`。Native 和 Phoenix 都在 AAL2 step-up 通过后更新密码并撤销当前会话，LiveView 表单与 admin-web 均只要求填写新密码。
 
-Phoenix LiveView 管理页面同时以 admin-web 的颜色、布局、筛选栏、表格、卡片、徽标、空态、错误反馈、分页和模态框为视觉基准。LiveView 重实现不改变 `/api/v1` 接口约定。
+Phoenix LiveView 管理页面同时以 admin-web 的颜色、布局、筛选栏、表格、卡片、徽标、空态、错误反馈、分页和模态框为视觉基准。Phoenix 静态资源后置加载 admin-web 基准样式，并通过兼容样式保留 LiveView 事件和认证状态。LiveView 重实现不改变 `/api/v1` 接口约定。
 
 2026-11-15 的真实窗口记录使用同一份 admin-web 构建分别连接 Native 和 Phoenix，且设置
 `VITE_ENABLE_MOCK=false`。两个后端均已完成登录、监控、总览、用户、角色、组织、岗位、菜单、
@@ -67,13 +67,13 @@ API Key、审计、任务、配置、字典、公告和个人资料页面的真�
 登录日志页面的导航。Native 监控页返回 `PARTIAL`，Phoenix 监控页返回 BEAM/OTP 运行时数据。
 这项记录确认后端可以替换使用同一份 admin-web 页面，不能代替每个写操作的逐项验收。
 
-Phoenix LiveView 已完成共享壳、登录、账号组织和系统页面的主要视觉重实现。侧栏宽度、顶栏高度、
-颜色令牌、卡片、筛选区、按钮、表格、徽标、状态 footer、SVG 图标、用户图形个人资料入口和侧栏菜单结构已经按 admin-web
-对齐。窄屏布局已改为纵向侧边抽屉，完整菜单、footer 避让、顶栏按钮、遮罩关闭和页面切换后的自动收起已通过真实窗口操作验证。
-当前提交已完成 15 项 LiveView 菜单真实读取矩阵；发布前必须逐页补全筛选、导出、批量操作、空态、
-错误反馈、分页、模态框和写操作结果。
+Phoenix LiveView 已完成共享壳、登录、账号、组织、系统和任务页面的主要视觉重实现。侧栏、顶栏、
+颜色令牌、卡片、筛选区、按钮、表格、徽标、状态 footer、用户图形个人资料入口和侧栏菜单结构已经按 admin-web
+对齐。页面使用同一份 admin-web 样式基准，兼容样式只处理 LiveView 的导航和认证差异。窄屏布局使用流式宽度，
+没有设置固定页面最小宽度；内置浏览器在 280、320、390、768 和 1280 视口验证了两个项目没有横向溢出。
+Phoenix 可见菜单为 13 项，已移除“工作台”和个人资料菜单；`/dashboard` 仍保留为兼容深链接。发布前必须逐页补全筛选、导出、批量操作、空态、错误反馈、分页、模态框和写操作结果。
 
-监控页的可视化层已完成一轮共同打磨。admin-web 使用 30 分钟 CPU/内存趋势图，Phoenix 保留当前节点资源条形图；两端均显示 80% 关注阈值、系统 API 来源和明确的无采样空态。Phoenix 缺失资源字段统一显示 `—`，不会把缺失值误读为 `0%`。对应提交为 admin-web `637ff2d`、Phoenix `4b56d95`。本轮真实窗口确认 admin-web 的 `PARTIAL` 快照和 Phoenix 的 `LIVE · 在线` 快照均能保持移动端单列布局，Phoenix 463px 视口没有横向溢出。
+监控页的状态栏、资源卡片、在线会话、节点详情、80% 关注阈值、系统 API 来源和无采样空态已按 admin-web 组件层级重实现。Phoenix 缺失资源字段统一显示 `—`，不会把缺失值误读为 `0%`。Phoenix 监控页、任务页、组织页和系统页分别在提交 `f4c4e7b`、`65d0cd2` 和 `9431783` 中完成页面模板重实现；admin-web 当前响应式修复仍在本地工作区，待单独提交。
 
 2026-11-15 登录页视觉复核使用同一内置浏览器视口分别打开 `http://127.0.0.1:5173/login` 和
 `http://127.0.0.1:4000/`。两端的登录布局、logo、标题、登录卡片、输入框图标、按钮和脚注关键元素位置与尺寸一致；两端 `document.documentElement.scrollHeight` 均等于 `clientHeight`，登录页没有页面滚动条。Phoenix 对应提交为 `b975a6c`、`bc9ae1d`，admin-web 对应提交为 `904ffe1`、`f91b4fb`。
@@ -92,4 +92,4 @@ Phoenix 任务页已补齐与 admin-web 一致的当前页勾选、全选、批�
 4. 两个后端的路由集合差异、旧接口搜索和数据库迁移状态。
 5. 未完成的 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理检查必须单独标记为证据缺口，不能写成页面通过。
 
-当前状态：后端业务路由集合、DTO 适配和 Native/Phoenix HTTP 接口对齐已完成；旧接口和重复接口已从正式业务路由集合删除；admin-web 已在 `VITE_ENABLE_MOCK=false` 下分别连接两个后端并完成真实窗口页面矩阵，用户可见后端来源和错误文案已泛化为系统 API。Phoenix LiveView 的共享壳、登录、账号组织、系统页面和响应式侧边导航已完成主要视觉重实现，15 项菜单读取矩阵已在真实窄屏窗口通过，但逐页写操作矩阵、真实 MFA 仪式以及 OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理链仍是发布证据缺口。
+当前状态：后端业务路由集合、DTO 适配和 Native/Phoenix HTTP 接口对齐已完成；旧接口和重复接口已从正式业务路由集合删除；admin-web 已在 `VITE_ENABLE_MOCK=false` 下分别连接两个后端并完成真实窗口页面矩阵，用户可见后端来源和错误文案已泛化为系统 API。Phoenix LiveView 已增加 admin-web 对齐的深链接、页面模板和响应式壳，两个项目在 280、320、390、768 和 1280 视口通过无横向溢出检查；逐页写操作矩阵、真实 MFA 仪式以及 OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理链仍是发布证据缺口。

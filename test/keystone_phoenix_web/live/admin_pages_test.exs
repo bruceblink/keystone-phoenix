@@ -273,9 +273,9 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     assert account_html =~ ~s(name="displayName")
     assert account_html =~ ~s(phx-click="reset-user-filter")
     assert account_html =~ ~s(class="table-scroll" role="region" tabindex="0")
-    assert account_html =~ ~s(<th scope="col">用户名</th>)
+    assert account_html =~ ~s(<th scope="col">用户</th>)
     refute account_html =~ "save-user"
-    assert account_html =~ "暂无用户数据"
+    assert account_html =~ "没有匹配的用户"
 
     modal_html = render_component(&Accounts.users/1, account_modal_assigns)
     assert modal_html =~ ~s(aria-describedby="user-feedback")
@@ -392,7 +392,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
 
     refute audit_html =~ "delete-login-log"
     refute audit_html =~ "delete-operation-log"
-    assert audit_html =~ "保留分页和只读权限控制，支持导出审计记录"
+    assert audit_html =~ "查询操作用户、动作和资源，保留只读审计记录。"
     refute audit_html =~ "保留分页、删除和只读权限控制"
 
     system_html =
@@ -402,7 +402,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       )
 
     assert system_html =~ ~s(aria-label="系统配置列表")
-    assert system_html =~ ~s(<th scope="col">名称</th>)
+    assert system_html =~ ~s(<th scope="col">配置键</th>)
     assert system_html =~ "系统配置列表"
     assert system_html =~ "暂无配置数据"
 
@@ -450,7 +450,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
         )
       )
 
-    assert jobs_html =~ "cancel-job"
+    assert jobs_html =~ "select-job"
     assert jobs_html =~ "toggle-all-job-selection"
     assert jobs_html =~ "delete-jobs"
 
@@ -472,10 +472,10 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       )
 
     assert monitor_html =~ "refresh-monitor"
-    assert monitor_html =~ "status-badge status-badge--success"
-    assert monitor_html =~ "ONLINE"
+    assert monitor_html =~ "badge badge-success"
+    assert monitor_html =~ "LIVE"
     assert monitor_html =~ "暂无采样数据"
-    assert monitor_html =~ "系统 API 未返回资源使用率"
+    assert monitor_html =~ "系统 API 尚未返回 CPU 或内存趋势。"
     refute monitor_html =~ "CPU 使用率</text>"
 
     unknown_monitor_html =
@@ -484,7 +484,8 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
         Map.put(operations_assigns, :network_status, %{"status" => "DEGRADED"})
       )
 
-    assert unknown_monitor_html =~ "status-badge status-badge--unknown"
+    assert unknown_monitor_html =~ "badge badge-warning"
+    assert unknown_monitor_html =~ "PARTIAL"
   end
 
   test "avatar upload errors render stable Chinese messages" do

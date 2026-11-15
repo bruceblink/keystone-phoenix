@@ -29,17 +29,17 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     :ok
   end
 
-  test "an ordinary user can open profile and overview", %{conn: conn} do
-    user = create_user()
+  test "an ordinary user can open profile and monitor", %{conn: conn} do
+    user = create_monitor_user("server:read")
     {:ok, view, _html} = login_view(conn, user)
 
     render_click(view, "show-panel", %{"panel" => "profile"})
     assert live_socket(view).assigns.active_panel == "profile"
     assert has_element?(view, "form[phx-submit='save-profile']")
 
-    render_click(view, "show-panel", %{"panel" => "overview"})
-    assert live_socket(view).assigns.active_panel == "overview"
-    assert render(view) =~ "当前登录用户"
+    render_click(view, "show-panel", %{"panel" => "monitor"})
+    assert live_socket(view).assigns.active_panel == "monitor"
+    assert render(view) =~ "运行监控"
   end
 
   test "a read-only user refreshes users and remains data scoped", %{conn: conn} do
@@ -88,7 +88,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     refute live_socket(view).assigns.panel_access["roles"]
 
     render_click(view, "show-panel", %{"panel" => "roles"})
-    assert live_socket(view).assigns.active_panel == "overview"
+    assert live_socket(view).assigns.active_panel == "monitor"
   end
 
   test "an ordinary user without list permission cannot select or refresh panels", %{conn: conn} do
@@ -96,7 +96,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     {:ok, view, _html} = login_view(conn, user)
 
     render_click(view, "show-panel", %{"panel" => "users"})
-    assert live_socket(view).assigns.active_panel == "overview"
+    assert live_socket(view).assigns.active_panel == "monitor"
     assert live_socket(view).assigns.user_rows == []
 
     render_click(view, "refresh-users")
@@ -251,8 +251,8 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     assert is_integer(assigns.security_metrics["loginFailures"])
     assert assigns.security_api_keys["rotated"] == 0
     assert is_integer(assigns.security_event_total)
-    assert render(view) =~ "安全运营报告"
-    assert render(view) =~ "安全运营指标"
+    assert render(view) =~ "运行监控"
+    assert render(view) =~ "节点详情"
   end
 
   test "administrator can issue, rotate, filter, and revoke API Keys", %{conn: conn} do
@@ -263,7 +263,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     render_click(view, "logout")
     assert has_element?(view, "#login-form")
     render_submit(view, "login", %{"username" => admin.username, "password" => @password})
-    assert has_element?(view, "nav[aria-label='管理模块']")
+    assert has_element?(view, "nav[aria-label='主导航']")
 
     render_click(view, "show-panel", %{"panel" => "api-keys"})
     assert has_element?(view, "button[phx-click='new-api-key']")

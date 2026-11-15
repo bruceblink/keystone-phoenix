@@ -13,6 +13,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Auth.LoginLimiter
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.Live.AdminSupport
+  alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.LoginState
   alias KeystonePhoenixWeb.Live.AdminEvents.Accounts, as: AccountsEvents
@@ -48,6 +49,17 @@ defmodule KeystonePhoenixWeb.LoginLive do
      |> Authentication.refresh_captcha()
      |> attach_hook(:authenticate_event, :handle_event, &Authentication.guard_event/3)
      |> attach_hook(:authenticate_info, :handle_info, &Authentication.guard_info/2)}
+  end
+
+  @impl true
+  def handle_params(_params, uri, socket) do
+    requested_panel = Navigation.panel_for_path(uri)
+
+    if AdminSupport.authenticated_socket?(socket) do
+      {:noreply, assign(socket, active_panel: requested_panel)}
+    else
+      {:noreply, assign(socket, requested_panel: requested_panel)}
+    end
   end
 
   @impl true
@@ -164,6 +176,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("show-panel", %{"panel" => panel}, socket)
       when panel in [
              "overview",
+             "dashboard",
              "depts",
              "posts",
              "roles",
@@ -181,6 +194,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
              "profile",
              "monitor"
            ] do
+    panel = Navigation.normalize_panel(panel)
+
     if AdminSupport.panel_allowed?(socket, panel) do
       socket = assign(socket, sidebar_open: false)
 
@@ -275,7 +290,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   @accounts_events ~w(filter-users reset-user-filter refresh-users export-users new-user-import toggle-user-selection toggle-all-user-selection delete-users import-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
   @system_events ~w(refresh-config filter-configs reset-config-filter new-config edit-config save-config refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs refresh-login-logs refresh-operation-logs new-notice edit-notice cancel-notice save-notice toggle-notice-status publish-notice delete-notice refresh-notices filter-notices reset-notice-filter delete-login-log delete-operation-log)
   @audit_events ~w(filter-login-logs reset-login-log-filter filter-operation-logs reset-operation-log-filter filter-dict-types reset-dict-type-filter export-login-logs export-operation-logs)
-  @operations_events ~w(refresh-jobs filter-jobs reset-job-filter toggle-job-selection toggle-all-job-selection new-job edit-job save-job delete-job delete-jobs run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor logout-online-user)
+  @operations_events ~w(refresh-jobs filter-jobs reset-job-filter toggle-job-selection toggle-all-job-selection select-job new-job edit-job save-job delete-job delete-jobs run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor logout-online-user)
   @security_events ~w(refresh-api-keys new-api-key save-api-key rotate-api-key revoke-api-key filter-api-keys dismiss-api-key-secret)
 
   @impl true
@@ -367,6 +382,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
         <title>Keystone Admin</title>
         <link rel="stylesheet" href="/css/keystone.css" />
         <link rel="stylesheet" href="/css/keystone-responsive.css" />
+        <link rel="stylesheet" href="/css/admin-web.css" />
+        <link rel="stylesheet" href="/css/admin-web-compat.css" />
       </head>
       <body>
         <main class={if @current_user, do: "app-main dashboard-main", else: "app-main login-main"}>
@@ -400,7 +417,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <button type="button" class="button button-ghost logout-button secondary" phx-click="logout" phx-disable-with="退出中…"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg><span>退出</span></button>
                   </div>
                 </div>
-                <button :if={@sidebar_open} type="button" class="sidebar-scrim" phx-click="close-sidebar" aria-label="关闭导航"></button>
+                <button :if={@sidebar_open} type="button" class="sidebar-scrim" phx-click="toggle-sidebar" aria-label="关闭导航"></button>
                 <p :if={@mfa_step_up_notice} id="mfa-step-up-notice" class="notice" role="status"><%= @mfa_step_up_notice %></p>
                 <div :if={@mfa_step_up_required} id="mfa-step-up-panel" class="card" role="alert">
                   <h3>需要二次认证</h3>
@@ -418,26 +435,22 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <% end %>
                 </div>
                 <%= if Enum.any?(Map.values(@panel_access)) do %>
-                  <nav class={"module-nav#{if @sidebar_open, do: " sidebar-open", else: ""}"} aria-label="管理模块">
-                    <span class="nav-section-title">工作台</span>
-                    <button type="button" class={if @active_panel == "overview", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "overview", do: "page"} phx-value-panel="overview"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" /></svg></span>概览</button>
-                    <span class="nav-section-title">组织与权限</span>
-                    <button :if={@panel_access["depts"]} type="button" class={if @active_panel == "depts", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "depts", do: "page"} phx-value-panel="depts"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 21h18M6 21V5h12v16M9 9h6M9 13h6" /></svg></span>部门</button>
-                    <button :if={@panel_access["posts"]} type="button" class={if @active_panel == "posts", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "posts", do: "page"} phx-value-panel="posts"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7h18v12H3zM8 7V4h8v3" /></svg></span>岗位</button>
-                    <button :if={@panel_access["roles"]} type="button" class={if @active_panel == "roles", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "roles", do: "page"} phx-value-panel="roles"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3" /><path d="M5 21a7 7 0 0 1 14 0" /></svg></span>角色</button>
-                    <button :if={@panel_access["menus"]} type="button" class={if @active_panel == "menus", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "menus", do: "page"} phx-value-panel="menus"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" /></svg></span>菜单</button>
-                    <button :if={@panel_access["users"]} type="button" class={if @active_panel == "users", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "users", do: "page"} phx-value-panel="users"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" /><path d="M3 21a6 6 0 0 1 12 0M16 11a3 3 0 1 1 2.5 0M17 15a5 5 0 0 1 4 6" /></svg></span>用户</button>
-                    <button :if={@panel_access["api-keys"]} type="button" class={if @active_panel == "api-keys", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "api-keys", do: "page"} phx-value-panel="api-keys"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="3" /><path d="m10 13 9-9 2 2-2 2 2 2-3 3-2-2-4 4" /></svg></span>API Key</button>
-                    <span class="nav-section-title">系统设置</span>
-                    <button :if={@panel_access["configs"]} type="button" class={if @active_panel == "configs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "configs", do: "page"} phx-value-panel="configs"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /><circle cx="9" cy="6" r="2" /><circle cx="15" cy="12" r="2" /><circle cx="10" cy="18" r="2" /></svg></span>配置</button>
-                    <button :if={@panel_access["dicts"]} type="button" class={if @active_panel == "dicts", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "dicts", do: "page"} phx-value-panel="dicts"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 0-3 0zM5 4v16" /></svg></span>字典</button>
-                    <button :if={@panel_access["notices"]} type="button" class={if @active_panel == "notices", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "notices", do: "page"} phx-value-panel="notices"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 11 18-5v12L3 13zM3 11v2M7 14l2 6" /></svg></span>公告</button>
-                    <span class="nav-section-title">运维审计</span>
-                    <button :if={@panel_access["login-logs"]} type="button" class={if @active_panel == "login-logs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "login-logs", do: "page"} phx-value-panel="login-logs"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h12v16H4zM8 8h4M8 12h4" /><circle cx="17" cy="17" r="3" /><path d="m19 19 2 2" /></svg></span>登录日志</button>
-                    <button :if={@panel_access["operation-logs"]} type="button" class={if @active_panel == "operation-logs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "operation-logs", do: "page"} phx-value-panel="operation-logs"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 8h8M8 12h5M8 16h8" /></svg></span>操作审计</button>
-                    <button :if={@panel_access["jobs"]} type="button" class={if @active_panel == "jobs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "jobs", do: "page"} phx-value-panel="jobs"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 5h12M6 12h12M6 19h12" /></svg></span>定时任务</button>
-                    <button :if={@panel_access["job-logs"]} type="button" class={if @active_panel == "job-logs", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "job-logs", do: "page"} phx-value-panel="job-logs"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h5M8 16h6" /></svg></span>任务日志</button>
-                    <button :if={@panel_access["monitor"]} type="button" class={if @active_panel == "monitor", do: "active", else: ""} phx-click="show-panel" aria-current={if @active_panel == "monitor", do: "page"} phx-value-panel="monitor"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6" /></svg></span>监控</button>
+                  <nav class={"module-nav primary-nav#{if @sidebar_open, do: " sidebar-open", else: ""}"} aria-label="主导航">
+                    <button :if={@panel_access["monitor"]} type="button" class={if @active_panel == "monitor", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "monitor", do: "page"} phx-value-panel="monitor"><span class="nav-icon" aria-hidden="true">⌁</span><span>运行监控</span></button>
+                    <button :if={@panel_access["users"]} type="button" class={if @active_panel == "users", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "users", do: "page"} phx-value-panel="users"><span class="nav-icon" aria-hidden="true">◉</span><span>用户与权限</span></button>
+                    <button :if={@panel_access["roles"]} type="button" class={if @active_panel == "roles", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "roles", do: "page"} phx-value-panel="roles"><span class="nav-icon" aria-hidden="true">◌</span><span>角色管理</span></button>
+                    <button :if={@panel_access["depts"]} type="button" class={if @active_panel == "depts", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "depts", do: "page"} phx-value-panel="depts"><span class="nav-icon" aria-hidden="true">▥</span><span>组织结构</span></button>
+                    <button :if={@panel_access["posts"]} type="button" class={if @active_panel == "posts", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "posts", do: "page"} phx-value-panel="posts"><span class="nav-icon" aria-hidden="true">▤</span><span>岗位管理</span></button>
+                    <button :if={@panel_access["menus"]} type="button" class={if @active_panel == "menus", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "menus", do: "page"} phx-value-panel="menus"><span class="nav-icon" aria-hidden="true">≡</span><span>菜单与权限</span></button>
+                    <button :if={@panel_access["api-keys"]} type="button" class={if @active_panel == "api-keys", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "api-keys", do: "page"} phx-value-panel="api-keys"><span class="nav-icon" aria-hidden="true">⚿</span><span>API Key</span></button>
+                    <span class="nav-section-title nav-label nav-label-spaced">运维审计</span>
+                    <button :if={@panel_access["operation-logs"]} type="button" class={if @active_panel == "operation-logs", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "operation-logs", do: "page"} phx-value-panel="operation-logs"><span class="nav-icon" aria-hidden="true">◫</span><span>操作审计</span></button>
+                    <button :if={@panel_access["login-logs"]} type="button" class={if @active_panel == "login-logs", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "login-logs", do: "page"} phx-value-panel="login-logs"><span class="nav-icon" aria-hidden="true">◴</span><span>登录日志</span></button>
+                    <button :if={@panel_access["jobs"]} type="button" class={if @active_panel == "jobs", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "jobs", do: "page"} phx-value-panel="jobs"><span class="nav-icon" aria-hidden="true">☷</span><span>定时任务</span></button>
+                    <span class="nav-section-title nav-label nav-label-spaced">系统</span>
+                    <button :if={@panel_access["configs"]} type="button" class={if @active_panel == "configs", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "configs", do: "page"} phx-value-panel="configs"><span class="nav-icon" aria-hidden="true">⚙</span><span>系统配置</span></button>
+                    <button :if={@panel_access["dicts"]} type="button" class={if @active_panel == "dicts", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "dicts", do: "page"} phx-value-panel="dicts"><span class="nav-icon" aria-hidden="true">▢</span><span>字典管理</span></button>
+                    <button :if={@panel_access["notices"]} type="button" class={if @active_panel == "notices", do: "nav-item active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "notices", do: "page"} phx-value-panel="notices"><span class="nav-icon" aria-hidden="true">⌁</span><span>通知公告</span></button>
                   </nav>
                   <div class={"sidebar-foot#{if @sidebar_open, do: " sidebar-open", else: ""}"}><div class="status-dot"><span></span> API 正常</div><span class="sidebar-version">v0.1.0 · dev</span></div>
                   <div class="page-content">

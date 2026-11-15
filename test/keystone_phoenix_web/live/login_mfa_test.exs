@@ -44,12 +44,12 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
     render_submit(view, "login", %{"username" => user.username, "password" => @password})
 
     assert has_element?(view, "#mfa-login-form")
-    refute has_element?(view, "nav[aria-label='管理模块']")
+    refute has_element?(view, "nav[aria-label='主导航']")
 
     code = Totp.code(secret, System.system_time(:second) + Totp.step_seconds())
     render_submit(view, "verify-login-mfa", %{"code" => code})
 
-    assert has_element?(view, "nav[aria-label='管理模块']")
+    assert has_element?(view, "nav[aria-label='主导航']")
 
     assert {:ok, %{authentication_level: "AAL2"}} =
              Auth.session_context(live_socket(view).assigns.access_token)

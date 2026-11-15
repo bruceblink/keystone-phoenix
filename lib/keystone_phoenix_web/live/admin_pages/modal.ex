@@ -6,15 +6,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Modal do
   attr :id, :string, required: true
   attr :title, :string, required: true
   attr :description, :string, default: nil
+  attr :size, :string, default: "lg"
 
   slot :inner_block, required: true
 
   def modal(assigns) do
     ~H"""
     <div class="modal-backdrop" role="presentation">
-      <div
+      <section
         id={@id}
-        class="modal-panel"
+        class={"modal modal-#{@size}"}
         role="dialog"
         aria-modal="true"
         aria-labelledby={"#{@id}-title"}
@@ -24,14 +25,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Modal do
       >
         <div class="modal-header">
           <div>
-            <p class="modal-kicker">数据维护</p>
             <h2 id={"#{@id}-title"}><%= @title %></h2>
-            <p :if={@description} class="modal-description"><%= @description %></p>
+            <p :if={@description}><%= @description %></p>
           </div>
-          <button type="button" class="modal-close" aria-label="关闭弹窗" phx-click="close-modal">×</button>
+          <button type="button" class="modal-close" aria-label="关闭" phx-click="close-modal">×</button>
         </div>
         <div class="modal-body"><%= render_slot(@inner_block) %></div>
-      </div>
+      </section>
     </div>
     """
   end

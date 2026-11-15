@@ -49,7 +49,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
       "password" => "Strong!123"
     })
 
-    assert has_element?(view, "nav[aria-label='管理模块']")
+    assert has_element?(view, "nav[aria-label='主导航']")
     shell_html = render(view)
     assert shell_html =~ "Admin Console"
     assert has_element?(view, ".topbar-context .context-kicker", "Keystone")
@@ -62,23 +62,23 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert has_element?(view, "button[aria-label='通知'] svg")
     assert has_element?(view, "button[aria-label='打开个人资料'] .profile-chevron")
     assert has_element?(view, "button.logout-button svg")
-    assert has_element?(view, "nav[aria-label='管理模块'] .nav-icon svg")
+    assert has_element?(view, "nav[aria-label='主导航'] .nav-item .nav-icon")
     refute has_element?(view, ".dashboard-topbar h2")
     assert has_element?(view, "button[aria-label='打开导航']")
-    refute has_element?(view, "nav[aria-label='管理模块'].sidebar-open")
+    refute has_element?(view, "nav[aria-label='主导航'].sidebar-open")
     render_click(view, "toggle-sidebar")
     assert has_element?(view, "button[aria-label='关闭导航']")
-    assert has_element?(view, "nav[aria-label='管理模块'].sidebar-open")
+    assert has_element?(view, "nav[aria-label='主导航'].sidebar-open")
     assert has_element?(view, "button.sidebar-scrim[aria-label='关闭导航']")
     render_click(view, "close-sidebar")
-    refute has_element?(view, "nav[aria-label='管理模块'].sidebar-open")
+    refute has_element?(view, "nav[aria-label='主导航'].sidebar-open")
     render_click(view, "toggle-sidebar")
     render_click(view, "show-panel", %{"panel" => "depts"})
     assert live_socket(view).assigns.active_panel == "depts"
-    refute has_element?(view, "nav[aria-label='管理模块'].sidebar-open")
+    refute has_element?(view, "nav[aria-label='主导航'].sidebar-open")
     assert has_element?(view, "button[aria-label='通知'][phx-value-panel='notices']")
     assert has_element?(view, "button[aria-label='打开个人资料'][phx-value-panel='profile']")
-    refute has_element?(view, "nav[aria-label='管理模块'] button", "个人资料")
+    refute has_element?(view, "nav[aria-label='主导航'] button", "个人资料")
     render_click(view, "show-panel", %{"panel" => "notices"})
     assert live_socket(view).assigns.active_panel == "notices"
     assert Log.list_login_logs(%{"username" => admin.username, "pageSize" => 10}).total >= 1
@@ -92,7 +92,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
       "password" => "Strong!123"
     })
 
-    assert has_element?(view, "nav[aria-label='管理模块']")
+    assert has_element?(view, "nav[aria-label='主导航']")
 
     render_click(view, "show-panel", %{"panel" => "profile"})
     render_submit(view, "save-profile-avatar-upload", %{})
