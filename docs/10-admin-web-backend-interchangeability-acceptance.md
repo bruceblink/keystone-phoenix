@@ -41,7 +41,7 @@ VITE_API_PROXY_TARGET=http://localhost:4000 VITE_ENABLE_MOCK=false pnpm dev
 | 列表查询 | 字段名称、分页 `items/page/size/total`、筛选参数、空结果 | Native/Phoenix 控制器契约测试；需用同一 admin-web 页面双后端核验 |
 | 写操作 | 请求字段、201/200/204、`deleted`/`triggered` 结果、验证错误 | Native/Phoenix HTTP 回归；需覆盖发布版本构建 |
 | 错误处理 | `success/data/message/error`、401/403/404/422/503 分类 | admin-web 仅对网络错误允许开发 Mock 回退；HTTP 错误必须显示 |
-| 路由集合 | 业务方法与路径集合相同，无重复和过时入口 | 108 条业务路由集合核对已通过 |
+| 路由集合 | 业务方法与路径集合相同，无重复和过时入口 | 108 条业务路由加 1 条健康接口；业务集合核对已通过 |
 
 ## 页面验收条件
 
@@ -64,7 +64,7 @@ Phoenix MFA parity 提交为 `a5d5320`：普通敏感写操作按账号的 `mfa_
 Phoenix LiveView 管理页面同时以 admin-web 的颜色、布局、筛选栏、表格、卡片、徽标、空态、错误反馈、分页和模态框为视觉基准。Phoenix 静态资源后置加载 admin-web 基准样式，并通过兼容样式保留 LiveView 事件和认证状态。LiveView 重实现不改变 `/api/v1` 接口约定。
 
 2026-11-15 的验收使用同一份 admin-web 构建并设置 `VITE_ENABLE_MOCK=false`。Phoenix 和 Native
-均已完成真实浏览器登录、侧栏导航、通知入口、用户图形个人资料入口和页面读取。Native 监控接口返回
+均已完成真实浏览器登录、侧栏导航、站内通知入口、用户图形个人资料入口和页面读取。Native 监控接口返回
 `PARTIAL`，Phoenix 监控页返回 BEAM/OTP 运行时数据；两端都显示后端来源和缺失指标状态。Native
 和 Phoenix 均在 280、320、390、768 和 1280 视口完成宽度检查，未发现横向溢出。Native
 admin-web 已完成用户新增和删除真实窗口流程：创建唯一测试用户时先显示密码策略错误，再使用合规密码成功创建；
@@ -73,7 +73,7 @@ admin-web 已完成用户新增和删除真实窗口流程：创建唯一测试�
 两端仍未完成逐页写操作、加载状态、错误反馈、分页、编辑和批量操作结果的完整真实窗口矩阵。
 
 Phoenix 补充窗口记录使用 `VITE_API_PROXY_TARGET=http://127.0.0.1:4000` 和前端端口 `5176`。
-同一份 admin-web 使用 `ag1/123456` 登录成功，13 个可见菜单页面、通知入口、顶栏用户图形入口、
+同一份 admin-web 使用 `ag1/123456` 登录成功，13 个可见菜单页面、站内通知入口、顶栏用户图形入口、
 监控帮助展开和关闭均通过验收，并在 280、320、390、768 和 1280 视口完成宽度矩阵检查。
 
 Native 和 Phoenix 的同一份 admin-web 还完成了角色、组织、岗位、菜单、API Key、操作审计、登录日志、
@@ -161,4 +161,4 @@ Phoenix 角色控制器的 `unassign_users` 权限声明也已统一为 `role:as
 
 API Key scope 现在通过两端统一的 `GET /api/v1/permissions/catalog` 动态目录逐项选择。目录读取要求 `api-key:create`，返回 `allowed` 标记，前端只显示当前主体可授予的权限，并在提交前阻止越权 scope。对应提交为 Native `884a9cb`、`2376eb0`、Phoenix `50e1828`、`80e0f39`、`0a8a547`、Phoenix LiveView `7a8e16f`、`380aa63` 和 admin-web `090dc21`。真实 Chrome 已验证 Phoenix 后端的动态目录加载、搜索和单项选择。
 
-当前状态：后端业务路由集合、DTO 适配和 Native/Phoenix HTTP 接口对齐已完成；旧接口和重复接口已从正式业务路由集合删除；同一份 admin-web 已在 `VITE_ENABLE_MOCK=false` 下分别连接 Native 和 Phoenix，两个后端均完成真实浏览器登录、导航、个人资料入口和 280、320、390、768、1280 宽度检查。Native 和 Phoenix 的用户新增、列表刷新、选择、删除确认和测试数据清理已完成真实窗口验收；两端还完成了 9 个列表页的无结果筛选与重置、9 类新增弹窗的打开和取消关闭、用户/角色/岗位/操作审计/登录日志的 Excel 导出、角色/组织/岗位新增删除和角色页批量删除确认的取消检查。菜单权限的多级树、角色绑定和后端边界已由 Native HTTP、Phoenix HTTP、Phoenix LiveView 和 admin-web 测试覆盖。Phoenix 和 Native admin-web 已完成真实 TOTP 登录挑战，Native API Key 敏感操作的真实 step-up 也已通过。用户可见后端来源和错误文案已泛化为系统 API。Phoenix LiveView 已增加 admin-web 对齐的深链接、页面模板和响应式壳；其他批量操作、加载状态、错误反馈、分页、编辑和逐页写操作矩阵以及 OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理链仍是发布证据缺口。
+当前状态：后端业务路由集合、DTO 适配和 Native/Phoenix HTTP 接口对齐已完成；旧接口和重复接口已从正式业务路由集合删除；同一份 admin-web 已在 `VITE_ENABLE_MOCK=false` 下分别连接 Native 和 Phoenix，两个后端均完成真实浏览器登录、导航、个人资料入口和 280、320、390、768、1280 宽度检查。Native 和 Phoenix 的用户新增、列表刷新、选择、删除确认和测试数据清理已完成真实窗口验收；两端还完成了 9 个列表页的无结果筛选与重置、9 类新增弹窗的打开和取消关闭、用户/角色/岗位/操作审计/登录日志的 Excel 导出、角色/组织/岗位新增删除和角色页批量删除确认的取消检查。菜单权限的多级树、角色绑定和后端边界已由 Native HTTP、Phoenix HTTP、Phoenix LiveView 和 admin-web 测试覆盖。Phoenix 和 Native admin-web 已完成真实 TOTP 登录挑战，Native API Key 敏感操作的真实 step-up 也已通过。用户可见后端来源和错误文案已泛化为系统 API。Phoenix LiveView 已增加 admin-web 对齐的深链接、页面模板和响应式壳；通知列表/详情、当前会话直达 dashboard、409 活动会话确认和强制登录已完成代码与测试验证，但尚未完成双后端真实窗口矩阵。其他批量操作、加载状态、错误反馈、分页、编辑和逐页写操作矩阵以及 OIDC、硬件 Passkey、CSRF/Cookie、多节点和生产代理链仍是发布证据缺口。

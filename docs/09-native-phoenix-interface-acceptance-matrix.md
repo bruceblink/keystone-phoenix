@@ -36,6 +36,8 @@ Phoenix 证据：`mix phx.routes` 未发现 `/system`、`/logs`、`auth/passkey`
 业务路由均为 0，也没有重复的 `HTTP method + path`。Phoenix 额外的 3 条 GET 路由是
 LiveView 页面和头像资源，不属于后端业务接口。
 
+完整接口口径为 109 条：上述 108 条业务接口加 `/api/v1/health` 1 条健康接口。健康接口用于运行状态检查，不参与业务资源替换或权限目录核对。
+
 Native 还有 `/api/openapi` 和 `/api/swagger` 文档入口。Phoenix 提供相同的 `/api/openapi`
 和 `/api/swagger` 兼容入口，admin-web 的“接口文档”菜单统一打开 `/api/swagger`。这些文档
 入口由各后端生成，不纳入业务接口集合。参数占位符的语言差异不表示接口缺失。
@@ -50,7 +52,7 @@ Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。�
 
 ## UI 验收边界
 
-Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（79 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 402 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
+Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（81 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 405 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
 
 个人资料密码更新已与 Native/admin-web 接口对齐：`PUT /api/v1/profile/password` 在 AAL2 会话中接收单个 `password` 字段，并在成功后撤销当前会话。Phoenix LiveView 个人资料页也只显示新密码字段。
 
@@ -61,9 +63,9 @@ Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `
 2026-11-15 在本机分别启动 Native、Phoenix 和同一份 admin-web 构建。Native 使用 MySQL 8.4，Phoenix 使用本地 PostgreSQL；页面代理通过 `VITE_ENABLE_MOCK=false` 切换 `http://127.0.0.1:8080` 与 `http://127.0.0.1:4000`。
 
 - Native 已完成真实 HTTP smoke：健康检查、登录、监控、在线会话、用户、角色、组织、岗位、菜单、API Key、配置、字典、通知、任务、登录日志、操作审计、个人资料和注销均返回预期成功状态；`GET /api/v1/dictionaries` 与 `GET /api/v1/notices/manage` 使用 admin-web 的正式路径验证通过。该证据证明接口可用，不等同于真实浏览器页面通过。
-- Native 的真实浏览器页面矩阵已完成：在端口 `5175` 的 admin-web 使用 `admin/password` 登录成功，监控、用户、角色、组织、岗位、菜单、API Key、审计、登录日志、定时任务、配置、字典、通知和个人资料页面均能通过侧栏或头像入口打开；通知按钮进入通知公告，监控帮助可以展开和关闭。Native admin-web 在 280、320、390、768 和 1280 视口的 `document` 与 `body` 宽度均等于视口宽度，未发现横向溢出。用户页面还完成了一次真实新增和删除：密码策略错误反馈后改用合规密码创建唯一测试用户，列表刷新后选择该用户、打开删除确认并完成删除，随后清理测试数据。
+- Native 的真实浏览器页面矩阵已完成：在端口 `5175` 的 admin-web 使用 `admin/password` 登录成功，监控、用户、角色、组织、岗位、菜单、API Key、审计、登录日志、定时任务、配置、字典、通知和个人资料页面均能通过侧栏或头像入口打开；通知铃铛展开站内通知列表，通知公告仍通过独立菜单访问，监控帮助可以展开和关闭。Native admin-web 在 280、320、390、768 和 1280 视口的 `document` 与 `body` 宽度均等于视口宽度，未发现横向溢出。用户页面还完成了一次真实新增和删除：密码策略错误反馈后改用合规密码创建唯一测试用户，列表刷新后选择该用户、打开删除确认并完成删除，随后清理测试数据。
 - 同一份 admin-web 使用 `ag1/123456` 登录 Phoenix 成功。运行监控、用户、角色、组织、岗位、菜单、API Key、配置、字典、公告、登录日志、操作审计、定时任务和个人资料页面均通过真实导航打开；个人资料只从顶栏用户图形进入，侧栏不显示“工作台”和个人资料菜单。
-- Phoenix 补充窗口记录：同一份 admin-web 在 `VITE_API_PROXY_TARGET=http://127.0.0.1:4000`、前端端口 `5176` 下使用 `ag1/123456` 登录成功；可见菜单已增至 14 项并包含“接口文档”，其余 13 个页面、通知入口、顶栏用户图形入口、监控帮助展开和关闭均通过验收，并在 280、320、390、768 和 1280 视口完成宽度矩阵检查。Swagger 菜单的 `/api/swagger` 和 `/api/openapi` 路由由 Phoenix 控制器测试覆盖。
+- Phoenix 补充窗口记录：同一份 admin-web 在 `VITE_API_PROXY_TARGET=http://127.0.0.1:4000`、前端端口 `5176` 下使用 `ag1/123456` 登录成功；可见菜单已增至 14 项并包含“接口文档”，其余 13 个页面、通知列表入口、顶栏用户图形入口、监控帮助展开和关闭均通过验收，并在 280、320、390、768 和 1280 视口完成宽度矩阵检查。Swagger 菜单的 `/api/swagger` 和 `/api/openapi` 路由由 Phoenix 控制器测试覆盖。
 - 本次真实窗口复核补充了 Phoenix 岗位页：岗位列表、无结果筛选、重置、每页状态、新增弹窗打开和取消关闭均通过；页面显示“系统 API”来源，未发现横向溢出。
 - 本次真实窗口复核补充了 Phoenix 角色页：当前结果集全选后删除按钮显示“删除角色（2）”并启用，取消一项后显示“删除角色（1）”，无结果筛选后选择状态清空并显示“删除角色（0）”；1280 和 390 视口的文档宽度均与视口一致。对应提交为 `41a9517`。
 - 同一份 admin-web 连接 Phoenix 的真实窗口复核补充了通知公告页：全选 2 条公告后删除按钮显示“删除公告（2）”并启用，无结果筛选后显示空态并清空为“删除公告（0）”；1280 和 390 视口的文档宽度均与视口一致。
@@ -101,4 +103,4 @@ Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `
 - Phoenix 登录 MFA 表单已使用 admin-web 的状态提示、图标输入框、统一按钮和错误反馈；个人资料页移除头像文件上传块，性别值与 admin-web 统一为空值未知、`1` 男、`0` 女，头像地址仍可保存。对应提交为 `c04db24`，相关集成测试 9 项通过。
 - Phoenix 登录页已补齐 admin-web 的窄视口规则：表单和卡片使用父级可收缩宽度，400px 以下缩小内边距和标题字号，900px 以下切换单列；真实 Chrome 在 390、768、1280 宽度确认无横向溢出，登录按钮只显示“登录”。对应提交为 `b6b12ac`。
 
-本次验收仍有明确限制：监控页的部分指标由 Native 接口未提供，页面应显示后端来源和未提供指标；页面通过不表示缺失指标已经补齐。Native 和 Phoenix 已完成真实读取、导航、响应式宽度、筛选空态、新增弹窗打开/关闭、主要 Excel 导出和部分新增/删除检查；Phoenix 和 Native admin-web 均已完成真实 TOTP 登录挑战并进入监控页。Native 还完成了 API Key 敏感操作的真实 step-up 验证；临时用户、令牌、会话和 MFA 挑战已清理，数据库残留计数为 0。菜单权限的 HTTP、组件和 LiveView 回归测试已完成；用户、岗位、任务和审计列表分页也已完成代码与组件验证，Phoenix 用户页、任务页、执行日志页、登录日志和操作审计默认每页 20 条与 admin-web 一致，对应提交为 `dcfaba5`、`2594151`、`1ac38b7`。其余页面仍需补充逐页编辑、加载状态、错误反馈、分页和批量写操作的完整发布窗口记录；OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理链不属于本地窗口验收，不能据此判定通过。
+本次验收仍有明确限制：监控页的部分指标由 Native 接口未提供，页面应显示后端来源和未提供指标；页面通过不表示缺失指标已经补齐。Native 和 Phoenix 已完成真实读取、导航、响应式宽度、筛选空态、新增弹窗打开/关闭、主要 Excel 导出和部分新增/删除检查；Phoenix 和 Native admin-web 均已完成真实 TOTP 登录挑战并进入监控页。Native 还完成了 API Key 敏感操作的真实 step-up 验证；临时用户、令牌、会话和 MFA 挑战已清理，数据库残留计数为 0。菜单权限的 HTTP、组件和 LiveView 回归测试已完成；用户、岗位、任务和审计列表分页也已完成代码与组件验证，Phoenix 用户页、任务页、执行日志页、登录日志和操作审计默认每页 20 条与 admin-web 一致，对应提交为 `dcfaba5`、`2594151`、`1ac38b7`。本轮新增的通知列表详情、当前会话直达和 409 强制登录流程已经完成代码与测试验证，但尚未在真实浏览器窗口中补齐双后端矩阵；其余页面仍需补充逐页编辑、加载状态、错误反馈、分页和批量写操作的完整发布窗口记录。OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理链不属于本地窗口验收，不能据此判定通过。
