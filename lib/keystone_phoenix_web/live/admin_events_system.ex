@@ -3,7 +3,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   import Phoenix.Component, only: [assign: 2]
   alias KeystonePhoenix.Dictionary
-  alias KeystonePhoenix.Log
   alias KeystonePhoenix.Notice
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.System, as: NoticePage
@@ -503,42 +502,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("delete-notice", %{"notice-id" => notice_id}, socket) do
     handle_event("delete-notices", %{"notice-ids" => notice_id}, socket)
-  end
-
-  def handle_event("delete-login-log", %{"log-id" => log_id}, socket) do
-    if Support.permission_socket?(socket, "login-log:delete") do
-      case Log.delete_login_logs([log_id], authorization: self_authorization(socket)) do
-        :ok ->
-          {:noreply,
-           assign(socket,
-             login_log_rows: Support.load_logs_for_socket(socket).login_log_rows,
-             log_feedback: "登录日志已删除"
-           )}
-
-        error ->
-          {:noreply, assign(socket, log_feedback: Support.form_error(error))}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("delete-operation-log", %{"log-id" => log_id}, socket) do
-    if Support.permission_socket?(socket, "operation-log:delete") do
-      case Log.delete_operation_logs([log_id], authorization: self_authorization(socket)) do
-        :ok ->
-          {:noreply,
-           assign(socket,
-             operation_log_rows: Support.load_logs_for_socket(socket).operation_log_rows,
-             log_feedback: "操作日志已删除"
-           )}
-
-        error ->
-          {:noreply, assign(socket, log_feedback: Support.form_error(error))}
-      end
-    else
-      {:noreply, socket}
-    end
   end
 
   defp self_authorization(socket) do

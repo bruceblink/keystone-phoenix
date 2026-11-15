@@ -3,7 +3,7 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
 
   import Phoenix.LiveViewTest
 
-  alias KeystonePhoenix.{Auth, Cache, Config, Dictionary, Identity, Log, Menu, Repo, Role}
+  alias KeystonePhoenix.{Auth, Cache, Config, Dictionary, Identity, Menu, Repo, Role}
   alias KeystonePhoenix.Auth.Mfa
   alias KeystonePhoenix.Auth.Mfa.Totp
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
@@ -430,22 +430,10 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     assert Dictionary.list_dict_data(%{"dictType" => type}).total == 1
   end
 
-  test "the operation-log delete button sends its actual operationId", ctx do
-    {:ok, log} =
-      Log.create_operation_log(
-        %{"requestModule" => "编辑测试", "status" => 1},
-        ctx.admin,
-        "/editing-test",
-        "POST"
-      )
-
+  test "the operation-log panel is read-only", ctx do
     {:ok, view} = login(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "logs"})
-
-    render_click(view, "delete-operation-log", %{"log-id" => to_string(log.operation_id)})
-
-    assert render(view) =~ "操作日志已删除"
-    assert Repo.get!(KeystonePhoenix.Log.SysOperationLog, log.operation_id).deleted == true
+    refute has_element?(view, "button[phx-click='delete-operation-log']")
   end
 
   test "job logs render the published endTime field" do

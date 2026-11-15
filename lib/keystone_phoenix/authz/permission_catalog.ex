@@ -38,7 +38,6 @@ defmodule KeystonePhoenix.Authz.PermissionCatalog do
     job:run
     job:update
     job:update-status
-    login-log:delete
     login-log:export
     login-log:read
     menu:create
@@ -53,7 +52,6 @@ defmodule KeystonePhoenix.Authz.PermissionCatalog do
     notice:update
     online-session:read
     online-session:revoke
-    operation-log:delete
     operation-log:export
     operation-log:read
     permission:manage

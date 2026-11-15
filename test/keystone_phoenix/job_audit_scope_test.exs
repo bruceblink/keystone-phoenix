@@ -4,8 +4,6 @@ defmodule KeystonePhoenix.JobAuditScopeTest do
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Log
-  alias KeystonePhoenix.Log.{SysLoginInfo, SysOperationLog}
-  alias KeystonePhoenix.Repo
 
   test "job service commands reject a department-scoped principal" do
     permissions = [
@@ -83,55 +81,15 @@ defmodule KeystonePhoenix.JobAuditScopeTest do
     assert :ok = Job.delete_jobs([job.job_id], authorization)
   end
 
-  test "audit service queries and deletes enforce the audit resource scope" do
-    permissions = [
-      "login-log:read",
-      "login-log:delete",
-      "operation-log:read",
-      "operation-log:delete"
-    ]
-
+  test "audit reads use read permissions and legacy delete permissions are not registered" do
+    permissions = ["login-log:read", "operation-log:read"]
     blocked = [authorization: %{principal: principal("DEPARTMENT", permissions)}]
 
     assert {:error, :data_scope_denied} = Log.list_login_logs(%{}, blocked)
     assert {:error, :data_scope_denied} = Log.list_operation_logs(%{}, blocked)
-    assert {:error, :data_scope_denied} = Log.delete_login_logs([Identity.v7()], blocked)
-    assert {:error, :data_scope_denied} = Log.delete_operation_logs([Identity.v7()], blocked)
-
-    allowed = [authorization: %{principal: principal("TENANT", permissions)}]
-    assert {:ok, _login_logs} = Log.list_login_logs(%{}, allowed)
-    assert {:ok, _operation_logs} = Log.list_operation_logs(%{}, allowed)
-    assert {:error, :invalid_ids} = Log.delete_login_logs([], allowed)
-    assert {:error, :invalid_ids} = Log.delete_operation_logs([], allowed)
-  end
-
-  test "mixed audit deletion rolls back every record when one ID is missing" do
-    login_id = Identity.v7()
-    operation_id = Identity.v7()
-    missing_id = Identity.v7()
-    now = DateTime.utc_now()
-
-    Repo.insert!(%SysLoginInfo{info_id: login_id, username: "mixed-delete", login_time: now})
-
-    Repo.insert!(%SysOperationLog{
-      operation_id: operation_id,
-      operation_time: now
-    })
-
-    authorization =
-      [
-        authorization: %{
-          principal: principal("TENANT", ["login-log:delete", "operation-log:delete"])
-        }
-      ]
-
-    assert {:error, :not_found} = Log.delete_login_logs([login_id, missing_id], authorization)
-    assert Repo.get!(SysLoginInfo, login_id).deleted == false
-
-    assert {:error, :not_found} =
-             Log.delete_operation_logs([operation_id, missing_id], authorization)
-
-    assert Repo.get!(SysOperationLog, operation_id).deleted == false
+    assert KeystonePhoenix.Authz.PermissionCatalog.registered?("audit:delete")
+    refute KeystonePhoenix.Authz.PermissionCatalog.registered?("login-log:delete")
+    refute KeystonePhoenix.Authz.PermissionCatalog.registered?("operation-log:delete")
   end
 
   test "job and audit service reads require explicit authorization contexts" do

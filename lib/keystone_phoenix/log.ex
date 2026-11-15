@@ -8,7 +8,6 @@ defmodule KeystonePhoenix.Log do
   alias KeystonePhoenix.Authz.Principal
   alias KeystonePhoenix.Pagination
   alias KeystonePhoenix.Identity
-  alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
 
   def list_login_logs(params \\ %{}) do
@@ -77,22 +76,6 @@ defmodule KeystonePhoenix.Log do
       {:ok, list_operation_logs(params)}
     end
   end
-
-  def delete_login_logs(ids, options) when is_list(options) do
-    with :ok <- authorize_read(options, "login-log:delete") do
-      soft_delete(SysLoginInfo, :info_id, ids)
-    end
-  end
-
-  def delete_login_logs(_ids, _options), do: {:error, :authorization_required}
-
-  def delete_operation_logs(ids, options) when is_list(options) do
-    with :ok <- authorize_read(options, "operation-log:delete") do
-      soft_delete(SysOperationLog, :operation_id, ids)
-    end
-  end
-
-  def delete_operation_logs(_ids, _options), do: {:error, :authorization_required}
 
   # 审计写操作统一通过资源范围授权，避免服务层直接删除日志。
   def authorize_read(options, permission),
@@ -289,34 +272,6 @@ defmodule KeystonePhoenix.Log do
     Pagination.page(query, params, count_field, mapper)
   end
 
-  defp soft_delete(schema, field, ids) when is_list(ids) do
-    ids = ids |> Enum.map(&parse_uuid/1) |> Enum.uniq()
-
-    if ids == [] or Enum.any?(ids, &is_nil/1) do
-      {:error, :invalid_ids}
-    else
-      Repo.transaction(fn ->
-        {count, _} =
-          Repo.update_all(
-            from(log in schema, where: field(log, ^field) in ^ids and log.deleted == false),
-            set: [deleted: true]
-          )
-
-        if count == length(ids) do
-          :ok
-        else
-          Repo.rollback(:not_found)
-        end
-      end)
-      |> case do
-        {:ok, :ok} -> :ok
-        {:error, reason} -> {:error, reason}
-      end
-    end
-  end
-
-  defp soft_delete(_schema, _field, _ids), do: {:error, :invalid_ids}
-
   defp filter_contains(query, _field, nil), do: query
   defp filter_contains(query, _field, ""), do: query
 
@@ -415,13 +370,6 @@ defmodule KeystonePhoenix.Log do
   defp operator_type_label(2), do: "Web用户"
   defp operator_type_label(3), do: "手机端用户"
   defp operator_type_label(type), do: to_string(type || "")
-
-  defp parse_uuid(value) do
-    case Params.parse_uuid(value) do
-      {:ok, uuid} -> uuid
-      :error -> nil
-    end
-  end
 
   defp request_method_code(method) when method in ["GET", "POST", "PUT", "DELETE"],
     do: %{"GET" => 1, "POST" => 2, "PUT" => 3, "DELETE" => 4}[method]
