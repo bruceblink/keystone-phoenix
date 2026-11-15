@@ -35,7 +35,7 @@
 - admin-web `3d28cee` 将所有页面的初次读取错误统一为安全提示、错误码、业务含义、请求标识和重试入口；`2df33b3` 将 API Key 签发、轮换、撤销和批量删除确认接入同一诊断组件，保留表单和确认上下文。
 - Phoenix `339d2b6` 将登录日志和操作审计的刷新、筛选读取失败改为保留旧 rows、筛选条件和稳定错误码反馈；成功重试后清除反馈。
 - Phoenix `b365483` 新增跨项目 API 路由静态检查，当前确认 admin-web 使用 74 条 API 路由，Native/Phoenix 均提供 108 条 `/api/v1` 路由和 1 条 JWK 路由，无旧路径标识和重复路由。
-- 最新全量验证：Phoenix `424 passed`；admin-web `22 files / 115 tests passed`，类型检查和构建通过；Native Gradle 测试与 Quarkus 构建成功；错误码和接口集合静态检查通过。
+- 最新全量验证：Phoenix `425 passed`；admin-web `23 files / 118 tests passed`，类型检查和构建通过；Native Gradle 测试与 Quarkus 构建成功；错误码和接口集合静态检查通过。
 
 API Key 权限目录模态框和其他写操作仍有少量页面使用旧错误提示组件；监控、系统配置和剩余页面的 LiveView 读取失败仍需继续补齐。
 

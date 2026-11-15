@@ -129,7 +129,7 @@ admin-web `4ccc35d` 已将 Users、Jobs、LoginLogs、OperationsAudit 的筛选�
 
 第三批读取闭环证据：Phoenix `61617bf` 补齐岗位列表刷新失败和筛选条件保留；admin-web `c79a1b0`、`acee1c3` 补齐菜单、角色和组织的旧数据刷新失败、错误码诊断和重试入口。对应定向测试均通过；这些页面的初次读取错误和已有数据刷新错误已经区分，未改变 Native/Phoenix HTTP 接口。
 
-第四批证据：admin-web `3d28cee` 统一所有页面初次读取错误面板，`2df33b3` 统一 API Key 写操作和删除确认错误诊断；Phoenix `339d2b6` 补齐登录日志和操作审计刷新/筛选失败反馈。`b365483` 的接口集合脚本确认 admin-web 使用的 74 条接口均存在于 Native 和 Phoenix，两个后端的 `/api/v1` 集合均为 108 条，JWK 集合均为 1 条。最新全量回归为 Phoenix `424 passed`、admin-web `22 files / 115 tests passed`、Native 测试和构建成功。监控、系统配置和其他 LiveView 读取事件仍需继续补齐。
+第四批证据：admin-web `3d28cee` 统一所有页面初次读取错误面板，`2df33b3` 统一 API Key 写操作和删除确认错误诊断；Phoenix `339d2b6` 补齐登录日志和操作审计刷新/筛选失败反馈。`b365483` 的接口集合脚本确认 admin-web 使用的 74 条接口均存在于 Native 和 Phoenix，两个后端的 `/api/v1` 集合均为 108 条，JWK 集合均为 1 条。最新全量回归为 Phoenix `425 passed`、admin-web `23 files / 118 tests passed`、Native 测试和构建成功。监控、系统配置和其他 LiveView 读取事件仍需继续补齐。
 
 第五批证据：Phoenix `06b4708`、`9245e78` 补齐监控快照和系统配置刷新/保存后的读取失败保留，并保持源文件行数限制；admin-web `e0d84f6` 为角色和组织页面补齐 URL 查询状态恢复。对应定向回归分别为 Phoenix `26 passed` 和 admin-web `13 passed`。这些修改不改变 Native/Phoenix HTTP 接口，真实可视浏览器窗口仍需单独验收。
 
