@@ -8,18 +8,18 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers do
 
   def assign_user(socket, user_id) do
     update(socket, fn role_id ->
-      Role.assign_users(role_id, [user_id], authorization(socket, "role:update"))
+      Role.assign_users(role_id, [user_id], authorization(socket, "role:assign"))
     end)
   end
 
   def unassign_user(socket, user_id) do
     update(socket, fn _role_id ->
-      Role.unassign_users([user_id], authorization(socket, "role:update"))
+      Role.unassign_users([user_id], authorization(socket, "role:assign"))
     end)
   end
 
   defp update(socket, operation) do
-    if Support.permission_socket?(socket, "role:update") and
+    if Support.permission_socket?(socket, "role:assign") and
          socket.assigns.selected_role_id != "" do
       role_id = socket.assigns.selected_role_id
 
