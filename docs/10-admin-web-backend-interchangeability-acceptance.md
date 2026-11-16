@@ -193,3 +193,15 @@ admin-web `4ccc35d` 已为 Users、Jobs、LoginLogs、OperationsAudit 保存筛�
 第十批证据：admin-web `4cc82f6` 将 Configs、Dictionaries、Notices、Profile、LoginLogs 和 OperationsAudit 的删除、发布、保存和导出失败统一接入 `ActionError`；错误面板显示安全业务文案、业务错误码、业务含义和 `requestId`，删除确认保留完整错误对象。admin-web 全量回归为 `24 files / 127 tests passed`，类型检查和构建通过；Phoenix 最新集成回归为 `434 passed`。该批次完成代码级操作错误诊断，但分页覆盖、账号页剩余入口和逐页面真实浏览器矩阵仍未完成。
 
 分页审计结论：当前 Phoenix 多数分页是全量读取后的内存切片，admin-web 也有多个全量列表页面。该实现暂时保持筛选和页面行为，但不能作为大数据量服务端分页验收证据。下一阶段按 Users/Jobs/Posts/Configs/Notices/Dictionary items/Logs、Roles、树结构 Departments/Menus、API Keys 分批改造，并要求 Native/Phoenix/admin-web 同时验证查询参数、`total`、筛选语义、页码复位和失败旧页保留。
+
+### 2026-11-16 配置与 API Key 服务端分页增量
+
+本轮完成两个列表资源的三端分页闭环。配置列表提交为 Native `a9d0f97`、Phoenix `2fba076`、admin-web `1360c7a`，API Key 列表提交为 Native `d5e6540`、Phoenix `5576d95`/`2ee3b59`、admin-web `4f9152e`。请求带 `page`/`size` 时统一返回 `{items,page,size,total}`；省略分页参数时继续返回旧数组，保证尚未迁移的调用方兼容。配置支持 `keyword`，API Key 支持 `keyword`/`query` 与 `status=all|active|revoked`，权限和数据范围检查保持不变。
+
+Phoenix LiveView 和 admin-web 都保存筛选、页码和总数；筛选、写入、轮换、撤销后回到第 1 页；刷新失败保留上一次成功数据并显示可重试的业务错误反馈。Native 与 Phoenix 的 HTTP 控制器均覆盖分页、筛选和旧数组兼容测试。
+
+验证结果：Phoenix 全量测试 `382 passed, 53 excluded`，API Key 集成测试 `16 passed`；admin-web 全量测试 `24 files / 133 tests passed`，类型检查和构建通过；Native 全量 Gradle 测试和 `quarkusBuild` 通过。错误码目录检查仍为 21 个服务端代码和 4 个客户端本地代码；路由检查为 admin-web 74 条调用、Native/Phoenix 各 108 条 `/api/v1` 路由，JWK 集合一致。
+
+本轮同时修复 `scripts/check_api_route_contract.py` 对 Native 多行方法声明的识别问题，提交为 Phoenix `968f8de`。GitHub Actions 运行 `43870913581` 的失败原因为 `mix check.source_lines` 将 `admin_support.ex` 识别为 601 行；该文件已随 `5576d95` 压到限制以内，本地 `mix format --check-formatted` 和 `mix check.source_lines` 已通过。修复后的推送运行 `43873433545` 已通过格式、源码行数、严格编译、单元/数据库测试，集成测试仍在运行；完成状态需以该运行最终结果为准。
+
+当前未完成项仍包括其他页面的完整服务端分页和逐页编辑/批量写入/详情返回矩阵，以及 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和可视浏览器窗口证据。
