@@ -136,3 +136,5 @@ admin-web `4ccc35d` 已将 Users、Jobs、LoginLogs、OperationsAudit 的筛选�
 第六批证据：admin-web `720f301` 将配置、公告、字典表单和角色导出错误统一接入业务错误码诊断；全量前端回归为 `23 files / 116 tests passed`，类型检查和构建通过。剩余表单和导出入口仍需逐页核对真实结果。
 
 第七批证据：admin-web `bd14dde` 补齐用户/角色保存、用户导出和角色删除错误诊断；Phoenix `a8489cb` 补齐组织、岗位、角色和菜单缺失记录的 `resource_not_found` 反馈。admin-web 全量回归为 `23 files / 118 tests passed`，Phoenix 定向反馈回归 `16 passed`。
+
+第八批错误反馈证据：Phoenix `4bdcf12`、`5709a50` 和 `cef74fc` 将用户导入、任务、系统、登录回调、个人资料、API Key、配置、审计/组织导出和在线会话的 LiveView 失败反馈统一登记到稳定业务错误码目录；原中文提示保持不变。Phoenix 集成测试为 432 项通过，格式、源码行数和差异检查通过。Native `./gradlew test --no-daemon --rerun-tasks` 与 `quarkusBuild -x test` 成功；admin-web 23 个测试文件、121 项通过，类型检查和构建成功。错误码目录和 API 路由静态检查继续通过，HTTP 状态码和响应结构未改变。

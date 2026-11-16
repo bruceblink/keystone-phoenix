@@ -620,3 +620,11 @@ Phoenix 已实现控制器入口的统一资源范围检查。`user` 和 `depart
 该记录的代码基线为 `b0d3c29`，远端 `v0.3.0` 标签已存在，不代表当前主线。该阶段模型采用 RBAC 角色绑定权限字符串，并由数据范围限制目标资源；当前主线的统一架构和入口规则见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。
 
 历史记录：本轮曾修复 LiveView 用户范围、HTTP Plug、领域授权、权限目录和策略缓存问题。该记录只用于识别待替换行为；新实现不保留旧三段权限、旧菜单回退或旧管理员旁路。当前默认测试为 192 项通过、20 项排除，集成测试为 20 项通过；格式、源码行数和 dev/prod 严格编译通过。
+
+### 2026-11-16 业务错误码闭环增量
+
+提交 `4bdcf12`、`5709a50` 和 `cef74fc` 继续收口 LiveView 事件反馈。用户导入、任务执行与取消、系统字典与公告、登录任务回调、个人资料、API Key、配置、审计导出、组织导出和在线会话反馈均改为使用集中目录中的稳定业务错误码，并保留原有中文提示。当前 LiveView 代码中不再直接使用未登记错误码的 `Feedback.error("...")` 入口；错误码可以通过目录反查业务含义和排错元数据。
+
+本轮验证结果：Phoenix `MIX_ENV=test mix test --include integration` 为 432 项通过；错误反馈定向测试和操作事件定向测试通过；`mix format --check-formatted`、源码行数不超过 600 行、`git diff --check` 通过。跨项目错误码目录检查确认 21 个服务端代码和 4 个 admin-web 本地代码一致；接口路由检查确认 admin-web 使用的 74 条路由均存在于 Native 和 Phoenix，两个后端均暴露 108 条 `/api/v1` 路由。admin-web `pnpm test:run` 为 23 个测试文件、121 项通过，类型检查和构建通过；Native Gradle 测试和生产构建成功。
+
+本轮没有扩大 HTTP 状态码或接口字段约定。逐页面的真实错误反馈、编辑、批量写入、加载状态和详情返回矩阵仍需继续补齐；OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复和生产代理链仍属于发布证据缺口。
