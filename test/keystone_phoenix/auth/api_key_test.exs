@@ -10,6 +10,7 @@ defmodule KeystonePhoenix.Auth.ApiKeyTest do
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
+  alias KeystonePhoenix.User.SysUserRole
 
   @permissions ["api-key:create", "api-key:read", "api-key:revoke", "api-key:rotate"]
 
@@ -32,6 +33,59 @@ defmodule KeystonePhoenix.Auth.ApiKeyTest do
 
     assert {:error, :scope_exceeds_permissions} =
              ApiKey.issue(user.user_id, "worker", ["api-key:read", "api-key:revoke"])
+  end
+
+  test "multi-role scopes use the permission union and shrink after role revocation" do
+    primary = create_role(["api-key:create", "api-key:read", "user:read"])
+    secondary = create_role(["user:update"])
+    user = create_multi_role_user(primary, secondary)
+
+    assert {:ok, issued} =
+             ApiKey.issue(user.user_id, "multi-role worker", ["user:read", "user:update"])
+
+    assert {:ok, principal} = ApiKey.authenticate(issued.api_key, "127.0.0.10")
+    assert principal.scopes == ["user:read", "user:update"]
+
+    assert {:error, :scope_exceeds_permissions} =
+             ApiKey.issue(user.user_id, "unsupported worker", ["user:delete"])
+
+    Repo.delete_all(
+      from membership in SysUserRole,
+        where: membership.user_id == ^user.user_id and membership.role_id == ^secondary.role_id
+    )
+
+    assert {:ok, reduced} = ApiKey.authenticate(issued.api_key, "127.0.0.10")
+    assert reduced.scopes == ["user:read"]
+
+    revoke_role_permission(primary.role_id, "user:read")
+    assert {:error, :invalid_credential} = ApiKey.authenticate(issued.api_key, "127.0.0.10")
+  end
+
+  test "new roles do not expand approved scopes and rotation re-intersects current roles" do
+    primary = create_role(["api-key:create", "api-key:rotate", "user:read"])
+    secondary = create_role(["user:update"])
+    user = create_multi_role_user(primary, secondary)
+
+    assert {:ok, issued} =
+             ApiKey.issue(user.user_id, "bounded worker", ["user:read", "user:update"])
+
+    extra = create_role(["user:delete"])
+
+    Repo.insert!(%SysUserRole{user_id: user.user_id, role_id: extra.role_id})
+
+    assert {:ok, unchanged} = ApiKey.authenticate(issued.api_key, "127.0.0.11")
+    assert unchanged.scopes == ["user:read", "user:update"]
+
+    Repo.delete_all(
+      from membership in SysUserRole,
+        where: membership.user_id == ^user.user_id and membership.role_id == ^secondary.role_id
+    )
+
+    assert {:ok, replacement} = ApiKey.rotate(user.user_id, issued.id)
+    assert replacement.scopes == ["user:read"]
+    assert {:error, :invalid_credential} = ApiKey.authenticate(issued.api_key, "127.0.0.11")
+    assert {:ok, rotated} = ApiKey.authenticate(replacement.api_key, "127.0.0.11")
+    assert rotated.scopes == ["user:read"]
   end
 
   test "authenticates, revokes and rejects an expired key" do
@@ -105,33 +159,63 @@ defmodule KeystonePhoenix.Auth.ApiKeyTest do
   end
 
   defp create_user(permissions) do
+    role = create_role(permissions)
+
+    create_user_for_role(role)
+  end
+
+  defp create_role(permissions) do
     role_id = Identity.v7()
 
-    %SysRole{}
-    |> Ecto.Changeset.change(%{
-      role_id: role_id,
-      role_name: "API Key role",
-      role_key: "api_key_#{System.unique_integer([:positive])}",
-      role_sort: 1,
-      data_scope: "ALL",
-      status: 1,
-      deleted: false
-    })
-    |> Repo.insert!()
+    role =
+      %SysRole{}
+      |> Ecto.Changeset.change(%{
+        role_id: role_id,
+        role_name: "API Key role",
+        role_key: "api_key_#{System.unique_integer([:positive])}",
+        role_sort: 1,
+        data_scope: "ALL",
+        status: 1,
+        deleted: false
+      })
+      |> Repo.insert!()
 
     Enum.each(permissions, fn permission ->
       entry = Repo.get_by!(SysPermission, permission: permission)
       Repo.insert!(%SysRolePermission{role_id: role_id, permission_id: entry.permission_id})
     end)
 
+    role
+  end
+
+  defp create_multi_role_user(primary, secondary) do
+    user = create_user_for_role(primary)
+
+    Repo.insert!(%SysUserRole{user_id: user.user_id, role_id: primary.role_id})
+    Repo.insert!(%SysUserRole{user_id: user.user_id, role_id: secondary.role_id})
+    user
+  end
+
+  defp create_user_for_role(role) do
     %SysUser{}
     |> SysUser.create_changeset(%{
       user_id: Identity.v7(),
-      role_id: role_id,
+      role_id: role.role_id,
       username: "api_key_#{System.unique_integer([:positive])}",
       password: "Strong!123",
       status: 1
     })
     |> Repo.insert!()
+  end
+
+  defp revoke_role_permission(role_id, permission) do
+    entry = Repo.get_by!(SysPermission, permission: permission)
+
+    Repo.delete_all(
+      from role_permission in SysRolePermission,
+        where:
+          role_permission.role_id == ^role_id and
+            role_permission.permission_id == ^entry.permission_id
+    )
   end
 end

@@ -1,12 +1,15 @@
 defmodule KeystonePhoenixWeb.ApiKeyContractTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
+  import Ecto.Query
+
   alias KeystonePhoenix.Auth.ApiKey
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
+  alias KeystonePhoenix.User.SysUserRole
 
   test "API Key management uses the versioned resource path", %{conn: conn} do
     response = post(conn, "/api/v1/api-keys", %{"name" => "worker", "scopes" => ["api-key:read"]})
@@ -31,6 +34,38 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
 
     assert response.status == 200
     assert json_response(response, 200)["success"] == true
+  end
+
+  @tag :integration
+  test "API Key HTTP permissions shrink when a role membership is removed", %{conn: conn} do
+    primary = create_role(["api-key:create", "api-key:read"])
+    secondary = create_role(["user:read"])
+    user = create_multi_role_user(primary, secondary)
+
+    assert {:ok, issued} =
+             ApiKey.issue(user.user_id, "http multi-role worker", ["api-key:read", "user:read"])
+
+    authorized = fn ->
+      Plug.Conn.put_req_header(conn, "authorization", "ApiKey #{issued.api_key}")
+    end
+
+    assert get(authorized.(), "/api/v1/users").status == 200
+
+    Repo.delete_all(
+      from membership in SysUserRole,
+        where: membership.user_id == ^user.user_id and membership.role_id == ^secondary.role_id
+    )
+
+    denied = get(authorized.(), "/api/v1/users")
+    assert denied.status == 403
+    assert get_in(json_response(denied, 403), ["error", "code"]) == "permission_denied"
+
+    Repo.delete_all(from membership in SysUserRole, where: membership.user_id == ^user.user_id)
+    Repo.update!(Ecto.Changeset.change(user, role_id: nil))
+
+    invalid = get(authorized.(), "/api/v1/users")
+    assert invalid.status == 401
+    assert get_in(json_response(invalid, 401), ["error", "code"]) == "invalid_credential"
   end
 
   test "API Key cannot enter human authentication or API Key management paths", %{conn: conn} do
@@ -123,29 +158,46 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
   end
 
   defp create_user(permissions) do
+    role = create_role(permissions)
+    create_user_for_role(role)
+  end
+
+  defp create_role(permissions) do
     role_id = Identity.v7()
 
-    %SysRole{}
-    |> Ecto.Changeset.change(%{
-      role_id: role_id,
-      role_name: "API Key HTTP role",
-      role_key: "api_key_http_#{System.unique_integer([:positive])}",
-      role_sort: 1,
-      data_scope: "ALL",
-      status: 1,
-      deleted: false
-    })
-    |> Repo.insert!()
+    role =
+      %SysRole{}
+      |> Ecto.Changeset.change(%{
+        role_id: role_id,
+        role_name: "API Key HTTP role",
+        role_key: "api_key_http_#{System.unique_integer([:positive])}",
+        role_sort: 1,
+        data_scope: "ALL",
+        status: 1,
+        deleted: false
+      })
+      |> Repo.insert!()
 
     Enum.each(permissions, fn permission ->
       entry = Repo.get_by!(SysPermission, permission: permission)
       Repo.insert!(%SysRolePermission{role_id: role_id, permission_id: entry.permission_id})
     end)
 
+    role
+  end
+
+  defp create_multi_role_user(primary, secondary) do
+    user = create_user_for_role(primary)
+    Repo.insert!(%SysUserRole{user_id: user.user_id, role_id: primary.role_id})
+    Repo.insert!(%SysUserRole{user_id: user.user_id, role_id: secondary.role_id})
+    user
+  end
+
+  defp create_user_for_role(role) do
     %SysUser{}
     |> SysUser.create_changeset(%{
       user_id: Identity.v7(),
-      role_id: role_id,
+      role_id: role.role_id,
       username: "api_key_http_#{System.unique_integer([:positive])}",
       password: "Strong!123",
       status: 1
