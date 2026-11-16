@@ -144,7 +144,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert shell_html =~ "Admin Console"
     assert has_element?(view, ".topbar-context .context-kicker", "Keystone")
     assert has_element?(view, ".topbar-context .context-separator", "/")
-    assert has_element?(view, ".topbar-context", "管理工作台")
+    refute has_element?(view, ".topbar-context", "管理工作台")
     refute shell_html =~ "Phoenix LiveView"
     refute shell_html =~ "Keystone Phoenix"
     assert has_element?(view, ".sidebar-foot", "API 正常")

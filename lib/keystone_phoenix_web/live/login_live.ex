@@ -460,7 +460,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                 <header class="topbar">
                   <button type="button" class="mobile-menu" phx-click="toggle-sidebar" aria-label={if @sidebar_open, do: "关闭导航", else: "打开导航"} aria-expanded={@sidebar_open}><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button>
                   <div class="topbar-context">
-                    <span class="context-kicker">Keystone</span><span class="context-separator">/</span><span>管理工作台</span>
+                    <span class="context-kicker">Keystone</span><span class="context-separator">/</span>
                   </div>
                   <div class="topbar-actions">
                     <.menu open={@notifications_open} notifications={@in_app_notifications} error={@notifications_error} selected={selected_notification(@in_app_notifications, @selected_notification_id)} />
