@@ -373,7 +373,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
-        <title>Keystone Admin</title>
+        <title>Keystone 管理台</title>
         <link rel="stylesheet" href="/css/keystone.css" />
         <link rel="stylesheet" href="/css/keystone-responsive.css" />
         <link rel="stylesheet" href="/css/admin-web.css" />

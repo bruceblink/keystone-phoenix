@@ -1,4 +1,8 @@
 /* Phoenix LiveView 只保留认证事件和后端数据，页面外观沿用 admin-web 的组件语义。 */
+/* 登录页不继承旧主题的字体粗细和额外装饰。 */
+.login-page .login-intro h1 { font-weight: 400; }
+.login-page .login-card::before { content: none; }
+.login-page .brand-mark { border: 0; box-shadow: none; }
 .app-shell > .sidebar { min-width: 0; }
 .app-shell > .sidebar > .sidebar-brand { position: static; inset: auto; width: auto; transform: none; grid-column: auto; grid-row: auto; }
 .app-shell > .sidebar > .primary-nav { display: flex; position: static; top: auto; min-height: 0; flex-direction: column; flex-wrap: nowrap; gap: 0; margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
