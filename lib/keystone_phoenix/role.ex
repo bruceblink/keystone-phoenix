@@ -361,7 +361,6 @@ defmodule KeystonePhoenix.Role do
   end
 
   def assign_users(_role_id, _user_ids, _options), do: {:error, :authorization_required}
-
   @doc "Removes role assignments from a batch of users."
   def unassign_users(user_ids, options)
 
@@ -373,6 +372,16 @@ defmodule KeystonePhoenix.Role do
   end
 
   def unassign_users(_user_ids, _options), do: {:error, :authorization_required}
+  @doc "Removes users only from the requested role, matching Native role-member semantics."
+  def unassign_users(role_id, user_ids, options) when is_list(options) do
+    with {:ok, user_ids} <- normalize_user_ids(user_ids),
+         :ok <- Authorization.authorize_assignment(options, "role:assign", user_ids),
+         {:ok, role} <- get_role(role_id) do
+      if length(User.list_users_by_ids(user_ids)) == length(user_ids),
+        do: update_user_assignments(user_ids, nil, role.role_id),
+        else: {:error, :not_found}
+    end
+  end
 
   defp ensure_role_active(%SysRole{status: 1}), do: :ok
   defp ensure_role_active(_role), do: {:error, :role_unavailable}
@@ -406,18 +415,25 @@ defmodule KeystonePhoenix.Role do
     if count == length(menu_ids), do: :ok, else: {:error, :menu_not_found}
   end
 
-  defp update_user_assignments(user_ids, role_id) do
+  defp update_user_assignments(user_ids, role_id, expected_role_id \\ :any) do
     result =
       Repo.transaction(fn ->
+        query = from(u in SysUser, where: u.deleted == false and u.user_id in ^user_ids)
+
+        query =
+          if expected_role_id == :any,
+            do: query,
+            else: where(query, [u], u.role_id == ^expected_role_id)
+
         Repo.update_all(
-          from(u in SysUser, where: u.deleted == false and u.user_id in ^user_ids),
+          query,
           set: [
             role_id: role_id,
             update_time: DateTime.utc_now()
           ],
           inc: [permission_version: 1]
         )
-        |> update_result(user_ids)
+        |> update_result(user_ids, expected_role_id)
       end)
 
     case result do
@@ -435,8 +451,11 @@ defmodule KeystonePhoenix.Role do
     :ok
   end
 
-  defp update_result({count, _}, ids) when count == length(ids), do: :ok
-  defp update_result(_result, _ids), do: Repo.rollback(:not_found)
+  defp update_result({count, _}, ids, expected_role_id)
+       when expected_role_id != :any and count <= length(ids), do: :ok
+
+  defp update_result({count, _}, ids, _expected_role_id) when count == length(ids), do: :ok
+  defp update_result(_result, _ids, _expected_role_id), do: Repo.rollback(:not_found)
 
   defp list_role_users(role_id, params, mode, actor) do
     query =

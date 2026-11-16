@@ -259,14 +259,14 @@ defmodule KeystonePhoenixWeb.RoleController do
   end
 
   @doc "Removes role assignments from users."
-  def revoke_users(conn, %{"role_id" => _role_id, "userIds" => user_ids}) do
-    revoke_users_from_role(conn, user_ids)
+  def revoke_users(conn, %{"role_id" => role_id, "userIds" => user_ids}) do
+    revoke_users_from_role(conn, role_id, user_ids)
   end
 
   def revoke_users(conn, _params), do: render_error(conn, :invalid_ids)
 
-  defp revoke_users_from_role(conn, user_ids) do
-    case Role.unassign_users(user_ids,
+  defp revoke_users_from_role(conn, role_id, user_ids) do
+    case Role.unassign_users(role_id, user_ids,
            authorization: %{
              principal: conn.assigns.current_user,
              permission: "role:assign"

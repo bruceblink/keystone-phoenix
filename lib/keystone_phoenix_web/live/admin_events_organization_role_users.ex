@@ -20,8 +20,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers do
   end
 
   def unassign_user(socket, user_id) do
-    update(socket, fn _role_id ->
-      Role.unassign_users([user_id], authorization(socket, "role:assign"))
+    update(socket, fn role_id ->
+      Role.unassign_users(role_id, [user_id], authorization(socket, "role:assign"))
     end)
   end
 

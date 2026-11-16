@@ -77,6 +77,16 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     assert Repo.get!(SysUser, target.user_id).role_id == target_role.role_id
 
     unassign_path = "/api/v1/roles/#{target_role.role_id}/users"
+    foreign_role = create_role("TENANT")
+    foreign_user = create_user(foreign_role.role_id)
+
+    assert %{"success" => true} =
+             json_response(
+               delete(authorized(token), unassign_path, %{"userIds" => [foreign_user.user_id]}),
+               200
+             )
+
+    assert Repo.get!(SysUser, foreign_user.user_id).role_id == foreign_role.role_id
 
     deprecated_revoke =
       delete(authorized(token), unassign_path, %{"user_ids" => [target.user_id]})
