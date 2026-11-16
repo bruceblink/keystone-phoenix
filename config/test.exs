@@ -17,6 +17,9 @@ config :keystone_phoenix, KeystonePhoenix.Repo,
 
 config :keystone_phoenix,
   job_scheduler_enabled: false,
+  # 测试进程使用 SQL sandbox；延后后台清理，避免独立 GenServer 在测试 owner 退出后访问数据库。
+  auth_session_cleanup_interval_ms: 3_600_000,
+  passkey_cleanup_interval_ms: 3_600_000,
   jwt_key_registry_cleanup_interval_ms: 3_600_000
 
 config :keystone_phoenix,
