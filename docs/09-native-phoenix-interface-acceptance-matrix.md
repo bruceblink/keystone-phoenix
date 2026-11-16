@@ -186,3 +186,9 @@ Phoenix `b9d8530` 已将 LiveView 登录日志和操作审计的刷新、筛选�
 Native `819f5b7` 和 Phoenix `6f6776e` 已统一任务列表的可选分页响应。请求带 `page`/`size` 或 `keyword`、`jobName`、`jobGroup`、`status` 时返回 `items/page/size/total`；旧调用省略这些参数时继续返回任务数组。状态筛选支持启用、停用和兼容布尔/数字表达，权限和主体数据范围不变。Phoenix LiveView 也按同一查询参数读取当前页，并使用任务详情接口支持跨页编辑。
 
 验证：Phoenix 默认测试 `384 passed, 54 excluded`，集成测试 `438 passed`；Native 全量测试和 `quarkusBuild` 成功，admin-web 类型检查和构建成功。该结果不替代真实窗口验收；Codex 内置浏览器当前不能保持交互。
+
+### 2026-11-16 岗位列表接口复核
+
+Native `cec66b0` 和 Phoenix `6447e0c`/`487fa9e` 已统一岗位列表的可选分页响应。请求带 `page`/`size` 或 `keyword`、状态筛选时返回 `items/page/size/total`；无分页且使用旧岗位名称参数时保持数组响应。关键词匹配岗位编码和名称，状态支持启用、停用及布尔/数字表达；权限边界和字段映射保持不变。
+
+验证：Phoenix 默认测试 `385 passed, 54 excluded`，集成测试 `439 passed`；Native 岗位 HTTP 测试、全量测试和 `quarkusBuild` 成功。该结果属于接口和自动化测试证据，不替代真实浏览器窗口验收。

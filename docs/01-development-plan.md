@@ -692,3 +692,9 @@ Phoenix 提交 `b9d8530` 将登录日志和操作审计的 LiveView 刷新、筛
 验证结果：Phoenix 默认测试 `384 passed, 54 excluded`，集成测试 `438 passed`；admin-web `24 files / 137 tests passed`，类型检查和生产构建通过；Native 测试和 `quarkusBuild` 通过。错误码目录、路由集合、源码行数和差异检查继续通过。
 
 下一阶段继续处理岗位、角色和其他页面的服务端分页与逐页面写入/详情矩阵，并保留 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和可视浏览器窗口为独立发布证据项。
+
+### 2026-11-16 岗位列表分页闭环
+
+岗位列表已完成三端服务端分页：Native `cec66b0`、admin-web `de58b4f`、Phoenix `6447e0c`，Phoenix 兼容修复为 `487fa9e`。Native 和 Phoenix 在请求带 `page`/`size` 或 `keyword`、状态筛选时返回 `{items,page,size,total}`；旧的无分页岗位名称查询继续返回数组。Phoenix LiveView 现在按当前页读取岗位，筛选和翻页使用服务端总数，页面不再对完整岗位列表做内存切页。
+
+验证结果：Phoenix 默认测试 `385 passed, 54 excluded`，集成测试 `439 passed`；admin-web `24 files / 137 tests passed`，类型检查和生产构建通过；Native 全量测试和 `quarkusBuild` 通过。源码行数、差异检查、错误码目录和路由集合继续通过。

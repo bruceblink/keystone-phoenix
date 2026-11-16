@@ -235,3 +235,9 @@ Phoenix `b9d8530` 将 admin-web 已使用的登录日志和操作审计分页约
 Native `819f5b7`、admin-web `9dfcb1a` 和 Phoenix `6f6776e` 完成任务列表分页对齐。admin-web 发送 `page`、`size` 和 `keyword`，Native 与 Phoenix 返回相同的 `items/page/size/total` 结构；无分页参数的旧数组调用保持兼容。Phoenix LiveView 使用同一服务端分页查询，筛选、翻页、刷新、详情编辑和任务日志读取保持闭环。
 
 验证结果：Phoenix 默认测试 `384 passed, 54 excluded`，集成测试 `438 passed`；admin-web `24 files / 137 tests passed`，类型检查和构建通过；Native 测试和 `quarkusBuild` 通过。剩余页面仍需继续补齐服务端分页、编辑、批量写入、详情返回和真实窗口矩阵。
+
+### 2026-11-16 岗位列表后端替换对齐
+
+Native `cec66b0`、admin-web `de58b4f` 和 Phoenix `6447e0c`/`487fa9e` 完成岗位列表分页对齐。admin-web 发送 `page`、`size`、`keyword` 和状态筛选，Native 与 Phoenix 返回相同的 `items/page/size/total` 结构；Phoenix LiveView 使用同一服务端查询，筛选、翻页和空结果状态保持闭环。
+
+验证结果：Phoenix 默认测试 `385 passed, 54 excluded`，集成测试 `439 passed`；admin-web `24 files / 137 tests passed`，类型检查和构建通过；Native 测试和生产构建通过。角色列表、菜单树和其他页面仍需继续补齐对应的服务端分页及详情矩阵。
