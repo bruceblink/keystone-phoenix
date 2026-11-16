@@ -186,7 +186,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       <section class="card roles-filter-card">
         <form class="roles-filter-form" phx-submit="refresh-roles">
           <label><span>角色名称或标识</span><input id="role-filter-keyword" name="roleKeyword" value={@role_filter["keyword"]} placeholder="按角色名称或编码筛选" autocomplete="off" /></label>
-          <input type="hidden" name="roleStatus" value={@role_filter["status"] || "all"} />
+          <label><span>角色状态</span><select id="role-filter-status" name="roleStatus"><option value="all" selected={@role_filter["status"] in [nil, "all"]}>全部状态</option><option value="enabled" selected={@role_filter["status"] in ["enabled", "1"]}>启用</option><option value="disabled" selected={@role_filter["status"] in ["disabled", "0"]}>停用</option></select></label>
           <div class="roles-filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="refresh-roles" phx-value-reset="true">重置</button></div>
         </form>
       </section>
