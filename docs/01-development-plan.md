@@ -858,10 +858,16 @@ Phoenix `467f486` 为角色成员详情补充“关闭”按钮和 `close-role-u
 
 本轮验证：角色页面定向测试 `19 passed`，Phoenix 全量集成测试 `474 passed`，严格编译、源码行数和差异检查通过。
 
-### 2026-11-17 首屏监控读取失败闭环
+### 2026-11-17 首屏监控读取失败反馈
 
-Phoenix `31771cb` 将登录后的默认运行监控读取纳入统一状态：读取过程中保留 loading 状态，首次读取失败显示带业务错误码的警示和“重试”按钮；已有快照刷新失败时保留旧数据并显示刷新反馈。监控读取职责拆分到 `MonitorSupport`，`AdminSupport` 保持兼容入口。非管理员账号收到 `permission_denied` 时转为可恢复的监控不可用状态，LiveView 不再崩溃。
+Phoenix `31771cb` 在登录后读取默认运行监控。首次读取失败显示警示和“重试”按钮；已有快照刷新失败时保留旧数据并显示刷新反馈。监控读取职责拆分到 `MonitorSupport`，`AdminSupport` 保持兼容入口。非管理员账号收到 `permission_denied` 时转为可恢复的监控不可用状态，LiveView 不再崩溃。
 
 本轮验证：监控组件和页面定向测试 `13 passed`；Phoenix 全量集成测试 `476 passed`；`mix compile --warnings-as-errors`、`mix check.source_lines`、格式检查和 `git diff --check` 通过。
 
-该切片只完成运行监控首屏状态。其他页面的首次读取错误、真实浏览器窗口、Native/Phoenix 后端切换窗口验收，以及 OIDC、公钥硬件 Passkey、浏览器 CSRF/Cookie、多节点恢复、生产代理链和正式发布证据仍未完成。
+监控读取目前仍在事件处理中同步执行。组件已提供 loading 状态，但需要异步读取后才能在等待期间展示。其他页面的首次读取错误、真实浏览器窗口、Native/Phoenix 后端切换窗口验收，以及 OIDC、公钥硬件 Passkey、浏览器 CSRF/Cookie、多节点恢复、生产代理链和正式发布证据仍未完成。
+
+### 2026-11-17 路由检查和页面图标补充
+
+Phoenix `df43ebb` 修复路由检查脚本遗漏三元表达式路径的问题，并覆盖模板路径参数、重复项和请求体中的非路由字符串。检查结果更新为 admin-web 使用 79 条 API 路由；Native 和 Phoenix 的 108 条 `/api/v1` 路由仍一致。
+
+Phoenix `6129e6a` 将任务、岗位和公告表格及空状态中的旧字符标记改为 SVG 图标，并对齐图标尺寸。组件定向测试 `13 passed`；严格编译、源码行数、格式和差异检查通过。本轮没有新增真实浏览器窗口证据。
