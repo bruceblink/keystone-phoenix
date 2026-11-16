@@ -19,12 +19,31 @@ defmodule KeystonePhoenixWeb.ConfigController do
 
   @doc "Returns a paginated list of system configuration entries."
   def list(conn, params) do
-    case Config.list_configs_all(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, rows} ->
-        json(conn, ApiResponse.ok(Enum.map(rows, &ManagementContract.config/1)))
+    authorization = [authorization: %{principal: conn.assigns.current_user}]
 
-      {:error, reason} ->
-        render_error(conn, reason)
+    if paged_request?(params) do
+      case Config.list_configs_page(paging_params(params), authorization) do
+        {:ok, page} ->
+          data = %{
+            items: Enum.map(page.items, &ManagementContract.config/1),
+            page: page.page,
+            size: page.size,
+            total: page.total
+          }
+
+          json(conn, ApiResponse.ok(data))
+
+        {:error, reason} ->
+          render_error(conn, reason)
+      end
+    else
+      case Config.list_configs_all(params, authorization) do
+        {:ok, rows} ->
+          json(conn, ApiResponse.ok(Enum.map(rows, &ManagementContract.config/1)))
+
+        {:error, reason} ->
+          render_error(conn, reason)
+      end
     end
   end
 
@@ -129,5 +148,13 @@ defmodule KeystonePhoenixWeb.ConfigController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
+  end
+
+  defp paged_request?(params), do: Map.has_key?(params, "page") or Map.has_key?(params, "size")
+
+  defp paging_params(params) do
+    params
+    |> Map.put_new("pageNum", params["page"] || "1")
+    |> Map.put_new("pageSize", params["size"] || "20")
   end
 end

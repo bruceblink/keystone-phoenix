@@ -24,6 +24,42 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
   end
 
   @tag :integration
+  test "配置列表在提供 page 和 size 时返回分页契约" do
+    token = admin_token()
+    config_key = Identity.v7()
+
+    response =
+      post(authorized(build_conn(), token), "/api/v1/configs", %{
+        "configName" => "分页配置",
+        "configKey" => config_key,
+        "configValue" => "page",
+        "isAllowChange" => 1
+      })
+
+    assert response.status == 201
+
+    assert %{
+             "success" => true,
+             "data" => %{
+               "items" => items,
+               "page" => 1,
+               "size" => 1,
+               "total" => total
+             }
+           } =
+             get(authorized(build_conn(), token), "/api/v1/configs", %{
+               "page" => "1",
+               "size" => "1",
+               "keyword" => "分页配置"
+             })
+             |> json_response(200)
+
+    assert total >= 1
+    assert Enum.any?(items, &(&1["key"] == config_key))
+    assert delete(authorized(build_conn(), token), "/api/v1/configs/#{config_key}").status == 200
+  end
+
+  @tag :integration
   test "字典类型和条目通过 HTTP 创建后可以按类型读取并清理" do
     token = admin_token()
     # 使用 UUID 形状的 code，覆盖 Native 允许的业务键边界。

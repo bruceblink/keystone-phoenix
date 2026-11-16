@@ -34,6 +34,19 @@ defmodule KeystonePhoenix.Config do
     page_query(configs_query(params), params)
   end
 
+  @doc "返回带分页元数据的配置列表，供可分页管理页面使用。"
+  def list_configs_page(params \\ %{}) do
+    page =
+      positive_page(params["page"] || params[:page] || params["pageNum"] || params[:page_num])
+
+    size =
+      positive_size(params["size"] || params[:size] || params["pageSize"] || params[:page_size])
+
+    result = list_configs(Map.merge(params, %{"pageNum" => page, "pageSize" => size}))
+
+    %{items: result.rows, page: page, size: size, total: result.total}
+  end
+
   @doc "为 Native 管理资源读取全部配置，不返回分页元数据。"
   def list_configs_all(params \\ %{}) do
     configs_query(params) |> Repo.all() |> Enum.map(&config_to_map/1)
@@ -43,6 +56,13 @@ defmodule KeystonePhoenix.Config do
   def list_configs(params, options) when is_map(params) and is_list(options) do
     with :ok <- Authorization.authorize_read(options, "config:read") do
       {:ok, list_configs(params)}
+    end
+  end
+
+  @doc "在检查配置资源范围后返回带分页元数据的配置列表。"
+  def list_configs_page(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "config:read") do
+      {:ok, list_configs_page(params)}
     end
   end
 
@@ -241,9 +261,24 @@ defmodule KeystonePhoenix.Config do
       where: c.deleted == false,
       order_by: [asc: c.config_key, asc: c.config_id]
     )
+    |> filter_keyword(params["keyword"] || params[:keyword])
     |> filter_contains(:config_name, params["configName"] || params[:config_name])
     |> filter_equal(:config_key, params["configKey"] || params[:config_key])
     |> filter_allow_change(params["isAllowChange"] || params[:is_allow_change])
+  end
+
+  defp filter_keyword(query, nil), do: query
+  defp filter_keyword(query, ""), do: query
+
+  defp filter_keyword(query, value) do
+    pattern = "%#{String.trim(to_string(value))}%"
+
+    where(
+      query,
+      [record],
+      ilike(record.config_name, ^pattern) or ilike(record.config_key, ^pattern) or
+        ilike(record.remark, ^pattern)
+    )
   end
 
   defp filter_contains(query, _field, nil), do: query
@@ -330,6 +365,20 @@ defmodule KeystonePhoenix.Config do
   defp normalize_boolean(value) when value in [true, 1, "1", "true", "TRUE"], do: true
   defp normalize_boolean(value) when value in [false, 0, "0", "false", "FALSE"], do: false
   defp normalize_boolean(value), do: value
+
+  defp positive_page(value) do
+    case Integer.parse(to_string(value || "1")) do
+      {number, ""} when number > 0 -> number
+      _ -> 1
+    end
+  end
+
+  defp positive_size(value) do
+    case Integer.parse(to_string(value || "20")) do
+      {number, ""} when number > 0 -> min(number, 100)
+      _ -> 20
+    end
+  end
 
   defp parse_options(nil), do: []
   defp parse_options(""), do: []

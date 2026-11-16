@@ -370,6 +370,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       post_feedback: nil,
       post_form: AdminSupport.empty_post_form(),
       config_rows: dashboard.config_rows,
+      config_total: length(dashboard.config_rows),
       config_feedback: nil,
       config_form: AdminSupport.empty_config_form(),
       dict_type_rows: dashboard.dict_type_rows,

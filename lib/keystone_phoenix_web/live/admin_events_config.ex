@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
 
   import Phoenix.Component, only: [assign: 2]
   alias KeystonePhoenix.Config
+  alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
@@ -15,11 +16,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
           do: Config.refresh_cache(authorization: self_authorization(socket)),
           else: :ok
 
-      case {refresh_result, Support.load_configs_for_socket_result(socket, config_filter(socket))} do
-        {:ok, {:ok, rows}} ->
+      case {refresh_result, load_config_page(socket, current_config_page(socket))} do
+        {:ok, {:ok, page}} ->
           {:noreply,
            assign(socket,
-             config_rows: rows,
+             config_rows: page.items,
+             config_total: page.total,
+             config_page_num: page.page,
+             config_page_size: page.size,
              config_form: Support.empty_config_form(),
              config_feedback: if(can_refresh?, do: "配置缓存已刷新", else: nil),
              active_modal: nil
@@ -43,17 +47,56 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
 
   def handle_event("reset-config-filter", _params, socket), do: update_config_filter(socket, "")
 
+  def handle_event("paginate-configs", %{"page" => page}, socket) do
+    case Integer.parse(to_string(page)) do
+      {page, ""} when page > 0 ->
+        case load_config_page(socket, page) do
+          {:ok, result} ->
+            {:noreply,
+             assign(socket,
+               config_rows: result.items,
+               config_total: result.total,
+               config_page_num: result.page,
+               config_page_size: result.size,
+               config_feedback: nil
+             )}
+
+          {:error, reason} ->
+            {:noreply,
+             assign(socket,
+               config_feedback: Support.read_error_feedback(reason, "配置列表读取失败，请重试")
+             )}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_event("delete-config", %{"config-id" => config_id}, socket) do
     # 配置不存在时保留页面文案，并返回可检索的资源错误码。
     if Support.permission_socket?(socket, "config:update") do
       case Config.delete_config(config_id, authorization: self_authorization(socket)) do
         {:ok, _config} ->
-          {:noreply,
-           assign(socket,
-             config_rows: Support.load_configs_for_socket(socket),
-             config_feedback: "配置已删除",
-             active_modal: nil
-           )}
+          case load_config_page(socket, 1) do
+            {:ok, page} ->
+              {:noreply,
+               assign(socket,
+                 config_rows: page.items,
+                 config_total: page.total,
+                 config_page_num: page.page,
+                 config_page_size: page.size,
+                 config_feedback: "配置已删除",
+                 active_modal: nil
+               )}
+
+            {:error, reason} ->
+              {:noreply,
+               assign(socket,
+                 config_feedback: Support.read_error_feedback(reason, "配置已删除，但列表刷新失败，请重试"),
+                 active_modal: nil
+               )}
+          end
 
         {:error, :not_found} ->
           {:noreply,
@@ -118,11 +161,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
 
       case result do
         {:ok, _config} ->
-          case Support.load_configs_for_socket_result(socket, config_filter(socket)) do
-            {:ok, rows} ->
+          case load_config_page(socket, 1) do
+            {:ok, page} ->
               {:noreply,
                assign(socket,
-                 config_rows: rows,
+                 config_rows: page.items,
+                 config_total: page.total,
+                 config_page_num: page.page,
+                 config_page_size: page.size,
                  config_form: Support.empty_config_form(),
                  active_modal: nil,
                  config_feedback: if(config_id == "", do: "配置已创建", else: "配置已更新")
@@ -146,13 +192,51 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
   end
 
   defp update_config_filter(socket, keyword) do
-    if Support.panel_allowed?(socket, "configs"),
-      do: {:noreply, assign(socket, config_filter: %{"keyword" => keyword})},
-      else: {:noreply, socket}
+    if Support.panel_allowed?(socket, "configs") do
+      socket = assign(socket, config_filter: %{"keyword" => keyword})
+
+      case load_config_page(socket, 1) do
+        {:ok, page} ->
+          {:noreply,
+           assign(socket,
+             config_rows: page.items,
+             config_total: page.total,
+             config_page_num: page.page,
+             config_page_size: page.size,
+             config_feedback: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             config_feedback: Support.read_error_feedback(reason, "配置列表查询失败，请重试")
+           )}
+      end
+    else
+      {:noreply, socket}
+    end
   end
 
   defp config_filter(socket),
-    do: %{"configKey" => get_in(socket.assigns, [:config_filter, "keyword"]) || ""}
+    do: %{"keyword" => get_in(socket.assigns, [:config_filter, "keyword"]) || ""}
+
+  defp current_config_page(socket),
+    do:
+      get_in(socket.assigns, [:config_page_num]) ||
+        get_in(socket.assigns, [:page_nums, "configs"]) || 1
+
+  defp load_config_page(socket, page) do
+    params =
+      config_filter(socket)
+      |> Map.put("pageNum", page)
+      |> Map.put(
+        "pageSize",
+        get_in(socket.assigns, [:config_page_size]) ||
+          get_in(socket.assigns, [:page_sizes, "configs"]) || 20
+      )
+
+    AdminReadSupport.config_page(socket, params)
+  end
 
   defp self_authorization(socket) do
     principal =

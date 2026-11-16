@@ -14,6 +14,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       |> assign_new(:read_only, fn -> false end)
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:config_filter, fn -> %{"keyword" => ""} end)
+      |> assign_new(:config_page_num, fn -> 1 end)
+      |> assign_new(:config_page_size, fn -> 20 end)
+      |> assign_new(:config_total, fn -> nil end)
 
     ~H"""
     <div class="configs-page system-page">
@@ -53,32 +56,21 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       <% end %>
       <section class="card configs-table-card table-card" aria-labelledby="configs-table-title">
         <header class="card-header table-card-heading">
-          <div><h2 id="configs-table-title">配置列表</h2><p>共 <%= length(filtered_config_rows(@config_rows, @config_filter)) %> 项匹配配置</p></div>
+          <div><h2 id="configs-table-title">配置列表</h2><p>共 <%= @config_total || length(@config_rows) %> 项匹配配置</p></div>
           <span class="badge badge-info">系统 API</span>
         </header>
-        <p :if={filtered_config_rows(@config_rows, @config_filter) == []} class="configs-empty table-empty" role="status"><strong>暂无配置数据</strong><span>没有匹配的系统配置，调整筛选条件后重试。</span></p>
+        <p :if={@config_rows == []} class="configs-empty table-empty" role="status"><strong>暂无配置数据</strong><span>没有匹配的系统配置，调整筛选条件后重试。</span></p>
         <div class="configs-table-wrap" role="region" tabindex="0" aria-label="系统配置列表"><table class="configs-table"><caption class="sr-only">系统配置列表</caption><thead><tr><th scope="col">配置键</th><th scope="col">配置值</th><th scope="col">说明</th><th scope="col">状态</th><th scope="col">更新时间</th><th scope="col">操作</th></tr></thead><tbody>
-          <%= for config <- filtered_config_rows(@config_rows, @config_filter) do %>
+          <%= for config <- @config_rows do %>
             <tr><td><code class="config-key"><%= config["configKey"] %></code></td><td class="config-value"><%= config["configValue"] || "—" %></td><td><%= config["remark"] || config["configName"] || "—" %></td><td><span class="badge badge-neutral"><%= if config["isAllowChange"] in [1, true, "1", "true"], do: "可修改", else: "只读" %></span></td><td class="config-time"><%= config["updateTime"] || config["updatedAt"] || "—" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="edit-config" phx-value-config-id={config["configId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-danger button-sm" phx-click="delete-config" phx-value-config-id={config["configId"]} phx-confirm="确认删除此系统配置吗？" phx-disable-with="删除中…">删除</button></td></tr>
           <% end %>
         </tbody></table></div>
+        <div class="table-card-footer">
+          <.pagination panel="configs" page_num={@config_page_num} page_size={@config_page_size} total={@config_total || length(@config_rows)} />
+        </div>
       </section>
     </div>
     """
-  end
-
-  defp filtered_config_rows(rows, filter) do
-    keyword = String.trim(to_string(filter["keyword"] || "")) |> String.downcase()
-
-    Enum.filter(rows, fn config ->
-      keyword == "" or
-        String.contains?(
-          String.downcase(
-            "#{config["configName"] || ""} #{config["configKey"] || ""} #{config["remark"] || ""}"
-          ),
-          keyword
-        )
-    end)
   end
 
   def dicts(assigns) do

@@ -80,6 +80,27 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     end
   end
 
+  @doc "读取当前配置页并保留页码、总数和服务错误。"
+  def config_page(socket, params \\ %{}) do
+    options = Support.authorization_options(socket)
+
+    result =
+      if Support.admin_socket?(socket) do
+        Config.list_configs_page(params)
+      else
+        Config.list_configs_page(params, options)
+      end
+
+    case result do
+      {:ok, page} -> {:ok, page}
+      page when is_map(page) -> {:ok, page}
+      {:error, reason} -> {:error, reason}
+      _other -> {:error, :invalid_page}
+    end
+  rescue
+    _error -> {:error, :service_unavailable}
+  end
+
   @doc "读取当前主体的 API Key 元数据，并保留授权或服务失败结果。"
   def api_keys(socket) do
     try do
