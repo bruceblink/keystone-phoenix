@@ -285,3 +285,5 @@ Phoenix `e2231de` 又将用户管理的 `users_username`、`users_displayName` �
 第十四批闭环证据：admin-web `b548361` 将任务、个人资料、登录日志和操作审计的旧数据刷新失败改为安全业务文案，保留错误码、业务含义和请求标识，并补充旧数据保留测试。
 
 本批次验证：admin-web `26 files / 155 tests passed`，类型检查和生产构建通过。该结果仍不替代真实可视浏览器窗口和发布环境验收。
+
+Native `5b75636` 基线复核通过 `./gradlew test quarkusBuild`。测试日志中的限流事件和删除任务与调度触发交错产生的 `job not found` 仅作为非失败日志记录，暂列后续调度日志优化，不改变接口验收结论。
