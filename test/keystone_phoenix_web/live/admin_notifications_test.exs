@@ -20,6 +20,7 @@ defmodule KeystonePhoenixWeb.AdminNotificationsTest do
     list_html =
       render_component(&Notifications.menu/1, %{
         open: true,
+        loading: false,
         notifications: notifications,
         error: nil,
         selected: nil
@@ -33,6 +34,7 @@ defmodule KeystonePhoenixWeb.AdminNotificationsTest do
     detail_html =
       render_component(&Notifications.menu/1, %{
         open: true,
+        loading: false,
         notifications: notifications,
         error: nil,
         selected: hd(notifications)
@@ -47,6 +49,7 @@ defmodule KeystonePhoenixWeb.AdminNotificationsTest do
     html =
       render_component(&Notifications.menu/1, %{
         open: true,
+        loading: false,
         notifications: [],
         error: "站内通知暂时无法读取，请重试",
         selected: nil
@@ -56,6 +59,22 @@ defmodule KeystonePhoenixWeb.AdminNotificationsTest do
     assert html =~ "站内通知暂时无法读取，请重试"
     assert html =~ ~s(phx-click="retry-notifications")
     refute html =~ "暂无站内通知"
+  end
+
+  test "renders a loading state before public notifications finish reading" do
+    html =
+      render_component(&Notifications.menu/1, %{
+        open: true,
+        loading: true,
+        notifications: [],
+        error: nil,
+        selected: nil
+      })
+
+    assert html =~ ~s(role="status")
+    assert html =~ "正在读取通知"
+    refute html =~ "暂无站内通知"
+    refute html =~ "重试"
   end
 
   test "formats ISO notification timestamps like admin-web" do

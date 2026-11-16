@@ -40,6 +40,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       current_uri: "/",
       sidebar_open: false,
       notifications_open: false,
+      notifications_loading: false,
       notifications_error: nil,
       selected_notification_id: nil,
       in_app_notifications: [],

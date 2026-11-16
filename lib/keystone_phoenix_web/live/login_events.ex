@@ -358,6 +358,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       refresh_token: tokens.refresh_token,
       active_panel: "monitor",
       notifications_open: false,
+      notifications_loading: false,
       notifications_error: nil,
       selected_notification_id: nil,
       in_app_notifications: dashboard.in_app_notifications,

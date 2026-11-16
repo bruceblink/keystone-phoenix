@@ -17,6 +17,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.LoginState
+  alias KeystonePhoenixWeb.LoginNotifications
   alias KeystonePhoenixWeb.Live.AdminEvents.Accounts, as: AccountsEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.Config, as: ConfigEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.Operations, as: OperationsEvents
@@ -124,39 +125,16 @@ defmodule KeystonePhoenixWeb.LoginLive do
     do: {:noreply, assign(socket, sidebar_open: false)}
 
   @impl true
-  def handle_event("toggle-notifications", _params, socket) do
-    open = not socket.assigns.notifications_open
+  def handle_event("toggle-notifications", _params, socket), do: LoginNotifications.toggle(socket)
 
-    if open,
-      do: load_notifications(socket),
-      else:
-        {:noreply,
-         assign(socket,
-           notifications_open: false,
-           notifications_error: nil,
-           selected_notification_id: nil
-         )}
-  end
+  def handle_event("retry-notifications", _params, socket), do: LoginNotifications.retry(socket)
 
-  def handle_event("retry-notifications", _params, socket), do: load_notifications(socket)
+  def handle_event("close-notifications", _params, socket), do: LoginNotifications.close(socket)
 
-  def handle_event("close-notifications", _params, socket),
-    do:
-      {:noreply,
-       assign(socket,
-         notifications_open: false,
-         notifications_error: nil,
-         selected_notification_id: nil
-       )}
+  def handle_event("back-notifications", _params, socket), do: LoginNotifications.back(socket)
 
-  def handle_event("back-notifications", _params, socket),
-    do: {:noreply, assign(socket, selected_notification_id: nil)}
-
-  def handle_event("open-notification", %{"notification-id" => notification_id}, socket) do
-    if Enum.any?(socket.assigns.in_app_notifications, &(to_string(&1["id"]) == notification_id)),
-      do: {:noreply, assign(socket, selected_notification_id: notification_id)},
-      else: {:noreply, socket}
-  end
+  def handle_event("open-notification", params, socket),
+    do: LoginNotifications.open(params, socket)
 
   def handle_event("show-panel", %{"panel" => panel}, socket)
       when panel in [
@@ -331,27 +309,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   defp dispatch_pagination(_panel, _page, socket), do: {:noreply, socket}
 
-  defp load_notifications(socket) do
-    case AdminSupport.load_public_notifications_result() do
-      {:ok, notifications} ->
-        {:noreply,
-         assign(socket,
-           notifications_open: true,
-           notifications_error: nil,
-           selected_notification_id: nil,
-           in_app_notifications: notifications
-         )}
-
-      {:error, message} ->
-        {:noreply,
-         assign(socket,
-           notifications_open: true,
-           notifications_error: message,
-           selected_notification_id: nil,
-           in_app_notifications: []
-         )}
-    end
-  end
+  @impl true
+  def handle_async(name, result, socket),
+    do: LoginNotifications.handle_async(name, result, socket)
 
   @impl true
   def handle_info({:admin_job_finished, _job_id, result}, socket) do
@@ -390,10 +350,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
       end
 
     {:noreply, assign(socket, Keyword.put(reload, :job_feedback, feedback))}
-  end
-
-  defp selected_notification(notifications, notification_id) do
-    Enum.find(notifications, &(to_string(&1["id"]) == to_string(notification_id)))
   end
 
   defp liveview_ip(socket) do
@@ -463,7 +419,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <span class="context-kicker">Keystone</span><span class="context-separator">/</span>
                   </div>
                   <div class="topbar-actions">
-                    <.menu open={@notifications_open} notifications={@in_app_notifications} error={@notifications_error} selected={selected_notification(@in_app_notifications, @selected_notification_id)} />
+                    <.menu open={@notifications_open} loading={@notifications_loading} notifications={@in_app_notifications} error={@notifications_error} selected={LoginNotifications.selected(@in_app_notifications, @selected_notification_id)} />
                     <button type="button" class="user-menu user-menu-button user-profile-button" phx-click="show-panel" phx-value-panel="profile" aria-label="打开个人资料">
                       <span class="avatar user-avatar" aria-hidden="true"><%= String.first(to_string(@current_user["nickname"] || @current_user["username"])) %></span>
                       <span class="user-copy">

@@ -5,6 +5,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Notifications do
 
   @doc "渲染只读的站内通知列表或选中通知详情。"
   def menu(assigns) do
+    assigns = assign_new(assigns, :loading, fn -> false end)
+
     ~H"""
     <div class="notification-menu">
       <button type="button" class="icon-button" phx-click="toggle-notifications" aria-label="通知" aria-expanded={@open}>
@@ -18,16 +20,18 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Notifications do
           <div><strong><%= if @selected, do: "通知详情", else: "站内通知" %></strong><span><%= if @selected, do: "查看通知内容", else: "#{length(@notifications)} 条可见通知" %></span></div>
           <button type="button" class="button button-ghost button-sm" phx-click="close-notifications" aria-label="关闭通知">×</button>
         </header>
-        <%= if @error do %>
-          <div class="notification-state notification-state-error" role="alert"><span><%= @error %></span><button type="button" class="button button-ghost button-sm" phx-click="retry-notifications">重试</button></div>
-        <% else %>
-          <%= if @selected do %>
-          <article class="notification-detail">
-            <p class="notification-detail-meta"><%= notification_time(@selected["publishAt"] || @selected["createdAt"]) %> · <%= @selected["noticeType"] || "通知" %></p>
-            <h3><%= @selected["title"] %></h3>
-            <p><%= @selected["content"] %></p>
-          </article>
-          <% else %>
+        <%= cond do %>
+          <% @loading -> %>
+            <div class="notification-state" role="status" aria-live="polite">正在读取通知</div>
+          <% @error -> %>
+            <div class="notification-state notification-state-error" role="alert"><span><%= @error %></span><button type="button" class="button button-ghost button-sm" phx-click="retry-notifications">重试</button></div>
+          <% @selected -> %>
+            <article class="notification-detail">
+              <p class="notification-detail-meta"><%= notification_time(@selected["publishAt"] || @selected["createdAt"]) %> · <%= @selected["noticeType"] || "通知" %></p>
+              <h3><%= @selected["title"] %></h3>
+              <p><%= @selected["content"] %></p>
+            </article>
+          <% true -> %>
             <div class="notification-list" role="list">
               <%= if @notifications == [] do %>
                 <div class="notification-state" role="status">暂无站内通知</div>
@@ -40,7 +44,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Notifications do
                 <% end %>
               <% end %>
             </div>
-          <% end %>
         <% end %>
       </section>
     </div>
