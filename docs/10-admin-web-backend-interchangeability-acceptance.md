@@ -155,7 +155,7 @@ Phoenix 角色控制器的 `unassign_users` 权限声明也已统一为 `role:as
 
 主线继续收口：admin-web `0f66cd3` 新增角色成员入口，调用统一的 `GET/PUT/DELETE /roles/:id/users`，支持已分配/可分配列表、分页、MFA step-up、刷新、重试和错误反馈；角色成员 API 客户端与 Native/Phoenix 的用户 ID 数组响应一致。Phoenix `85e9d7e` 修复角色成员撤销忽略 URL `role_id` 的问题，只有用户当前属于目标角色时才清除绑定，并补充跨角色回归；Phoenix `b460ad3` 将注销接口权限与 Native 对齐为 `session:revoke`，补充无权限 403 和有权限成功回归。
 
-替换验收仍有明确阻塞项：Native 支持用户多角色，Phoenix 用户表仍只有单个 `role_id`，用户写入和角色成员分配的多角色语义不能互换；当前 admin-web 成员面板只能展示后端返回的用户 ID，不能获得统一的用户名、昵称和服务端分页字段。该差异已记录为数据模型和接口 DTO 升级项，在完成 Phoenix 多角色模型或明确兼容策略前，不宣称 Phoenix 与 Native 已达到完全可替换。
+多角色数据语义的替换阻塞已关闭：Phoenix 已通过 `sys_user_role` 关联表支持多角色用户，用户写入、角色成员分配、鉴权、菜单、数据范围和认证响应已完成对应切片。角色成员读取按目标角色关联判断，并对齐缺失角色的 `404 resource_not_found` 和空 `userIds` 操作结果。Native/Phoenix 继续使用双方已有的用户 ID 数组接口；统一用户详情和服务端分页 DTO 属于后续页面体验增强，不再是后端替换前置条件。
 
 ## 发布前证据
 
@@ -304,3 +304,15 @@ Native `bb832b1` 已修复该调度竞态日志。已删除任务被调度器再
 本轮验证：Phoenix `447 passed`；admin-web `27 files / 158 tests passed`、类型检查和构建通过；Native 全量测试和 `quarkusBuild` 通过。当前 admin-web 使用 74 条 API 调用，Native/Phoenix 各提供 108 条 `/api/v1` 路由。Codex 内置浏览器在当前会话没有可保持交互的 `iab`，因此页面视觉证据使用 Chrome 回退窗口，不将其描述为内置浏览器证据。
 
 补充验收：Phoenix `7af6e6d` 的权限目录接口已支持 `api-key:create`、`permission:read` 或 `role:manage` 任一权限，和 Native `f388199` 保持相同授权边界。Phoenix `4f205a9` 的角色权限表单与 admin-web `720aa70` 均从动态目录读取当前可授予项，支持搜索、分组、逐项选择和编辑预选。Phoenix 全量集成回归为 `449 passed`，角色权限定向回归为 `14 passed`。
+
+### 2026-11-17 角色成员读取和登录界面增量
+
+本轮已完成以下 Phoenix 提交：
+
+- `edfc549` 按 `sys_user_role` 关联读取已分配和可分配成员，覆盖非首选角色；缺失角色返回 `404 resource_not_found`，空 `userIds` 分配和移除返回成功结果。
+- `7825d23` 在角色列表行显示“成员”入口，LiveView 可以打开对应的成员管理面板。
+- `a886aa7` 将用户表单的角色字段改为当前启用角色目录的多选框，编辑时保留已选角色，未选择角色时清空角色。
+- `1e135dd` 将窄屏侧栏抽屉断点调整为 `850px`，点击“接口文档”打开 `/api/swagger` 前关闭抽屉。
+- `2b9dca8` 将登录默认值设为 `operator`/`keystone`，并将 MFA 字段文案统一为“一次性验证码”。
+
+当前未完成项保持为：Codex 内置浏览器无法保持交互；Phoenix 与 admin-web 仍有图标和细节差异；通知页面 loading 状态未闭环；其余页面的逐页写操作、加载失败、错误反馈、分页、编辑、批量操作结果和正式发布证据仍需继续补齐。成员详情 DTO 不是后端替换的阻塞项。
