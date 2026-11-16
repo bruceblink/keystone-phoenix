@@ -706,3 +706,5 @@ Phoenix 提交 `b9d8530` 将登录日志和操作审计的 LiveView 刷新、筛
 验证结果：Native 角色 HTTP 定向测试、全量 Gradle 测试和 `quarkusBuild` 通过；admin-web `24 files / 140 tests passed`，类型检查和生产构建通过；Phoenix 角色 HTTP 集成测试 10 项、LiveView 组织测试 18 项通过。Phoenix 全量测试和 CI 在本次提交后继续执行。角色成员、角色权限和菜单树语义未在本轮改变。
 
 角色分页写入闭环随后由 Phoenix `93efb71` 补齐：角色保存、状态变更、批量删除和成员分配成功后重新读取完整角色目录和第 1 页，并更新 `total`；翻页成功会清空上一页选择，失败时保留旧页并显示错误反馈。Phoenix 默认测试为 `386 passed, 55 excluded`，集成测试为 `441 passed`。
+
+菜单筛选状态随后完成三端对齐：admin-web `b4c6c46` 和 Phoenix `8cd0295` 将菜单关键词查询写入命名 URL，直接打开菜单深链接可以恢复筛选，重置会清除查询参数；菜单树仍保持完整读取和祖先链展示，不进行破坏层级的分页。
