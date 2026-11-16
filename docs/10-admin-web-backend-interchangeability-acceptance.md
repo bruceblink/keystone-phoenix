@@ -247,3 +247,5 @@ Native `cec66b0`、admin-web `de58b4f` 和 Phoenix `6447e0c`/`487fa9e` 完成岗
 Native `5b75636`、admin-web `6756234` 和 Phoenix 本次提交完成角色列表替换对齐。admin-web 发送 `page`、`size`、`keyword` 和状态筛选时，Native 与 Phoenix 返回相同的 `items/page/size/total` 结构；无参数调用保持旧数组响应。Phoenix LiveView 角色列表使用服务端当前页，角色菜单和成员子面板继续读取完整角色目录，避免分页影响权限绑定。
 
 验证结果：Native 角色 HTTP 定向测试、全量测试和构建通过；admin-web `24 files / 140 tests passed`，类型检查和生产构建通过；Phoenix 角色 HTTP 集成测试 10 项、LiveView 组织测试 18 项通过。Phoenix 全量测试、源码行数检查和 CI 在本次提交后继续执行。该结果不替代 Codex 内置浏览器可视窗口验收。
+
+Phoenix `93efb71` 补齐角色列表写入闭环。角色保存、状态变更、批量删除和成员分配成功后，LiveView 会更新完整角色目录、第一页和 `total`；翻页会清空上一页选择，避免跨页误删。重新读取失败时保留旧页并显示稳定错误反馈。该修复不改变 Native/Phoenix HTTP 字段和状态码。

@@ -704,3 +704,5 @@ Phoenix 提交 `b9d8530` 将登录日志和操作审计的 LiveView 刷新、筛
 角色列表已完成 Native、Phoenix HTTP、Phoenix LiveView 和 admin-web 的分页对齐。Native `5b75636`、admin-web `6756234` 支持 `page`、`size`、`keyword` 和状态筛选，并保持无参数旧数组响应兼容。Phoenix HTTP 同步返回 `items/page/size/total`，角色关键词同时匹配名称和标识，状态支持启用、停用及布尔/数字表达；LiveView 角色列表按当前页读取并保留角色菜单、成员管理所需的完整角色目录。
 
 验证结果：Native 角色 HTTP 定向测试、全量 Gradle 测试和 `quarkusBuild` 通过；admin-web `24 files / 140 tests passed`，类型检查和生产构建通过；Phoenix 角色 HTTP 集成测试 10 项、LiveView 组织测试 18 项通过。Phoenix 全量测试和 CI 在本次提交后继续执行。角色成员、角色权限和菜单树语义未在本轮改变。
+
+角色分页写入闭环随后由 Phoenix `93efb71` 补齐：角色保存、状态变更、批量删除和成员分配成功后重新读取完整角色目录和第 1 页，并更新 `total`；翻页成功会清空上一页选择，失败时保留旧页并显示错误反馈。Phoenix 默认测试为 `386 passed, 55 excluded`，集成测试为 `441 passed`。
