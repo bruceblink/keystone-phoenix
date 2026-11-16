@@ -16,12 +16,17 @@ defmodule KeystonePhoenixWeb.AuthTokenResponse do
       "refreshExpiresIn" => Map.fetch!(tokens, :refresh_expires_in),
       "username" => Map.get(user_info, "username", ""),
       "displayName" => Map.get(user_info, "nickname") || Map.get(user_info, "username", ""),
-      "roles" => roles(role_key),
+      "roles" => roles(Map.get(current_user, "roles"), role_key),
       "sessionId" => Map.fetch!(tokens, :session_id),
       "clientId" => Map.get(tokens, :client_id, "web")
     }
   end
 
-  defp roles(role_key) when is_binary(role_key) and role_key != "", do: [role_key]
-  defp roles(_role_key), do: []
+  defp roles(role_keys, _role_key) when is_list(role_keys),
+    do: Enum.uniq(Enum.filter(role_keys, &is_non_empty_string/1))
+
+  defp roles(_role_keys, role_key) when is_binary(role_key) and role_key != "", do: [role_key]
+  defp roles(_role_keys, _role_key), do: []
+
+  defp is_non_empty_string(value), do: is_binary(value) and String.trim(value) != ""
 end

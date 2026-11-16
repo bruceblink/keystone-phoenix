@@ -4,6 +4,8 @@ defmodule KeystonePhoenix.AuthTest do
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Config.SysConfig
+  alias KeystonePhoenix.Role.SysRole
+  alias KeystonePhoenix.User.SysUserRole
   alias KeystonePhoenix.User.SysUser
 
   setup do
@@ -70,6 +72,31 @@ defmodule KeystonePhoenix.AuthTest do
     assert tokens.current_user["permissions"] == []
   end
 
+  test "returns all persisted role keys while retaining the compatibility role key" do
+    first_role = insert_role("auth_roles_first")
+    second_role = insert_role("auth_roles_second")
+
+    user =
+      %SysUser{}
+      |> SysUser.create_changeset(%{
+        username: "auth_roles_#{System.unique_integer([:positive])}",
+        password: "Strong!123",
+        role_id: first_role.role_id,
+        status: 1
+      })
+      |> Repo.insert!()
+
+    Repo.insert_all(SysUserRole, [
+      %{user_id: user.user_id, role_id: first_role.role_id},
+      %{user_id: user.user_id, role_id: second_role.role_id}
+    ])
+
+    current = Auth.current_login_user(user)
+
+    assert current["roleKey"] == first_role.role_key
+    assert Enum.sort(current["roles"]) == Enum.sort([first_role.role_key, second_role.role_key])
+  end
+
   test "increments permission version when user authorization state changes", %{user: user} do
     assert user.permission_version == 1
 
@@ -87,5 +114,11 @@ defmodule KeystonePhoenix.AuthTest do
              )
 
     assert updated.permission_version == 2
+  end
+
+  defp insert_role(role_key) do
+    %SysRole{}
+    |> SysRole.changeset(%{role_name: role_key, role_key: role_key, role_sort: 1, status: 1})
+    |> Repo.insert!()
   end
 end

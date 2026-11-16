@@ -6,6 +6,7 @@ defmodule KeystonePhoenix.Auth do
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
+  alias KeystonePhoenix.User.RoleMembership
 
   @spec login(String.t(), String.t(), boolean(), String.t() | nil, String.t() | nil) ::
           {:ok, map()} | {:error, atom()}
@@ -415,11 +416,12 @@ defmodule KeystonePhoenix.Auth do
   @doc "Builds the frontend-compatible current login user payload."
   @spec current_login_user(map()) :: map()
   def current_login_user(user) do
-    {role_key, permissions} = role_permissions(user)
+    {role_key, roles, permissions} = role_permissions(user)
 
     %{
       "userInfo" => User.user_to_map_with_relations(user),
       "roleKey" => role_key,
+      "roles" => roles,
       "permissions" => permissions
     }
   end
@@ -522,21 +524,37 @@ defmodule KeystonePhoenix.Auth do
 
   defp parse_user_id(_value), do: {:error, :invalid_token}
 
-  defp role_permissions(user), do: role_permissions_for_role(user)
+  defp role_permissions(user), do: role_permissions_for_roles(user)
 
-  defp role_permissions_for_role(user) do
-    role_key =
-      case user.role_id do
-        nil ->
-          ""
+  defp role_permissions_for_roles(user) do
+    role_ids = role_ids(user)
+    role_key_map = role_key_map(role_ids)
+    role_keys = role_keys(role_ids, role_key_map)
+    preferred_role_key = preferred_role_key(user, role_ids, role_key_map, role_keys)
 
-        role_id ->
-          case Role.get_role(role_id) do
-            {:ok, role} -> role.role_key
-            {:error, :not_found} -> ""
-          end
-      end
-
-    {role_key, Menu.permissions_for_user(user)}
+    {preferred_role_key, role_keys, Menu.permissions_for_user(user)}
   end
+
+  # 兼容期间优先使用关联表；关联表没有记录时回退旧 role_id 字段。
+  defp role_ids(user) do
+    case RoleMembership.list_role_ids_for_user(user.user_id) do
+      [] -> List.wrap(user.role_id)
+      ids -> ids
+    end
+  end
+
+  defp role_keys(role_ids, role_map) do
+    role_ids
+    |> Enum.map(&Map.get(role_map, &1))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  defp preferred_role_key(user, role_ids, role_map, role_keys) do
+    preferred_id = if user.role_id in role_ids, do: user.role_id, else: List.first(role_ids)
+    Map.get(role_map, preferred_id, List.first(role_keys) || "")
+  end
+
+  defp role_key_map(role_ids),
+    do: role_ids |> Role.list_roles_by_ids() |> Map.new(&{&1.role_id, &1.role_key})
 end

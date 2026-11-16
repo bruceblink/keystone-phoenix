@@ -70,6 +70,23 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     refute Map.has_key?(response, "currentUser")
   end
 
+  test "token response preserves all role keys and filters invalid entries" do
+    response =
+      AuthTokenResponse.to_map(%{
+        token: "access-token",
+        refresh_token: "refresh-token",
+        expires_in: 300,
+        refresh_expires_in: 1_209_600,
+        session_id: "01j00000-0000-7000-8000-000000000001",
+        current_user: %{
+          "roleKey" => "operator",
+          "roles" => ["operator", "auditor", "", "operator", 1]
+        }
+      })
+
+    assert response["roles"] == ["operator", "auditor"]
+  end
+
   test "role permissions use namespaced permission codes" do
     assert {:ok, %{permission: "role:manage", registered?: true}} =
              PermissionCatalog.validate(" role:manage ")
