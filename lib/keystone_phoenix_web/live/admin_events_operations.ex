@@ -314,12 +314,21 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("refresh-monitor", _params, socket) do
     if Support.monitor_access?(socket) do
-      socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, "online-users", 1))
+      socket =
+        assign(socket,
+          page_nums: Map.put(socket.assigns.page_nums, "online-users", 1),
+          monitor_loading: true,
+          monitor_initial_error: nil
+        )
+
       {:noreply, Support.assign_monitor(socket)}
     else
       {:noreply, socket}
     end
   end
+
+  def handle_event("retry-monitor", params, socket),
+    do: handle_event("refresh-monitor", params, socket)
 
   def handle_event("toggle-monitor-help", _params, socket) do
     {:noreply,

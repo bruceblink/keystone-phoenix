@@ -12,12 +12,12 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.Live.AdminPages.Forms
-  alias KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationData
   alias KeystonePhoenixWeb.Live.AdminPages.Pagination
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminReadSupport
+  alias KeystonePhoenixWeb.Live.MonitorSupport
   # 个人资料读取失败使用稳定错误码。
   @profile_unavailable_feedback Feedback.error(:service_unavailable, "个人资料暂不可用")
 
@@ -425,51 +425,10 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def dept_depth(ancestors), do: OrganizationData.dept_depth(ancestors)
 
   def assign_monitor(socket, feedback \\ nil) do
-    admin? = admin_socket?(socket)
-    permissions = List.wrap(socket.assigns[:permissions])
-    page_num = get_in(socket.assigns, [:page_nums, "online-users"]) || 1
-    page_size = get_in(socket.assigns, [:page_sizes, "online-users"]) || 50
-
-    monitor =
-      MonitorSnapshot.load(
-        admin?,
-        permissions,
-        page_num,
-        page_size,
-        authorization_options(socket)
-      )
-
-    if monitor.error_reason && socket.assigns[:monitor_loaded] do
-      assign(socket,
-        active_panel: "monitor",
-        monitor_feedback: feedback || monitor.feedback
-      )
-    else
-      assign(socket,
-        active_panel: "monitor",
-        monitor_server_info: monitor.server_info,
-        monitor_cache_info: monitor.cache_info,
-        online_user_rows: monitor.online_users,
-        online_user_total: monitor.online_user_total,
-        network_status: monitor.network_status,
-        security_access: monitor.security_access,
-        security_metrics: monitor.security_metrics,
-        security_api_keys: monitor.security_api_keys,
-        security_event_rows: monitor.security_event_rows,
-        security_event_total: monitor.security_event_total,
-        monitor_loaded: true,
-        monitor_feedback: feedback || monitor.feedback
-      )
-    end
+    MonitorSupport.assign_monitor(socket, feedback)
   end
 
-  def monitor_access?(socket) do
-    admin_socket?(socket) or
-      Enum.any?(
-        ["cache:refresh", "server:read", "online-session:read", "audit:read"],
-        &permission_socket?(socket, &1)
-      )
-  end
+  def monitor_access?(socket), do: MonitorSupport.access?(socket)
 
   def assign_profile(socket) do
     case User.profile(socket.assigns.current_user["userId"]) do

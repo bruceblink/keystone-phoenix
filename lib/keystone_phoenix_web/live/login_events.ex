@@ -332,7 +332,8 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
 
     panel_access = AdminSupport.panel_access(permissions, current_user)
 
-    assign(socket,
+    socket
+    |> assign(
       username: username,
       password: "",
       login_error: nil,
@@ -420,8 +421,21 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       user_feedback: nil,
       profile_form: current_user,
       password_form: AdminSupport.empty_password_form(),
-      profile_feedback: nil
+      profile_feedback: nil,
+      monitor_loading: false,
+      monitor_initial_error: nil
     )
+    |> load_initial_monitor()
+  end
+
+  # 登录成功后立即读取默认监控面板，失败时保留可重试状态。
+  defp load_initial_monitor(socket) do
+    if AdminSupport.monitor_access?(socket),
+      do:
+        socket
+        |> assign(monitor_loading: true, monitor_initial_error: nil)
+        |> AdminSupport.assign_monitor(),
+      else: socket
   end
 
   defp challenge_id(%{} = challenge) do

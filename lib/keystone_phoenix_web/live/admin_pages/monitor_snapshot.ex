@@ -53,7 +53,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
 
       case result do
         {:ok, info} -> {info, nil}
-        {:error, :unavailable} -> {%{}, "主机监控数据暂不可用"}
+        {:error, _reason} -> {%{}, "主机监控数据暂不可用"}
+        _other -> {%{}, "主机监控数据暂不可用"}
       end
     else
       {%{}, nil}

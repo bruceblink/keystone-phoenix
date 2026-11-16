@@ -51,4 +51,42 @@ defmodule KeystonePhoenixWeb.MonitorComponentTest do
     assert html =~ "—"
     refute html =~ "monitor-chart-bar"
   end
+
+  test "initial monitor loading state is explicit" do
+    html =
+      render_component(&Operations.monitor/1, %{
+        monitor_server_info: %{},
+        monitor_cache_info: %{},
+        online_user_rows: [],
+        online_user_total: 0,
+        network_status: %{},
+        monitor_feedback: nil,
+        monitor_loading: true,
+        monitor_initial_error: nil
+      })
+
+    assert html =~ ~s(id="monitor-loading")
+    assert html =~ "正在读取监控快照"
+    refute html =~ ~s(class="monitor-grid")
+  end
+
+  test "initial monitor failure exposes a retry action" do
+    html =
+      render_component(&Operations.monitor/1, %{
+        monitor_server_info: %{},
+        monitor_cache_info: %{},
+        online_user_rows: [],
+        online_user_total: 0,
+        network_status: %{},
+        monitor_feedback: nil,
+        monitor_loading: false,
+        monitor_initial_error: {:error, "service_unavailable", "监控快照暂不可用，请重试"}
+      })
+
+    assert html =~ ~s(id="monitor-initial-error")
+    assert html =~ ~s(role="alert")
+    assert html =~ "监控快照暂不可用，请重试"
+    assert html =~ ~s(phx-click="retry-monitor")
+    refute html =~ ~s(class="monitor-grid")
+  end
 end

@@ -175,7 +175,9 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       security_event_rows: [],
       security_event_total: 0,
       monitor_loaded: false,
-      monitor_feedback: nil
+      monitor_feedback: nil,
+      monitor_loading: false,
+      monitor_initial_error: nil
     )
   end
 

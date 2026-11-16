@@ -172,6 +172,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       |> assign_new(:online_user_total, fn -> length(assigns[:online_user_rows] || []) end)
       |> assign_new(:security_access, fn -> false end)
       |> assign_new(:monitor_feedback, fn -> nil end)
+      |> assign_new(:monitor_loading, fn -> false end)
+      |> assign_new(:monitor_initial_error, fn -> nil end)
       |> assign_new(:monitor_help_open, fn -> false end)
       |> assign_new(:monitor_trend, fn ->
         monitor_trend(assigns[:monitor_server_info] || %{}, assigns[:network_status] || %{})
@@ -213,7 +215,17 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
         <p id="monitor-feedback" class={Feedback.class(@monitor_feedback)} role={Feedback.role(@monitor_feedback)} aria-live={Feedback.live(@monitor_feedback)}><%= Feedback.message(@monitor_feedback) %></p>
       <% end %>
 
-      <div class="monitor-grid">
+      <div :if={@monitor_loading} id="monitor-loading" class="card monitor-query-state" role="status" aria-live="polite">
+        <strong>正在读取监控快照</strong><span>系统 API 返回后会显示最新指标。</span>
+      </div>
+
+      <div :if={@monitor_initial_error} id="monitor-initial-error" class="card monitor-query-state monitor-query-error" role="alert">
+        <strong>监控数据加载失败</strong>
+        <span><%= Feedback.message(@monitor_initial_error) %></span>
+        <button type="button" class="button button-primary button-sm" phx-click="retry-monitor" phx-disable-with="重试中…">重试</button>
+      </div>
+
+      <div :if={!@monitor_loading && is_nil(@monitor_initial_error)} class="monitor-grid">
         <section class="monitor-main">
           <section class="card trend-card">
             <header class="card-header">
