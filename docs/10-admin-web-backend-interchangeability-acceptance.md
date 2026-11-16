@@ -8,7 +8,7 @@
 | Native 后端 | Keystone Native | Java/Quarkus HTTP 服务。提供 `/api/v1` 接口。 |
 | Phoenix 后端 | Keystone Phoenix | Elixir/Phoenix HTTP 服务。提供与 Native 相同的 `/api/v1` 接口。 |
 | 可替换后端 | backend interchangeability | 同一份 admin-web 构建在不修改页面代码的条件下，分别连接两个后端并完成相同验收流程。 |
-| 真实窗口验收 | real-window acceptance | 使用 Codex 内置浏览器操作实际页面。Mock 数据、静态 HTML 和组件测试不属于真实窗口通过证据。 |
+| 真实窗口验收 | real-window acceptance | 优先使用 Codex 内置浏览器操作实际页面；内置浏览器无法交互时，使用 Chrome 真实窗口并标记为回退证据。Mock 数据、静态 HTML 和组件测试不属于真实窗口通过证据。 |
 
 ## 发布目标
 
@@ -370,3 +370,13 @@ Phoenix `0c22693` 区分个人资料的首次读取失败和已有资料刷新�
 Phoenix `a30f4c5` 将监控首次读取错误状态从 LiveView 传入页面组件，并增加页面级测试，确认错误和重试入口可见。完整 Phoenix 集成测试 `484 passed`；个人资料定向测试 `16 passed`，监控页面定向测试 `14 passed`，严格编译、源码行数、格式和差异检查通过。
 
 监控异步读取试验尚未提交。集成测试发现取消正在使用 SQL 测试连接的任务会影响同一会话的后续操作，该试验已撤回。监控读取仍同步执行，等待期间的 loading 展示仍需完成。真实浏览器窗口和后端切换窗口验收仍未完成。
+
+### 2026-11-17 登录页面和 Phoenix 只读页面回退验收
+
+本轮确认的代码基线：admin-web `a489ba0` 调整通用管理标题；Phoenix `095a830` 对齐 LiveView 登录样式，`f807d81` 返回完整角色成员 ID，`99980fe` 展示用户导入失败明细。Phoenix 当前提交为 `99980fe`。
+
+Phoenix `mix test --include integration` 为 `486 passed`。`mix compile --warnings-as-errors`、`mix format --check-formatted`、`mix check.source_lines` 和 `git diff --check` 均通过。
+
+浏览器证据使用 Chrome 真实窗口回退：Codex 内置浏览器在本轮无法交互。已在 `320`、`390`、`768` 和 `1200` 宽度对照 admin-web 与 Phoenix LiveView 登录页面；同一份 admin-web 连接 Phoenix 后，对 13 个主要页面完成只读检查。该检查没有覆盖 Native 后端切换，也没有执行写操作，因此不代表后端替换或页面写操作矩阵通过。
+
+仍未完成的验收：监控读取仍在事件处理中同步执行；Native 后端切换和完整写操作矩阵仍待真实窗口验证。角色 HTTP 筛选参数以及多角色数据范围结果的跨后端差异仍在核查，本轮不将这两项标记为一致或完成。Codex 内置浏览器恢复交互后，应优先使用它完成窗口验收；不可用时继续把 Chrome 结果标为回退证据。
