@@ -192,3 +192,9 @@ Native `819f5b7` 和 Phoenix `6f6776e` 已统一任务列表的可选分页响�
 Native `cec66b0` 和 Phoenix `6447e0c`/`487fa9e` 已统一岗位列表的可选分页响应。请求带 `page`/`size` 或 `keyword`、状态筛选时返回 `items/page/size/total`；无分页且使用旧岗位名称参数时保持数组响应。关键词匹配岗位编码和名称，状态支持启用、停用及布尔/数字表达；权限边界和字段映射保持不变。
 
 验证：Phoenix 默认测试 `385 passed, 54 excluded`，集成测试 `439 passed`；Native 岗位 HTTP 测试、全量测试和 `quarkusBuild` 成功。该结果属于接口和自动化测试证据，不替代真实浏览器窗口验收。
+
+### 2026-11-17 角色列表接口复核
+
+Native 和 Phoenix 的角色列表都支持 `page`、`size`、`keyword` 和状态筛选，并在显式分页或筛选时返回 `items/page/size/total`；无参数调用继续返回旧数组。关键词匹配角色名称和标识，状态语义统一为启用、停用及布尔/数字表达。Phoenix LiveView 复用相同查询约定，角色菜单和成员子面板继续使用独立的角色目录读取。
+
+验证：Native 角色真实 HTTP 测试、Phoenix 角色 HTTP 集成测试和 LiveView 组织测试通过；admin-web 角色页分页、筛选、旧数组兼容和错误状态测试通过。该结果属于接口和自动化测试证据，不替代 Codex 内置浏览器可视窗口验收。

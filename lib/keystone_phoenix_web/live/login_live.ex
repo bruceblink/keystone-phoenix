@@ -230,6 +230,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
       when panel in [
              "users",
              "posts",
+             "roles",
              "jobs",
              "job-logs",
              "configs",
@@ -254,7 +255,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   def handle_event("paginate", _params, socket), do: {:noreply, socket}
 
-  @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts export-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles export-roles new-role edit-role save-role toggle-role-selection toggle-all-role-selection toggle-role-status delete-role select-role assign-role-user unassign-role-user refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
+  @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts paginate-posts export-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles paginate-roles export-roles new-role edit-role save-role toggle-role-selection toggle-all-role-selection toggle-role-status delete-role select-role assign-role-user unassign-role-user refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
   @accounts_events ~w(filter-users reset-user-filter refresh-users export-users new-user-import toggle-user-selection toggle-all-user-selection delete-users import-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
   @config_events ~w(refresh-config delete-config filter-configs reset-config-filter paginate-configs new-config edit-config save-config)
   @system_events ~w(refresh-dicts select-dict-type paginate-dict-data new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs refresh-login-logs refresh-operation-logs new-notice edit-notice cancel-notice save-notice toggle-notice-status publish-notice toggle-notice-selection toggle-all-notice-selection paginate-notices delete-notice delete-notices refresh-notices filter-notices reset-notice-filter)
@@ -295,6 +296,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   defp dispatch_pagination("posts", page, socket),
     do: OrganizationEvents.handle_event("paginate-posts", %{"page" => page}, socket)
+
+  defp dispatch_pagination("roles", page, socket),
+    do: OrganizationEvents.handle_event("paginate-roles", %{"page" => page}, socket)
 
   defp dispatch_pagination("configs", page, socket),
     do: ConfigEvents.handle_event("paginate-configs", %{"page" => page}, socket)
@@ -493,7 +497,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "posts" -> %>
                       <.posts post_rows={@post_rows} post_total={@post_total} post_form={@post_form} post_feedback={@post_feedback} post_filter={@post_filter} active_modal={@active_modal} page_num={@page_nums["posts"]} page_size={@page_sizes["posts"]} read_only={@read_only} permissions={@permissions} />
                     <% "roles" -> %>
-                      <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} role_filter={@role_filter} menu_rows={@menu_rows} active_modal={@active_modal} selected_role_ids={@selected_role_ids} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} read_only={@read_only} permissions={@permissions} />
+                      <.roles role_rows={@role_rows} role_page_rows={@role_page_rows} role_total={@role_total} role_form={@role_form} role_feedback={@role_feedback} role_filter={@role_filter} menu_rows={@menu_rows} active_modal={@active_modal} selected_role_ids={@selected_role_ids} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} page_num={@page_nums["roles"]} page_size={@page_sizes["roles"]} read_only={@read_only} permissions={@permissions} />
                     <% "menus" -> %>
                       <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} menu_filter={@menu_filter} menu_role_codes={@menu_role_codes} role_rows={@role_rows} permissions={@permissions} active_modal={@active_modal} read_only={@read_only} />
                     <% "users" -> %>

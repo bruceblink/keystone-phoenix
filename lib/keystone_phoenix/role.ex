@@ -33,9 +33,7 @@ defmodule KeystonePhoenix.Role do
         order_by: [asc: r.role_sort, asc: r.role_id]
       )
 
-    query = filter_contains(query, :role_name, params["roleName"] || params[:role_name])
-    query = filter_contains(query, :role_key, params["roleKey"] || params[:role_key])
-    query = filter_status(query, params["status"] || params[:status])
+    query = KeystonePhoenix.Role.Query.apply(query, params)
     Pagination.page(query, params, :role_id, &role_to_map/1)
   end
 
@@ -570,24 +568,6 @@ defmodule KeystonePhoenix.Role do
   end
 
   defp invalidate_policy_cache(result), do: result
-
-  defp filter_contains(query, _field, nil), do: query
-  defp filter_contains(query, _field, ""), do: query
-
-  defp filter_contains(query, field, value) do
-    pattern = "%" <> String.trim(to_string(value)) <> "%"
-    where(query, [role], ilike(field(role, ^field), ^pattern))
-  end
-
-  defp filter_status(query, nil), do: query
-  defp filter_status(query, ""), do: query
-
-  defp filter_status(query, value) do
-    case Integer.parse(to_string(value)) do
-      {status, ""} -> where(query, [role], role.status == ^status)
-      _ -> query
-    end
-  end
 
   defp format_datetime(nil), do: nil
 

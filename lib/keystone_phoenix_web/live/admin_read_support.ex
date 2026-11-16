@@ -87,6 +87,12 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
   end
 
   def roles(socket), do: OrganizationData.load_roles_result(organization_options(socket))
+
+  @doc "读取角色当前页，并保留服务端总数和授权错误。"
+  def roles_page(socket, params \\ %{}) do
+    OrganizationData.load_roles_page_result(organization_options(socket), params)
+  end
+
   def menus(socket), do: OrganizationData.load_menus_result(organization_options(socket))
 
   @doc "读取角色成员列表，并区分空列表和服务失败。"

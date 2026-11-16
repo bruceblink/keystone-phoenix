@@ -34,12 +34,54 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   @role_export_headers ["角色ID", "角色名称", "角色标识", "角色排序", "角色状态", "备注", "创建时间", "数据范围"]
 
-  @doc "Returns a paginated list of roles."
+  @doc "按 Native 约定返回角色数组或分页结果。"
   def list(conn, params) do
-    case NativeQuery.list_all(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(Enum.map(rows, &native_role_map/1)))
-      {:error, reason} -> render_error(conn, reason)
+    query_params = role_query_params(params)
+    paged? = NativeContract.pagination_requested?(params)
+
+    result =
+      if paged? do
+        Role.list_roles(query_params, authorization: %{principal: conn.assigns.current_user})
+      else
+        NativeQuery.list_all(query_params, authorization: %{principal: conn.assigns.current_user})
+      end
+
+    case result do
+      {:ok, page} ->
+        payload =
+          if paged?,
+            do: NativeContract.roles_page(page, query_params),
+            else: Enum.map(page, &native_role_map/1)
+
+        json(conn, ApiResponse.ok(payload))
+
+      {:error, reason} ->
+        render_error(conn, reason)
     end
+  end
+
+  # Native 使用 keyword/status，领域层继续使用 roleName/status 查询字段。
+  defp role_query_params(params) do
+    params
+    |> NativeContract.pagination_params()
+    |> maybe_copy_role_keyword()
+    |> maybe_copy_role_status()
+  end
+
+  defp maybe_copy_role_keyword(params) do
+    keyword = params["keyword"] || params["roleKeyword"]
+
+    if is_nil(params["roleName"]) and is_binary(keyword),
+      do: Map.put(params, "roleName", keyword),
+      else: params
+  end
+
+  defp maybe_copy_role_status(params) do
+    status = params["roleStatus"]
+
+    if is_nil(params["status"]) and is_binary(status) and status not in ["", "all"],
+      do: Map.put(params, "status", status),
+      else: params
   end
 
   @doc "Exports all roles matching the current filters."

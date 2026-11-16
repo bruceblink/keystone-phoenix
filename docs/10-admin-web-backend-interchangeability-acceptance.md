@@ -241,3 +241,9 @@ Native `819f5b7`、admin-web `9dfcb1a` 和 Phoenix `6f6776e` 完成任务列表�
 Native `cec66b0`、admin-web `de58b4f` 和 Phoenix `6447e0c`/`487fa9e` 完成岗位列表分页对齐。admin-web 发送 `page`、`size`、`keyword` 和状态筛选，Native 与 Phoenix 返回相同的 `items/page/size/total` 结构；Phoenix LiveView 使用同一服务端查询，筛选、翻页和空结果状态保持闭环。
 
 验证结果：Phoenix 默认测试 `385 passed, 54 excluded`，集成测试 `439 passed`；admin-web `24 files / 137 tests passed`，类型检查和构建通过；Native 测试和生产构建通过。角色列表、菜单树和其他页面仍需继续补齐对应的服务端分页及详情矩阵。
+
+### 2026-11-17 角色列表后端替换对齐
+
+Native `5b75636`、admin-web `6756234` 和 Phoenix 本次提交完成角色列表替换对齐。admin-web 发送 `page`、`size`、`keyword` 和状态筛选时，Native 与 Phoenix 返回相同的 `items/page/size/total` 结构；无参数调用保持旧数组响应。Phoenix LiveView 角色列表使用服务端当前页，角色菜单和成员子面板继续读取完整角色目录，避免分页影响权限绑定。
+
+验证结果：Native 角色 HTTP 定向测试、全量测试和构建通过；admin-web `24 files / 140 tests passed`，类型检查和生产构建通过；Phoenix 角色 HTTP 集成测试 10 项、LiveView 组织测试 18 项通过。Phoenix 全量测试、源码行数检查和 CI 在本次提交后继续执行。该结果不替代 Codex 内置浏览器可视窗口验收。

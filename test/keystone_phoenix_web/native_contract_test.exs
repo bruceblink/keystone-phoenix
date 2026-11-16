@@ -100,4 +100,32 @@ defmodule KeystonePhoenixWeb.NativeContractTest do
              total: 3
            }
   end
+
+  test "role pagination preserves Native page metadata" do
+    assert NativeContract.pagination_requested?(%{"roleKeyword" => "operator"})
+    assert NativeContract.pagination_requested?(%{"roleStatus" => "1"})
+
+    page =
+      NativeContract.roles_page(
+        %{rows: [%{"roleId" => "role-1", "roleKey" => "operator", "roleName" => "运营"}], total: 4},
+        %{"pageNum" => "2", "pageSize" => "2"}
+      )
+
+    assert page == %{
+             items: [
+               %{
+                 "id" => "role-1",
+                 "code" => "operator",
+                 "name" => "运营",
+                 "enabled" => false,
+                 "dataScope" => "ALL",
+                 "deptScope" => nil,
+                 "permissions" => []
+               }
+             ],
+             page: 2,
+             size: 2,
+             total: 4
+           }
+  end
 end

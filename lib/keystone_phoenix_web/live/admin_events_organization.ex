@@ -13,6 +13,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenu
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenuParams
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRolePagination
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleRefresh
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleSelection
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters
@@ -279,26 +281,19 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   def handle_event("refresh-roles", params, socket) do
     if Support.panel_allowed?(socket, "roles") do
-      filter =
-        OrganizationFilters.organization_filter(params, socket.assigns[:role_filter], [
-          "roleKeyword",
-          "roleStatus"
-        ])
-
-      {:noreply,
-       refresh_rows(socket, :roles, "角色列表刷新失败，请重试",
-         role_form: Support.empty_role_form(),
-         role_filter: filter,
-         active_modal: nil,
-         selected_role_ids: [],
-         selected_role_id: "",
-         selected_role_name: "",
-         allocated_role_user_rows: [],
-         unallocated_role_user_rows: [],
-         role_user_feedback: nil
-       )}
+      {:noreply, OrganizationRoleRefresh.refresh(socket, params)}
     else
       {:noreply, socket}
+    end
+  end
+
+  def handle_event("paginate-roles", %{"page" => page}, socket) do
+    case Integer.parse(to_string(page)) do
+      {page_number, ""} when page_number > 0 ->
+        {:noreply, OrganizationRolePagination.refresh(socket, page_number)}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 

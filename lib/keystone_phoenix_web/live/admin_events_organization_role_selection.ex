@@ -22,7 +22,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleSelection do
 
   def handle_event("toggle-all-role-selection", %{"selected" => selected}, socket) do
     role_ids =
-      socket.assigns.role_rows
+      Map.get(socket.assigns, :role_page_rows, socket.assigns.role_rows)
       |> OrganizationFilters.filtered_roles(socket.assigns[:role_filter])
       |> Enum.map(&to_string(&1["roleId"]))
 

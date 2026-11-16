@@ -390,6 +390,8 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       job_log_total: dashboard[:job_log_total] || length(dashboard.job_log_rows),
       job_log_feedback: nil,
       role_rows: dashboard.role_rows,
+      role_page_rows: Enum.take(dashboard.role_rows, 20),
+      role_total: length(dashboard.role_rows),
       selected_role_id: "",
       selected_role_name: "",
       allocated_role_user_rows: [],

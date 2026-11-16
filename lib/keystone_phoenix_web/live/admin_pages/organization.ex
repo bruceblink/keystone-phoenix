@@ -153,6 +153,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       |> assign_new(:selected_role_id, fn -> "" end)
       |> assign_new(:selected_role_name, fn -> "" end)
       |> assign_new(:role_filter, fn -> %{"keyword" => "", "status" => "all"} end)
+      |> assign_new(:role_page_rows, fn -> assigns[:role_rows] || [] end)
+      |> assign_new(:role_total, fn ->
+        length(assigns[:role_page_rows] || assigns[:role_rows] || [])
+      end)
+      |> assign_new(:page_num, fn -> 1 end)
+      |> assign_new(:page_size, fn -> 20 end)
       |> assign_new(:permissions, fn -> [] end)
       |> assign_new(:menu_rows, fn -> [] end)
       |> assign_new(:allocated_role_user_rows, fn -> [] end)
@@ -199,19 +205,20 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
         <div class="card-header">
           <div>
             <h2 id="roles-table-title">角色列表</h2>
-            <p>当前匹配 <%= length(OrganizationFilters.filtered_roles(@role_rows, @role_filter)) %> 个角色。</p>
+            <p>当前匹配 <%= @role_total %> 个角色。</p>
           </div>
           <span class="badge badge-info">系统 API</span>
         </div>
-        <%= if OrganizationFilters.filtered_roles(@role_rows, @role_filter) == [] do %>
+        <%= if @role_page_rows == [] do %>
           <div class="roles-empty" role="status"><strong>没有匹配的角色</strong><p>调整筛选条件后重试，或清空筛选条件查看全部角色。</p></div>
         <% else %>
-        <% filtered_role_rows = OrganizationFilters.filtered_roles(@role_rows, @role_filter) %>
+        <% filtered_role_rows = OrganizationFilters.filtered_roles(@role_page_rows, @role_filter) %>
         <% all_roles_selected = filtered_role_rows != [] and Enum.all?(filtered_role_rows, &(to_string(&1["roleId"]) in @selected_role_ids)) %>
         <form phx-submit="delete-role">
         <div class="roles-table-wrap"><table class="roles-table"><caption class="sr-only">角色列表</caption><thead><tr><th scope="col"><input :if={!@read_only} type="checkbox" aria-label="选择当前角色" checked={all_roles_selected} phx-click="toggle-all-role-selection" phx-value-selected={if all_roles_selected, do: "false", else: "true"} /></th><th scope="col">角色</th><th scope="col">数据范围</th><th scope="col">组织范围</th><th scope="col">权限数</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody><%= for role <- filtered_role_rows do %><tr><td><input :if={!@read_only} type="checkbox" name="role-ids[]" value={role["roleId"]} aria-label={"选择角色 #{role["roleName"]}"} checked={to_string(role["roleId"]) in @selected_role_ids} phx-click="toggle-role-selection" phx-value-role-id={role["roleId"]} phx-value-selected={if to_string(role["roleId"]) in @selected_role_ids, do: "false", else: "true"} /></td><td><div class="role-cell"><span class="role-cell-icon" aria-hidden="true">◈</span><div><strong><%= role["roleName"] %></strong><small><%= role["roleKey"] %></small></div></div></td><td><span class="badge badge-neutral"><%= role["dataScopeStr"] %></span></td><td><%= role["deptScope"] || "—" %></td><td><%= role["permissionCount"] || role["userCount"] || "—" %></td><td><span class={"status-badge #{Status.normal_paused(role["status"])}"}><%= if role["status"] == 1, do: "启用", else: "停用" %></span></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="edit-role" phx-value-role-id={role["roleId"]} phx-disable-with="加载中…">编辑</button></td></tr><% end %></tbody></table></div>
         <div :if={!@read_only} class="table-card-footer"><button type="submit" class="button button-danger button-sm" phx-disable-with="删除中…" disabled={@selected_role_ids == []}>删除角色（<%= length(@selected_role_ids) %>）</button></div>
         </form>
+        <.pagination panel="roles" page_num={min(@page_num, page_count(@role_total, @page_size))} page_size={@page_size} total={@role_total} />
         <% end %>
       </section>
       <span id="role-download-hook" phx-hook="DownloadFile" hidden></span>

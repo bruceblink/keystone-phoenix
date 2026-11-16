@@ -44,7 +44,22 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
     _error -> {:error, :service_unavailable}
   end
 
-  defp enrich_roles(roles) do
+  @doc "读取角色当前页，并返回筛选后的总数量。"
+  def load_roles_page_result(options, params) when is_list(options) and is_map(params) do
+    result =
+      if options == [], do: Role.list_roles(params), else: Role.list_roles(params, options)
+
+    case result do
+      {:ok, %{rows: rows, total: total}} -> {:ok, %{rows: enrich_roles(rows), total: total}}
+      %{rows: rows, total: total} -> {:ok, %{rows: enrich_roles(rows), total: total}}
+      {:error, reason} -> {:error, reason}
+      _other -> {:error, :invalid_page}
+    end
+  rescue
+    _error -> {:error, :service_unavailable}
+  end
+
+  def enrich_roles(roles) when is_list(roles) do
     user_counts = Role.user_counts(Enum.map(roles, & &1["roleId"]))
 
     roles

@@ -28,6 +28,31 @@ defmodule KeystonePhoenixWeb.ResourceScopeControllerTest do
   end
 
   @tag :integration
+  test "role list supports the shared Native page response", %{conn: conn} do
+    {token, _ids} = authenticated_scope_user("TENANT")
+
+    response =
+      get(
+        authorized(conn, token),
+        "/api/v1/roles",
+        %{"page" => "1", "size" => "1", "keyword" => "role"}
+      )
+
+    assert %{
+             "success" => true,
+             "data" => %{
+               "items" => items,
+               "page" => 1,
+               "size" => 1,
+               "total" => total
+             }
+           } = json_response(response, 200)
+
+    assert is_list(items)
+    assert is_integer(total)
+  end
+
+  @tag :integration
   test "non-global scopes reject read, detail, write and delete resource entrances" do
     {token, ids} = authenticated_scope_user("DEPARTMENT")
 

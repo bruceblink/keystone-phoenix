@@ -54,7 +54,7 @@ defmodule KeystonePhoenixWeb.NativeContract do
     Map.has_key?(params, "page") or Map.has_key?(params, "size") or
       Map.has_key?(params, :page) or Map.has_key?(params, :size) or
       Enum.any?(
-        ~w(keyword status postCode postName postStatus),
+        ~w(keyword status postCode postName postStatus roleName roleKey roleKeyword roleStatus),
         &Map.has_key?(params, &1)
       )
   end
@@ -62,6 +62,11 @@ defmodule KeystonePhoenixWeb.NativeContract do
   @doc "把 Phoenix 角色分页转换为 Native 角色数组。"
   def roles(%{rows: rows}), do: Enum.map(rows, &role/1)
   def roles(rows) when is_list(rows), do: Enum.map(rows, &role/1)
+
+  @doc "把 Phoenix 角色分页转换为 Native 的 items/page/size/total。"
+  def roles_page(%{rows: rows, total: total}, params) do
+    %{items: Enum.map(rows, &role/1), page: page(params), size: size(params), total: total}
+  end
 
   @doc "把 Phoenix 角色字段转换为 Native 角色字段。"
   def role(row) when is_map(row) do
