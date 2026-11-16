@@ -64,6 +64,8 @@ defmodule KeystonePhoenixWeb.RoleController do
   defp role_query_params(params) do
     params
     |> NativeContract.pagination_params()
+    |> Map.put_new("pageNum", "1")
+    |> Map.put_new("pageSize", "20")
     |> maybe_copy_role_keyword()
     |> maybe_copy_role_status()
   end
