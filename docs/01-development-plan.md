@@ -803,3 +803,5 @@ Phoenix 角色成员定向 HTTP、领域和权限回归共 `27 passed`；`mix fo
 阶段 A 已完成结构切片：Phoenix `5712702` 新增 `sys_user_role` UUID 复合主键关联表、角色反向索引、旧 `sys_user.role_id` 回填和回填一致性检查；新增只读 `RoleMembership` 查询边界及 schema 校验测试。该切片只建立结构和读取能力，不切换鉴权、用户写入、角色分配或页面语义。定向测试 `6 passed`，迁移后的 Phoenix 全量集成测试 `456 passed`，严格编译、格式、源码行数和差异检查通过。阶段 B-D 仍未完成，单角色兼容差异继续阻塞后端完全替换验收。
 
 阶段 B 的兼容写入切片已完成：Phoenix `56f6021` 将用户创建、用户更新、角色成员分配和角色成员撤销接入 `RoleMembership` 事务辅助。当前仍保持单角色行为，写入成功后 `sys_user.role_id` 与 `sys_user_role` 只有同一条首选角色关系；写入失败时两者一起回滚。新增用户写入、角色分配和跨角色撤销回归，定向测试 `22 passed`，Phoenix 全量集成测试 `457 passed`，严格编译、格式、源码行数和差异检查通过。鉴权 union、多个 `roleCodes`、菜单和数据范围仍未切换。
+
+阶段 C 的权限并集切片已完成：Phoenix `5b00f33` 让 `Principal` 在存在用户关联记录时读取全部角色；`Permission` 使用启用角色集合判断权限；`PolicyStore` 为每个角色分别使用现有缓存键，再合并 `allow/error/deny` 结果，避免把多角色结果压到单一 `role_id` 缓存。新增双角色权限和撤销角色后的权限回归，定向权限/鉴权测试 `15 passed`，迁移、双写和权限并集后的 Phoenix 全量集成测试 `458 passed`。API Key 或 LiveView 中已有 `permissions` 快照仍按快照判断，登录 payload、菜单树和数据范围并集继续由后续阶段处理。
