@@ -267,3 +267,9 @@ Phoenix `7f03904` 将登录日志和操作审计的筛选、页码和重置状�
 本轮仍不宣称完成真实可视浏览器窗口验收。Codex 内置浏览器在当前会话不能保持交互，现有 Chrome CDP/headless 证据仍按无头边界记录。OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和其余逐页面编辑、批量写入、详情返回矩阵继续作为未完成发布证据项。
 
 Phoenix `e2231de` 又将用户管理的 `users_username`、`users_displayName` 和 `users_page` 写入深链接；用户页面直接打开、查询、翻页和重置时与 admin-web 的 URL 状态一致。
+
+第十一批闭环证据：Phoenix `238c32d` 完成任务列表与任务日志的命名 URL 状态恢复，使用 `jobs_keyword`、`jobs_jobPage`、`jobs_logPage`、`jobs_selectedJobId`；直接打开深链接会读取选中任务详情和日志，筛选、翻页、刷新、切换任务和重置保持 URL 与页面状态一致。admin-web `e9b7b05` 增加 `GET /jobs/:id`，在选中任务不属于当前列表页时补读详情，避免跨页深链接显示错误空态。admin-web `3b6225e` 将 API Key 权限目录读取失败接入稳定业务错误码、业务含义、请求标识和重试入口。
+
+本批次验证：Phoenix 集成测试 `444 passed`；任务深链接定向测试 `3 passed`；admin-web 全量测试 `25 files / 145 tests passed`，类型检查和生产构建通过；源码行数、差异、错误码和路由契约检查通过。当前 admin-web 使用 73 条 API 调用，Native 与 Phoenix 各提供 108 条 `/api/v1` 路由，路由集合一致，21 个服务端业务错误码和 4 个 admin-web 本地错误码一致。
+
+验收边界：本批次没有新增 Codex 内置浏览器可视窗口证据。当前会话无法保持内置浏览器交互，既有 Chrome CDP/headless 结果仍按无头测试边界记录；逐页面编辑、批量写入、加载失败、详情返回和发布环境窗口矩阵，以及 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复和生产代理链仍未完成。

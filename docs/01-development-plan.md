@@ -722,3 +722,13 @@ Phoenix `bdbad56` 完成 LiveView 用户管理服务端分页。筛选、刷新�
 主线下一步仍按页面补齐其余编辑、批量写入、详情返回和真实错误反馈矩阵。OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链以及真实可视浏览器窗口验收继续单独记录为发布证据缺口。
 
 Phoenix `e2231de` 又完成用户管理的 `users_username`、`users_displayName` 和 `users_page` 深链接。LiveView 直接打开、查询、翻页和重置时与 admin-web 保持同一 URL 状态。
+
+### 2026-11-17 任务日志深链接与详情恢复增量
+
+Phoenix `238c32d` 将任务页面的筛选、任务列表页、任务日志页和选中任务写入与 admin-web 一致的 `jobs_keyword`、`jobs_jobPage`、`jobs_logPage`、`jobs_selectedJobId` 命名参数。LiveView 直接打开任务深链接时会重新读取选中任务及其日志；筛选、翻页、刷新和重置会同步更新 URL，并在切换任务后重置日志页。任务日志分页组件使用服务端页码和总数，保持当前任务详情。
+
+admin-web `e9b7b05` 增加 `GET /jobs/:id` 详情读取。当深链接选中的任务不在当前列表页时，前端会单独读取任务详情，不把当前页空列表误判为任务不存在。admin-web API 调用数由 72 条增至 73 条；Native 和 Phoenix 仍分别提供 108 条 `/api/v1` 路由，接口契约检查通过。admin-web `3b6225e` 同时补齐 API Key 动态权限目录读取失败的业务错误码、含义、请求标识和重试入口。
+
+验证结果：Phoenix 集成全量测试 `444 passed`，严格编译、格式、源码行数和差异检查通过；任务深链接定向集成测试 `3 passed`。admin-web 全量测试 `25 files / 145 tests passed`，类型检查和生产构建通过。三端错误码目录检查确认 21 个服务端业务错误码和 4 个 admin-web 本地错误码保持约定，路由集合检查确认 admin-web 使用的 73 条调用均存在于 Native 和 Phoenix。
+
+本切片仍不替代真实可视浏览器窗口验收。Codex 内置浏览器当前不能保持交互，新增证据限于自动化 LiveView/前端测试和静态契约检查；其余逐页面编辑、批量写入、详情返回、加载失败和发布环境浏览器矩阵，以及 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复和生产代理链继续作为未完成发布证据项。
