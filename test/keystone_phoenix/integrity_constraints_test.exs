@@ -6,11 +6,11 @@ defmodule KeystonePhoenix.IntegrityConstraintsTest do
   test "integrity foreign keys are installed for managed associations" do
     {:ok, result} =
       Repo.query("""
-      SELECT COUNT(*)
+      SELECT COUNT(*)::int
       FROM pg_constraint
       WHERE contype = 'f'
       """)
 
-    assert result.rows == [[44]]
+    assert result.rows == [[46]]
   end
 end
