@@ -756,3 +756,5 @@ admin-web `b548361` 将 Jobs、Profile、LoginLogs 和 OperationsAudit 的旧数
 验证结果：admin-web 全量测试 `26 files / 155 tests passed`，类型检查和生产构建通过。当前页面代码中不再直接把这些查询失败的原始异常文本作为用户提示。
 
 Native 当前主线复核：`./gradlew test quarkusBuild` 在 `5b75636` 基线通过，测试和 Quarkus 生产构建均成功。测试日志包含限流事件和任务删除与调度触发时序交错产生的 `job not found` 记录，但未导致测试失败；该日志噪声保留为后续调度可观测性优化项，不影响当前构建结果。
+
+Native `bb832b1` 已收口该调度日志问题：删除任务与调度触发交错时按已删除任务跳过处理，不再输出误导性的失败堆栈。定向 `JobOrmPersistenceTest`、Quarkus 构建和全量 `./gradlew test` 均通过。

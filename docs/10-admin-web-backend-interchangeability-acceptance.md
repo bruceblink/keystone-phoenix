@@ -287,3 +287,5 @@ Phoenix `e2231de` 又将用户管理的 `users_username`、`users_displayName` �
 本批次验证：admin-web `26 files / 155 tests passed`，类型检查和生产构建通过。该结果仍不替代真实可视浏览器窗口和发布环境验收。
 
 Native `5b75636` 基线复核通过 `./gradlew test quarkusBuild`。测试日志中的限流事件和删除任务与调度触发交错产生的 `job not found` 仅作为非失败日志记录，暂列后续调度日志优化，不改变接口验收结论。
+
+Native `bb832b1` 已修复该调度竞态日志。已删除任务被调度器再次触发时只记录跳过信息，不再输出错误堆栈；定向测试、全量测试和 Quarkus 构建均通过。
