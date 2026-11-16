@@ -255,3 +255,13 @@ Phoenix `93efb71` 补齐角色列表写入闭环。角色保存、状态变更�
 Phoenix `05f148e` 又完成组织结构树的 URL 状态对齐，并将菜单关键词参数修正为 admin-web 使用的 `menus_keyword`。组织结构使用 `departments_keyword`；树接口、父子关系和角色绑定接口未改变。
 
 Phoenix `f7cf392` 修复了测试环境后台清理进程访问 SQL sandbox owner 的 CI 时序问题。生产配置未改变；最新 CI 的默认测试为 `386 passed, 56 excluded`，覆盖率和 LiveView 集成测试均为 `442 passed`。
+
+### 2026-11-17 用户管理和审计深链接增量
+
+Phoenix `bdbad56` 将 LiveView 用户管理改为服务端分页。用户筛选、刷新、翻页和写入后重新读取都携带 `pageNum`、`pageSize`、`username`、`displayName`，页面使用服务端返回的 `rows` 和 `total`；翻页会清空当前页选择，读取或写入后的重新读取失败会保留旧页并显示稳定业务错误。用户编辑、删除、导入和状态变更继续使用原有权限、数据范围和 HTTP 接口。
+
+Phoenix `7f03904` 将登录日志和操作审计的筛选、页码和重置状态写入与 admin-web 一致的命名 URL 参数。直接打开深链接时，LiveView 会恢复筛选和页码；查询、翻页和重置会同步更新 URL。admin-web `b9da92a` 同时修复了非法分页深链接值的回退规则，`0`、负数、小数、`NaN` 和 `Infinity` 不会传给后端。
+
+验证结果：Phoenix `mix test --include integration` 为 `443 passed`，`mix compile --warnings-as-errors`、格式检查、源码行数检查和差异检查通过；用户分页集成和页面组件定向测试通过。admin-web 分页状态定向测试为 `2 passed`，全量测试为 `25 files / 143 tests passed`，类型检查和生产构建通过。
+
+本轮仍不宣称完成真实可视浏览器窗口验收。Codex 内置浏览器在当前会话不能保持交互，现有 Chrome CDP/headless 证据仍按无头边界记录。OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和其余逐页面编辑、批量写入、详情返回矩阵继续作为未完成发布证据项。

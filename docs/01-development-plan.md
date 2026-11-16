@@ -712,3 +712,11 @@ Phoenix 提交 `b9d8530` 将登录日志和操作审计的 LiveView 刷新、筛
 组织结构筛选随后由 Phoenix `05f148e` 补齐，使用与 admin-web 一致的 `departments_keyword` 深链接；菜单参数统一为 `menus_keyword`。树数据继续完整读取，查询和重置行为已通过 LiveView 集成测试。
 
 CI 稳定性修复：Phoenix `034cc5b` 曾在覆盖率步骤中因测试环境后台清理进程访问已退出的 SQL sandbox owner，导致 `upload_test.exs` 失败。`f7cf392` 将会话和 Passkey 清理间隔在测试环境延后到 1 小时，不改变生产配置；本地和 CI 覆盖率、LiveView 集成测试均恢复为 `442 passed`，且日志不再包含该 ownership 错误。
+
+### 2026-11-17 用户管理和审计深链接增量
+
+Phoenix `bdbad56` 完成 LiveView 用户管理服务端分页。筛选、刷新、翻页和用户写入后的重新读取使用当前页查询，并显示服务端 `total`；页码切换会清空当前页选择，读取失败保留旧页并显示错误码。Phoenix `7f03904` 完成登录日志和操作审计的命名 URL 状态恢复，筛选、页码、重置和直接打开深链接的行为与 admin-web 对齐。admin-web `b9da92a` 修复非法分页 URL 值的默认回退。
+
+验证结果：Phoenix 全量集成回归 `443 passed`，严格编译、格式、源码行数和差异检查通过；admin-web 分页状态定向测试 `2 passed`，全量测试 `25 files / 143 tests passed`，类型检查和生产构建通过。
+
+主线下一步仍按页面补齐其余编辑、批量写入、详情返回和真实错误反馈矩阵。OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链以及真实可视浏览器窗口验收继续单独记录为发布证据缺口。
