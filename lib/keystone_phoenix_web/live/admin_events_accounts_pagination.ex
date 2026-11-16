@@ -4,19 +4,25 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.AccountsPagination do
   import Phoenix.Component, only: [assign: 2]
 
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
+  alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
 
   @doc "读取用户当前页，保留筛选条件并清空跨页选择。"
   def paginate(params, socket) do
     with {page, ""} when page > 0 <- Integer.parse(to_string(params["page"])),
          {:ok, result} <- load(socket, user_filters(socket), page) do
+      socket =
+        assign(socket,
+          user_rows: result.rows,
+          user_total: result.total,
+          users_server_paged: true,
+          page_nums: Map.put(socket.assigns.page_nums, "users", result.page),
+          user_feedback: nil,
+          selected_user_ids: []
+        )
+
       {:noreply,
-       assign(socket,
-         user_rows: result.rows,
-         user_total: result.total,
-         users_server_paged: true,
-         page_nums: Map.put(socket.assigns.page_nums, "users", result.page),
-         user_feedback: nil,
-         selected_user_ids: []
+       Phoenix.LiveView.push_patch(socket,
+         to: FilterNavigation.path("users", user_filters(socket), result.page)
        )}
     else
       {:error, reason} ->

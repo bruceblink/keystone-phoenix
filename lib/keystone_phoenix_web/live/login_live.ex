@@ -193,11 +193,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
           {:noreply, AdminSupport.assign_monitor(socket)}
 
         panel in ["login-logs", "operation-logs"] ->
-          {:noreply,
-           assign(socket,
-             active_panel: panel,
-             log_feedback: nil
-           )}
+          {:noreply, assign(socket, active_panel: panel, log_feedback: nil)}
 
         panel == "api-keys" ->
           SecurityEvents.handle_event(
@@ -213,7 +209,14 @@ defmodule KeystonePhoenixWeb.LoginLive do
           OperationsEvents.handle_event("refresh-jobs", %{}, assign(socket, active_panel: panel))
 
         panel == "users" ->
-          AccountsEvents.handle_event("refresh-users", %{}, assign(socket, active_panel: panel))
+          AccountsEvents.handle_event(
+            "filter-users",
+            %{
+              "username" => socket.assigns[:user_query],
+              "displayName" => socket.assigns[:user_display_name_query]
+            },
+            assign(socket, active_panel: panel)
+          )
 
         true ->
           {:noreply, assign(socket, active_panel: panel)}
@@ -244,7 +247,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
     case Integer.parse(to_string(page)) do
       {page, ""} when page > 0 ->
         socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, panel, page))
-
         dispatch_pagination(panel, page, socket)
 
       _ ->

@@ -12,6 +12,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.AccountReload
   alias KeystonePhoenixWeb.Live.AdminEvents.AccountsPagination
+  alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
   alias KeystonePhoenixWeb.UserController
 
   def handle_event("filter-users", params, socket) do
@@ -20,18 +21,21 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
       case Support.load_users_for_socket_result(socket, filters) do
         {:ok, page} ->
+          socket =
+            assign(socket,
+              user_rows: page.rows,
+              user_total: page.total,
+              users_server_paged: true,
+              user_query: filters["username"],
+              user_display_name_query: filters["displayName"],
+              selected_user_ids: [],
+              page_nums: Map.put(socket.assigns.page_nums, "users", page.page),
+              user_feedback: nil,
+              active_modal: nil
+            )
+
           {:noreply,
-           assign(socket,
-             user_rows: page.rows,
-             user_total: page.total,
-             users_server_paged: true,
-             user_query: filters["username"],
-             user_display_name_query: filters["displayName"],
-             selected_user_ids: [],
-             page_nums: Map.put(socket.assigns.page_nums, "users", page.page),
-             user_feedback: nil,
-             active_modal: nil
-           )}
+           Phoenix.LiveView.push_patch(socket, to: FilterNavigation.path("users", filters, 1))}
 
         {:error, reason} ->
           {:noreply,
@@ -53,19 +57,21 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     if Support.panel_allowed?(socket, "users") do
       case Support.load_users_for_socket_result(socket, AccountsPagination.page_params(socket, 1)) do
         {:ok, page} ->
-          {:noreply,
-           assign(socket,
-             user_rows: page.rows,
-             user_total: page.total,
-             users_server_paged: true,
-             page_nums: Map.put(socket.assigns.page_nums, "users", page.page),
-             user_query: "",
-             user_display_name_query: "",
-             selected_user_ids: [],
-             user_form: Support.empty_user_form(),
-             user_feedback: nil,
-             active_modal: nil
-           )}
+          socket =
+            assign(socket,
+              user_rows: page.rows,
+              user_total: page.total,
+              users_server_paged: true,
+              page_nums: Map.put(socket.assigns.page_nums, "users", page.page),
+              user_query: "",
+              user_display_name_query: "",
+              selected_user_ids: [],
+              user_form: Support.empty_user_form(),
+              user_feedback: nil,
+              active_modal: nil
+            )
+
+          {:noreply, Phoenix.LiveView.push_patch(socket, to: "/users")}
 
         {:error, reason} ->
           {:noreply,

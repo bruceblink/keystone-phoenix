@@ -213,11 +213,13 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     render_click(view, "paginate", %{"panel" => "users", "page" => "2"})
     assert live_socket(view).assigns.page_nums["users"] == 2
     assert live_socket(view).assigns.user_total >= 1
+    assert live_socket(view).assigns.current_uri =~ "/users?users_page=2"
     render_click(view, "paginate", %{"panel" => "users", "page" => "1"})
     render_submit(view, "filter-users", %{"username" => admin.username, "displayName" => ""})
     filtered_usernames = Enum.map(live_socket(view).assigns.user_rows, & &1["username"])
     assert filtered_usernames != []
     assert Enum.all?(filtered_usernames, &String.contains?(&1, admin.username))
+    assert live_socket(view).assigns.current_uri =~ "/users?users_username="
     assert has_element?(view, "#user-query[value='#{admin.username}']")
 
     render_click(view, "toggle-user-selection", %{

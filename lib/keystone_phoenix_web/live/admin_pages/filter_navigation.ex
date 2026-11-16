@@ -21,6 +21,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.FilterNavigation do
         audit_filter(params, "operations_audit", ["actor", "action", "resource"])
     ]
 
+  def assigns("users", params),
+    do: [
+      user_query: keyword(params, "users_username"),
+      user_display_name_query: keyword(params, "users_displayName")
+    ]
+
   def assigns(_panel, _params), do: []
 
   @doc "将审计日志 URL 中的页码恢复到 LiveView 分页状态。"
@@ -29,6 +35,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.FilterNavigation do
 
   def apply_page(socket, "operation-logs", params),
     do: assign_page(socket, "operation-logs", params["operations_audit_page"])
+
+  def apply_page(socket, "users", params),
+    do: assign_page(socket, "users", params["users_page"])
 
   def apply_page(socket, _panel, _params), do: socket
 
@@ -52,6 +61,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.FilterNavigation do
         page
       )
 
+  def path("users", filter, page),
+    do: query_path("/users", "users", filter, ["username", "displayName"], page)
+
   defp audit_filter(params, namespace, fields) do
     Map.new(fields, fn field -> {field, keyword(params, "#{namespace}_#{field}")} end)
   end
@@ -74,6 +86,23 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.FilterNavigation do
       fields
       |> Enum.reduce(%{}, fn field, query ->
         value = String.trim(to_string(filter[field] || filter["#{field}"] || ""))
+        if value == "", do: query, else: Map.put(query, "#{namespace}_#{field}", value)
+      end)
+      |> then(fn query ->
+        if page > 1, do: Map.put(query, "#{namespace}_page", page), else: query
+      end)
+
+    case URI.encode_query(query) do
+      "" -> path
+      encoded -> "#{path}?#{encoded}"
+    end
+  end
+
+  defp query_path(path, namespace, filter, fields, page) do
+    query =
+      fields
+      |> Enum.reduce(%{}, fn field, query ->
+        value = String.trim(to_string(filter[field] || ""))
         if value == "", do: query, else: Map.put(query, "#{namespace}_#{field}", value)
       end)
       |> then(fn query ->
