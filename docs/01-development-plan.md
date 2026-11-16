@@ -777,3 +777,13 @@ Native `bb832b1` 已收口该调度日志问题：删除任务与调度触发交
 Phoenix `7af6e6d` 将权限目录接口的访问条件与 Native 对齐，`api-key:create`、`permission:read` 或 `role:manage` 任一权限均可读取 `/api/v1/permissions/catalog`。Phoenix `4f205a9` 又将角色新增和编辑表单改为动态权限目录选择，支持资源分组、搜索、逐项勾选和编辑预选；隐藏字段继续提交逗号分隔的兼容格式。`de28fd9` 将角色用户事件拆分到独立模块，保持源码行数限制。
 
 本批次验证：Phoenix 全量集成测试 `449 passed`；角色权限 LiveView 定向测试 `14 passed`；严格编译、源码行数和差异检查通过。admin-web `720aa70` 与 Phoenix 的角色权限选择语义一致，Native `f388199` 与 Phoenix 的动态目录授权边界一致。
+
+### 2026-11-17 角色成员和注销权限继续收口
+
+admin-web `0f66cd3` 新增角色成员管理入口。角色行可以打开已分配和可分配用户面板，页面支持客户端分页、刷新、读取失败重试、MFA step-up 分配和取消分配，并使用 Native/Phoenix 统一的用户 ID 数组接口。admin-web 本轮测试为 `27 files / 160 tests passed`，类型检查、生产构建和差异检查通过。
+
+Phoenix `85e9d7e` 修复角色成员撤销时忽略 URL `role_id` 的错误。撤销只清除目标角色的用户绑定；用户属于其他角色时保持原绑定；缺失用户仍返回稳定的 `resource_not_found`。Phoenix `b460ad3` 将 HTTP 注销接口权限与 Native 对齐为 `session:revoke`，无该权限返回 `permission_denied`，有该权限才注销会话。
+
+Phoenix 角色成员定向 HTTP、领域和权限回归共 `27 passed`；`mix format`、`mix check.source_lines` 和 `git diff --check` 通过。Native 角色成员 HTTP 定向测试仍为 `BUILD SUCCESSFUL`。
+
+本批次发现并记录一个替换验收阻塞项：Native 用户支持多角色绑定，Phoenix 用户表只有单个 `role_id`，且两端角色成员接口只返回用户 ID 数组，没有统一的用户展示字段和服务端分页 DTO。admin-web 角色成员面板当前按兼容接口展示用户 ID，并不代表多角色数据语义已经互换。后续主线需要先确定 Phoenix 多角色数据模型迁移或明确兼容策略，再继续宣称后端可相互替换。

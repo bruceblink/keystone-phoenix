@@ -153,6 +153,10 @@ Phoenix LiveView 角色页面的用户分配和移除事件也已改为检查并
 
 Phoenix 角色控制器的 `unassign_users` 权限声明也已统一为 `role:assign`，避免内部动作声明和 Native/HTTP 权限边界不一致；角色权限回归测试通过，对应提交为 `bfda55e`。
 
+主线继续收口：admin-web `0f66cd3` 新增角色成员入口，调用统一的 `GET/PUT/DELETE /roles/:id/users`，支持已分配/可分配列表、分页、MFA step-up、刷新、重试和错误反馈；角色成员 API 客户端与 Native/Phoenix 的用户 ID 数组响应一致。Phoenix `85e9d7e` 修复角色成员撤销忽略 URL `role_id` 的问题，只有用户当前属于目标角色时才清除绑定，并补充跨角色回归；Phoenix `b460ad3` 将注销接口权限与 Native 对齐为 `session:revoke`，补充无权限 403 和有权限成功回归。
+
+替换验收仍有明确阻塞项：Native 支持用户多角色，Phoenix 用户表仍只有单个 `role_id`，用户写入和角色成员分配的多角色语义不能互换；当前 admin-web 成员面板只能展示后端返回的用户 ID，不能获得统一的用户名、昵称和服务端分页字段。该差异已记录为数据模型和接口 DTO 升级项，在完成 Phoenix 多角色模型或明确兼容策略前，不宣称 Phoenix 与 Native 已达到完全可替换。
+
 ## 发布前证据
 
 每个正式版本必须保留以下证据：
