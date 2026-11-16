@@ -397,6 +397,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       menu_feedback: nil,
       menu_form: AdminSupport.empty_menu_form(),
       notice_rows: dashboard.notice_rows,
+      notice_total: length(dashboard.notice_rows),
       notice_feedback: nil,
       notice_form: AdminSupport.empty_notice_form(),
       login_log_rows: dashboard.login_log_rows,

@@ -172,6 +172,43 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
   end
 
   @tag :integration
+  test "公告管理列表在提供 page 和 size 时返回 Native 分页契约" do
+    token = admin_token()
+    title = "分页公告 #{System.unique_integer([:positive])}"
+
+    response =
+      post(authorized(build_conn(), token), "/api/v1/notices", %{
+        "title" => title,
+        "content" => "分页公告内容",
+        "noticeType" => "notification",
+        "enabled" => true
+      })
+
+    assert response.status == 201
+
+    assert %{
+             "success" => true,
+             "data" => %{
+               "items" => [item],
+               "page" => 1,
+               "size" => 1,
+               "total" => total
+             }
+           } =
+             get(authorized(build_conn(), token), "/api/v1/notices/manage", %{
+               "page" => "1",
+               "size" => "1",
+               "title" => title
+             })
+             |> json_response(200)
+
+    assert total == 1
+    assert item["title"] == title
+    assert item["enabled"] == true
+    assert delete(authorized(build_conn(), token), "/api/v1/notices/#{item["id"]}").status == 200
+  end
+
+  @tag :integration
   test "管理资源新增保留 admin-web 传入的停用状态" do
     token = admin_token()
     suffix = System.unique_integer([:positive])

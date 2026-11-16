@@ -32,9 +32,27 @@ defmodule KeystonePhoenixWeb.NoticeController do
 
   @doc "Returns all notices in the current data scope using the Native DTO."
   def manage_list(conn, params) do
-    case Notice.list_managed_notices(params, authorization(conn)) do
-      {:ok, rows} -> json(conn, ApiResponse.ok(rows))
-      {:error, reason} -> render_error(conn, reason)
+    if paged_request?(params) do
+      case Notice.list_managed_notices_page(paging_params(params), authorization(conn)) do
+        {:ok, page} ->
+          json(
+            conn,
+            ApiResponse.ok(%{
+              "items" => page.items,
+              "page" => page.page,
+              "size" => page.size,
+              "total" => page.total
+            })
+          )
+
+        {:error, reason} ->
+          render_error(conn, reason)
+      end
+    else
+      case Notice.list_managed_notices(params, authorization(conn)) do
+        {:ok, rows} -> json(conn, ApiResponse.ok(rows))
+        {:error, reason} -> render_error(conn, reason)
+      end
     end
   end
 
@@ -99,6 +117,14 @@ defmodule KeystonePhoenixWeb.NoticeController do
   end
 
   defp authorization(conn), do: [authorization: %{principal: conn.assigns.current_user}]
+
+  defp paged_request?(params), do: Map.has_key?(params, "page") or Map.has_key?(params, "size")
+
+  defp paging_params(params) do
+    params
+    |> Map.put_new("pageNum", params["page"] || "1")
+    |> Map.put_new("pageSize", params["size"] || "20")
+  end
 
   defp native_notice(conn, notice) do
     principal = conn.assigns[:current_user] || %{}

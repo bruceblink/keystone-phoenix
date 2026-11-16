@@ -193,6 +193,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:selected_notice_ids, fn -> [] end)
       |> assign_new(:notice_filter, fn -> %{"title" => "", "published" => "all"} end)
+      |> assign_new(:notice_total, fn -> nil end)
+      |> assign_new(:notice_page_num, fn -> 1 end)
+      |> assign_new(:notice_page_size, fn -> 20 end)
 
     ~H"""
     <div class="notices-page system-page">
@@ -235,7 +238,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       <% end %>
       <section class="card notices-table-card table-card" aria-labelledby="notices-table-title">
         <header class="card-header table-card-heading">
-          <div><h2 id="notices-table-title">公告列表</h2><p>共 <%= length(filtered_notice_rows(@notice_rows, @notice_filter)) %> 条匹配公告</p></div>
+          <div><h2 id="notices-table-title">公告列表</h2><p>共 <%= @notice_total || length(filtered_notice_rows(@notice_rows, @notice_filter)) %> 条匹配公告</p></div>
           <span class="badge badge-info">系统 API</span>
         </header>
         <%= if filtered_notices == [] do %>
@@ -247,6 +250,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
             <% end %>
           </tbody></table></div>
         <% end %>
+        <div class="table-card-footer">
+          <.pagination panel="notices" page_num={@notice_page_num} page_size={@notice_page_size} total={@notice_total || length(@notice_rows)} />
+        </div>
       </section>
     </div>
     """

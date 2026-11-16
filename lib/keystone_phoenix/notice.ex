@@ -30,12 +30,24 @@ defmodule KeystonePhoenix.Notice do
         order_by: [desc: n.notice_id]
       )
 
-    query = filter_contains(query, :notice_title, params["noticeTitle"] || params[:notice_title])
+    query = filter_keyword(query, params["noticeTitle"] || params[:notice_title])
+    query = filter_contains(query, :notice_content, params["content"] || params[:content])
+    query = filter_keyword(query, params["keyword"] || params[:keyword])
     query = filter_integer(query, :notice_type, params["noticeType"] || params[:notice_type])
     query = filter_integer(query, :status, params["status"] || params[:status])
+    query = filter_published(query, params["published"] || params[:published])
     paged = Pagination.page_rows(query, params, :notice_id)
     creator_names = creator_names(paged.rows)
     %{paged | rows: Enum.map(paged.rows, &notice_to_map(&1, creator_names))}
+  end
+
+  @doc "返回 LiveView 公告当前页及总数。"
+  def list_notices_page(params \\ %{}) do
+    page = positive_page(params["pageNum"] || params[:page_num] || params["page"])
+    size = positive_size(params["pageSize"] || params[:page_size] || params["size"])
+    params = Map.put_new(params, "noticeTitle", params["title"] || params[:title])
+    result = list_notices(Map.merge(params, %{"pageNum" => page, "pageSize" => size}))
+    %{items: result.rows, page: page, size: size, total: result.total}
   end
 
   @doc "Returns only published and enabled notices for the public Native endpoint."
@@ -56,18 +68,26 @@ defmodule KeystonePhoenix.Notice do
   def list_managed_notices(params, options) when is_map(params) and is_list(options) do
     with {:ok, scope} <- Authorization.authorize_owner(options, "notice:read") do
       query =
-        from(n in SysNotice,
-          where: n.deleted == false,
-          order_by: [desc: n.notice_id]
-        )
-        |> owner_filter(scope)
-        |> filter_contains(
-          :notice_title,
-          params["title"] || params[:title] || params["noticeTitle"]
-        )
-        |> filter_integer(:notice_type, params["noticeType"] || params[:notice_type])
+        managed_query(params, scope)
 
       {:ok, query |> Repo.all() |> native_notice_rows()}
+    end
+  end
+
+  @doc "在管理接口中按当前数据范围返回分页公告。"
+  def list_managed_notices_page(params, options) when is_map(params) and is_list(options) do
+    with {:ok, scope} <- Authorization.authorize_owner(options, "notice:read") do
+      page = positive_page(params["page"] || params[:page] || params["pageNum"])
+      size = positive_size(params["size"] || params[:size] || params["pageSize"])
+
+      paged =
+        Pagination.page_rows(
+          managed_query(params, scope),
+          %{"pageNum" => page, "pageSize" => size},
+          :notice_id
+        )
+
+      {:ok, %{items: native_notice_rows(paged.rows), page: page, size: size, total: paged.total}}
     end
   end
 
@@ -75,6 +95,21 @@ defmodule KeystonePhoenix.Notice do
   def list_notices(params, options) when is_map(params) and is_list(options) do
     with {:ok, scope} <- Authorization.authorize_owner(options, "notice:read") do
       {:ok, list_notices_scoped(params, scope)}
+    end
+  end
+
+  @doc "在授权范围内返回 LiveView 公告当前页及总数。"
+  def list_notices_page(params, options) when is_map(params) and is_list(options) do
+    with {:ok, scope} <- Authorization.authorize_owner(options, "notice:read") do
+      page = positive_page(params["pageNum"] || params[:page_num] || params["page"])
+      size = positive_size(params["pageSize"] || params[:page_size] || params["size"])
+
+      params = Map.put_new(params, "noticeTitle", params["title"] || params[:title])
+
+      result =
+        list_notices_scoped(Map.merge(params, %{"pageNum" => page, "pageSize" => size}), scope)
+
+      {:ok, %{items: result.rows, page: page, size: size, total: result.total}}
     end
   end
 
@@ -177,12 +212,29 @@ defmodule KeystonePhoenix.Notice do
       )
 
     query = owner_filter(query, scope)
-    query = filter_contains(query, :notice_title, params["noticeTitle"] || params[:notice_title])
+    query = filter_keyword(query, params["noticeTitle"] || params[:notice_title])
+    query = filter_contains(query, :notice_content, params["content"] || params[:content])
+    query = filter_keyword(query, params["keyword"] || params[:keyword])
     query = filter_integer(query, :notice_type, params["noticeType"] || params[:notice_type])
     query = filter_integer(query, :status, params["status"] || params[:status])
+    query = filter_published(query, params["published"] || params[:published])
     paged = Pagination.page_rows(query, params, :notice_id)
     creator_names = creator_names(paged.rows)
     %{paged | rows: Enum.map(paged.rows, &notice_to_map(&1, creator_names))}
+  end
+
+  defp managed_query(params, scope) do
+    from(n in SysNotice, where: n.deleted == false, order_by: [desc: n.notice_id])
+    |> owner_filter(scope)
+    |> filter_contains(:notice_title, params["title"] || params[:title] || params["noticeTitle"])
+    |> filter_contains(:notice_content, params["content"] || params[:content])
+    |> filter_keyword(params["keyword"] || params[:keyword])
+    |> filter_integer(
+      :notice_type,
+      params["noticeType"] || params[:notice_type] || params["type"]
+    )
+    |> filter_status(params["status"] || params[:status])
+    |> filter_published(params["published"] || params[:published])
   end
 
   defp get_notice_scoped(id, scope) do
@@ -338,6 +390,21 @@ defmodule KeystonePhoenix.Notice do
     where(query, [notice], ilike(field(notice, ^field), ^pattern))
   end
 
+  defp filter_keyword(query, nil), do: query
+  defp filter_keyword(query, ""), do: query
+
+  defp filter_keyword(query, value) do
+    pattern = "%#{String.trim(to_string(value))}%"
+
+    where(
+      query,
+      [notice],
+      ilike(notice.notice_title, ^pattern) or
+        ilike(notice.notice_content, ^pattern) or
+        ilike(fragment("?::text", notice.notice_type), ^pattern)
+    )
+  end
+
   defp filter_integer(query, _field, nil), do: query
   defp filter_integer(query, _field, ""), do: query
 
@@ -345,6 +412,39 @@ defmodule KeystonePhoenix.Notice do
     case Integer.parse(to_string(value)) do
       {number, ""} -> where(query, [notice], field(notice, ^field) == ^number)
       _ -> query
+    end
+  end
+
+  defp filter_status(query, value) when value in [nil, "", "all"], do: query
+  defp filter_status(query, "published"), do: where(query, [notice], notice.published == true)
+  defp filter_status(query, "unpublished"), do: where(query, [notice], notice.published == false)
+  defp filter_status(query, "active"), do: where(query, [notice], notice.status == 1)
+  defp filter_status(query, "enabled"), do: where(query, [notice], notice.status == 1)
+  defp filter_status(query, "inactive"), do: where(query, [notice], notice.status == 0)
+  defp filter_status(query, "disabled"), do: where(query, [notice], notice.status == 0)
+  defp filter_status(query, _value), do: query
+
+  defp filter_published(query, value) when value in [nil, "", "all"], do: query
+
+  defp filter_published(query, value) when value in [true, "true"],
+    do: where(query, [notice], notice.published == true)
+
+  defp filter_published(query, value) when value in [false, "false"],
+    do: where(query, [notice], notice.published == false)
+
+  defp filter_published(query, _value), do: query
+
+  defp positive_page(value) do
+    case Integer.parse(to_string(value || "1")) do
+      {number, ""} when number > 0 -> number
+      _ -> 1
+    end
+  end
+
+  defp positive_size(value) do
+    case Integer.parse(to_string(value || "20")) do
+      {number, ""} when number > 0 -> min(number, 100)
+      _ -> 20
     end
   end
 

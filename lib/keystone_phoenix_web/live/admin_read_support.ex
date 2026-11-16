@@ -154,6 +154,25 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     end
   end
 
+  @doc "读取公告当前页，并保留总数和服务错误。"
+  def notices_page(socket, params \\ %{}) do
+    options = Support.authorization_options(socket)
+
+    result =
+      if Support.admin_socket?(socket),
+        do: Notice.list_notices_page(params),
+        else: Notice.list_notices_page(params, options)
+
+    case result do
+      {:ok, page} -> {:ok, page}
+      page when is_map(page) -> {:ok, page}
+      {:error, reason} -> {:error, reason}
+      _other -> {:error, :invalid_page}
+    end
+  rescue
+    _error -> {:error, :service_unavailable}
+  end
+
   @doc "读取登录日志和操作审计，并保留任一查询失败结果。"
   def logs(socket, filters \\ %{}) do
     options = Support.authorization_options(socket)

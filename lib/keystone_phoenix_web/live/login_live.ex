@@ -203,6 +203,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
             assign(socket, active_panel: panel, issued_api_key: nil)
           )
 
+        panel == "notices" ->
+          SystemEvents.handle_event("refresh-notices", %{}, assign(socket, active_panel: panel))
+
         panel == "users" and not AdminSupport.admin_socket?(socket) ->
           {:noreply,
            assign(socket,
@@ -263,7 +266,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts export-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles export-roles new-role edit-role save-role toggle-role-selection toggle-all-role-selection toggle-role-status delete-role select-role assign-role-user unassign-role-user refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
   @accounts_events ~w(filter-users reset-user-filter refresh-users export-users new-user-import toggle-user-selection toggle-all-user-selection delete-users import-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
   @config_events ~w(refresh-config delete-config filter-configs reset-config-filter paginate-configs new-config edit-config save-config)
-  @system_events ~w(refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs refresh-login-logs refresh-operation-logs new-notice edit-notice cancel-notice save-notice toggle-notice-status publish-notice toggle-notice-selection toggle-all-notice-selection delete-notice delete-notices refresh-notices filter-notices reset-notice-filter)
+  @system_events ~w(refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs refresh-login-logs refresh-operation-logs new-notice edit-notice cancel-notice save-notice toggle-notice-status publish-notice toggle-notice-selection toggle-all-notice-selection paginate-notices delete-notice delete-notices refresh-notices filter-notices reset-notice-filter)
   @audit_events ~w(filter-login-logs reset-login-log-filter filter-operation-logs reset-operation-log-filter filter-dict-types reset-dict-type-filter export-login-logs export-operation-logs)
   @operations_events ~w(refresh-jobs filter-jobs reset-job-filter toggle-job-selection toggle-all-job-selection select-job new-job edit-job save-job delete-job delete-jobs run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor toggle-monitor-help logout-online-user)
   @security_events ~w(refresh-api-keys new-api-key save-api-key rotate-api-key revoke-api-key filter-api-keys paginate-api-keys filter-api-key-scopes toggle-api-key-scope dismiss-api-key-secret)
@@ -479,7 +482,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "dicts" -> %>
                       <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} active_modal={@active_modal} dict_data_page_num={@page_nums["dict-data"]} dict_data_page_size={@page_sizes["dict-data"]} dict_type_filter={@dict_type_filter} read_only={@read_only} />
                     <% "notices" -> %>
-                      <.notices notice_rows={@notice_rows} notice_form={@notice_form} notice_feedback={@notice_feedback} active_modal={@active_modal} selected_notice_ids={@selected_notice_ids} notice_filter={@notice_filter} read_only={@read_only} />
+                      <.notices notice_rows={@notice_rows} notice_total={@notice_total} notice_page_num={@page_nums["notices"]} notice_page_size={@page_sizes["notices"]} notice_form={@notice_form} notice_feedback={@notice_feedback} active_modal={@active_modal} selected_notice_ids={@selected_notice_ids} notice_filter={@notice_filter} read_only={@read_only} />
                     <% "login-logs" -> %>
                       <.logs kind="login" login_log_rows={@login_log_rows} operation_log_rows={@operation_log_rows} log_feedback={@log_feedback} login_log_filter={@login_log_filter} operation_log_filter={@operation_log_filter} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["login-logs"]} read_only={@read_only} />
                     <% "operation-logs" -> %>
