@@ -11,21 +11,24 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.AccountReload
+  alias KeystonePhoenixWeb.Live.AdminEvents.AccountsPagination
   alias KeystonePhoenixWeb.UserController
 
   def handle_event("filter-users", params, socket) do
     if Support.panel_allowed?(socket, "users") do
-      filters = user_filter_params(params)
+      filters = Map.merge(user_filter_params(params), AccountsPagination.page_params(socket, 1))
 
       case Support.load_users_for_socket_result(socket, filters) do
-        {:ok, rows} ->
+        {:ok, page} ->
           {:noreply,
            assign(socket,
-             user_rows: rows,
+             user_rows: page.rows,
+             user_total: page.total,
+             users_server_paged: true,
              user_query: filters["username"],
              user_display_name_query: filters["displayName"],
              selected_user_ids: [],
-             page_nums: Map.put(socket.assigns.page_nums, "users", 1),
+             page_nums: Map.put(socket.assigns.page_nums, "users", page.page),
              user_feedback: nil,
              active_modal: nil
            )}
@@ -48,12 +51,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   def handle_event("refresh-users", _params, socket) do
     if Support.panel_allowed?(socket, "users") do
-      case Support.load_users_for_socket_result(socket, %{}) do
-        {:ok, rows} ->
+      case Support.load_users_for_socket_result(socket, AccountsPagination.page_params(socket, 1)) do
+        {:ok, page} ->
           {:noreply,
            assign(socket,
-             user_rows: rows,
-             page_nums: Map.put(socket.assigns.page_nums, "users", 1),
+             user_rows: page.rows,
+             user_total: page.total,
+             users_server_paged: true,
+             page_nums: Map.put(socket.assigns.page_nums, "users", page.page),
              user_query: "",
              user_display_name_query: "",
              selected_user_ids: [],
@@ -71,6 +76,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     else
       {:noreply, socket}
     end
+  end
+
+  def handle_event("paginate-users", %{"page" => page}, socket) do
+    AccountsPagination.paginate(%{"page" => page}, socket)
   end
 
   def handle_event("export-users", params, socket) do
@@ -118,15 +127,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("toggle-all-user-selection", %{"selected" => selected}, socket) do
-    page_ids =
-      Enum.map(
-        page_rows(
-          socket.assigns.user_rows,
-          socket.assigns.page_nums["users"],
-          socket.assigns.page_sizes["users"]
-        ),
-        &to_string(&1["userId"])
-      )
+    page_ids = Enum.map(socket.assigns.user_rows, &to_string(&1["userId"]))
 
     selected_ids = Map.get(socket.assigns, :selected_user_ids, [])
 
@@ -226,12 +227,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           case result do
             {:ok, _user} ->
               {:noreply,
-               assign(
-                 AccountReload.after_user_write(
-                   socket,
-                   "角色列表已刷新"
-                 ),
-                 user_rows: reload_users(socket),
+               AccountsPagination.assign_reloaded(
+                 AccountReload.after_user_write(socket, "角色列表已刷新"),
                  user_form: Support.empty_user_form(),
                  active_modal: nil,
                  user_feedback: if(user_id == "", do: "用户已创建", else: "用户已更新")
@@ -267,11 +264,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           if to_string(socket.assigns.current_user["userId"]) == user_id and status in [0, "0"] do
             {:noreply, Support.expire_authentication(socket, "当前账号已停用，请联系管理员")}
           else
-            {:noreply,
-             assign(socket,
-               user_rows: reload_users(socket),
-               user_feedback: "用户状态已更新"
-             )}
+            {:noreply, AccountsPagination.assign_reloaded(socket, user_feedback: "用户状态已更新")}
           end
 
         {:error, :data_scope_denied} ->
@@ -472,8 +465,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
         message = "用户导入完成：成功 #{success} 条，失败 #{length(failed)} 条，共 #{total} 条"
 
         {:noreply,
-         assign(socket,
-           user_rows: reload_users(socket),
+         AccountsPagination.assign_reloaded(socket,
            user_feedback: message,
            user_import_result: %{"total" => total, "success" => success, "failed" => failed},
            active_modal: "user-import"
@@ -546,22 +538,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     }
   end
 
-  defp current_user_filters(socket) do
-    user_filter_params(%{
-      "username" => socket.assigns[:user_query],
-      "displayName" => socket.assigns[:user_display_name_query]
-    })
-  end
-
-  defp reload_users(socket),
-    do: Support.load_users_for_socket(socket, current_user_filters(socket))
-
-  defp page_rows(rows, page_num, page_size) do
-    rows
-    |> Enum.drop(max(page_num - 1, 0) * page_size)
-    |> Enum.take(page_size)
-  end
-
   defp delete_users(socket, user_ids) do
     if Support.permission_socket?(socket, "user:delete") do
       case if(Authz.scope_allowed?(socket.assigns.current_user, :users, user_ids),
@@ -573,8 +549,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
            ) do
         :ok ->
           {:noreply,
-           assign(AccountReload.after_user_write(socket, "角色列表已刷新"),
-             user_rows: reload_users(socket),
+           AccountsPagination.assign_reloaded(
+             AccountReload.after_user_write(socket, "角色列表已刷新"),
              user_form: Support.empty_user_form(),
              active_modal: nil,
              selected_user_ids: [],

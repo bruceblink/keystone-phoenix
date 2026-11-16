@@ -363,6 +363,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       in_app_notifications: dashboard.in_app_notifications,
       active_modal: nil,
       user_rows: dashboard.user_rows,
+      user_total: dashboard[:user_total] || length(dashboard.user_rows),
       dept_rows: dashboard.dept_rows,
       dept_feedback: nil,
       dept_form: AdminSupport.empty_dept_form(),

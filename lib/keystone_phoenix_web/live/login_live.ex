@@ -212,12 +212,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
         panel == "jobs" ->
           OperationsEvents.handle_event("refresh-jobs", %{}, assign(socket, active_panel: panel))
 
-        panel == "users" and not AdminSupport.admin_socket?(socket) ->
-          {:noreply,
-           assign(socket,
-             active_panel: panel,
-             user_rows: AdminSupport.load_users_for_socket(socket)
-           )}
+        panel == "users" ->
+          AccountsEvents.handle_event("refresh-users", %{}, assign(socket, active_panel: panel))
 
         true ->
           {:noreply, assign(socket, active_panel: panel)}
@@ -259,7 +255,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("paginate", _params, socket), do: {:noreply, socket}
 
   @organization_events ~w(refresh-depts new-dept edit-dept save-dept toggle-dept-status delete-dept refresh-posts paginate-posts export-posts new-post edit-post save-post toggle-post-status delete-post refresh-roles paginate-roles export-roles new-role edit-role save-role toggle-role-selection toggle-all-role-selection toggle-role-status delete-role select-role assign-role-user unassign-role-user refresh-menus new-menu edit-menu save-menu toggle-menu-status delete-menu)
-  @accounts_events ~w(filter-users reset-user-filter refresh-users export-users new-user-import toggle-user-selection toggle-all-user-selection delete-users import-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
+  @accounts_events ~w(filter-users reset-user-filter refresh-users paginate-users export-users new-user-import toggle-user-selection toggle-all-user-selection delete-users import-users new-user edit-user save-user toggle-user-status delete-user reset-user-password save-profile change-profile-password update-profile-avatar save-profile-avatar-upload)
   @config_events ~w(refresh-config delete-config filter-configs reset-config-filter paginate-configs new-config edit-config save-config)
   @system_events ~w(refresh-dicts select-dict-type paginate-dict-data new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs refresh-login-logs refresh-operation-logs new-notice edit-notice cancel-notice save-notice toggle-notice-status publish-notice toggle-notice-selection toggle-all-notice-selection paginate-notices delete-notice delete-notices refresh-notices filter-notices reset-notice-filter)
   @audit_events ~w(filter-login-logs reset-login-log-filter paginate-login-logs filter-operation-logs reset-operation-log-filter paginate-operation-logs filter-dict-types reset-dict-type-filter export-login-logs export-operation-logs)
@@ -297,6 +293,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   defp dispatch_pagination("posts", page, socket),
     do: OrganizationEvents.handle_event("paginate-posts", %{"page" => page}, socket)
+
+  defp dispatch_pagination("users", page, socket),
+    do: AccountsEvents.handle_event("paginate-users", %{"page" => page}, socket)
 
   defp dispatch_pagination("roles", page, socket),
     do: OrganizationEvents.handle_event("paginate-roles", %{"page" => page}, socket)
@@ -502,7 +501,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "menus" -> %>
                       <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} menu_filter={@menu_filter} menu_role_codes={@menu_role_codes} role_rows={@role_rows} permissions={@permissions} active_modal={@active_modal} read_only={@read_only} />
                     <% "users" -> %>
-                      <.users user_rows={@user_rows} user_form={@user_form} user_feedback={@user_feedback} user_query={@user_query} user_display_name_query={@user_display_name_query} selected_user_ids={@selected_user_ids} user_import_result={@user_import_result} active_modal={@active_modal} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} page_num={@page_nums["users"]} page_size={@page_sizes["users"]} read_only={@read_only} permissions={@permissions} user_import_upload={@uploads.user_import} />
+                      <.users user_rows={@user_rows} user_total={@user_total} users_server_paged={@users_server_paged} user_form={@user_form} user_feedback={@user_feedback} user_query={@user_query} user_display_name_query={@user_display_name_query} selected_user_ids={@selected_user_ids} user_import_result={@user_import_result} active_modal={@active_modal} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} page_num={@page_nums["users"]} page_size={@page_sizes["users"]} read_only={@read_only} permissions={@permissions} user_import_upload={@uploads.user_import} />
                     <% "api-keys" -> %>
                       <.api_keys api_key_rows={@api_key_rows} api_key_total={@api_key_total} api_key_page_num={@page_nums["api-keys"]} api_key_page_size={@page_sizes["api-keys"]} api_key_feedback={@api_key_feedback} api_key_form={@api_key_form} api_key_query={@api_key_query} api_key_status={@api_key_status} issued_api_key={@issued_api_key} permissions={@permissions} active_modal={@active_modal} read_only={@read_only} />
                     <% "configs" -> %>

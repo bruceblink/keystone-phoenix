@@ -45,6 +45,8 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       in_app_notifications: [],
       active_modal: nil,
       user_rows: [],
+      user_total: 0,
+      users_server_paged: false,
       selected_user_ids: [],
       user_import_result: nil,
       user_query: "",

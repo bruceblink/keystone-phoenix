@@ -15,6 +15,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:page_num, fn -> 1 end)
       |> assign_new(:page_size, fn -> 50 end)
+      |> assign_new(:user_total, fn -> length(assigns[:user_rows] || []) end)
+      |> assign_new(:users_server_paged, fn -> false end)
       |> assign_new(:user_query, fn -> "" end)
       |> assign_new(:user_display_name_query, fn -> "" end)
       |> assign_new(:permissions, fn -> [] end)
@@ -103,11 +105,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         <div class="card-header">
           <div>
             <h2 id="users-table-title">用户列表</h2>
-            <p>共 <%= length(@user_rows) %> 个用户</p>
+            <p>共 <%= @user_total %> 个用户</p>
           </div>
           <span class="badge badge-info">系统 API</span>
         </div>
-        <% page_user_rows = page_rows(@user_rows, @page_num, @page_size) %>
+        <% page_user_rows = if @users_server_paged, do: @user_rows, else: page_rows(@user_rows, @page_num, @page_size) %>
         <%= if page_user_rows == [] do %>
           <div class="users-empty" role="status"><span class="users-empty-icon" aria-hidden="true">◎</span><strong>没有匹配的用户</strong><p>调整筛选条件后重试，或清空筛选条件查看全部用户。</p></div>
         <% else %>
@@ -127,7 +129,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           </div>
         <% end %>
         <div class="table-card-footer">
-          <.pagination panel="users" page_num={min(@page_num, page_count(length(@user_rows), @page_size))} page_size={@page_size} total={length(@user_rows)} />
+          <.pagination panel="users" page_num={@page_num} page_size={@page_size} total={@user_total} />
         </div>
       </section>
     </div>

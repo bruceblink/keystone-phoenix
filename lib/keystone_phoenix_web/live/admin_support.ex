@@ -163,7 +163,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   def load_users_for_socket_result(socket, params \\ %{}),
-    do: AdminReadSupport.users(socket, params)
+    do: AdminReadSupport.users_page(socket, params)
 
   def load_api_keys_for_socket(socket) do
     case ApiKey.list(current_user_id(socket), authorization_options(socket)) do

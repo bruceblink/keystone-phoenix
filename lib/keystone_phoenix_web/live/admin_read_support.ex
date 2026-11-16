@@ -23,6 +23,18 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     end
   end
 
+  @doc "读取当前用户页，并保留服务端总数和授权错误。"
+  def users_page(socket, params \\ %{}) do
+    result =
+      if Support.admin_socket?(socket),
+        do: User.list_users(params),
+        else: User.list_users(params, socket.assigns.current_user)
+
+    {:ok, Map.merge(%{page: page_number(params), size: page_size(params)}, result)}
+  rescue
+    _error -> {:error, :service_unavailable}
+  end
+
   def jobs(socket) do
     if Support.admin_socket?(socket),
       do: load_all(&Job.list_jobs/1),
