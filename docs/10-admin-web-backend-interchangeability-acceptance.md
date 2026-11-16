@@ -229,3 +229,9 @@ Phoenix LiveView 和 admin-web 在选择字典类型后使用服务端分页，�
 Phoenix `b9d8530` 将 admin-web 已使用的登录日志和操作审计分页约定重新实现到 LiveView。LiveView 事件现在携带当前页和筛选条件，页面显示服务端总数，筛选、刷新和翻页失败时保留旧数据并显示错误反馈；导出接口继续使用完整结果集。这样，Native 和 Phoenix 可以继续互换作为同一份 admin-web 的后端，查询参数和返回总数不因前端实现不同而变化。
 
 验证结果：Phoenix `382 passed, 54 excluded`，集成测试 `436 passed`；错误码目录和 API 路由集合检查继续通过。剩余未闭环项仍需按页面补齐编辑、批量写入、详情返回、加载状态和真实窗口验收。
+
+### 2026-11-16 任务列表后端替换对齐
+
+Native `819f5b7`、admin-web `9dfcb1a` 和 Phoenix `6f6776e` 完成任务列表分页对齐。admin-web 发送 `page`、`size` 和 `keyword`，Native 与 Phoenix 返回相同的 `items/page/size/total` 结构；无分页参数的旧数组调用保持兼容。Phoenix LiveView 使用同一服务端分页查询，筛选、翻页、刷新、详情编辑和任务日志读取保持闭环。
+
+验证结果：Phoenix 默认测试 `384 passed, 54 excluded`，集成测试 `438 passed`；admin-web `24 files / 137 tests passed`，类型检查和构建通过；Native 测试和 `quarkusBuild` 通过。剩余页面仍需继续补齐服务端分页、编辑、批量写入、详情返回和真实窗口矩阵。

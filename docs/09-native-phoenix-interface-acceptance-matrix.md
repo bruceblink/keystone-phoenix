@@ -180,3 +180,9 @@ Phoenix LiveView 和 admin-web 在选择字典类型后使用服务端分页，�
 Phoenix `b9d8530` 已将 LiveView 登录日志和操作审计的刷新、筛选、翻页接入服务端分页查询。当前页由 `pageNum`、`pageSize` 决定，页面总数使用服务端 `total`；刷新和筛选在查询前重置到第 1 页。Native、Phoenix HTTP 和 admin-web 已有相同的分页字段与筛选约定，Phoenix LiveView 现在也遵循该约定。
 
 验证：Phoenix 默认测试 `382 passed, 54 excluded`，集成测试 `436 passed`；编译、格式、源码行数和差异检查通过。该结果属于代码与自动化测试证据，不替代 Codex 内置浏览器可视窗口验收；当前环境只能保留既有 Chrome CDP/headless 证据边界。
+
+### 2026-11-16 任务列表接口复核
+
+Native `819f5b7` 和 Phoenix `6f6776e` 已统一任务列表的可选分页响应。请求带 `page`/`size` 或 `keyword`、`jobName`、`jobGroup`、`status` 时返回 `items/page/size/total`；旧调用省略这些参数时继续返回任务数组。状态筛选支持启用、停用和兼容布尔/数字表达，权限和主体数据范围不变。Phoenix LiveView 也按同一查询参数读取当前页，并使用任务详情接口支持跨页编辑。
+
+验证：Phoenix 默认测试 `384 passed, 54 excluded`，集成测试 `438 passed`；Native 全量测试和 `quarkusBuild` 成功，admin-web 类型检查和构建成功。该结果不替代真实窗口验收；Codex 内置浏览器当前不能保持交互。

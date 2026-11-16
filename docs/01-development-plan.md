@@ -684,3 +684,11 @@ Phoenix 提交 `b9d8530` 将登录日志和操作审计的 LiveView 刷新、筛
 验证结果：Phoenix 默认测试 `382 passed, 54 excluded`，集成测试 `436 passed`；严格编译、格式、源码行数和 `git diff --check` 均通过。Native 和 admin-web 已有对应的登录日志、操作审计服务端分页接口和页面状态，三端查询参数、总数和筛选语义保持一致。
 
 剩余主线继续覆盖其他页面的服务端分页、逐页面编辑/批量写入/详情返回矩阵，以及 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和可视浏览器窗口证据。
+
+### 2026-11-16 任务列表分页闭环
+
+任务列表分页已完成三端同步：Native `819f5b7`、admin-web `9dfcb1a`、Phoenix `6f6776e`。Native 和 Phoenix 在请求带 `page`/`size` 或筛选条件时返回 `{items,page,size,total}`，省略分页和筛选时保留旧数组响应；三端统一支持 `keyword`，并保留任务名称、分组和状态筛选。Phoenix LiveView 的刷新、筛选、翻页、任务详情和执行日志读取现在按当前页访问服务端，跨页编辑不再依赖当前列表缓存。
+
+验证结果：Phoenix 默认测试 `384 passed, 54 excluded`，集成测试 `438 passed`；admin-web `24 files / 137 tests passed`，类型检查和生产构建通过；Native 测试和 `quarkusBuild` 通过。错误码目录、路由集合、源码行数和差异检查继续通过。
+
+下一阶段继续处理岗位、角色和其他页面的服务端分页与逐页面写入/详情矩阵，并保留 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和可视浏览器窗口为独立发布证据项。
