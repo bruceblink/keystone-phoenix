@@ -63,6 +63,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       config_filter: %{"keyword" => ""},
       dict_type_rows: [],
       dict_data_rows: [],
+      dict_data_total: 0,
       dict_feedback: nil,
       dict_type_form: Support.empty_dict_type_form(),
       dict_data_form: Support.empty_dict_data_form(),

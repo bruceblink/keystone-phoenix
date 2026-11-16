@@ -130,6 +130,17 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     end
   end
 
+  @doc "读取字典类型和当前条目页，并保留分页总数和服务错误。"
+  def dictionary_page(socket, selected, params \\ %{}) do
+    options = Support.authorization_options(socket)
+
+    with {:ok, types} <- dictionary_types(socket, options, %{}),
+         selected <- selected_dictionary_type(selected, types),
+         {:ok, page} <- dictionary_data_page(socket, selected, params) do
+      {:ok, %{types: types, selected: selected, data: page}}
+    end
+  end
+
   @doc "读取字典条目，并区分空类型和读取失败。"
   def dictionary_data(_socket, "", _options), do: {:ok, []}
 
@@ -141,6 +152,31 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     else
       load_authorized(fn page -> Dictionary.list_dict_data(page, options) end, params)
     end
+  end
+
+  @doc "读取指定类型的服务端字典条目页。"
+  def dictionary_data_page(_socket, "", params) do
+    {:ok, %{items: [], page: page_number(params), size: page_size(params), total: 0}}
+  end
+
+  def dictionary_data_page(socket, dict_type, params) when is_binary(dict_type) do
+    options = Support.authorization_options(socket)
+
+    result =
+      if Support.admin_socket?(socket) do
+        Dictionary.list_dict_data_page_by_type(dict_type, params)
+      else
+        Dictionary.list_dict_data_page_by_type(dict_type, params, options)
+      end
+
+    case result do
+      {:ok, page} -> {:ok, page}
+      page when is_map(page) -> {:ok, page}
+      {:error, reason} -> {:error, reason}
+      _other -> {:error, :invalid_page}
+    end
+  rescue
+    _error -> {:error, :service_unavailable}
   end
 
   @doc "读取公告列表并保留服务端错误。"
@@ -226,6 +262,24 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     if selected != "" and Enum.any?(types, &(&1["dictType"] == selected)),
       do: selected,
       else: List.first(types, %{})["dictType"] || ""
+  end
+
+  defp page_number(params),
+    do:
+      positive_param(params["page"] || params[:page] || params["pageNum"] || params[:page_num], 1)
+
+  defp page_size(params),
+    do:
+      positive_param(
+        params["size"] || params[:size] || params["pageSize"] || params[:page_size],
+        50
+      )
+
+  defp positive_param(value, default) do
+    case Integer.parse(to_string(value || default)) do
+      {number, ""} when number > 0 -> min(number, 100)
+      _ -> default
+    end
   end
 
   defp current_user_id(socket),

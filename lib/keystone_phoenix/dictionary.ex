@@ -328,6 +328,39 @@ defmodule KeystonePhoenix.Dictionary do
     end
   end
 
+  @doc "返回启用字典类型下的字典条目分页，保留条目自身的启用状态。"
+  def list_dict_data_page_by_type(dict_type, params \\ %{}) when is_binary(dict_type) do
+    page =
+      positive_page(params["page"] || params[:page] || params["pageNum"] || params[:page_num])
+
+    size =
+      positive_size(params["size"] || params[:size] || params["pageSize"] || params[:page_size])
+
+    query =
+      from d in DictData,
+        join: t in DictType,
+        on: t.dict_type == d.dict_type,
+        where:
+          d.deleted == false and d.dict_type == ^dict_type and t.deleted == false and
+            t.status == 1,
+        order_by: [asc: d.dict_sort, asc: d.dict_code]
+
+    query = filter_dict_keyword(query, params["keyword"] || params[:keyword])
+
+    paged =
+      page_query(query, %{"pageNum" => page, "pageSize" => size}, :dict_code, &dict_data_to_map/1)
+
+    %{items: paged.rows, page: page, size: size, total: paged.total}
+  end
+
+  @doc "在检查字典资源范围后返回指定类型的字典条目分页。"
+  def list_dict_data_page_by_type(dict_type, params, options)
+      when is_binary(dict_type) and is_map(params) and is_list(options) do
+    with :ok <- Command.authorize_resource(options, "dictionary:read", :dictionary) do
+      {:ok, list_dict_data_page_by_type(dict_type, params)}
+    end
+  end
+
   @spec list_dict_data_by_type(String.t()) :: [map()]
   def list_dict_data_by_type(dict_type) when is_binary(dict_type) do
     Cache.fetch(dict_data_cache_key(dict_type), @dict_data_cache_ttl, fn ->
@@ -375,6 +408,33 @@ defmodule KeystonePhoenix.Dictionary do
 
   defp page_query(query, params, count_field, mapper) do
     Pagination.page(query, params, count_field, mapper)
+  end
+
+  defp filter_dict_keyword(query, nil), do: query
+  defp filter_dict_keyword(query, ""), do: query
+
+  defp filter_dict_keyword(query, value) do
+    pattern = "%#{String.trim(to_string(value))}%"
+
+    where(
+      query,
+      [dict_data, _dict_type],
+      ilike(dict_data.dict_label, ^pattern) or ilike(dict_data.dict_value, ^pattern)
+    )
+  end
+
+  defp positive_page(value) do
+    case Integer.parse(to_string(value || "1")) do
+      {number, ""} when number > 0 -> number
+      _ -> 1
+    end
+  end
+
+  defp positive_size(value) do
+    case Integer.parse(to_string(value || "20")) do
+      {number, ""} when number > 0 -> min(number, 100)
+      _ -> 20
+    end
   end
 
   defp filter_contains(query, _field, nil), do: query

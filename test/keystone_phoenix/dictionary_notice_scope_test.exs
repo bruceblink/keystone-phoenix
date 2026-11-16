@@ -75,11 +75,44 @@ defmodule KeystonePhoenix.DictionaryNoticeScopeTest do
     assert {:ok, by_type} = Dictionary.list_dict_data_by_type(dict_type, authorization)
     assert Enum.any?(by_type, &(&1["dictCode"] == data.dict_code))
 
+    assert {:ok, disabled} =
+             Dictionary.create_dict_data(
+               %{
+                 "dictType" => dict_type,
+                 "dictLabel" => "停用",
+                 "dictValue" => "0",
+                 "dictSort" => 2,
+                 "status" => 0
+               },
+               authorization
+             )
+
+    assert {:ok, page} =
+             Dictionary.list_dict_data_page_by_type(
+               dict_type,
+               %{"page" => "1", "size" => "1", "keyword" => "停用"},
+               authorization
+             )
+
+    assert page.page == 1
+    assert page.size == 1
+    assert page.total == 1
+    disabled_code = disabled.dict_code
+    assert [%{"dictCode" => ^disabled_code, "status" => 0}] = page.items
+
+    assert {:error, :data_scope_denied} =
+             Dictionary.list_dict_data_page_by_type(
+               dict_type,
+               %{"page" => "1", "size" => "1"},
+               authorization: %{principal: principal("DEPARTMENT", dictionary_permissions())}
+             )
+
     assert {:ok, updated_data} =
              Dictionary.update_dict_data(data.dict_code, %{"dictLabel" => "已启用"}, authorization)
 
     assert updated_data.dict_label == "已启用"
     assert :ok = Dictionary.delete_dict_data(data.dict_code, authorization)
+    assert :ok = Dictionary.delete_dict_data(disabled.dict_code, authorization)
     assert :ok = Dictionary.delete_dict_type(type.dict_id, authorization)
     assert :ok = Dictionary.refresh_cache(authorization)
   end

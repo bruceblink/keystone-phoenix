@@ -327,6 +327,12 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     render_click(view, "select-dict-type", %{"dict-type" => dict_type})
     assert live_socket(view).assigns.page_nums["dict-data"] == 1
 
+    render_click(view, "paginate-dict-data", %{"page" => "2"})
+    assert live_socket(view).assigns.page_nums["dict-data"] == 2
+
+    render_click(view, "refresh-dicts")
+    assert live_socket(view).assigns.page_nums["dict-data"] == 1
+
     render_submit(view, "save-dict-data", %{
       "dictCode" => "",
       "dictType" => dict_type,
@@ -342,6 +348,20 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
     assert render(view) =~ "字典数据已创建"
     assert Dictionary.list_dict_data(%{"dictType" => dict_type, "pageSize" => 10}).total == 1
+    assert live_socket(view).assigns.dict_data_total == 1
+
+    render_click(view, "paginate-dict-data", %{"page" => "2"})
+    assert live_socket(view).assigns.page_nums["dict-data"] == 2
+
+    data_code =
+      Dictionary.list_dict_data(%{"dictType" => dict_type, "pageSize" => 10}).rows
+      |> List.first()
+      |> Map.fetch!("dictCode")
+
+    render_click(view, "delete-dict-data", %{"dict-code" => to_string(data_code)})
+    assert render(view) =~ "字典数据已删除"
+    assert live_socket(view).assigns.page_nums["dict-data"] == 1
+    assert live_socket(view).assigns.dict_data_rows == []
 
     notice_title = "Live 公告 #{System.unique_integer([:positive])}"
 

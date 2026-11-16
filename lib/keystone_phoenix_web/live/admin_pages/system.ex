@@ -80,6 +80,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:dict_data_page_num, fn -> 1 end)
       |> assign_new(:dict_data_page_size, fn -> 50 end)
+      |> assign_new(:dict_data_total, fn -> nil end)
       |> assign_new(:dict_type_filter, fn -> %{"keyword" => ""} end)
 
     ~H"""
@@ -162,11 +163,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <div class="dictionaries-empty" role="status"><strong>暂无字典条目</strong><p>该字典类型当前没有可用条目。</p></div>
         <% else %>
           <div class="dictionary-items-wrap" role="region" tabindex="0" aria-label="字典数据列表"><table class="dictionary-items-table"><caption class="sr-only">字典数据列表</caption><thead><tr><th scope="col">值</th><th scope="col">显示名称</th><th scope="col">排序</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody>
-              <%= for data <- page_rows(@dict_data_rows, @dict_data_page_num, @dict_data_page_size) do %>
+              <%= for data <- @dict_data_rows do %>
               <tr><td><code class="dictionary-item-value"><%= data["dictValue"] %></code></td><td><%= data["dictLabel"] %></td><td><%= data["dictSort"] %></td><td><span class={"badge #{if data["status"] == 1, do: "badge-success", else: "badge-neutral"}"}><%= if data["status"] == 1, do: "启用", else: "停用" %></span></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="edit-dict-data" phx-value-dict-code={data["dictCode"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost button-sm" phx-confirm="确认删除此字典条目吗？" phx-click="delete-dict-data" phx-value-dict-code={data["dictCode"]} phx-disable-with="删除中…">删除</button></td></tr>
             <% end %>
           </tbody></table></div>
-          <.pagination panel="dict-data" page_num={min(@dict_data_page_num, page_count(length(@dict_data_rows), @dict_data_page_size))} page_size={@dict_data_page_size} total={length(@dict_data_rows)} />
+          <.pagination panel="dict-data" page_num={@dict_data_page_num} page_size={@dict_data_page_size} total={@dict_data_total || length(@dict_data_rows)} />
         <% end %>
       <% end %>
       </section>

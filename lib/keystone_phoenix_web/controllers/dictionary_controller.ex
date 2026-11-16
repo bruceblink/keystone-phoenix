@@ -33,16 +33,33 @@ defmodule KeystonePhoenixWeb.DictionaryController do
   end
 
   @doc "Returns active dictionary items for a select component."
-  def list_data_by_type(conn, %{"dict_type" => dict_type}) do
-    case Dictionary.list_dict_data_by_type(
-           dict_type,
-           authorization: %{principal: conn.assigns.current_user}
-         ) do
-      {:ok, rows} ->
-        json(conn, ApiResponse.ok(Enum.map(rows, &ManagementContract.dictionary_item/1)))
+  def list_data_by_type(conn, %{"dict_type" => dict_type} = params) do
+    authorization = [authorization: %{principal: conn.assigns.current_user}]
 
-      {:error, reason} ->
-        render_error(conn, reason)
+    if paged_request?(params) do
+      case Dictionary.list_dict_data_page_by_type(dict_type, params, authorization) do
+        {:ok, page} ->
+          json(
+            conn,
+            ApiResponse.ok(%{
+              items: Enum.map(page.items, &ManagementContract.dictionary_item/1),
+              page: page.page,
+              size: page.size,
+              total: page.total
+            })
+          )
+
+        {:error, reason} ->
+          render_error(conn, reason)
+      end
+    else
+      case Dictionary.list_dict_data_by_type(dict_type, authorization) do
+        {:ok, rows} ->
+          json(conn, ApiResponse.ok(Enum.map(rows, &ManagementContract.dictionary_item/1)))
+
+        {:error, reason} ->
+          render_error(conn, reason)
+      end
     end
   end
 
@@ -196,4 +213,6 @@ defmodule KeystonePhoenixWeb.DictionaryController do
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
   end
+
+  defp paged_request?(params), do: Map.has_key?(params, "page") or Map.has_key?(params, "size")
 end

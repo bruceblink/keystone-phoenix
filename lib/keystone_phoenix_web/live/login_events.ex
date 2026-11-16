@@ -375,6 +375,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       config_form: AdminSupport.empty_config_form(),
       dict_type_rows: dashboard.dict_type_rows,
       dict_data_rows: dashboard.dict_data_rows,
+      dict_data_total: length(dashboard.dict_data_rows),
       dict_feedback: nil,
       dict_type_form: AdminSupport.empty_dict_type_form(),
       dict_data_form: AdminSupport.empty_dict_data_form(dashboard.selected_dict_type),

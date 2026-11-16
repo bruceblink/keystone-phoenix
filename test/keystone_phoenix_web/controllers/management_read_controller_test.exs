@@ -101,6 +101,25 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
 
     assert Enum.any?(rows, &(&1["typeCode"] == dict_type))
 
+    assert %{
+             "success" => true,
+             "data" => %{
+               "items" => items,
+               "page" => 1,
+               "size" => 1,
+               "total" => total
+             }
+           } =
+             get(
+               authorized(build_conn(), token),
+               "/api/v1/dictionaries/#{dict_type}/items",
+               %{"page" => "1", "size" => "1", "keyword" => "已启用"}
+             )
+             |> json_response(200)
+
+    assert total >= 1
+    assert Enum.any?(items, &(&1["typeCode"] == dict_type))
+
     data_code = Enum.find(rows, &(&1["typeCode"] == dict_type))["id"]
 
     assert delete(authorized(build_conn(), token), "/api/v1/dictionaries/items/#{data_code}").status ==

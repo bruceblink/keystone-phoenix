@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   alias KeystonePhoenix.Dictionary
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminEvents.Notices
+  alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   @notice_events ~w(refresh-notices filter-notices reset-notice-filter edit-notice new-notice cancel-notice save-notice toggle-notice-status publish-notice toggle-notice-selection toggle-all-notice-selection paginate-notices delete-notices delete-notice)
@@ -14,12 +15,17 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("refresh-dicts", _params, socket) do
     if Support.panel_allowed?(socket, "dicts") do
-      case Support.load_dictionary_for_socket_result(socket, socket.assigns.selected_dict_type) do
+      case AdminReadSupport.dictionary_page(
+             socket,
+             socket.assigns.selected_dict_type,
+             dict_page_params(socket, 1)
+           ) do
         {:ok, dictionary} ->
           {:noreply,
            assign(socket,
              dict_type_rows: dictionary.types,
-             dict_data_rows: dictionary.data,
+             dict_data_rows: dictionary.data.items,
+             dict_data_total: dictionary.data.total,
              page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
              selected_dict_type: dictionary.selected,
              dict_type_form: Support.empty_dict_type_form(),
@@ -42,12 +48,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   def handle_event("select-dict-type", %{"dict-type" => dict_type}, socket) do
     if Support.panel_allowed?(socket, "dicts") and
          Support.dict_type_allowed?(socket, dict_type) do
-      case Support.load_dict_data_for_socket_result(socket, dict_type) do
-        {:ok, rows} ->
+      case AdminReadSupport.dictionary_data_page(socket, dict_type, dict_page_params(socket, 1)) do
+        {:ok, page} ->
           {:noreply,
            assign(socket,
              selected_dict_type: dict_type,
-             dict_data_rows: rows,
+             dict_data_rows: page.items,
+             dict_data_total: page.total,
              dict_data_form: Support.empty_dict_data_form(dict_type),
              page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
              dict_feedback: nil,
@@ -62,6 +69,36 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
       end
     else
       {:noreply, socket}
+    end
+  end
+
+  def handle_event("paginate-dict-data", %{"page" => page}, socket) do
+    case Integer.parse(to_string(page)) do
+      {page, ""} when page > 0 and socket.assigns.selected_dict_type != "" ->
+        case AdminReadSupport.dictionary_data_page(
+               socket,
+               socket.assigns.selected_dict_type,
+               dict_page_params(socket, page)
+             ) do
+          {:ok, result} ->
+            {:noreply,
+             assign(socket,
+               dict_data_rows: result.items,
+               dict_data_total: result.total,
+               page_nums: Map.put(socket.assigns.page_nums, "dict-data", result.page),
+               page_sizes: Map.put(socket.assigns.page_sizes, "dict-data", result.size),
+               dict_feedback: nil
+             )}
+
+          {:error, reason} ->
+            {:noreply,
+             assign(socket,
+               dict_feedback: Support.read_error_feedback(reason, "字典条目读取失败，请重试")
+             )}
+        end
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -122,6 +159,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
            assign(socket,
              dict_type_rows: dictionary.types,
              dict_data_rows: dictionary.data,
+             dict_data_total: length(dictionary.data),
              selected_dict_type: dictionary.selected,
              dict_type_form: Support.empty_dict_type_form(),
              active_modal: nil,
@@ -146,6 +184,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
            assign(socket,
              dict_type_rows: dictionary.types,
              dict_data_rows: dictionary.data,
+             dict_data_total: length(dictionary.data),
              selected_dict_type: dictionary.selected,
              dict_type_form: Support.empty_dict_type_form(),
              active_modal: nil,
@@ -212,15 +251,30 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
         {:ok, _dict_data} ->
           dict_type = params["dictType"] || socket.assigns.selected_dict_type
 
-          {:noreply,
-           assign(socket,
-             selected_dict_type: dict_type,
-             dict_data_rows:
-               Support.load_dict_data(dict_type, Support.authorization_options(socket)),
-             dict_data_form: Support.empty_dict_data_form(dict_type),
-             active_modal: nil,
-             dict_feedback: if(dict_code == "", do: "字典数据已创建", else: "字典数据已更新")
-           )}
+          case AdminReadSupport.dictionary_data_page(
+                 socket,
+                 dict_type,
+                 dict_page_params(socket, 1)
+               ) do
+            {:ok, page} ->
+              {:noreply,
+               assign(socket,
+                 selected_dict_type: dict_type,
+                 dict_data_rows: page.items,
+                 dict_data_total: page.total,
+                 page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
+                 dict_data_form: Support.empty_dict_data_form(dict_type),
+                 active_modal: nil,
+                 dict_feedback: if(dict_code == "", do: "字典数据已创建", else: "字典数据已更新")
+               )}
+
+            {:error, reason} ->
+              {:noreply,
+               assign(socket,
+                 dict_feedback: Support.read_error_feedback(reason, "字典数据已保存，但列表刷新失败，请重试"),
+                 active_modal: nil
+               )}
+          end
 
         error ->
           {:noreply, assign(socket, dict_feedback: Support.form_error(error))}
@@ -234,17 +288,29 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     if Support.permission_socket?(socket, "dictionary:delete") do
       case Dictionary.delete_dict_data(dict_code, authorization: self_authorization(socket)) do
         :ok ->
-          {:noreply,
-           assign(socket,
-             dict_data_rows:
-               Support.load_dict_data(
+          case AdminReadSupport.dictionary_data_page(
+                 socket,
                  socket.assigns.selected_dict_type,
-                 Support.authorization_options(socket)
-               ),
-             dict_data_form: Support.empty_dict_data_form(socket.assigns.selected_dict_type),
-             active_modal: nil,
-             dict_feedback: "字典数据已删除"
-           )}
+                 dict_page_params(socket, 1)
+               ) do
+            {:ok, page} ->
+              {:noreply,
+               assign(socket,
+                 dict_data_rows: page.items,
+                 dict_data_total: page.total,
+                 page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
+                 dict_data_form: Support.empty_dict_data_form(socket.assigns.selected_dict_type),
+                 active_modal: nil,
+                 dict_feedback: "字典数据已删除"
+               )}
+
+            {:error, reason} ->
+              {:noreply,
+               assign(socket,
+                 dict_feedback: Support.read_error_feedback(reason, "字典数据已删除，但列表刷新失败，请重试"),
+                 active_modal: nil
+               )}
+          end
 
         error ->
           {:noreply, assign(socket, dict_feedback: Support.form_error(error))}
@@ -332,6 +398,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     %{
       "login" => Map.get(socket.assigns, :login_log_filter, %{}),
       "operation" => Map.get(socket.assigns, :operation_log_filter, %{})
+    }
+  end
+
+  defp dict_page_params(socket, page) do
+    %{
+      "pageNum" => page,
+      "pageSize" => get_in(socket.assigns, [:page_sizes, "dict-data"]) || 50
     }
   end
 
