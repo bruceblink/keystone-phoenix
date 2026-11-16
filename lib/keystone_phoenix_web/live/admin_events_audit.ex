@@ -8,6 +8,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
+  alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   @login_headers ["ID", "用户名", "IP 地址", "登录地点", "操作系统", "浏览器", "状态", "说明", "登录时间"]
@@ -114,30 +115,64 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
   def handle_event("filter-dict-types", params, socket) do
     if Support.panel_allowed?(socket, "dicts") do
       keyword = String.trim(to_string(params["dictTypeKeyword"] || ""))
-      dictionary = Support.load_dictionary_for_socket(socket, "", %{})
-      filtered_types = filter_dict_types(dictionary.types, keyword)
 
-      selected_type =
-        if Enum.any?(filtered_types, &(&1["dictType"] == socket.assigns.selected_dict_type)) do
-          socket.assigns.selected_dict_type
-        else
-          List.first(filtered_types, %{})["dictType"] || ""
-        end
+      # 字典筛选只更新当前服务端页，读取失败时保留上一次成功的条目页。
+      case AdminReadSupport.dictionary_page(
+             socket,
+             socket.assigns.selected_dict_type,
+             dict_page_params(socket, 1)
+           ) do
+        {:ok, dictionary} ->
+          filtered_types = filter_dict_types(dictionary.types, keyword)
 
-      dict_data_rows =
-        if selected_type == "",
-          do: [],
-          else: Support.load_dict_data_for_socket(socket, selected_type)
+          selected_type =
+            if Enum.any?(filtered_types, &(&1["dictType"] == socket.assigns.selected_dict_type)) do
+              socket.assigns.selected_dict_type
+            else
+              List.first(filtered_types, %{})["dictType"] || ""
+            end
 
-      {:noreply,
-       assign(socket,
-         dict_type_filter: %{"keyword" => keyword},
-         dict_type_rows: filtered_types,
-         dict_data_rows: dict_data_rows,
-         selected_dict_type: selected_type,
-         page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
-         dict_feedback: nil
-       )}
+          data_result =
+            if selected_type == dictionary.selected do
+              {:ok, dictionary.data}
+            else
+              AdminReadSupport.dictionary_data_page(
+                socket,
+                selected_type,
+                dict_page_params(socket, 1)
+              )
+            end
+
+          case data_result do
+            {:ok, page} ->
+              {:noreply,
+               assign(socket,
+                 dict_type_filter: %{"keyword" => keyword},
+                 dict_type_rows: filtered_types,
+                 dict_data_rows: page.items,
+                 dict_data_total: page.total,
+                 selected_dict_type: selected_type,
+                 page_nums: Map.put(socket.assigns.page_nums, "dict-data", page.page),
+                 page_sizes: Map.put(socket.assigns.page_sizes, "dict-data", page.size),
+                 dict_feedback: nil
+               )}
+
+            {:error, reason} ->
+              {:noreply,
+               assign(socket,
+                 dict_type_filter: %{"keyword" => keyword},
+                 dict_type_rows: filtered_types,
+                 dict_feedback: Support.read_error_feedback(reason, "字典条目筛选失败，请重试")
+               )}
+          end
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             dict_type_filter: %{"keyword" => keyword},
+             dict_feedback: Support.read_error_feedback(reason, "字典类型筛选失败，请重试")
+           )}
+      end
     else
       {:noreply, socket}
     end
@@ -321,6 +356,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
   defp normalize_login_status("LOGOUT"), do: 2
   defp normalize_login_status("REGISTER"), do: 3
   defp normalize_login_status(value), do: value
+
+  defp dict_page_params(socket, page) do
+    %{
+      "pageNum" => page,
+      "pageSize" => get_in(socket.assigns, [:page_sizes, "dict-data"]) || 50
+    }
+  end
 
   defp push_audit_patch(socket, "login", filter, page),
     do: Phoenix.LiveView.push_patch(socket, to: FilterNavigation.path("login-logs", filter, page))
