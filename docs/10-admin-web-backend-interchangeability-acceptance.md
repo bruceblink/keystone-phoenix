@@ -191,3 +191,5 @@ admin-web `4ccc35d` 已为 Users、Jobs、LoginLogs、OperationsAudit 保存筛�
 第九批证据：Phoenix `3a359f0` 修复组织页面和 API Key 页面将刷新或写入后读取失败吞成空列表的问题。部门、岗位、角色、菜单、角色成员和 API Key 的读取结果现在区分成功、空结果和服务失败；失败时保留旧数据并显示稳定错误码。Phoenix 集成测试为 `433 passed`。账号页兼容加载调用、分页覆盖和逐页面真实操作矩阵仍需继续补齐。
 
 第十批证据：admin-web `4cc82f6` 将 Configs、Dictionaries、Notices、Profile、LoginLogs 和 OperationsAudit 的删除、发布、保存和导出失败统一接入 `ActionError`；错误面板显示安全业务文案、业务错误码、业务含义和 `requestId`，删除确认保留完整错误对象。admin-web 全量回归为 `24 files / 127 tests passed`，类型检查和构建通过；Phoenix 最新集成回归为 `434 passed`。该批次完成代码级操作错误诊断，但分页覆盖、账号页剩余入口和逐页面真实浏览器矩阵仍未完成。
+
+分页审计结论：当前 Phoenix 多数分页是全量读取后的内存切片，admin-web 也有多个全量列表页面。该实现暂时保持筛选和页面行为，但不能作为大数据量服务端分页验收证据。下一阶段按 Users/Jobs/Posts/Configs/Notices/Dictionary items/Logs、Roles、树结构 Departments/Menus、API Keys 分批改造，并要求 Native/Phoenix/admin-web 同时验证查询参数、`total`、筛选语义、页码复位和失败旧页保留。

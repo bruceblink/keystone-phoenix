@@ -640,3 +640,9 @@ Phoenix 已实现控制器入口的统一资源范围检查。`user` 和 `depart
 admin-web 提交 `4cc82f6` 将配置、字典、公告、个人资料、登录日志和操作审计的保存、删除、发布和导出失败统一接入 `ActionError`。错误区域显示安全业务文案、业务错误码、业务含义和 `requestId`；删除确认和表单上下文保持不变。admin-web 全量测试为 24 个测试文件、127 项通过，类型检查、构建和差异检查通过。Phoenix 最新集成测试为 434 项通过；Native 测试和构建保持成功。
 
 剩余主线仍是分页覆盖、账号页和其他页面的逐项真实操作矩阵，以及 OIDC、硬件 Passkey、CSRF/Cookie、多节点恢复和生产代理链证据。
+
+### 2026-11-16 分页审计结论
+
+本轮只读审计确认：Phoenix 当前用户、任务、岗位、配置、字典、公告和日志查询会通过 `Excel.all_rows` 递归加载所有结果，再由 LiveView 内存切片；现有分页事件主要只修改页码，未向后端重新发起当前页查询。admin-web 只有 Users、Jobs、Posts、LoginLogs 和 OperationsAudit 使用服务端分页，Configs、Dictionaries、Notices、Roles、Menus、Departments 和 API Keys 仍为全量读取或内存过滤。
+
+下一分页切片必须逐资源核对后端过滤字段与现有页面语义，再保存 `pageNum`、`pageSize` 和 `total`。树结构的 Departments/Menus 不能直接打散分页；API Keys 需要 Native 和 Phoenix 同步增加分页接口。当前审计只记录缺口，没有把内存分页误写成服务端分页通过。

@@ -142,3 +142,5 @@ admin-web `4ccc35d` 已将 Users、Jobs、LoginLogs、OperationsAudit 的筛选�
 第九批读取闭环证据：Phoenix `3a359f0` 将组织部门、岗位、角色、菜单、角色成员和 API Key 的 LiveView 刷新与写入后重新读取改为结果型加载。服务错误保留旧列表并显示稳定错误码，角色成员读取不再把失败显示为空列表。Phoenix 集成测试为 433 项通过；Native/Phoenix HTTP 接口和响应结构未改变。
 
 第十批前端错误证据：admin-web `4cc82f6` 将配置、字典、公告、个人资料、登录日志和操作审计的保存、删除、发布及导出失败统一显示业务错误码、含义和请求标识；同一份 admin-web 的全量测试为 24 个文件、127 项通过，类型检查和构建成功。Phoenix 最新集成测试为 434 项通过；Native/Phoenix HTTP 接口未改变。
+
+分页审计补充：Phoenix 的分页控件当前主要切分已经通过 `Excel.all_rows` 全量加载的内存 rows；admin-web 只有部分列表调用服务端分页。该状态不造成当前 500 条截断，因为 Phoenix 会递归加载全部页，但会增加查询和内存开销。服务端分页改造需要同步保留筛选语义、写入后页码复位和刷新失败旧页，并单独验证树结构与 API Key 接口。
