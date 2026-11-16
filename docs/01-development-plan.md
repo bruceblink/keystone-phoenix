@@ -748,3 +748,9 @@ admin-web `d210b11` 将组织保存/删除、用户导入/批量删除、菜单�
 Phoenix `c00101c` 修复字典类型筛选后的服务端分页。筛选会重新读取当前字典类型页并更新 `dict_data_rows`、`dict_data_total`、页码和页大小；筛选读取失败时保留原条目页和总数，显示稳定业务错误。新增 51 条条目的集成测试确认筛选后当前页最多 50 条、总数为 51。
 
 验证结果：Phoenix 集成全量测试 `446 passed`，严格编译、源码行数、差异、错误码和路由检查通过；admin-web 全量测试 `26 files / 151 tests passed`，类型检查和生产构建通过。当前 admin-web 使用 73 条 API 调用，Native 和 Phoenix 各提供 108 条 `/api/v1` 路由。
+
+### 2026-11-17 查询失败安全反馈收口
+
+admin-web `b548361` 将 Jobs、Profile、LoginLogs 和 OperationsAudit 的旧数据刷新失败统一改为 `formatApiError` 安全文案，并保留 `StaleQueryError` 中的业务错误码和请求标识。新增测试覆盖任务、资料、登录日志和操作审计刷新失败时保留旧数据的行为。
+
+验证结果：admin-web 全量测试 `26 files / 155 tests passed`，类型检查和生产构建通过。当前页面代码中不再直接把这些查询失败的原始异常文本作为用户提示。
