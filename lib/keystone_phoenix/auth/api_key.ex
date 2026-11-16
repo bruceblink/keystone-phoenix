@@ -377,19 +377,30 @@ defmodule KeystonePhoenix.Auth.ApiKey do
   defp filter_page_keyword(query, ""), do: query
 
   defp filter_page_keyword(query, value) do
-    pattern = "%#{String.trim(to_string(value))}%"
+    keyword = String.trim(to_string(value))
 
-    where(
-      query,
-      [key],
-      ilike(key.name, ^pattern) or ilike(key.key_prefix, ^pattern) or ilike(key.scopes, ^pattern)
-    )
+    if keyword == "" do
+      query
+    else
+      pattern = "%#{keyword}%"
+
+      where(
+        query,
+        [key],
+        ilike(key.name, ^pattern) or ilike(key.key_prefix, ^pattern) or
+          ilike(key.scopes, ^pattern)
+      )
+    end
   end
 
-  defp filter_page_status(query, status) when status in [nil, "", "all"], do: query
-  defp filter_page_status(query, "active"), do: where(query, [key], is_nil(key.revoked_at))
-  defp filter_page_status(query, "revoked"), do: where(query, [key], not is_nil(key.revoked_at))
-  defp filter_page_status(query, _status), do: query
+  defp filter_page_status(query, status) do
+    case status |> to_string() |> String.trim() |> String.downcase() do
+      value when value in ["", "all"] -> query
+      "active" -> where(query, [key], is_nil(key.revoked_at))
+      "revoked" -> where(query, [key], not is_nil(key.revoked_at))
+      _ -> query
+    end
+  end
 
   defp positive_page(value) do
     case Integer.parse(to_string(value || "1")) do

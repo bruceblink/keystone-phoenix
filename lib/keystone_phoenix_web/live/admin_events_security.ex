@@ -69,7 +69,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
                  socket,
                  socket.assigns.api_key_query,
                  socket.assigns.api_key_status,
-                 current_page(socket),
+                 1,
                  "API Key 已签发",
                  api_key_form: ApiKeys.empty_form(),
                  issued_api_key: issued,
@@ -102,7 +102,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
              socket,
              socket.assigns.api_key_query,
              socket.assigns.api_key_status,
-             current_page(socket),
+             1,
              "API Key 已轮换",
              issued_api_key: issued
            )}
@@ -124,7 +124,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
              socket,
              socket.assigns.api_key_query,
              socket.assigns.api_key_status,
-             current_page(socket),
+             1,
              "API Key 已撤销"
            )}
 
