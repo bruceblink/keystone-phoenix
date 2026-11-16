@@ -45,6 +45,7 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
 
     assert has_element?(view, "#mfa-login-form")
     assert has_element?(view, "#mfa-login-form .form-status[role='status']")
+    assert has_element?(view, "#mfa-login-form label", "一次性验证码")
     assert has_element?(view, "#mfa-login-form .input-wrap #mfa-code")
     assert has_element?(view, "#mfa-login-form button.login-submit")
     assert has_element?(view, "#mfa-login-form button.button-ghost", "返回账号密码")

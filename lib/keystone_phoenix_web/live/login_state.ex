@@ -10,8 +10,8 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
     socket
     |> cancel_avatar_uploads()
     |> assign(
-      username: "",
-      password: "",
+      username: "operator",
+      password: "keystone",
       login_error: nil,
       login_confirm_open: false,
       pending_login: nil,

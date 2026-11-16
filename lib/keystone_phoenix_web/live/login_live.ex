@@ -482,7 +482,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <p :if={@mfa_step_up_error} class="error"><%= @mfa_step_up_error %></p>
                     <%= if @mfa_step_up_challenge do %>
                       <form id="mfa-step-up-form" phx-submit="verify-liveview-step-up">
-                        <label for="mfa-step-up-code">MFA 验证码</label>
+                        <label for="mfa-step-up-code">一次性验证码</label>
                         <input id="mfa-step-up-code" name="code" inputmode="numeric" autocomplete="one-time-code" required />
                         <button type="submit" phx-disable-with="验证中…">验证并继续</button>
                         <button type="button" class="secondary" phx-click="cancel-liveview-step-up">取消</button>
@@ -560,7 +560,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                 <%= if @mfa_challenge do %>
                   <form id="mfa-login-form" class="login-form" phx-submit="verify-login-mfa">
                     <p class="form-status" role="status">账号密码已验证，请输入认证器中的一次性验证码。</p>
-                    <label for="mfa-code">MFA 验证码</label>
+                    <label for="mfa-code">一次性验证码</label>
                     <div class="input-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 7a5 5 0 1 0 2 9.6L21 13l-2-2 2-2-2-2-2 2-2-2Z" /><circle cx="10" cy="12" r="1" /></svg><input id="mfa-code" name="code" inputmode="numeric" autocomplete="one-time-code" required /></div>
                     <p :if={@mfa_error} class="form-error" role="alert"><%= @mfa_error %></p>
                     <button type="submit" class="login-submit" phx-disable-with="验证中…">验证并登录 <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg></button>
@@ -571,7 +571,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <label for="username">用户名</label>
                     <div class="input-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg><input id="username" name="username" value={@username} autocomplete="username" required /></div>
                     <label for="password">密码</label>
-                    <div class="input-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /><path d="M12 14v2" /></svg><input id="password" name="password" type="password" autocomplete="current-password" required /></div>
+                    <div class="input-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /><path d="M12 14v2" /></svg><input id="password" name="password" type="password" value={@password} autocomplete="current-password" required /></div>
                     <div :if={@captcha_enabled}>
                       <label for="captcha-code">验证码</label>
                       <img :if={@captcha_image} src={"data:image/gif;base64," <> @captcha_image} alt="登录验证码" width="160" height="60" />

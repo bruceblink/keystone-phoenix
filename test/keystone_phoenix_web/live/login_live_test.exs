@@ -13,6 +13,9 @@ defmodule KeystonePhoenixWeb.LoginLiveTest do
     assert has_element?(view, ".login-intro .brand-mark svg")
     assert has_element?(view, ".login-card .brand-mark-small svg")
     assert has_element?(view, "#login-form")
+    assert has_element?(view, "#username[value='operator']")
+    assert has_element?(view, "#password[value='keystone']")
+    assert has_element?(view, "#login-form label", "用户名")
     refute has_element?(view, "nav[aria-label='主导航']")
   end
 
