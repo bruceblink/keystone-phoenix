@@ -839,3 +839,9 @@ Phoenix 角色成员定向 HTTP、领域和权限回归共 `27 passed`；`mix fo
 Phoenix `3d9776c` 将 LiveView 侧栏中的 Unicode 字符图标替换为可复用的 SVG 图标组件，并补齐与 admin-web 一致的图标容器、颜色和 hover/active 样式；导航权限、事件和 `850px` 抽屉断点保持不变。
 
 本轮追加验证：Phoenix 全量集成测试 `474 passed`，导航 LiveView 定向测试 `3 passed`，严格编译、源码行数和差异检查通过。真实浏览器窗口验收仍未新增。
+
+### 2026-11-17 页面图标细节继续对齐
+
+Phoenix `c8e771d` 将用户、监控、组织、角色和菜单页面中的旧 Unicode 标记替换为同一套 SVG 图标组件，并保留原有状态颜色、尺寸和表格布局。
+
+本轮页面组件和集成回归通过；Phoenix 全量集成测试仍为 `474 passed`。该切片没有新增真实浏览器窗口证据。
