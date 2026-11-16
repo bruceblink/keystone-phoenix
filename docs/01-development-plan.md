@@ -807,3 +807,7 @@ Phoenix 角色成员定向 HTTP、领域和权限回归共 `27 passed`；`mix fo
 阶段 C 的权限并集切片已完成：Phoenix `5b00f33` 让 `Principal` 在存在用户关联记录时读取全部角色；`Permission` 使用启用角色集合判断权限；`PolicyStore` 为每个角色分别使用现有缓存键，再合并 `allow/error/deny` 结果，避免把多角色结果压到单一 `role_id` 缓存。新增双角色权限和撤销角色后的权限回归，定向权限/鉴权测试 `15 passed`，迁移、双写和权限并集后的 Phoenix 全量集成测试 `458 passed`。API Key 或 LiveView 中已有 `permissions` 快照仍按快照判断，登录 payload、菜单树和数据范围并集继续由后续阶段处理。
 
 阶段 C/D 的后续切片已完成：Phoenix `66e15a1` 将菜单树、按钮权限和路由树改为全部启用角色的并集；`f0cbc13` 将用户、部门、详情和写入范围检查改为全部角色的 OR 并集，`ALL/TENANT` 任一角色可以访问全域；`15e8838` 补充部门列表的双角色范围回归。Phoenix `63b228c` 让普通登录、MFA、刷新、Passkey 和 OIDC 的认证响应返回完整 `roles` 数组，并保留首选 `roleKey`。三组定向测试分别通过菜单 `5 + 4`、数据范围 `21`、认证 `9`，合并后的 Phoenix 全量集成测试为 `462 passed`。API Key 或 LiveView 的显式 `permissions` 快照仍保持原语义，后续需要补齐快照刷新、用户页面多角色编辑和 admin-web 真实后端切换验收。
+
+阶段 D 的用户写入和会话失效切片已完成：Phoenix `1bd757d` 支持用户创建、更新、清空和保留 `roleCodes`，旧 `roleId` 继续同步首选角色；角色成员分配追加目标角色，按目标角色撤销时保留其他角色。admin-web `dc80ebc` 在用户表单中动态读取启用角色目录，支持多选、编辑预选、`null` 保留和空数组清空。Phoenix `bb8f446` 使角色权限变更递增所有关联用户的 `permission_version`，并让 LiveView 会话快照比较完整排序后的角色集合，非首选角色变更、新增角色关联和移除角色都会使旧连接失效。
+
+本批验证：Phoenix 多角色用户、角色成员、HTTP 和 LiveView 定向回归 `37 passed`，会话快照定向回归 `33 passed`，全量集成测试 `469 passed`；严格编译、源码行数、差异检查、路由集合和业务错误码集合均通过。admin-web `pnpm test:run` 为 `27 files / 162 tests passed`，类型检查、生产构建和差异检查通过。当前仍需补齐 API Key 多角色 HTTP 场景、角色成员详情分页 DTO、admin-web 切换 Native/Phoenix 的真实后端窗口验收，以及 OIDC、公钥硬件 Passkey、浏览器 CSRF/Cookie、多节点恢复、生产代理链和正式发布证据。
