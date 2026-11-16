@@ -187,3 +187,5 @@ admin-web `4ccc35d` 已为 Users、Jobs、LoginLogs、OperationsAudit 保存筛�
 第八批证据：Phoenix `4bdcf12`、`5709a50` 和 `cef74fc` 补齐剩余 LiveView 事件的稳定业务错误码，覆盖用户导入、任务执行/取消、字典与公告、登录任务回调、个人资料、API Key、配置、审计/组织导出和在线会话。原有中文提示、HTTP 状态、接口字段和权限边界保持不变。Phoenix 集成测试为 `432 passed`，admin-web 为 `23 files / 121 tests passed`，类型检查和生产构建通过；Native 测试和生产构建成功。三端错误码目录仍为 21 个服务端代码和 4 个客户端本地代码，路由集合检查仍为 admin-web 74 条调用、Native/Phoenix 各 108 条 `/api/v1` 路由。
 
 该批次完成了代码级错误反馈闭环，但不替代逐页面真实错误反馈、加载状态、编辑、批量写入和详情返回的发布矩阵。Codex 内置浏览器已按优先顺序打开，但当前会话无法保持交互，因此本轮未新增可视窗口通过证据；既有 Chrome CDP/headless 证据仍按其边界记录。OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点和生产代理链仍未完成正式验收。
+
+第九批证据：Phoenix `3a359f0` 修复组织页面和 API Key 页面将刷新或写入后读取失败吞成空列表的问题。部门、岗位、角色、菜单、角色成员和 API Key 的读取结果现在区分成功、空结果和服务失败；失败时保留旧数据并显示稳定错误码。Phoenix 集成测试为 `433 passed`。账号页兼容加载调用、分页覆盖和逐页面真实操作矩阵仍需继续补齐。
