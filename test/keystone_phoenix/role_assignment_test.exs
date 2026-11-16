@@ -6,6 +6,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
+  alias KeystonePhoenix.User.SysUserRole
 
   test "assigning mixed existing and missing users does not update any user" do
     source_role = create_role()
@@ -161,6 +162,27 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
 
     refute assigned_to_role.user_id in Enum.map(rows.rows, & &1["userId"])
     assert rows.total == 0
+  end
+
+  test "role updates bump permission versions for non-preferred role members" do
+    preferred_role = create_role()
+    secondary_role = create_role()
+    user = create_user(preferred_role.role_id)
+
+    Repo.insert!(%SysUserRole{user_id: user.user_id, role_id: secondary_role.role_id})
+    before = Repo.get!(SysUser, user.user_id).permission_version
+
+    assert {:ok, _updated} =
+             Role.update_role(
+               secondary_role.role_id,
+               %{"permissions" => ["user:read"]},
+               authorization: %{
+                 principal: %{permissions: ["permission:manage", "role:update", "role:manage"]},
+                 permission: "role:update"
+               }
+             )
+
+    assert Repo.get!(SysUser, user.user_id).permission_version == before + 1
   end
 
   defp create_role(opts \\ []) do

@@ -68,6 +68,7 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
   def context(user, permissions) do
     %{
       user: Map.take(user, ~w(userId roleId deptId)),
+      roles: role_codes(user),
       permissions: Enum.sort(permissions),
       role: role_context(user["roleId"])
     }
@@ -130,4 +131,18 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
       {:error, :not_found} -> nil
     end
   end
+
+  # 角色关联变更可能不改变首选 role_id；保存完整角色编码集合，确保 LiveView
+  # 的显式权限快照不会在角色集合变化后继续沿用。
+  defp role_codes(user) when is_map(user) do
+    user
+    |> Map.get("roles", Map.get(user, "roleCodes", []))
+    |> List.wrap()
+    |> Enum.map(&to_string/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp role_codes(_user), do: []
 end

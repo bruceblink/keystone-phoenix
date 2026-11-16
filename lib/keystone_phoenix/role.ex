@@ -12,6 +12,7 @@ defmodule KeystonePhoenix.Role do
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.Role.Permissions
+  alias KeystonePhoenix.Role.PermissionVersion
   alias KeystonePhoenix.Role.Authorization
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.RoleMembership
@@ -449,14 +450,7 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
-  defp bump_role_user_permission_versions(role_id) do
-    Repo.update_all(
-      from(u in SysUser, where: u.deleted == false and u.role_id == ^role_id),
-      inc: [permission_version: 1]
-    )
-
-    :ok
-  end
+  defp bump_role_user_permission_versions(role_id), do: PermissionVersion.bump_for_role(role_id)
 
   defp update_result({count, _}, ids, expected_role_id)
        when expected_role_id != :any and count <= length(ids), do: :ok

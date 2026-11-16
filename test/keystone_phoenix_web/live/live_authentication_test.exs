@@ -10,8 +10,10 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
   alias KeystonePhoenix.Authz.{PolicyCache, SysPermission, SysRolePermission}
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.Role.SysRoleMenu
   alias KeystonePhoenix.User
+  alias KeystonePhoenix.User.SysUserRole
 
   @password "Strong!123"
 
@@ -279,6 +281,32 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     assert_expired(view, html)
     assert {:ok, after_user} = User.get_user(user.user_id)
     assert after_user.nickname == before.nickname
+  end
+
+  test "a newly linked secondary role invalidates the LiveView snapshot", %{conn: conn} do
+    disable_captcha()
+    {user, preferred_role} = create_scoped_user()
+
+    secondary_role =
+      %SysRole{}
+      |> SysRole.changeset(%{
+        role_name: unique("Live 次要角色"),
+        role_key: unique("live_secondary_role"),
+        role_sort: 11,
+        data_scope: "ALL",
+        status: 1
+      })
+      |> Repo.insert!()
+
+    Repo.insert!(%SysUserRole{user_id: user.user_id, role_id: preferred_role.role_id})
+
+    {:ok, view, _html} = login_view(conn, user)
+
+    Repo.insert!(%SysUserRole{user_id: user.user_id, role_id: secondary_role.role_id})
+
+    html = render_submit(view, "save-profile", %{"nickname" => "不应保存"})
+
+    assert_expired(view, html)
   end
 
   test "admin privilege removal blocks a management write", %{conn: conn, admin: admin} do
