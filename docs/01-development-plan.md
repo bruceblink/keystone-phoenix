@@ -851,3 +851,9 @@ Phoenix `c8e771d` 将用户、监控、组织、角色和菜单页面中的旧 U
 admin-web `eba91c7` 新增固定 Action SHA 的 GitHub Actions CI，统一执行 `pnpm install --frozen-lockfile`、前端测试、TypeScript 检查和生产构建。该工作流只负责代码级验证，不替代真实浏览器窗口和 Native/Phoenix 后端切换验收。
 
 本地验证：YAML 静态检查通过，`pnpm test:run` 为 `27 files / 162 tests passed`，`pnpm typecheck` 和 `pnpm build` 通过。
+
+### 2026-11-17 角色成员详情关闭闭环
+
+Phoenix `467f486` 为角色成员详情补充“关闭”按钮和 `close-role-users` 事件。关闭后清理当前角色、已分配/可分配成员、反馈和成员分页状态，与 admin-web 的成员面板关闭行为一致。
+
+本轮验证：角色页面定向测试 `19 passed`，Phoenix 全量集成测试 `474 passed`，严格编译、源码行数和差异检查通过。
