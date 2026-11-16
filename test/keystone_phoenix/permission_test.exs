@@ -132,6 +132,16 @@ defmodule KeystonePhoenix.PermissionTest do
     assert parent_user.user_id in scoped_user_ids
     assert other_user.user_id in scoped_user_ids
     refute outside_user.user_id in scoped_user_ids
+
+    scoped_department_ids =
+      from(dept in SysDept, where: dept.deleted == false, select: dept.dept_id)
+      |> Permission.scope_departments(actor)
+      |> Repo.all()
+      |> MapSet.new()
+
+    assert parent.dept_id in scoped_department_ids
+    assert other.dept_id in scoped_department_ids
+    refute outside.dept_id in scoped_department_ids
     assert Permission.data_scope_allowed?(actor, :dept, parent.dept_id)
     assert Permission.data_scope_allowed?(actor, :dept, other.dept_id)
     refute Permission.data_scope_allowed?(actor, :dept, outside.dept_id)
