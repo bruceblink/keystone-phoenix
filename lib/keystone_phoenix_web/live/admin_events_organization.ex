@@ -459,13 +459,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     end
   end
 
-  def handle_event("assign-role-user", %{"user-id" => user_id}, socket) do
-    OrganizationRoleUsers.assign_user(socket, user_id)
-  end
-
-  def handle_event("unassign-role-user", %{"user-id" => user_id}, socket) do
-    OrganizationRoleUsers.unassign_user(socket, user_id)
-  end
+  def handle_event(event, params, socket)
+      when event in ["assign-role-user", "unassign-role-user"],
+      do: OrganizationRoleUsers.handle_event(event, params, socket)
 
   def handle_event("refresh-menus", params, socket) do
     if Support.panel_allowed?(socket, "menus") do

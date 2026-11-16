@@ -7,6 +7,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers do
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleReload
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
+  def handle_event("assign-role-user", %{"user-id" => user_id}, socket),
+    do: assign_user(socket, user_id)
+
+  def handle_event("unassign-role-user", %{"user-id" => user_id}, socket),
+    do: unassign_user(socket, user_id)
+
   def assign_user(socket, user_id) do
     update(socket, fn role_id ->
       Role.assign_users(role_id, [user_id], authorization(socket, "role:assign"))
