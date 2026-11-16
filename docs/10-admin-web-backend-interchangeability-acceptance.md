@@ -213,3 +213,13 @@ Phoenix LiveView 和 admin-web 都保存筛选、页码和总数；筛选、写�
 为保持接口检查可反查，admin-web 的 API Key 和公告数组/分页读取已合并到单一客户端路由入口，提交为 `092f472`。静态路由检查重新通过：admin-web 74 条调用，Native/Phoenix 各 108 条 `/api/v1` 路由，JWK 路由一致，无旧路径标识。
 
 本轮验证：Phoenix 默认测试 `382 passed, 54 excluded`，含集成测试 `436 passed`；admin-web 公告分页后 `24 files / 135 tests passed`，类型检查和构建通过；Native 公告分页全量测试和 `quarkusBuild` 通过。CI 修复后的 Phoenix 运行 `43875384260` 已完整通过。
+
+### 2026-11-16 字典条目分页闭环
+
+字典条目列表已完成三端服务端分页：Native `e28e98c`、Phoenix `8a6fe46`、admin-web `a62ded7`。无 `page`/`size` 时保留旧数组响应；带分页参数时返回 `{items,page,size,total}`，默认每页 20 条，服务端上限 100 条。查询继续要求字典类型启用，但保留条目自身的启用状态；Phoenix 和 admin-web 支持关键词筛选。
+
+Phoenix LiveView 和 admin-web 在选择字典类型后使用服务端分页，刷新、选择切换、写入和删除后回到第 1 页；刷新失败保留旧条目并显示错误反馈。Native/Phoenix 保留 `dictionary:read` 权限和数据范围。
+
+验证结果：Phoenix 默认测试 `382 passed, 54 excluded`，集成测试 `436 passed`；admin-web 全量测试 `24 files / 137 tests passed`，类型检查和构建通过；Native 全量测试和 `quarkusBuild` 通过。跨项目错误码、路由集合和源码行数检查继续通过。
+
+下一阶段继续处理登录日志、操作审计和其他尚未完成的逐页面写入、详情返回及真实浏览器矩阵；OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复和生产代理链仍单独保留为发布证据缺口。
