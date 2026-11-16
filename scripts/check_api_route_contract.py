@@ -69,6 +69,43 @@ def call_end(text: str, start: int) -> int:
     return len(text)
 
 
+def literal_paths(call: str) -> list[str]:
+    """只从请求的第一个参数提取路径，避免把请求体中的字符串当作路由。"""
+    depth = 0
+    quote: str | None = None
+    end = len(call)
+    index = 0
+
+    while index < len(call):
+        char = call[index]
+        if quote:
+            if char == "\\":
+                index += 2
+                continue
+            if char == quote:
+                quote = None
+        elif char in "'\"`":
+            quote = char
+        elif char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+        elif char == "," and depth == 0:
+            end = index
+            break
+        index += 1
+
+    candidates = re.findall(r"(['\"])(/[^'\"`]*)\1|`(/[^`]*)`", call[:end])
+    paths: list[str] = []
+
+    for single_or_double, quoted_path, template_path in candidates:
+        path = quoted_path or template_path
+        if path and path not in paths:
+            paths.append(path)
+
+    return paths
+
+
 def parse_admin(root: Path) -> list[Route]:
     """从 admin-web 的真实请求封装提取方法和路径。"""
     files = (
@@ -84,25 +121,25 @@ def parse_admin(root: Path) -> list[Route]:
         opening = text.find("(", match.start(), match.end())
         ending = call_end(text, opening)
         call = text[opening + 1 : ending]
-        path_match = re.match(
-            r"\s*(?:(['\"])(/[^'\"]*)\1|`([^`]+)`)", call, re.DOTALL
-        )
-        if not path_match:
-            continue
-
-        path = path_match.group(2) or path_match.group(3) or ""
-        path = path.split("${query")[0]
-        path = re.sub(r"\$\{[^}]*?encodeURIComponent\([^)]*\)[^}]*\}", ":param", path)
-        path = re.sub(r"\$\{[^}]+\}", ":param", path)
-        path = path.split("?")[0]
-        if not path.startswith("/"):
+        paths = literal_paths(call)
+        if not paths:
             continue
 
         method_match = re.search(r"\bmethod\s*:\s*['\"](" + HTTP_METHODS + r")", call)
         method = method_match.group(1) if method_match else "GET"
-        routes.append(Route(method, normalize_path("/api/v1" + path), "admin-web"))
+        for path in paths:
+            # 嵌套模板字符串的查询分支只保留路径前缀。
+            path = path.split("${query")[0]
+            path = re.sub(r"\$\{[^}]*?encodeURIComponent\([^)]*\)[^}]*\}", ":param", path)
+            path = re.sub(r"\$\{[^}]+\}", ":param", path)
+            path = path.split("?")[0]
+            if path.startswith("/"):
+                routes.append(Route(method, normalize_path("/api/v1" + path), "admin-web"))
 
-    return routes
+    unique_routes: dict[tuple[str, str], Route] = {}
+    for route in routes:
+        unique_routes.setdefault((route.method, route.path), route)
+    return list(unique_routes.values())
 
 
 def parse_native(root: Path) -> list[Route]:
