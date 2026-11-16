@@ -198,6 +198,9 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     refute to_string(hd(roles).role_id) in live_socket(view).assigns.selected_role_ids
     assert to_string(List.last(roles).role_id) in live_socket(view).assigns.selected_role_ids
 
+    render_click(view, "paginate", %{"panel" => "roles", "page" => "2"})
+    assert live_socket(view).assigns.selected_role_ids == []
+
     render_click(view, "refresh-roles", %{"reset" => "true"})
     assert live_socket(view).assigns.selected_role_ids == []
   end

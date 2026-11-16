@@ -4,8 +4,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers do
   import Phoenix.Component, only: [assign: 2]
 
   alias KeystonePhoenix.Role
-  alias KeystonePhoenixWeb.Live.AdminPages.Reload
-  alias KeystonePhoenixWeb.Live.AdminReadSupport
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleReload
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def assign_user(socket, user_id) do
@@ -28,11 +27,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers do
       case operation.(role_id) do
         :ok ->
           {:noreply,
-           Reload.after_success(
+           OrganizationRoleReload.after_success(
              socket,
-             &AdminReadSupport.roles/1,
-             :role_rows,
-             :role_feedback,
              "角色用户已更新",
              "角色用户已更新，但角色列表刷新失败，请重试",
              selected_role_id: "",

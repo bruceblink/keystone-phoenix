@@ -7,7 +7,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRolePagination do
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   @doc "按当前筛选条件读取角色当前页，并写入总数量。"
-  def refresh(socket, page) do
+  def refresh(socket, page, success \\ nil) do
     filter = Map.get(socket.assigns, :role_filter, %{"keyword" => "", "status" => "all"})
 
     params =
@@ -21,7 +21,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRolePagination do
           role_page_rows: result.rows,
           role_total: result.total,
           page_nums: Map.put(socket.assigns.page_nums, "roles", page),
-          role_feedback: nil
+          selected_role_ids: [],
+          role_feedback: success
         )
 
       {:error, reason} ->

@@ -14,6 +14,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenuParams
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRolePagination
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleReload
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleRefresh
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleSelection
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers
@@ -582,8 +583,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   defp after_write(socket, resource, success, message, extra \\ []) do
-    {loader, rows_key, feedback_key} = resource_loader(resource)
-    Reload.after_success(socket, loader, rows_key, feedback_key, success, message, extra)
+    if resource == :roles do
+      OrganizationRoleReload.after_success(socket, success, message, extra)
+    else
+      {loader, rows_key, feedback_key} = resource_loader(resource)
+      Reload.after_success(socket, loader, rows_key, feedback_key, success, message, extra)
+    end
   end
 
   defp resource_loader(:depts), do: {&AdminReadSupport.departments/1, :dept_rows, :dept_feedback}
