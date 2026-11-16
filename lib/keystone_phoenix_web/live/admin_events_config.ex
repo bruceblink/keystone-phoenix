@@ -44,6 +44,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
   def handle_event("reset-config-filter", _params, socket), do: update_config_filter(socket, "")
 
   def handle_event("delete-config", %{"config-id" => config_id}, socket) do
+    # 配置不存在时保留页面文案，并返回可检索的资源错误码。
     if Support.permission_socket?(socket, "config:update") do
       case Config.delete_config(config_id, authorization: self_authorization(socket)) do
         {:ok, _config} ->
@@ -55,7 +56,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
            )}
 
         {:error, :not_found} ->
-          {:noreply, assign(socket, config_feedback: Feedback.error("找不到指定配置"))}
+          {:noreply,
+           assign(socket, config_feedback: Feedback.error(:resource_not_found, "找不到指定配置"))}
 
         error ->
           {:noreply, assign(socket, config_feedback: Support.form_error(error))}
@@ -82,7 +84,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
     if Support.permission_socket?(socket, "config:update") do
       case Enum.find(socket.assigns.config_rows, &(to_string(&1["configId"]) == config_id)) do
         nil ->
-          {:noreply, assign(socket, config_feedback: Feedback.error("找不到指定配置"))}
+          {:noreply,
+           assign(socket, config_feedback: Feedback.error(:resource_not_found, "找不到指定配置"))}
 
         config ->
           form =

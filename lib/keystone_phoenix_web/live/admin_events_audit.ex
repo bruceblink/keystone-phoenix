@@ -148,6 +148,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
   end
 
   defp export_logs(socket, kind) do
+    # 导出依赖失败时保留原文，并标记为可重试的服务错误。
     permission = if kind == :login, do: "login-log:export", else: "operation-log:export"
 
     if Support.permission_socket?(socket, permission) do
@@ -178,12 +179,19 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
 
             {:error, reason} ->
               {:noreply,
-               assign(socket, log_feedback: Feedback.error("Excel 导出失败：#{inspect(reason)}"))}
+               assign(
+                 socket,
+                 log_feedback:
+                   Feedback.error(:service_unavailable, "Excel 导出失败：#{inspect(reason)}")
+               )}
           end
 
         {:error, reason} ->
           {:noreply,
-           assign(socket, log_feedback: Feedback.error("Excel 导出失败：#{inspect(reason)}"))}
+           assign(
+             socket,
+             log_feedback: Feedback.error(:service_unavailable, "Excel 导出失败：#{inspect(reason)}")
+           )}
       end
     else
       {:noreply, socket}

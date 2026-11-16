@@ -83,8 +83,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
               {:noreply, assign(socket, api_key_feedback: Support.form_error(error))}
           end
 
+        # 日期解析失败属于输入校验错误，反馈使用稳定错误码。
         {:error, _reason} ->
-          {:noreply, assign(socket, api_key_feedback: Feedback.error("到期时间格式无效"))}
+          {:noreply,
+           assign(
+             socket,
+             api_key_feedback: Feedback.error(:validation_failed, "到期时间格式无效")
+           )}
       end
     else
       {:noreply, socket}

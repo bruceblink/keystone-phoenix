@@ -99,8 +99,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationExport do
     end
   end
 
+  # Excel 读取或生成失败统一使用服务错误码，便于跨页面排错。
   defp export_error(socket, feedback_key),
-    do: {:noreply, assign(socket, [{feedback_key, Feedback.error("Excel 导出失败")}])}
+    do:
+      {:noreply,
+       assign(socket, [{feedback_key, Feedback.error(:service_unavailable, "Excel 导出失败")}])}
 
   defp authorization(socket, permission) do
     principal =

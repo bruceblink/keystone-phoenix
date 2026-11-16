@@ -1,8 +1,6 @@
 defmodule KeystonePhoenixWeb.Live.AdminSupport do
   @moduledoc "Shared dashboard loading, form defaults, and authorization helpers."
-
   import Phoenix.Component, only: [assign: 2]
-
   alias KeystonePhoenix.Auth.ApiKey
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Config
@@ -20,6 +18,8 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminReadSupport
+  # 个人资料读取失败使用稳定错误码。
+  @profile_unavailable_feedback Feedback.error(:service_unavailable, "个人资料暂不可用")
 
   @panel_permissions %{
     "depts" => ["department:read"],
@@ -484,7 +484,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
         )
 
       _ ->
-        assign(socket, active_panel: "profile", profile_feedback: Feedback.error("个人资料暂不可用"))
+        assign(socket, active_panel: "profile", profile_feedback: @profile_unavailable_feedback)
     end
   end
 
