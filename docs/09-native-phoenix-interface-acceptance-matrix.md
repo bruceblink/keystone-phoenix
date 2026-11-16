@@ -140,3 +140,5 @@ admin-web `4ccc35d` 已将 Users、Jobs、LoginLogs、OperationsAudit 的筛选�
 第八批错误反馈证据：Phoenix `4bdcf12`、`5709a50` 和 `cef74fc` 将用户导入、任务、系统、登录回调、个人资料、API Key、配置、审计/组织导出和在线会话的 LiveView 失败反馈统一登记到稳定业务错误码目录；原中文提示保持不变。Phoenix 集成测试为 432 项通过，格式、源码行数和差异检查通过。Native `./gradlew test --no-daemon --rerun-tasks` 与 `quarkusBuild -x test` 成功；admin-web 23 个测试文件、121 项通过，类型检查和构建成功。错误码目录和 API 路由静态检查继续通过，HTTP 状态码和响应结构未改变。
 
 第九批读取闭环证据：Phoenix `3a359f0` 将组织部门、岗位、角色、菜单、角色成员和 API Key 的 LiveView 刷新与写入后重新读取改为结果型加载。服务错误保留旧列表并显示稳定错误码，角色成员读取不再把失败显示为空列表。Phoenix 集成测试为 433 项通过；Native/Phoenix HTTP 接口和响应结构未改变。
+
+第十批前端错误证据：admin-web `4cc82f6` 将配置、字典、公告、个人资料、登录日志和操作审计的保存、删除、发布及导出失败统一显示业务错误码、含义和请求标识；同一份 admin-web 的全量测试为 24 个文件、127 项通过，类型检查和构建成功。Phoenix 最新集成测试为 434 项通过；Native/Phoenix HTTP 接口未改变。
