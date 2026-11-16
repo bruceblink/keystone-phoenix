@@ -810,4 +810,4 @@ Phoenix 角色成员定向 HTTP、领域和权限回归共 `27 passed`；`mix fo
 
 阶段 D 的用户写入和会话失效切片已完成：Phoenix `1bd757d` 支持用户创建、更新、清空和保留 `roleCodes`，旧 `roleId` 继续同步首选角色；角色成员分配追加目标角色，按目标角色撤销时保留其他角色。admin-web `dc80ebc` 在用户表单中动态读取启用角色目录，支持多选、编辑预选、`null` 保留和空数组清空。Phoenix `bb8f446` 使角色权限变更递增所有关联用户的 `permission_version`，并让 LiveView 会话快照比较完整排序后的角色集合，非首选角色变更、新增角色关联和移除角色都会使旧连接失效。
 
-本批验证：Phoenix 多角色用户、角色成员、HTTP 和 LiveView 定向回归 `37 passed`，会话快照定向回归 `33 passed`，全量集成测试 `469 passed`；严格编译、源码行数、差异检查、路由集合和业务错误码集合均通过。admin-web `pnpm test:run` 为 `27 files / 162 tests passed`，类型检查、生产构建和差异检查通过。当前仍需补齐 API Key 多角色 HTTP 场景、角色成员详情分页 DTO、admin-web 切换 Native/Phoenix 的真实后端窗口验收，以及 OIDC、公钥硬件 Passkey、浏览器 CSRF/Cookie、多节点恢复、生产代理链和正式发布证据。
+本批验证：Phoenix 多角色用户、角色成员、HTTP 和 LiveView 定向回归 `37 passed`，会话快照定向回归 `33 passed`，API Key 多角色领域和 HTTP 回归 `17 passed`，全量集成测试 `469 passed`；严格编译、源码行数、差异检查、路由集合和业务错误码集合均通过。admin-web `pnpm test:run` 为 `27 files / 162 tests passed`，类型检查、生产构建和差异检查通过。当前仍需补齐角色成员详情分页 DTO、admin-web 切换 Native/Phoenix 的真实后端窗口验收，以及 OIDC、公钥硬件 Passkey、浏览器 CSRF/Cookie、多节点恢复、生产代理链和正式发布证据。
