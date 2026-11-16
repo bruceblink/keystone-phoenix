@@ -336,3 +336,9 @@ Phoenix `3d9776c` 将 LiveView 侧栏的 Unicode 图标替换为 SVG 图标组�
 Phoenix `c8e771d` 将用户、监控、组织、角色和菜单页面中的旧 Unicode 标记替换为与 admin-web 语义一致的 SVG 图标组件，保留权限、事件、状态颜色和响应式布局。
 
 本轮页面组件和集成回归通过；Phoenix 全量集成测试仍为 `474 passed`。真实浏览器窗口证据仍未新增。
+
+### 2026-11-17 admin-web CI 补充
+
+admin-web `eba91c7` 新增固定 Action SHA 的 CI 工作流，执行锁文件安装、前端测试、类型检查和生产构建。该 CI 只证明代码级检查可自动运行，不替代真实浏览器窗口和 Native/Phoenix 后端切换验收。
+
+本地验证：`pnpm test:run` 为 `27 files / 162 tests passed`，`pnpm typecheck` 和 `pnpm build` 通过，工作流静态检查通过。
