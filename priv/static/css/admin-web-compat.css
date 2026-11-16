@@ -18,6 +18,8 @@
 .metric-icon .nav-icon-svg { width: 17px; height: 17px; }
 .info-icon .nav-icon-svg { width: 16px; height: 16px; }
 .users-empty-icon .nav-icon-svg, .department-marker .nav-icon-svg, .role-cell-icon .nav-icon-svg, .menu-marker .nav-icon-svg { width: 16px; height: 16px; }
+.job-marker .nav-icon-svg, .post-cell-icon .nav-icon-svg, .notice-cell-icon .nav-icon-svg { width: 15px; height: 15px; }
+.jobs-empty-icon .nav-icon-svg, .posts-empty-icon .nav-icon-svg, .notices-empty-icon .nav-icon-svg { width: 20px; height: 20px; }
 .profile-page > .card > .admin-form { display: grid; gap: 16px; padding: 20px; }
 .profile-page > .card > .admin-form label { display: grid; gap: 7px; margin: 0; color: var(--muted-strong); font-size: 11px; font-weight: 650; }
 .profile-page > .card > .admin-form .modal-footer { display: flex; justify-content: flex-end; margin: 4px -20px -20px; padding: 16px 20px; border-top: 1px solid var(--line); background: rgba(8,17,31,.24); }
