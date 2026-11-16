@@ -773,3 +773,7 @@ Native `bb832b1` 已收口该调度日志问题：删除任务与调度触发交
 验证结果：Phoenix 集成测试 `447 passed`，严格编译、源码行数和差异检查通过；admin-web 全量测试 `27 files / 158 tests passed`，类型检查和生产构建通过；Native 字典定向测试、全量测试和 `quarkusBuild` 通过。接口路由集合为 admin-web 74 条调用、Native/Phoenix 各 108 条 `/api/v1` 路由；错误码目录检查继续通过。
 
 下一步按页面继续补齐真实编辑、批量写入、详情返回和加载失败矩阵，并验证角色管理的真实权限组合。OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和发布环境验收仍属于未完成证据项。
+
+Phoenix `7af6e6d` 将权限目录接口的访问条件与 Native 对齐，`api-key:create`、`permission:read` 或 `role:manage` 任一权限均可读取 `/api/v1/permissions/catalog`。Phoenix `4f205a9` 又将角色新增和编辑表单改为动态权限目录选择，支持资源分组、搜索、逐项勾选和编辑预选；隐藏字段继续提交逗号分隔的兼容格式。`de28fd9` 将角色用户事件拆分到独立模块，保持源码行数限制。
+
+本批次验证：Phoenix 全量集成测试 `449 passed`；角色权限 LiveView 定向测试 `14 passed`；严格编译、源码行数和差异检查通过。admin-web `720aa70` 与 Phoenix 的角色权限选择语义一致，Native `f388199` 与 Phoenix 的动态目录授权边界一致。

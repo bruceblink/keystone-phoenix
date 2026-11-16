@@ -298,3 +298,5 @@ Native `bb832b1` 已修复该调度竞态日志。已删除任务被调度器再
 - admin-web `21b994d` 和 Phoenix `723b67f` 修复登录页短屏布局。Chrome CDP 真实窗口验证 320×568、360×667、390×844、480×736、768×844、1024×768 均无水平或垂直滚动，登录按钮和表单字段均可见。
 
 本轮验证：Phoenix `447 passed`；admin-web `27 files / 158 tests passed`、类型检查和构建通过；Native 全量测试和 `quarkusBuild` 通过。当前 admin-web 使用 74 条 API 调用，Native/Phoenix 各提供 108 条 `/api/v1` 路由。Codex 内置浏览器在当前会话没有可保持交互的 `iab`，因此页面视觉证据使用 Chrome 回退窗口，不将其描述为内置浏览器证据。
+
+补充验收：Phoenix `7af6e6d` 的权限目录接口已支持 `api-key:create`、`permission:read` 或 `role:manage` 任一权限，和 Native `f388199` 保持相同授权边界。Phoenix `4f205a9` 的角色权限表单与 admin-web `720aa70` 均从动态目录读取当前可授予项，支持搜索、分组、逐项选择和编辑预选。Phoenix 全量集成回归为 `449 passed`，角色权限定向回归为 `14 passed`。
