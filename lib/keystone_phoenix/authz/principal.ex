@@ -6,6 +6,8 @@ defmodule KeystonePhoenix.Authz.Principal do
   capability comes only from the catalog permission `permission:manage`.
   """
 
+  alias KeystonePhoenix.User.RoleMembership
+
   @enforce_keys []
   defstruct subject_id: nil,
             subject_type: "USER",
@@ -104,6 +106,23 @@ defmodule KeystonePhoenix.Authz.Principal do
   def admin?(_user), do: false
 
   defp roles(user) do
+    case membership_roles(user) do
+      [] -> legacy_roles(user)
+      role_ids -> role_ids
+    end
+  end
+
+  # 关联表已存在时优先读取全部角色；旧字段仍作为迁移期间的回退来源。
+  defp membership_roles(user) do
+    case value(user, :user_id, "userId") do
+      user_id when is_binary(user_id) -> RoleMembership.list_role_ids_for_user(user_id)
+      _ -> []
+    end
+  rescue
+    _error -> []
+  end
+
+  defp legacy_roles(user) do
     case value(user, :role_id, "roleId") do
       nil -> List.wrap(value(user, :roles, "roles"))
       role_id -> [role_id]

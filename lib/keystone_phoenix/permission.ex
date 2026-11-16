@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Permission do
   import Ecto.Query
 
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Authz.Principal
   alias KeystonePhoenix.Authz.PermissionCatalog
   alias KeystonePhoenix.Authz.SysPermission
   alias KeystonePhoenix.Authz.SysRolePermission
@@ -14,10 +15,10 @@ defmodule KeystonePhoenix.Permission do
   @doc "Checks whether a user has an exact menu permission."
   @spec allowed?(map(), String.t()) :: boolean()
   def allowed?(user, permission) when is_map(user) and is_binary(permission) do
-    role_id = user_value(user, :role_id, "roleId")
+    role_ids = role_ids(user)
     permission = String.trim(permission)
 
-    if uuid?(role_id) and PermissionCatalog.registered?(permission) do
+    if role_ids != [] and PermissionCatalog.registered?(permission) do
       Repo.exists?(
         from role_permission in SysRolePermission,
           join: permission_entry in SysPermission,
@@ -25,7 +26,7 @@ defmodule KeystonePhoenix.Permission do
           join: role in "sys_role",
           on: role.role_id == role_permission.role_id,
           where:
-            role_permission.role_id == ^role_id and role.deleted == false and role.status == 1 and
+            role_permission.role_id in ^role_ids and role.deleted == false and role.status == 1 and
               permission_entry.status == 1 and permission_entry.deprecated == false and
               permission_entry.permission == ^permission
       )
@@ -42,10 +43,10 @@ defmodule KeystonePhoenix.Permission do
   @spec allowed_decision?(map(), String.t()) ::
           :allow | :deny | {:error, :authorization_unavailable}
   def allowed_decision?(user, permission) when is_map(user) and is_binary(permission) do
-    role_id = user_value(user, :role_id, "roleId")
+    role_ids = role_ids(user)
     permission = String.trim(permission)
 
-    if uuid?(role_id) and PermissionCatalog.registered?(permission) do
+    if role_ids != [] and PermissionCatalog.registered?(permission) do
       if Repo.exists?(
            from role_permission in SysRolePermission,
              join: permission_entry in SysPermission,
@@ -53,7 +54,7 @@ defmodule KeystonePhoenix.Permission do
              join: role in "sys_role",
              on: role.role_id == role_permission.role_id,
              where:
-               role_permission.role_id == ^role_id and role.deleted == false and role.status == 1 and
+               role_permission.role_id in ^role_ids and role.deleted == false and role.status == 1 and
                  permission_entry.status == 1 and permission_entry.deprecated == false and
                  permission_entry.permission == ^permission
          ),
@@ -362,6 +363,15 @@ defmodule KeystonePhoenix.Permission do
 
   defp user_value(user, atom_key, string_key) do
     Map.get(user, atom_key, Map.get(user, string_key))
+  end
+
+  defp role_ids(user) do
+    user
+    |> Principal.from_user()
+    |> Map.get(:roles, [])
+    |> Enum.map(&parse_uuid/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
   end
 
   defp uuid?(value), do: not is_nil(parse_uuid(value))

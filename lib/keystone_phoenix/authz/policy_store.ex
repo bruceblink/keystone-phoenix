@@ -44,11 +44,16 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
         :deny
 
       true ->
-        role_id = Map.get(principal, :role_id, Map.get(principal, "roleId"))
         normalized_permission = String.trim(permission)
+        role_ids = role_ids(principal)
 
-        decision = normalized_decision(role_id, normalized_permission)
-        PolicyCache.decision(role_id, normalized_permission, fn -> decision end)
+        role_ids
+        |> Enum.map(fn role_id ->
+          PolicyCache.decision(role_id, normalized_permission, fn ->
+            normalized_decision(role_id, normalized_permission)
+          end)
+        end)
+        |> union_decision()
     end
   end
 
@@ -153,6 +158,28 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
     do: Map.get(principal, :permissions, Map.get(principal, "permissions"))
 
   defp permission_snapshot(_principal), do: nil
+
+  defp role_ids(principal) do
+    principal
+    |> Principal.from_user()
+    |> Map.get(:roles, [])
+    |> Enum.map(&parse_uuid/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  defp union_decision(decisions) do
+    cond do
+      :allow in decisions ->
+        :allow
+
+      Enum.any?(decisions, &match?({:error, :authorization_unavailable}, &1)) ->
+        {:error, :authorization_unavailable}
+
+      true ->
+        :deny
+    end
+  end
 
   defp has_any_key?(attrs, keys) when is_map(attrs), do: Enum.any?(keys, &Map.has_key?(attrs, &1))
   defp has_any_key?(_attrs, _keys), do: false

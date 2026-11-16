@@ -4,12 +4,15 @@ defmodule KeystonePhoenix.PermissionTest do
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
+  alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Permission
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
+  alias KeystonePhoenix.User.SysUser
+  alias KeystonePhoenix.User.SysUserRole
 
   test "checks exact role menu permissions without an admin bypass" do
     role = insert_role(%{role_key: unique("permission_role")})
@@ -32,6 +35,43 @@ defmodule KeystonePhoenix.PermissionTest do
     assert Permission.allowed?(user, "user:read")
     refute Permission.allowed?(user, "user:delete")
     refute Permission.allowed?(%{}, "user:update")
+  end
+
+  test "unions API permissions across persisted user roles" do
+    first_role = insert_role(%{role_key: unique("union_first")})
+    second_role = insert_role(%{role_key: unique("union_second")})
+    insert_permission(first_role.role_id, "user:read")
+    insert_permission(second_role.role_id, "role:read")
+
+    user =
+      %SysUser{}
+      |> SysUser.create_changeset(%{
+        username: unique("union_user"),
+        password: "Strong!123",
+        role_id: first_role.role_id,
+        status: 1
+      })
+      |> Repo.insert!()
+
+    user_id = user.user_id
+
+    Repo.insert_all(SysUserRole, [
+      %{user_id: user_id, role_id: first_role.role_id},
+      %{user_id: user_id, role_id: second_role.role_id}
+    ])
+
+    principal = %{user_id: user_id, role_id: first_role.role_id}
+    assert Authz.allowed?(principal, "user:read")
+    assert Authz.allowed?(principal, "role:read")
+    assert Permission.allowed?(principal, "role:read")
+
+    Repo.delete_all(
+      from membership in SysUserRole,
+        where: membership.user_id == ^user_id and membership.role_id == ^second_role.role_id
+    )
+
+    refute Authz.allowed?(principal, "role:read")
+    assert Authz.allowed?(principal, "user:read")
   end
 
   test "enforces custom and department-tree data scopes" do
