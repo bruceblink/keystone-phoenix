@@ -121,6 +121,7 @@ def parse_native(root: Path) -> list[Route]:
         base_path = class_match.group(1)
         pending_method: str | None = None
         pending_path: str | None = None
+        declaration_buffer = ""
         in_class = False
 
         for line in text.splitlines():
@@ -128,6 +129,7 @@ def parse_native(root: Path) -> list[Route]:
                 in_class = True
                 pending_method = None
                 pending_path = None
+                declaration_buffer = ""
                 continue
             if not in_class:
                 continue
@@ -139,8 +141,14 @@ def parse_native(root: Path) -> list[Route]:
             if paths:
                 pending_path = paths[-1]
 
+            if pending_method:
+                declaration_buffer = f"{declaration_buffer} {line}".strip()
+            else:
+                declaration_buffer = ""
+
             declaration = re.search(
-                r"\b(?:public|protected|private)\s+[^;{}]*\w+\s*\([^;]*\)", line
+                r"\b(?:public|protected|private)\s+[^;{}]*\w+\s*\([^;{}]*\)",
+                declaration_buffer,
             )
             if pending_method and declaration:
                 route_path = "/api" + base_path + (pending_path or "")
@@ -149,6 +157,7 @@ def parse_native(root: Path) -> list[Route]:
                 )
                 pending_method = None
                 pending_path = None
+                declaration_buffer = ""
 
     return routes
 
