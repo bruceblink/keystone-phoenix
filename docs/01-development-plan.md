@@ -758,3 +758,18 @@ admin-web `b548361` 将 Jobs、Profile、LoginLogs 和 OperationsAudit 的旧数
 Native 当前主线复核：`./gradlew test quarkusBuild` 在 `5b75636` 基线通过，测试和 Quarkus 生产构建均成功。测试日志包含限流事件和任务删除与调度触发时序交错产生的 `job not found` 记录，但未导致测试失败；该日志噪声保留为后续调度可观测性优化项，不影响当前构建结果。
 
 Native `bb832b1` 已收口该调度日志问题：删除任务与调度触发交错时按已删除任务跳过处理，不再输出误导性的失败堆栈。定向 `JobOrmPersistenceTest`、Quarkus 构建和全量 `./gradlew test` 均通过。
+
+### 2026-11-17 主线继续推进：权限目录、字典筛选和短屏登录
+
+本轮完成四项可替换后端和页面闭环：
+
+- Native `7d6d692` 让字典条目接口接收 `keyword`，按 `value` 或 `label` 在数据库分页查询，并按筛选结果计算 `total`；无关键词的旧数组和分页响应继续兼容。
+- Native `f388199` 为 `/api/v1/permissions/catalog` 增加任一权限边界：`api-key:create`、`permission:read` 或 `role:manage`。角色权限页面不再依赖 API Key 签发权限才能读取动态目录。
+- admin-web `720aa70` 在角色新增和编辑表单中读取动态权限目录，支持逐项选择并通过 MFA step-up 调用 `PUT /roles/{id}/permissions`；权限写入失败保留角色 ID 和表单，支持重试。
+- Phoenix `cb07dbe` 将字典条目关键词筛选补到 LiveView，筛选、重置、翻页、刷新和写入继续使用服务端 `keyword` 查询；筛选失败保留旧页和总数。
+- Phoenix `62abb75` 与 admin-web `e4fc38d` 删除顶部“管理工作台”标题，保留 `Keystone /` 上下文。
+- admin-web `21b994d` 与 Phoenix `723b67f` 针对短屏压缩登录布局。真实 Chrome CDP 验收覆盖 320×568、360×667、390×844、480×736、768×844 和 1024×768；两端均无水平或垂直溢出，登录按钮可见。当前会话没有可保持交互的 Codex 内置浏览器，因此该证据属于 Chrome 回退验收。
+
+验证结果：Phoenix 集成测试 `447 passed`，严格编译、源码行数和差异检查通过；admin-web 全量测试 `27 files / 158 tests passed`，类型检查和生产构建通过；Native 字典定向测试、全量测试和 `quarkusBuild` 通过。接口路由集合为 admin-web 74 条调用、Native/Phoenix 各 108 条 `/api/v1` 路由；错误码目录检查继续通过。
+
+下一步按页面继续补齐真实编辑、批量写入、详情返回和加载失败矩阵，并验证角色管理的真实权限组合。OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和发布环境验收仍属于未完成证据项。

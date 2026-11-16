@@ -289,3 +289,12 @@ Phoenix `e2231de` 又将用户管理的 `users_username`、`users_displayName` �
 Native `5b75636` 基线复核通过 `./gradlew test quarkusBuild`。测试日志中的限流事件和删除任务与调度触发交错产生的 `job not found` 仅作为非失败日志记录，暂列后续调度日志优化，不改变接口验收结论。
 
 Native `bb832b1` 已修复该调度竞态日志。已删除任务被调度器再次触发时只记录跳过信息，不再输出错误堆栈；定向测试、全量测试和 Quarkus 构建均通过。
+
+### 2026-11-17 继续验收记录
+
+- Native `7d6d692`、Phoenix `cb07dbe` 和 admin-web 当前实现的字典条目关键词筛选已对齐，查询匹配值和显示名称，分页总数按筛选结果返回。
+- Native `f388199`、admin-web `720aa70` 完成角色权限动态目录和逐项选择。权限目录读取支持 API Key 签发、权限目录读取或角色管理任一权限；权限写入保持 MFA step-up。
+- Phoenix `62abb75` 和 admin-web `e4fc38d` 删除“管理工作台”顶部标题。两端保留相同的 `Keystone /` 上下文。
+- admin-web `21b994d` 和 Phoenix `723b67f` 修复登录页短屏布局。Chrome CDP 真实窗口验证 320×568、360×667、390×844、480×736、768×844、1024×768 均无水平或垂直滚动，登录按钮和表单字段均可见。
+
+本轮验证：Phoenix `447 passed`；admin-web `27 files / 158 tests passed`、类型检查和构建通过；Native 全量测试和 `quarkusBuild` 通过。当前 admin-web 使用 74 条 API 调用，Native/Phoenix 各提供 108 条 `/api/v1` 路由。Codex 内置浏览器在当前会话没有可保持交互的 `iab`，因此页面视觉证据使用 Chrome 回退窗口，不将其描述为内置浏览器证据。
