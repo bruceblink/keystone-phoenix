@@ -33,12 +33,20 @@ defmodule KeystonePhoenixWeb.NativeContract do
     |> maybe_boolean_status()
   end
 
-  @doc "拒绝 Phoenix 无法持久化的多角色写入字段。"
+  @doc "校验 Native 用户角色字段格式；角色存在性由用户领域事务统一检查。"
   def validate_user_params(params) when is_map(params) do
     case Map.get(params, "roleCodes") do
-      value when value in [nil, []] -> :ok
-      [_code] -> :ok
-      _value -> {:error, :role_codes_unsupported}
+      value when value in [nil, []] ->
+        :ok
+
+      value when is_list(value) ->
+        if Enum.all?(value, &is_binary/1), do: :ok, else: {:error, :role_codes_unsupported}
+
+      value when is_binary(value) ->
+        :ok
+
+      _value ->
+        {:error, :role_codes_unsupported}
     end
   end
 

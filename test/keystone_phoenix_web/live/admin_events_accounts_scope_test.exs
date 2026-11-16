@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.AdminEventsAccountsScopeTest do
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
   alias KeystonePhoenixWeb.Live.AdminEvents.Accounts
+  alias KeystonePhoenixWeb.Live.AdminEventsAccountsParams
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
 
   test "user edit permission still respects the actor role data scope" do
@@ -85,55 +86,40 @@ defmodule KeystonePhoenixWeb.AdminEventsAccountsScopeTest do
     assert Repo.get!(SysUser, target.user_id).nickname == "原昵称"
   end
 
-  test "user form rejects multiple role codes before persistence" do
-    role =
+  test "user form normalizes multiple, empty, and null role codes" do
+    first_role =
       Repo.insert!(%SysRole{
         role_id: Ecto.UUID.generate(),
-        role_name: unique("role_code_role"),
-        role_key: unique("role_code_key"),
+        role_name: unique("role_code_first"),
+        role_key: unique("role_code_first_key"),
         role_sort: 1,
         data_scope: "ALL",
         status: 1
       })
 
-    actor =
-      Repo.insert!(%SysUser{
-        user_id: Ecto.UUID.generate(),
-        username: unique("role_code_actor"),
-        password: "password-hash",
-        role_id: role.role_id,
+    second_role =
+      Repo.insert!(%SysRole{
+        role_id: Ecto.UUID.generate(),
+        role_name: unique("role_code_second"),
+        role_key: unique("role_code_second_key"),
+        role_sort: 1,
+        data_scope: "ALL",
         status: 1
       })
 
-    target =
-      Repo.insert!(%SysUser{
-        user_id: Ecto.UUID.generate(),
-        username: unique("role_code_target"),
-        password: "password-hash",
-        status: 1
-      })
+    assert {:ok, %{"roleCodes" => codes}} =
+             AdminEventsAccountsParams.normalize_user_params(%{
+               "roleCodes" =>
+                 " #{first_role.role_key}, #{second_role.role_key}, #{first_role.role_key} "
+             })
 
-    socket = %Phoenix.LiveView.Socket{
-      assigns: %{
-        __changed__: %{},
-        current_user: %{"userId" => actor.user_id, "roleId" => role.role_id},
-        permissions: ["user:update"]
-      }
-    }
+    assert codes == [first_role.role_key, second_role.role_key, first_role.role_key]
 
-    assert {:noreply, updated_socket} =
-             Accounts.handle_event(
-               "save-user",
-               %{
-                 "userId" => to_string(target.user_id),
-                 "username" => target.username,
-                 "roleCodes" => "first,second"
-               },
-               socket
-             )
+    assert {:ok, %{"roleCodes" => []}} =
+             AdminEventsAccountsParams.normalize_user_params(%{"roleCodes" => []})
 
-    assert updated_socket.assigns.user_feedback ==
-             Feedback.error(:validation_failed, "角色编码不受支持")
+    assert {:ok, %{"roleCodes" => nil}} =
+             AdminEventsAccountsParams.normalize_user_params(%{"roleCodes" => nil})
   end
 
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"

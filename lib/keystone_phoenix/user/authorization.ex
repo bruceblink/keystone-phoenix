@@ -9,7 +9,7 @@ defmodule KeystonePhoenix.User.Authorization do
     with {:ok, principal, permission} <- authorization_options(options, "user:create"),
          :ok <- authorize_permission(principal, permission),
          :ok <- authorize_scope(principal, :dept, attr_value(attrs, "deptId", :dept_id)),
-         true <- Authz.role_assignment_allowed?(principal, attr_value(attrs, "roleId", :role_id)) do
+         true <- Authz.role_assignment_allowed?(principal, role_assignment_value(attrs)) do
       :ok
     else
       false -> {:error, :role_assignment_forbidden}
@@ -21,7 +21,7 @@ defmodule KeystonePhoenix.User.Authorization do
     with {:ok, principal, permission} <- authorization_options(options, "user:update"),
          :ok <- authorize_permission(principal, permission),
          :ok <- authorize_scope(principal, :user_update, id, %{attrs: attrs}),
-         true <- Authz.role_assignment_allowed?(principal, attr_value(attrs, "roleId", :role_id)) do
+         true <- Authz.role_assignment_allowed?(principal, role_assignment_value(attrs)) do
       :ok
     else
       false -> {:error, :role_assignment_forbidden}
@@ -109,4 +109,13 @@ defmodule KeystonePhoenix.User.Authorization do
 
   defp attr_value(attrs, string_key, atom_key),
     do: Map.get(attrs, string_key, Map.get(attrs, atom_key))
+
+  # 角色编码数组和旧 roleId 共用同一权限检查，避免多角色写入绕过角色分配权限。
+  defp role_assignment_value(attrs) do
+    cond do
+      Map.has_key?(attrs, "roleCodes") -> Map.get(attrs, "roleCodes")
+      Map.has_key?(attrs, :role_codes) -> Map.get(attrs, :role_codes)
+      true -> attr_value(attrs, "roleId", :role_id)
+    end
+  end
 end

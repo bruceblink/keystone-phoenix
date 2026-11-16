@@ -8,6 +8,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
+  alias KeystonePhoenix.User.SysUserRole
 
   @tag :integration
   test "role permission HTTP replacement updates normalized authorization bindings" do
@@ -42,8 +43,9 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     actor_role = create_role("TENANT")
     grant_permission(actor_role.role_id, "role:assign")
     target_role = create_role("TENANT")
+    source_role = create_role("TENANT")
     actor = create_user(actor_role.role_id)
-    target = create_user(nil)
+    target = create_user(source_role.role_id)
     alias_target = create_user(nil)
     missing_id = Identity.v7()
     token = step_up_token(actor)
@@ -62,7 +64,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
       put(authorized(token), assign_path, %{"userIds" => [target.user_id, missing_id]})
 
     assert get_in(json_response(response, 404), ["error", "code"]) == "resource_not_found"
-    assert Repo.get!(SysUser, target.user_id).role_id == nil
+    assert Repo.get!(SysUser, target.user_id).role_id == source_role.role_id
 
     assert %{"success" => true} =
              json_response(
@@ -75,6 +77,14 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
              )
 
     assert Repo.get!(SysUser, target.user_id).role_id == target_role.role_id
+
+    assert Repo.exists?(
+             from(membership in SysUserRole,
+               where:
+                 membership.user_id == ^target.user_id and
+                   membership.role_id == ^source_role.role_id
+             )
+           )
 
     unassign_path = "/api/v1/roles/#{target_role.role_id}/users"
     foreign_role = create_role("TENANT")
@@ -96,11 +106,35 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
 
     assert Repo.get!(SysUser, target.user_id).role_id == target_role.role_id
 
+    assert %{"success" => true} =
+             json_response(
+               delete(authorized(token), unassign_path, %{"userIds" => [target.user_id]}),
+               200
+             )
+
+    assert Repo.get!(SysUser, target.user_id).role_id == source_role.role_id
+
+    refute Repo.exists?(
+             from(membership in SysUserRole,
+               where:
+                 membership.user_id == ^target.user_id and
+                   membership.role_id == ^target_role.role_id
+             )
+           )
+
+    assert Repo.exists?(
+             from(membership in SysUserRole,
+               where:
+                 membership.user_id == ^target.user_id and
+                   membership.role_id == ^source_role.role_id
+             )
+           )
+
     response =
       delete(authorized(token), unassign_path, %{"userIds" => [target.user_id, missing_id]})
 
     assert get_in(json_response(response, 404), ["error", "code"]) == "resource_not_found"
-    assert Repo.get!(SysUser, target.user_id).role_id == target_role.role_id
+    assert Repo.get!(SysUser, target.user_id).role_id == source_role.role_id
   end
 
   @tag :integration
@@ -193,14 +227,18 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
   end
 
   defp create_user(role_id) do
-    %SysUser{}
-    |> SysUser.create_changeset(%{
-      user_id: Identity.v7(),
-      username: "role_scope_http_#{System.unique_integer([:positive])}",
-      password: "Strong!123",
-      role_id: role_id,
-      status: 1
-    })
-    |> Repo.insert!()
+    user =
+      %SysUser{}
+      |> SysUser.create_changeset(%{
+        user_id: Identity.v7(),
+        username: "role_scope_http_#{System.unique_integer([:positive])}",
+        password: "Strong!123",
+        role_id: role_id,
+        status: 1
+      })
+      |> Repo.insert!()
+
+    if role_id, do: Repo.insert!(%SysUserRole{user_id: user.user_id, role_id: role_id})
+    user
   end
 end

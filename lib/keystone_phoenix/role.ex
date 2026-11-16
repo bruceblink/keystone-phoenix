@@ -368,7 +368,7 @@ defmodule KeystonePhoenix.Role do
   def unassign_users(user_ids, options) when is_list(options) do
     with {:ok, user_ids} <- normalize_user_ids(user_ids),
          :ok <- Authorization.authorize_assignment(options, "role:assign", user_ids) do
-      update_user_assignments(user_ids, nil)
+      unassign_all_user_assignments(user_ids)
     end
   end
 
@@ -379,7 +379,7 @@ defmodule KeystonePhoenix.Role do
          :ok <- Authorization.authorize_assignment(options, "role:assign", user_ids),
          {:ok, role} <- get_role(role_id) do
       if length(User.list_users_by_ids(user_ids)) == length(user_ids),
-        do: update_user_assignments(user_ids, nil, role.role_id),
+        do: unassign_user_assignments(user_ids, role.role_id),
         else: {:error, :not_found}
     end
   end
@@ -419,11 +419,31 @@ defmodule KeystonePhoenix.Role do
   defp update_user_assignments(user_ids, role_id, expected_role_id \\ :any) do
     result =
       Repo.transaction(fn ->
-        RoleMembership.update_user_roles(user_ids, role_id, expected_role_id)
+        if expected_role_id == :any do
+          RoleMembership.assign_user_roles(user_ids, role_id)
+        else
+          RoleMembership.update_user_roles(user_ids, role_id, expected_role_id)
+        end
         |> update_result(user_ids, expected_role_id)
       end)
 
     case result do
+      {:ok, :ok} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp unassign_user_assignments(user_ids, role_id) do
+    Repo.transaction(fn -> RoleMembership.unassign_user_roles(user_ids, role_id) end)
+    |> case do
+      {:ok, :ok} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp unassign_all_user_assignments(user_ids) do
+    Repo.transaction(fn -> RoleMembership.unassign_all_user_roles(user_ids) end)
+    |> case do
       {:ok, :ok} -> :ok
       {:error, reason} -> {:error, reason}
     end
@@ -506,7 +526,11 @@ defmodule KeystonePhoenix.Role do
       "deptIdSet" => role.dept_id_set,
       "status" => role.status,
       "remark" => role.remark,
-      "createTime" => format_datetime(role.create_time)
+      "createTime" =>
+        if(is_nil(role.create_time),
+          do: nil,
+          else: Calendar.strftime(role.create_time, "%Y-%m-%d %H:%M:%S")
+        )
     }
   end
 
@@ -563,23 +587,8 @@ defmodule KeystonePhoenix.Role do
     end
   end
 
-  defp invalidate_policy_cache({:ok, _value} = result) do
-    PolicyCache.invalidate()
+  defp invalidate_policy_cache(result) do
+    if result == :ok or match?({:ok, _value}, result), do: PolicyCache.invalidate()
     result
   end
-
-  defp invalidate_policy_cache(:ok = result) do
-    PolicyCache.invalidate()
-    result
-  end
-
-  defp invalidate_policy_cache(result), do: result
-
-  defp format_datetime(nil), do: nil
-
-  defp format_datetime(%DateTime{} = datetime),
-    do: Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
-
-  defp format_datetime(%NaiveDateTime{} = datetime),
-    do: Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
 end

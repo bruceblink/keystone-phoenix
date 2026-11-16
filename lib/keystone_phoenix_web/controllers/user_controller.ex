@@ -235,26 +235,8 @@ defmodule KeystonePhoenixWeb.UserController do
   end
 
   defp native_user_params(params) do
-    attrs = NativeContract.user_params(params)
-
-    case Map.get(params, "roleCodes") do
-      nil ->
-        {:ok, attrs}
-
-      [] ->
-        {:ok, attrs |> Map.put("roleId", nil) |> Map.delete("roleCodes")}
-
-      [code] when is_binary(code) ->
-        case Role.get_role_by_key(code) do
-          {:ok, role} ->
-            {:ok, attrs |> Map.put("roleId", role.role_id) |> Map.delete("roleCodes")}
-
-          {:error, :not_found} ->
-            {:error, :role_codes_unsupported}
-        end
-
-      _ ->
-        {:error, :role_codes_unsupported}
+    with :ok <- NativeContract.validate_user_params(params) do
+      {:ok, NativeContract.user_params(params)}
     end
   end
 
@@ -385,7 +367,7 @@ defmodule KeystonePhoenixWeb.UserController do
       not Authz.scope_allowed?(actor, :dept, record["deptId"]) ->
         {:error, :data_scope_denied}
 
-      not Authz.role_assignment_allowed?(actor, record["roleId"]) ->
+      not Authz.role_assignment_allowed?(actor, role_id_param(record)) ->
         {:error, :role_assignment_forbidden}
 
       true ->
@@ -393,7 +375,8 @@ defmodule KeystonePhoenixWeb.UserController do
     end
   end
 
-  defp role_id_param(params), do: Map.get(params, "roleId", Map.get(params, :role_id))
+  defp role_id_param(params),
+    do: Map.get(params, "roleCodes", Map.get(params, "roleId", Map.get(params, :role_id)))
 
   defp integer_value(nil), do: nil
   defp integer_value(value) when is_integer(value), do: value
@@ -479,7 +462,7 @@ defmodule KeystonePhoenixWeb.UserController do
   defp render_error(conn, :role_codes_unsupported) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "Phoenix 用户模型只支持单个 role_id，不能写入 roleCodes"))
+    |> json(ApiResponse.error(:validation_failed, "角色编码无效、不存在或已停用"))
   end
 
   defp render_error(conn, reason)

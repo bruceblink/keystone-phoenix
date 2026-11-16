@@ -157,6 +157,85 @@ defmodule KeystonePhoenix.UserRoleMembershipTest do
     assert RoleMembership.list_role_ids_for_user(user.user_id) == []
   end
 
+  test "roleCodes writes all roles, preserves null, clears empty, and supports legacy roleId" do
+    first_role = insert_role()
+    second_role = insert_role()
+    third_role = insert_role()
+
+    principal = %{
+      user_id: Identity.v7(),
+      permissions: ["user:create", "user:update", "role:assign", "permission:manage"]
+    }
+
+    authorization = [authorization: %{principal: principal, permission: "user:create"}]
+
+    assert {:ok, user} =
+             User.create_user(
+               %{
+                 "username" => "multi_role_#{System.unique_integer([:positive])}",
+                 "password" => "Strong!123",
+                 "roleCodes" => [first_role.role_key, second_role.role_key, first_role.role_key]
+               },
+               authorization
+             )
+
+    assert MapSet.new(RoleMembership.list_role_ids_for_user(user.user_id)) ==
+             MapSet.new([first_role.role_id, second_role.role_id])
+
+    mapped = User.user_to_map_with_relations(user)
+    assert MapSet.new(mapped["roles"]) == MapSet.new([first_role.role_key, second_role.role_key])
+    assert mapped["roles"] == mapped["roleCodes"]
+
+    assert {:ok, _preserved} =
+             User.update_user(user.user_id, %{"roleCodes" => nil}, authorization)
+
+    assert MapSet.new(RoleMembership.list_role_ids_for_user(user.user_id)) ==
+             MapSet.new([first_role.role_id, second_role.role_id])
+
+    update_auth = [authorization: %{principal: principal, permission: "user:update"}]
+
+    assert {:ok, cleared} = User.update_user(user.user_id, %{"roleCodes" => []}, update_auth)
+    assert is_nil(cleared.role_id)
+    assert RoleMembership.list_role_ids_for_user(user.user_id) == []
+
+    assert {:ok, legacy} =
+             User.update_user(user.user_id, %{"roleId" => third_role.role_id}, update_auth)
+
+    assert legacy.role_id == third_role.role_id
+    assert RoleMembership.list_role_ids_for_user(user.user_id) == [third_role.role_id]
+  end
+
+  test "role assignment adds only the target role and revocation removes only that role" do
+    source_role = insert_role()
+    target_role = insert_role()
+
+    principal = %{
+      user_id: Identity.v7(),
+      permissions: ["user:create", "role:assign", "permission:manage"]
+    }
+
+    assert {:ok, user} =
+             User.create_user(
+               %{
+                 "username" => "role_member_#{System.unique_integer([:positive])}",
+                 "password" => "Strong!123",
+                 "roleId" => source_role.role_id
+               },
+               authorization: %{principal: principal, permission: "user:create"}
+             )
+
+    assignment = [authorization: %{principal: principal, permission: "role:assign"}]
+    assert :ok = Role.assign_users(target_role.role_id, [user.user_id], assignment)
+    assert Repo.get!(SysUser, user.user_id).role_id == target_role.role_id
+
+    assert MapSet.new(RoleMembership.list_role_ids_for_user(user.user_id)) ==
+             MapSet.new([source_role.role_id, target_role.role_id])
+
+    assert :ok = Role.unassign_users(target_role.role_id, [user.user_id], assignment)
+    assert Repo.get!(SysUser, user.user_id).role_id == source_role.role_id
+    assert RoleMembership.list_role_ids_for_user(user.user_id) == [source_role.role_id]
+  end
+
   defp insert_role do
     %SysRole{}
     |> SysRole.changeset(%{

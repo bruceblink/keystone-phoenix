@@ -17,10 +17,9 @@ defmodule KeystonePhoenix.User do
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User.Authorization
+  alias KeystonePhoenix.User.Presentation
   alias KeystonePhoenix.User.RoleMembership
   alias KeystonePhoenix.User.SysUser
-
-  @empty_relation_names %{departments: %{}, posts: %{}, roles: %{}, role_keys: %{}, users: %{}}
 
   @user_attrs [
     {"postId", :post_id},
@@ -115,13 +114,15 @@ defmodule KeystonePhoenix.User do
   def create_user(_attrs, _options), do: {:error, :authorization_required}
 
   defp do_create_user(attrs, actor_id) when is_map(attrs) do
+    role_input = role_input(attrs)
     attrs = normalize_attrs(attrs)
 
-    with :ok <- validate_relations(attrs) do
+    with {:ok, attrs, role_ids} <- resolve_role_input(attrs, role_input, :create),
+         :ok <- validate_relations(attrs) do
       %SysUser{}
       |> SysUser.create_changeset(attrs)
       |> Audit.put_actor(:creator_id, actor_id)
-      |> RoleMembership.insert_user()
+      |> RoleMembership.insert_user(role_ids)
     end
   end
 
@@ -140,20 +141,27 @@ defmodule KeystonePhoenix.User do
 
   defp do_update_user(id, attrs, actor_id) when is_map(attrs) do
     with {:ok, user} <- get_user(id) do
+      role_input = role_input(attrs)
       attrs = normalize_attrs(attrs)
 
-      case validate_relations(attrs) do
-        :ok -> update_user_record(user, attrs, actor_id)
-        error -> error
+      case resolve_role_input(attrs, role_input, :update) do
+        {:ok, attrs, role_ids} ->
+          case validate_relations(attrs) do
+            :ok -> update_user_record(user, attrs, role_ids, actor_id)
+            error -> error
+          end
+
+        error ->
+          error
       end
     end
   end
 
-  defp update_user_record(user, attrs, actor_id) do
+  defp update_user_record(user, attrs, role_ids, actor_id) do
     changeset = SysUser.update_changeset(user, attrs) |> Audit.put_actor(:updater_id, actor_id)
-    changeset = bump_permission_version(changeset, user)
+    changeset = bump_permission_version(changeset, user, role_ids)
 
-    case RoleMembership.update_user(changeset) do
+    case RoleMembership.update_user(changeset, role_ids) do
       {:ok, updated} = result ->
         revoke_if_disabled(user, updated)
         result
@@ -163,9 +171,46 @@ defmodule KeystonePhoenix.User do
     end
   end
 
+  defp role_input(attrs) do
+    cond do
+      Map.has_key?(attrs, "roleCodes") -> {:present, Map.get(attrs, "roleCodes")}
+      Map.has_key?(attrs, :role_codes) -> {:present, Map.get(attrs, :role_codes)}
+      true -> :absent
+    end
+  end
+
+  defp resolve_role_input(attrs, :absent, :create),
+    do: {:ok, attrs, if(is_binary(attrs[:role_id]), do: [attrs[:role_id]], else: [])}
+
+  defp resolve_role_input(attrs, :absent, :update) do
+    if Map.has_key?(attrs, :role_id),
+      do: {:ok, attrs, if(is_binary(attrs[:role_id]), do: [attrs[:role_id]], else: [])},
+      else: {:ok, attrs, :preserve}
+  end
+
+  defp resolve_role_input(attrs, {:present, nil}, :update), do: {:ok, attrs, :preserve}
+
+  defp resolve_role_input(attrs, {:present, value}, _mode) do
+    codes =
+      value
+      |> case do
+        values when is_list(values) -> values
+        binary when is_binary(binary) -> String.split(binary, ",", trim: true)
+        _ -> []
+      end
+      |> Enum.map(&String.trim(to_string(&1)))
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.uniq()
+
+    with {:ok, role_ids} <- RoleMembership.resolve_role_codes(codes) do
+      {:ok, Map.put(attrs, :role_id, List.first(role_ids)), role_ids}
+    end
+  end
+
   # 角色或启用状态变化会改变访问令牌的授权结果，必须递增主体版本。
-  defp bump_permission_version(changeset, user) do
-    if Map.has_key?(changeset.changes, :role_id) or Map.has_key?(changeset.changes, :status) do
+  defp bump_permission_version(changeset, user, role_ids) do
+    if role_ids != :preserve or Map.has_key?(changeset.changes, :role_id) or
+         Map.has_key?(changeset.changes, :status) do
       Ecto.Changeset.put_change(changeset, :permission_version, user.permission_version + 1)
     else
       changeset
@@ -255,15 +300,17 @@ defmodule KeystonePhoenix.User do
 
   @doc "Maps users with the department, role, post, and audit actor names used by the frontend."
   def user_maps(users) when is_list(users) do
-    names = relation_names(users)
-    Enum.map(users, &user_to_map(&1, names))
+    Presentation.user_maps(users)
   end
 
   def user_maps(_users), do: []
 
   @doc "Maps one user with the related display names required by profile and login responses."
   def user_to_map_with_relations(user),
-    do: user |> List.wrap() |> user_maps() |> List.first() || user_to_map(user)
+    do: Presentation.user_to_map_with_relations(user)
+
+  @doc "Maps one user without loading related display names."
+  def user_to_map(user), do: Presentation.user_to_map(user)
 
   @doc "Updates editable profile fields without allowing account privilege changes."
   @spec update_profile(String.t(), map(), keyword()) ::
@@ -382,42 +429,6 @@ defmodule KeystonePhoenix.User do
     end
   end
 
-  @spec user_to_map(SysUser.t()) :: map()
-  def user_to_map(user) do
-    user_to_map(user, @empty_relation_names)
-  end
-
-  defp user_to_map(user, names) do
-    %{
-      "userId" => user.user_id,
-      "postId" => user.post_id,
-      "roleId" => user.role_id,
-      "deptId" => user.dept_id,
-      "username" => user.username,
-      "nickname" => user.nickname,
-      "userType" => user.user_type,
-      "email" => user.email,
-      "phoneNumber" => user.phone_number,
-      "sex" => user.sex,
-      "avatar" => user.avatar,
-      "mustChangePassword" => user.must_change_password,
-      "status" => user.status,
-      "loginIp" => user.login_ip,
-      "loginDate" => format_datetime(user.login_date),
-      "deptName" => Map.get(names.departments, user.dept_id, ""),
-      "postName" => Map.get(names.posts, user.post_id, ""),
-      "roleName" => Map.get(names.roles, user.role_id, ""),
-      "roleKey" => Map.get(names.role_keys, user.role_id, ""),
-      "creatorName" => Map.get(names.users, user.creator_id, ""),
-      "updaterName" => Map.get(names.users, user.updater_id, ""),
-      "creatorId" => user.creator_id,
-      "createTime" => format_datetime(user.create_time),
-      "updaterId" => user.updater_id,
-      "updateTime" => format_datetime(user.update_time),
-      "remark" => user.remark
-    }
-  end
-
   defp delete_users_in_transaction(ids, actor_id) do
     Enum.reduce_while(ids, :ok, fn user_id, :ok ->
       case get_user(user_id) do
@@ -520,46 +531,6 @@ defmodule KeystonePhoenix.User do
     %{paged | rows: user_maps(paged.rows)}
   end
 
-  defp relation_names(users) do
-    %{
-      departments:
-        users
-        |> relation_ids(:dept_id)
-        |> Department.list_depts_by_ids()
-        |> names_by_id(:dept_id, :dept_name),
-      posts:
-        users
-        |> relation_ids(:post_id)
-        |> Post.list_posts_by_ids()
-        |> names_by_id(:post_id, :post_name),
-      roles:
-        users
-        |> relation_ids(:role_id)
-        |> Role.list_roles_by_ids()
-        |> names_by_id(:role_id, :role_name),
-      role_keys:
-        users
-        |> relation_ids(:role_id)
-        |> Role.list_roles_by_ids()
-        |> names_by_id(:role_id, :role_key),
-      users:
-        (relation_ids(users, :creator_id) ++ relation_ids(users, :updater_id))
-        |> Enum.uniq()
-        |> list_users_by_ids()
-        |> names_by_id(:user_id, :username)
-    }
-  end
-
-  defp relation_ids(users, field) do
-    users
-    |> Enum.map(&Map.get(&1, field))
-    |> Enum.filter(&is_binary/1)
-    |> Enum.uniq()
-  end
-
-  defp names_by_id(records, id_field, name_field),
-    do: Map.new(records, &{Map.get(&1, id_field), Map.get(&1, name_field)})
-
   defp filter_integer(query, _field, nil), do: query
   defp filter_integer(query, _field, ""), do: query
 
@@ -593,7 +564,4 @@ defmodule KeystonePhoenix.User do
     value = "%#{String.trim(to_string(value))}%"
     where(query, [record], ilike(field(record, ^field), ^value))
   end
-
-  defp format_datetime(nil), do: nil
-  defp format_datetime(datetime), do: Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
 end

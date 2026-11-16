@@ -187,7 +187,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
             Support.empty_user_form()
             |> Map.merge(user)
             |> Map.put("enabled", user["status"] in [1, "1", true])
-            |> Map.put("roleCodes", user["roleKey"] || "")
+            |> Map.put(
+              "roleCodes",
+              Enum.join(user["roles"] || user["roleCodes"] || List.wrap(user["roleKey"]), ",")
+            )
 
           {:noreply,
            assign(socket,

@@ -139,11 +139,10 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
 
   @doc "Checks whether an actor may assign the requested role."
   def role_assignment_allowed?(principal, role_id),
-    do:
-      if(is_nil(parse_uuid(role_id)),
-        do: true,
-        else: allowed?(principal, "role:assign")
-      )
+    do: if(role_ids_present?(role_id), do: allowed?(principal, "role:assign"), else: true)
+
+  defp role_ids_present?(values) when is_list(values), do: values != []
+  defp role_ids_present?(value), do: not is_nil(parse_uuid(value))
 
   defp admin?(principal), do: Permission.admin?(principal)
 
