@@ -19,6 +19,7 @@ defmodule KeystonePhoenixWeb.LoginLiveTest do
   test "serves the extracted LiveView assets", %{conn: conn} do
     assert get(conn, "/css/keystone.css").status == 200
     assert get(conn, "/css/keystone-responsive.css").status == 200
+    assert get(conn, "/css/admin-web-compat.css").resp_body =~ "@media (max-width: 850px)"
     assert get(conn, "/js/live_socket.js").status == 200
   end
 end
