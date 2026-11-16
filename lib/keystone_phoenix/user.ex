@@ -17,6 +17,7 @@ defmodule KeystonePhoenix.User do
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User.Authorization
+  alias KeystonePhoenix.User.RoleMembership
   alias KeystonePhoenix.User.SysUser
 
   @empty_relation_names %{departments: %{}, posts: %{}, roles: %{}, role_keys: %{}, users: %{}}
@@ -120,7 +121,7 @@ defmodule KeystonePhoenix.User do
       %SysUser{}
       |> SysUser.create_changeset(attrs)
       |> Audit.put_actor(:creator_id, actor_id)
-      |> Repo.insert()
+      |> RoleMembership.insert_user()
     end
   end
 
@@ -152,7 +153,7 @@ defmodule KeystonePhoenix.User do
     changeset = SysUser.update_changeset(user, attrs) |> Audit.put_actor(:updater_id, actor_id)
     changeset = bump_permission_version(changeset, user)
 
-    case Repo.update(changeset) do
+    case RoleMembership.update_user(changeset) do
       {:ok, updated} = result ->
         revoke_if_disabled(user, updated)
         result

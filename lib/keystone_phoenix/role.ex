@@ -14,6 +14,7 @@ defmodule KeystonePhoenix.Role do
   alias KeystonePhoenix.Role.Permissions
   alias KeystonePhoenix.Role.Authorization
   alias KeystonePhoenix.User
+  alias KeystonePhoenix.User.RoleMembership
   alias KeystonePhoenix.User.SysUser
 
   @role_attrs [
@@ -418,21 +419,7 @@ defmodule KeystonePhoenix.Role do
   defp update_user_assignments(user_ids, role_id, expected_role_id \\ :any) do
     result =
       Repo.transaction(fn ->
-        query = from(u in SysUser, where: u.deleted == false and u.user_id in ^user_ids)
-
-        query =
-          if expected_role_id == :any,
-            do: query,
-            else: where(query, [u], u.role_id == ^expected_role_id)
-
-        Repo.update_all(
-          query,
-          set: [
-            role_id: role_id,
-            update_time: DateTime.utc_now()
-          ],
-          inc: [permission_version: 1]
-        )
+        RoleMembership.update_user_roles(user_ids, role_id, expected_role_id)
         |> update_result(user_ids, expected_role_id)
       end)
 

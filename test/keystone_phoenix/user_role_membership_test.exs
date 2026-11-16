@@ -5,6 +5,8 @@ defmodule KeystonePhoenix.UserRoleMembershipTest do
 
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Role
+  alias KeystonePhoenix.User
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.RoleMembership
   alias KeystonePhoenix.User.SysUser
@@ -105,6 +107,54 @@ defmodule KeystonePhoenix.UserRoleMembershipTest do
 
     assert %SysUser{role_id: ^admin_role_id} = Repo.get(SysUser, admin_user_id)
     assert %SysRole{role_key: "admin"} = Repo.get(SysRole, admin_role_id)
+  end
+
+  test "user create and update keep the compatibility role and membership row aligned" do
+    first_role = insert_role()
+    second_role = insert_role()
+
+    principal = %{
+      user_id: Identity.v7(),
+      permissions: ["permission:manage", "user:create", "user:update", "role:assign"]
+    }
+
+    assert {:ok, user} =
+             User.create_user(
+               %{
+                 "username" => "membership_user_#{System.unique_integer([:positive])}",
+                 "password" => "Strong!123",
+                 "roleId" => first_role.role_id
+               },
+               authorization: %{principal: principal, permission: "user:create"}
+             )
+
+    assert RoleMembership.list_role_ids_for_user(user.user_id) == [first_role.role_id]
+
+    assert {:ok, updated} =
+             User.update_user(
+               user.user_id,
+               %{"roleId" => second_role.role_id},
+               authorization: %{principal: principal, permission: "user:update"}
+             )
+
+    assert updated.role_id == second_role.role_id
+    assert RoleMembership.list_role_ids_for_user(user.user_id) == [second_role.role_id]
+    assert RoleMembership.list_user_ids_for_role(first_role.role_id) == []
+    assert RoleMembership.list_user_ids_for_role(second_role.role_id) == [user.user_id]
+
+    assert :ok =
+             Role.assign_users(second_role.role_id, [user.user_id],
+               authorization: %{principal: principal, permission: "role:assign"}
+             )
+
+    assert RoleMembership.list_user_ids_for_role(second_role.role_id) == [user.user_id]
+
+    assert :ok =
+             Role.unassign_users(second_role.role_id, [user.user_id],
+               authorization: %{principal: principal, permission: "role:assign"}
+             )
+
+    assert RoleMembership.list_role_ids_for_user(user.user_id) == []
   end
 
   defp insert_role do
