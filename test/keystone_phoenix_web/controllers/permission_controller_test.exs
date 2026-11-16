@@ -34,6 +34,20 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   end
 
   @tag :integration
+  test "role managers can read the permission catalog without API Key issuance", %{conn: conn} do
+    role = insert_role()
+    insert_menu(role.role_id, "role:manage")
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
+
+    assert %{"success" => true, "data" => %{"entries" => entries}} =
+             json_response(get(authorized_conn, "/api/v1/permissions/catalog"), 200)
+
+    assert Enum.any?(entries, &(&1["permission"] == "role:manage" and &1["allowed"] == true))
+  end
+
+  @tag :integration
   test "allows a role permission and rejects a missing permission", %{conn: conn} do
     role = insert_role()
     menu = insert_menu(role.role_id, "post:read")

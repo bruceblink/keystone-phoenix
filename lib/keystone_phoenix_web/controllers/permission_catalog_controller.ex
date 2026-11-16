@@ -1,7 +1,8 @@
 defmodule KeystonePhoenixWeb.PermissionCatalogController do
   use KeystonePhoenixWeb, :controller
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate, permissions: %{index: "api-key:create"}
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+    permissions: %{index: ["api-key:create", "permission:read", "role:manage"]}
 
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Authz.PermissionCatalog
