@@ -232,6 +232,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
               <h2>角色用户：<%= @selected_role_name %></h2>
               <p>管理当前角色的用户分配。</p>
             </div>
+            <button type="button" class="button button-ghost button-sm" phx-click="close-role-users" phx-disable-with="关闭中…">关闭</button>
           </div>
           <%= if @role_user_feedback do %><p id="role-user-feedback" class={Feedback.class(@role_user_feedback)} role={Feedback.role(@role_user_feedback)} aria-live={Feedback.live(@role_user_feedback)}><%= Feedback.message(@role_user_feedback) %></p><% end %>
           <div class="monitor-grid details">

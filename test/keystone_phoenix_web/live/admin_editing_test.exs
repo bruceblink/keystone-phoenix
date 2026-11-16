@@ -143,6 +143,10 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     render_click(view, "select-role", %{"role-id" => to_string(role.role_id)})
     assert has_element?(view, "#role-user-management")
 
+    render_click(view, "close-role-users")
+    refute has_element?(view, "#role-user-management")
+    assert live_socket(view).assigns.selected_role_id == ""
+
     render_click(view, "refresh-roles")
     refute has_element?(view, "#role-user-management")
     assert live_socket(view).assigns.selected_role_id == ""

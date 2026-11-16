@@ -119,7 +119,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
         ])
       )
 
-    assert role_html =~ ~s(phx-click="refresh-roles" phx-disable-with="刷新中…")
+    assert role_html =~ ~s(phx-click="close-role-users")
 
     assert render_component(
              &Organization.menus/1,

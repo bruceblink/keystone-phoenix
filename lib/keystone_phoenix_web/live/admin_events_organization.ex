@@ -377,7 +377,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
               active_modal: nil
             )
 
-          {:noreply, clear_role_selection(socket)}
+          {:noreply, OrganizationRoleSelection.clear_role_selection(socket)}
 
         error ->
           {:noreply, assign(socket, role_feedback: Support.form_error(error))}
@@ -400,7 +400,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           socket =
             after_write(socket, :roles, "角色状态已更新", "角色状态已更新，但列表刷新失败，请重试", selected_role_ids: [])
 
-          {:noreply, clear_role_selection(socket)}
+          {:noreply, OrganizationRoleSelection.clear_role_selection(socket)}
 
         error ->
           {:noreply, assign(socket, role_feedback: Support.form_error(error))}
@@ -458,6 +458,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       {:noreply, socket}
     end
   end
+
+  def handle_event("close-role-users", _params, socket),
+    do: {:noreply, OrganizationRoleSelection.clear_role_selection(socket)}
 
   def handle_event(event, params, socket)
       when event in ["assign-role-user", "unassign-role-user"],
@@ -542,17 +545,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       |> Map.put(:permissions, List.wrap(socket.assigns[:permissions]))
 
     [authorization: %{principal: principal, permission: permission}]
-  end
-
-  defp clear_role_selection(socket) do
-    assign(socket,
-      selected_role_ids: [],
-      selected_role_id: "",
-      selected_role_name: "",
-      allocated_role_user_rows: [],
-      unallocated_role_user_rows: [],
-      role_user_feedback: nil
-    )
   end
 
   defp refresh_rows(socket, resource, message, extra) do

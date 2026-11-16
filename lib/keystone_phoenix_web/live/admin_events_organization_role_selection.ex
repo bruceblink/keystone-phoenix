@@ -5,6 +5,25 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleSelection do
 
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters
 
+  @doc "关闭角色成员面板并重置当前成员分页，避免旧选择残留。"
+  def clear_role_selection(socket) do
+    assign(socket,
+      selected_role_ids: [],
+      selected_role_id: "",
+      selected_role_name: "",
+      allocated_role_user_rows: [],
+      unallocated_role_user_rows: [],
+      role_user_feedback: nil,
+      page_nums: reset_member_pages(socket.assigns.page_nums)
+    )
+  end
+
+  defp reset_member_pages(page_nums) do
+    page_nums
+    |> Map.put("role-users-allocated", 1)
+    |> Map.put("role-users-unallocated", 1)
+  end
+
   def handle_event(
         "toggle-role-selection",
         %{"role-id" => role_id, "selected" => selected},
