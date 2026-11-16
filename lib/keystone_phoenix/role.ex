@@ -503,9 +503,12 @@ defmodule KeystonePhoenix.Role do
   defp filter_user_contains(query, _field, nil), do: query
   defp filter_user_contains(query, _field, ""), do: query
 
+  # 空白筛选等同于未指定，避免排除字段为空的用户。
   defp filter_user_contains(query, field, value) do
-    pattern = "%" <> String.trim(to_string(value)) <> "%"
-    where(query, [user], ilike(field(user, ^field), ^pattern))
+    case String.trim(to_string(value)) do
+      "" -> query
+      value -> where(query, [user], ilike(field(user, ^field), ^("%" <> value <> "%")))
+    end
   end
 
   defp user_count(role_id) do

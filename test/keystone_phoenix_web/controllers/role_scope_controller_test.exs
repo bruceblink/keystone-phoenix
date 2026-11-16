@@ -146,6 +146,11 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     preferred_role = create_role("TENANT")
     actor = create_user(actor_role.role_id)
     allocated = create_user(preferred_role.role_id)
+
+    Repo.update_all(from(user in SysUser, where: user.user_id == ^allocated.user_id),
+      set: [phone_number: nil]
+    )
+
     Repo.insert!(%SysUserRole{user_id: allocated.user_id, role_id: target_role.role_id})
     unallocated = create_user(nil)
     allocated_id = allocated.user_id
@@ -162,6 +167,14 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
 
     assert %{"success" => true, "data" => [^allocated_id]} =
              json_response(allocated_response, 200)
+
+    blank_phone =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "true",
+        "phoneNumber" => "   "
+      })
+
+    assert %{"data" => [^allocated_id]} = json_response(blank_phone, 200)
 
     unallocated_response =
       get(
