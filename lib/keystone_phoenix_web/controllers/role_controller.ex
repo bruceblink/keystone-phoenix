@@ -222,8 +222,10 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   def allocated_users(conn, %{"role_id" => role_id} = params) do
     with {:ok, _role} <- Role.get_role(role_id) do
-      page = Role.list_allocated_users(role_id, params, conn.assigns.current_user)
-      json(conn, ApiResponse.ok(role_users_response(page)))
+      case role_user_ids(role_id, params, conn.assigns.current_user, &Role.list_allocated_users/3) do
+        {:ok, user_ids} -> json(conn, ApiResponse.ok(user_ids))
+        {:error, reason} -> render_error(conn, reason)
+      end
     else
       {:error, :not_found} -> render_error(conn, :not_found)
     end
@@ -232,8 +234,15 @@ defmodule KeystonePhoenixWeb.RoleController do
   @doc "Lists users that are not assigned to a role."
   def unallocated_users(conn, %{"role_id" => role_id} = params) do
     with {:ok, _role} <- Role.get_role(role_id) do
-      page = Role.list_unallocated_users(role_id, params, conn.assigns.current_user)
-      json(conn, ApiResponse.ok(role_users_response(page)))
+      case role_user_ids(
+             role_id,
+             params,
+             conn.assigns.current_user,
+             &Role.list_unallocated_users/3
+           ) do
+        {:ok, user_ids} -> json(conn, ApiResponse.ok(user_ids))
+        {:error, reason} -> render_error(conn, reason)
+      end
     else
       {:error, :not_found} -> render_error(conn, :not_found)
     end
@@ -293,8 +302,16 @@ defmodule KeystonePhoenixWeb.RoleController do
     |> NativeContract.role()
   end
 
-  # Native 只返回角色成员的用户 ID；LiveView 直接使用领域查询，不依赖旧分页响应。
-  defp role_users_response(page), do: NativeContract.role_user_ids(page)
+  # Native 忽略该接口的分页参数并返回完整数组；分批查询保持 Phoenix 单次读取有界。
+  defp role_user_ids(role_id, params, actor, fetch_page) do
+    case Excel.all_rows_result(
+           fn page_params -> fetch_page.(role_id, page_params, actor) end,
+           params
+         ) do
+      {:ok, rows} -> {:ok, NativeContract.role_user_ids(rows)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
 
   defp role_export_row(row) do
     [

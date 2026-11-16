@@ -207,6 +207,81 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
   end
 
   @tag :integration
+  test "role member HTTP queries return all IDs even when page parameters are supplied" do
+    reader_role = create_role("ALL")
+    grant_permission(reader_role.role_id, "role:read")
+    target_role = create_role("ALL")
+    preferred_role = create_role("ALL")
+    actor = create_user(reader_role.role_id)
+    token = step_up_token(actor)
+    now = DateTime.utc_now()
+
+    allocated_rows =
+      for index <- 1..501 do
+        %{
+          user_id: Identity.v7(),
+          username: "role_scope_bulk_#{index}_#{System.unique_integer([:positive])}",
+          password: "bulk-test-password",
+          role_id: preferred_role.role_id,
+          status: 1,
+          deleted: false,
+          create_time: now,
+          update_time: now
+        }
+      end
+
+    {501, inserted_users} = Repo.insert_all(SysUser, allocated_rows, returning: [:user_id])
+
+    Repo.insert_all(
+      SysUserRole,
+      Enum.map(inserted_users, &%{user_id: &1.user_id, role_id: target_role.role_id})
+    )
+
+    allocated_ids = Enum.map(inserted_users, & &1.user_id)
+
+    unallocated_ids =
+      for _ <- 1..12 do
+        create_user(nil).user_id
+      end
+
+    allocated_response =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "true"
+      })
+
+    allocated_result = json_response(allocated_response, 200)
+    assert MapSet.new(allocated_result["data"]) == MapSet.new(allocated_ids)
+
+    unallocated_response =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "false"
+      })
+
+    unallocated_result = json_response(unallocated_response, 200)
+    assert MapSet.subset?(MapSet.new(unallocated_ids), MapSet.new(unallocated_result["data"]))
+
+    explicit_page =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "true",
+        "pageNum" => "2",
+        "pageSize" => "3"
+      })
+
+    explicit_page_ids = json_response(explicit_page, 200)["data"]
+    assert MapSet.new(explicit_page_ids) == MapSet.new(allocated_ids)
+
+    missing_role = get(authorized(token), "/api/v1/roles/#{Identity.v7()}/users")
+    assert get_in(json_response(missing_role, 404), ["error", "code"]) == "resource_not_found"
+
+    unprivileged = create_user(nil)
+
+    denied =
+      get(authorized(step_up_token(unprivileged)), "/api/v1/roles/#{target_role.role_id}/users")
+
+    assert get_in(json_response(denied, 403), ["error", "code"]) == "permission_denied"
+  end
+
+  @tag :integration
   test "role batch delete rolls back missing targets and deduplicates IDs" do
     actor_role = create_role("TENANT")
     grant_permission(actor_role.role_id, "role:delete")
