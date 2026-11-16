@@ -37,6 +37,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       captcha_key: nil,
       captcha_image: nil,
       active_panel: "monitor",
+      current_uri: "/",
       sidebar_open: false,
       notifications_open: false,
       notifications_error: nil,

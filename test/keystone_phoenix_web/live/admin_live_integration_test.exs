@@ -39,6 +39,28 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
   end
 
   @tag :integration
+  test "menu filter state is preserved in the deep link", %{conn: conn, admin: admin} do
+    {:ok, view, _html} = live(conn, "/")
+
+    render_submit(view, "login", %{
+      "username" => admin.username,
+      "password" => "Strong!123"
+    })
+
+    render_click(view, "show-panel", %{"panel" => "menus"})
+    render_submit(view, "refresh-menus", %{"menuKeyword" => "role"})
+
+    assert live_socket(view).assigns.active_panel == "menus"
+    assert live_socket(view).assigns.menu_filter == "role"
+    assert live_socket(view).assigns.current_uri =~ "/menus?keyword=role"
+
+    render_click(view, "refresh-menus", %{"reset" => "true"})
+    assert live_socket(view).assigns.menu_filter == ""
+    assert URI.parse(live_socket(view).assigns.current_uri).path == "/menus"
+    assert URI.parse(live_socket(view).assigns.current_uri).query in [nil, ""]
+  end
+
+  @tag :integration
   test "admin login and user management persist through LiveView", %{conn: conn, admin: admin} do
     {:ok, view, html} = live(conn, "/")
 

@@ -54,17 +54,21 @@ defmodule KeystonePhoenixWeb.LoginLive do
   end
 
   @impl true
-  def handle_params(_params, uri, socket) do
+  def handle_params(params, uri, socket) do
     requested_panel = Navigation.panel_for_path(uri)
+    socket = assign(socket, current_uri: uri)
 
     if AdminSupport.authenticated_socket?(socket) do
-      {:noreply, assign(socket, active_panel: requested_panel)}
+      socket = assign(socket, active_panel: requested_panel)
+      menu_filter = String.trim(params["keyword"] || "")
+
+      {:noreply,
+       if(requested_panel == "menus", do: assign(socket, menu_filter: menu_filter), else: socket)}
     else
       {:noreply, assign(socket, requested_panel: requested_panel)}
     end
   end
 
-  @impl true
   def handle_event("login", params, socket),
     do: LoginEvents.handle_login(params, socket, liveview_ip(socket))
 
@@ -285,13 +289,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event(event, params, socket) when event in @security_events,
     do: SecurityEvents.handle_event(event, params, socket)
 
-  @impl true
   def handle_event("logout", _params, socket) do
     Auth.logout(socket.assigns.refresh_token)
     {:noreply, socket |> LoginState.reset() |> Authentication.refresh_captcha()}
   end
 
-  @impl true
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
   defp dispatch_pagination("posts", page, socket),

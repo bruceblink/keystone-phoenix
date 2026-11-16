@@ -467,13 +467,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     if Support.panel_allowed?(socket, "menus") do
       filter = OrganizationFilters.menu_filter(params, socket.assigns[:menu_filter])
 
-      {:noreply,
-       refresh_rows(socket, :menus, "菜单列表刷新失败，请重试",
-         menu_form: Support.empty_menu_form(),
-         menu_filter: filter,
-         menu_role_codes: [],
-         active_modal: nil
-       )}
+      socket =
+        refresh_rows(socket, :menus, "菜单列表刷新失败，请重试",
+          menu_form: Support.empty_menu_form(),
+          menu_filter: filter,
+          menu_role_codes: [],
+          active_modal: nil
+        )
+
+      {:noreply, Phoenix.LiveView.push_patch(socket, to: OrganizationMenu.filter_path(filter))}
     else
       {:noreply, socket}
     end
@@ -593,6 +595,5 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
   defp resource_loader(:depts), do: {&AdminReadSupport.departments/1, :dept_rows, :dept_feedback}
   defp resource_loader(:posts), do: {&AdminReadSupport.posts/1, :post_rows, :post_feedback}
-  defp resource_loader(:roles), do: {&AdminReadSupport.roles/1, :role_rows, :role_feedback}
   defp resource_loader(:menus), do: {&AdminReadSupport.menus/1, :menu_rows, :menu_feedback}
 end
