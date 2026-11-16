@@ -91,6 +91,20 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
               <section class="user-import-result" aria-label="导入结果">
                 <div class="user-import-summary"><span><strong><%= @user_import_result["success"] %></strong><small>成功</small></span><span><strong><%= length(@user_import_result["failed"]) %></strong><small>失败</small></span><span><strong><%= @user_import_result["total"] %></strong><small>总行数</small></span></div>
                 <p :if={@user_import_result["failed"] == []} class="feedback">全部数据已成功导入。</p>
+                <div :if={@user_import_result["failed"] != []} class="user-import-failures">
+                  <h3>失败行</h3>
+                  <div class="user-import-failures-wrap" role="region" tabindex="0" aria-label="用户导入失败明细">
+                    <table class="user-import-failures-table">
+                      <caption class="sr-only">用户导入失败明细</caption>
+                      <thead><tr><th scope="col">行号</th><th scope="col">用户名</th><th scope="col">原因</th></tr></thead>
+                      <tbody>
+                        <%= for failure <- @user_import_result["failed"] do %>
+                          <tr><td><%= failure["row"] %></td><td><%= failure["username"] || "—" %></td><td><%= failure["reason"] %></td></tr>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </section>
             <% else %>
               <p class="muted">导入要求当前登录会话完成 AAL2 验证。</p>

@@ -367,7 +367,8 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         ["部门ID", "用户名", "密码", "状态", "角色ID"],
         [
           [ctx.child.dept_id, allowed_username, "Strong!123", 1, nil],
-          [ctx.outside.dept_id, denied_username, "Strong!123", 1, nil]
+          [ctx.outside.dept_id, denied_username, "Strong!123", 1, nil],
+          [ctx.parent.dept_id, ctx.actor.username, "Strong!123", 1, nil]
         ],
         "users.xlsx"
       )
@@ -431,9 +432,17 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         "file" => upload
       })
 
-    assert %{"data" => %{"success" => 1, "failed" => [failure]}} = json_response(response, 200)
-    assert failure["username"] == denied_username
-    assert failure["reason"] == "没有数据权限"
+    assert %{"data" => %{"success" => 1, "failed" => [scope_failure, duplicate_failure]}} =
+             json_response(response, 200)
+
+    assert scope_failure["row"] == 3
+    assert scope_failure["username"] == denied_username
+    assert scope_failure["reason"] == "没有数据权限"
+    assert is_binary(scope_failure["reason"])
+    assert duplicate_failure["row"] == 4
+    assert duplicate_failure["username"] == ctx.actor.username
+    assert duplicate_failure["reason"] == "username already exists"
+    assert is_binary(duplicate_failure["reason"])
     assert {:ok, imported} = User.get_user_by_username(allowed_username)
     assert imported.dept_id == ctx.child.dept_id
     assert {:error, :not_found} = User.get_user_by_username(denied_username)

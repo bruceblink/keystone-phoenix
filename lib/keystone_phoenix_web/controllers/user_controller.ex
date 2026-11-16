@@ -400,13 +400,55 @@ defmodule KeystonePhoenixWeb.UserController do
   end
 
   defp failure_reason(%Ecto.Changeset{} = changeset) do
-    Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
+    if username_already_exists?(changeset) do
+      "username already exists"
+    else
+      changeset
+      |> Ecto.Changeset.traverse_errors(&format_import_validation_message/1)
+      |> Enum.flat_map(fn {field, messages} ->
+        Enum.map(List.wrap(messages), &"#{import_error_field(field)}：#{&1}")
+      end)
+      |> Enum.join("；")
+      |> case do
+        "" -> "用户数据无效"
+        message -> message
+      end
+    end
   end
 
   defp failure_reason(:data_scope_denied), do: "没有数据权限"
   defp failure_reason(:role_assignment_forbidden), do: "没有角色分配权限"
-
   defp failure_reason(reason), do: to_string(reason)
+
+  # 管理端约定每条失败原因都是字符串；重复用户名沿用 Native 的公开原因。
+  defp username_already_exists?(%Ecto.Changeset{errors: errors}) do
+    Enum.any?(errors, fn
+      {:username, {"has already been taken", _opts}} -> true
+      _error -> false
+    end)
+  end
+
+  # 保留 Changeset 的字段约束说明，并把长度等动态参数展开为可读文本。
+  defp format_import_validation_message({message, opts}) do
+    Regex.replace(~r"%{(\w+)}", message, fn _, key ->
+      case Enum.find(opts, fn {option, _value} -> Atom.to_string(option) == key end) do
+        {_option, value} -> to_string(value)
+        nil -> "%{#{key}}"
+      end
+    end)
+  end
+
+  # 用中文字段名给导入失败明细提供定位信息。
+  defp import_error_field(:username), do: "用户名"
+  defp import_error_field(:nickname), do: "昵称"
+  defp import_error_field(:password), do: "密码"
+  defp import_error_field(:email), do: "邮箱"
+  defp import_error_field(:phone_number), do: "联系电话"
+  defp import_error_field(:sex), do: "性别"
+  defp import_error_field(:status), do: "状态"
+  defp import_error_field(:avatar), do: "头像"
+  defp import_error_field(:remark), do: "备注"
+  defp import_error_field(field), do: Atom.to_string(field)
 
   defp ids(rows, key), do: rows |> Enum.map(&Map.get(&1, key)) |> Enum.reject(&is_nil/1)
 
