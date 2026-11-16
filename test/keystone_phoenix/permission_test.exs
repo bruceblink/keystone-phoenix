@@ -95,6 +95,78 @@ defmodule KeystonePhoenix.PermissionTest do
     refute Permission.data_scope_allowed?(custom_user, :dept, nil)
   end
 
+  test "unions data scopes across persisted user roles" do
+    parent = insert_dept(106, nil, "")
+    other = insert_dept(107, nil, "")
+    outside = insert_dept(108, nil, "")
+
+    department_role =
+      insert_role(%{
+        data_scope: "DEPARTMENT",
+        role_key: unique("union_department_scope")
+      })
+
+    custom_role =
+      insert_role(%{
+        data_scope: "CUSTOM",
+        dept_id_set: to_string(other.dept_id),
+        role_key: unique("union_custom_scope")
+      })
+
+    actor = insert_scope_user(parent.dept_id, department_role.role_id)
+    parent_user = insert_scope_user(parent.dept_id, nil)
+    other_user = insert_scope_user(other.dept_id, nil)
+    outside_user = insert_scope_user(outside.dept_id, nil)
+
+    Repo.insert_all(SysUserRole, [
+      %{user_id: actor.user_id, role_id: department_role.role_id},
+      %{user_id: actor.user_id, role_id: custom_role.role_id}
+    ])
+
+    scoped_user_ids =
+      from(user in SysUser, where: user.deleted == false, select: user.user_id)
+      |> Permission.scope_users(actor)
+      |> Repo.all()
+      |> MapSet.new()
+
+    assert parent_user.user_id in scoped_user_ids
+    assert other_user.user_id in scoped_user_ids
+    refute outside_user.user_id in scoped_user_ids
+    assert Permission.data_scope_allowed?(actor, :dept, parent.dept_id)
+    assert Permission.data_scope_allowed?(actor, :dept, other.dept_id)
+    refute Permission.data_scope_allowed?(actor, :dept, outside.dept_id)
+    assert Permission.user_update_allowed?(actor, other_user.user_id, %{})
+    refute Permission.user_update_allowed?(actor, outside_user.user_id, %{})
+
+    Repo.delete_all(
+      from membership in SysUserRole,
+        where: membership.user_id == ^actor.user_id and membership.role_id == ^custom_role.role_id
+    )
+
+    narrowed_ids =
+      from(user in SysUser, where: user.deleted == false, select: user.user_id)
+      |> Permission.scope_users(actor)
+      |> Repo.all()
+      |> MapSet.new()
+
+    refute other_user.user_id in narrowed_ids
+    assert parent_user.user_id in narrowed_ids
+
+    Repo.insert!(%SysUserRole{user_id: actor.user_id, role_id: custom_role.role_id})
+
+    Repo.update!(
+      Ecto.Changeset.change(Repo.get!(SysRole, custom_role.role_id), data_scope: "ALL")
+    )
+
+    global_ids =
+      from(user in SysUser, where: user.deleted == false, select: user.user_id)
+      |> Permission.scope_users(actor)
+      |> Repo.all()
+      |> MapSet.new()
+
+    assert outside_user.user_id in global_ids
+  end
+
   test "applies department scope to direct detail queries" do
     parent = insert_dept(103, nil, "")
     child = insert_dept(104, parent.dept_id, to_string(parent.dept_id))
@@ -203,6 +275,20 @@ defmodule KeystonePhoenix.PermissionTest do
       dept_name: "部门 #{legacy_id}",
       status: 1
     })
+    |> Repo.insert!()
+  end
+
+  defp insert_scope_user(dept_id, role_id) do
+    attrs = %{
+      username: unique("scope_union_user"),
+      password: "Strong!123",
+      dept_id: dept_id,
+      role_id: role_id,
+      status: 1
+    }
+
+    %SysUser{}
+    |> SysUser.create_changeset(attrs)
     |> Repo.insert!()
   end
 

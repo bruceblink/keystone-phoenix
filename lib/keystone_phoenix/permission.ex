@@ -113,24 +113,22 @@ defmodule KeystonePhoenix.Permission do
   end
 
   defp scoped_users_query(query, user) do
-    role_id = user_value(user, :role_id, "roleId")
+    roles = active_roles(user)
 
-    with true <- uuid?(role_id),
-         %SysRole{status: 1} = role <- Repo.get_by(SysRole, role_id: role_id, deleted: false) do
-      scope_user_query(query, role, user)
-    else
-      _ -> where(query, false)
+    cond do
+      roles == [] -> where(query, false)
+      Enum.any?(roles, &global_scope?/1) -> query
+      true -> where(query, ^user_scope_dynamic(roles, user))
     end
   end
 
   defp scoped_departments_query(query, user) do
-    role_id = user_value(user, :role_id, "roleId")
+    roles = active_roles(user)
 
-    with true <- uuid?(role_id),
-         %SysRole{status: 1} = role <- Repo.get_by(SysRole, role_id: role_id, deleted: false) do
-      scope_department_query(query, role, user)
-    else
-      _ -> where(query, false)
+    cond do
+      roles == [] -> where(query, false)
+      Enum.any?(roles, &global_scope?/1) -> query
+      true -> where(query, ^department_scope_dynamic(roles, user))
     end
   end
 
@@ -224,90 +222,102 @@ defmodule KeystonePhoenix.Permission do
     end
   end
 
-  defp scope_user_query(query, %{data_scope: scope}, _user) when scope in ["ALL", "TENANT"],
-    do: query
+  # 多角色主体按各角色范围取并集；任一 ALL/TENANT 角色都可以访问全域。
+  defp active_roles(user) do
+    ids = role_ids(user)
 
-  defp scope_user_query(query, %{data_scope: "CUSTOM", dept_id_set: ids}, _user) do
+    from(role in SysRole,
+      where: role.role_id in ^ids and role.deleted == false and role.status == 1
+    )
+    |> Repo.all()
+  end
+
+  defp global_scope?(%{data_scope: scope}), do: scope in ["ALL", "TENANT"]
+  defp global_scope?(_role), do: false
+
+  defp user_scope_dynamic(roles, user) do
+    Enum.reduce(roles, dynamic([target], false), fn role, expression ->
+      dynamic([target], ^expression or ^user_scope_predicate(role, user))
+    end)
+  end
+
+  defp user_scope_predicate(%{data_scope: "CUSTOM", dept_id_set: ids}, _user) do
     dept_ids = parse_id_set(ids)
-    where(query, [target], target.dept_id in ^dept_ids)
+    dynamic([target], target.dept_id in ^dept_ids)
   end
 
-  defp scope_user_query(query, %{data_scope: "DEPARTMENT"}, user) do
-    case user_value(user, :dept_id, "deptId") do
-      nil -> where(query, false)
-      dept_id -> where(query, [target], target.dept_id == ^dept_id)
-    end
+  defp user_scope_predicate(%{data_scope: "DEPARTMENT"}, user) do
+    dept_id = user_value(user, :dept_id, "deptId")
+
+    if is_nil(dept_id),
+      do: dynamic([target], false),
+      else: dynamic([target], target.dept_id == ^dept_id)
   end
 
-  defp scope_user_query(query, %{data_scope: "DEPARTMENT_AND_CHILDREN"}, user) do
-    case user_value(user, :dept_id, "deptId") do
-      nil ->
-        where(query, false)
-
-      dept_id ->
-        ancestor = to_string(dept_id)
-
-        departments =
-          from dept in SysDept,
-            where:
-              dept.deleted == false and
-                (dept.dept_id == ^dept_id or
-                   fragment("? = ANY(string_to_array(?, ','))", ^ancestor, dept.ancestors)),
-            select: dept.dept_id
-
-        where(query, [target], target.dept_id in subquery(departments))
-    end
+  defp user_scope_predicate(%{data_scope: "DEPARTMENT_AND_CHILDREN"}, user) do
+    dept_ids = visible_department_ids(user)
+    dynamic([target], target.dept_id in ^dept_ids)
   end
 
-  defp scope_user_query(query, %{data_scope: "SELF"}, user) do
+  defp user_scope_predicate(%{data_scope: "SELF"}, user) do
     user_id = user_value(user, :user_id, "userId")
-    where(query, [target], target.user_id == ^user_id)
+
+    if is_nil(user_id),
+      do: dynamic([target], false),
+      else: dynamic([target], target.user_id == ^user_id)
   end
 
-  defp scope_user_query(query, _role, _user), do: where(query, false)
+  defp user_scope_predicate(_role, _user), do: dynamic([target], false)
 
-  defp scope_department_query(query, %{data_scope: scope}, _user) when scope in ["ALL", "TENANT"],
-    do: query
-
-  defp scope_department_query(query, %{data_scope: "CUSTOM", dept_id_set: ids}, _user) do
-    where(query, [target], target.dept_id in ^parse_id_set(ids))
+  defp department_scope_dynamic(roles, user) do
+    Enum.reduce(roles, dynamic([target], false), fn role, expression ->
+      dynamic([target], ^expression or ^department_scope_predicate(role, user))
+    end)
   end
 
-  defp scope_department_query(query, %{data_scope: scope}, user)
+  defp department_scope_predicate(%{data_scope: "CUSTOM", dept_id_set: ids}, _user) do
+    dept_ids = parse_id_set(ids)
+    dynamic([target], target.dept_id in ^dept_ids)
+  end
+
+  defp department_scope_predicate(%{data_scope: scope}, user)
        when scope in ["DEPARTMENT", "SELF"] do
-    case user_value(user, :dept_id, "deptId") do
-      nil -> where(query, false)
-      dept_id -> where(query, [target], target.dept_id == ^dept_id)
-    end
+    dept_id = user_value(user, :dept_id, "deptId")
+
+    if is_nil(dept_id),
+      do: dynamic([target], false),
+      else: dynamic([target], target.dept_id == ^dept_id)
   end
 
-  defp scope_department_query(query, %{data_scope: "DEPARTMENT_AND_CHILDREN"}, user) do
-    case user_value(user, :dept_id, "deptId") do
+  defp department_scope_predicate(%{data_scope: "DEPARTMENT_AND_CHILDREN"}, user) do
+    dept_ids = visible_department_ids(user)
+    dynamic([target], target.dept_id in ^dept_ids)
+  end
+
+  defp department_scope_predicate(_role, _user), do: dynamic([target], false)
+
+  defp visible_department_ids(user) do
+    case parse_uuid(user_value(user, :dept_id, "deptId")) do
       nil ->
-        where(query, false)
+        []
 
       dept_id ->
         ancestor = to_string(dept_id)
 
-        from dept in query,
+        from(dept in SysDept,
           where:
-            dept.dept_id == ^dept_id or
-              fragment("? = ANY(string_to_array(?, ','))", ^ancestor, dept.ancestors)
+            dept.deleted == false and
+              (dept.dept_id == ^dept_id or
+                 fragment("? = ANY(string_to_array(?, ','))", ^ancestor, dept.ancestors)),
+          select: dept.dept_id
+        )
+        |> Repo.all()
     end
   end
-
-  defp scope_department_query(query, _role, _user), do: where(query, false)
 
   defp check_scope(user, target_dept_id, target_user_id) do
-    role_id = user_value(user, :role_id, "roleId")
-
-    with true <- uuid?(role_id),
-         %SysRole{} = role <- Repo.get_by(SysRole, role_id: role_id, deleted: false),
-         true <- role.status == 1 do
-      scope_matches?(role, user, target_dept_id, target_user_id)
-    else
-      _ -> false
-    end
+    active_roles(user)
+    |> Enum.any?(&scope_matches?(&1, user, target_dept_id, target_user_id))
   rescue
     _error -> false
   end
@@ -373,8 +383,6 @@ defmodule KeystonePhoenix.Permission do
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
   end
-
-  defp uuid?(value), do: not is_nil(parse_uuid(value))
 
   defp parse_uuid(value) do
     case KeystonePhoenix.Params.parse_uuid(value) do
