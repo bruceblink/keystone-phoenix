@@ -68,6 +68,22 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     assert refreshed.assigns.profile_feedback
   end
 
+  test "monitor page forwards the initial read error to its component", %{conn: conn} do
+    user = create_monitor_user("server:read")
+    {:ok, view, _html} = login_view(conn, user)
+
+    assigns =
+      live_socket(view).assigns
+      |> Map.put(:active_panel, "monitor")
+      |> Map.put(:monitor_loading, false)
+      |> Map.put(:monitor_initial_error, {:error, "service_unavailable", "监控暂不可用"})
+
+    html = render_component(&KeystonePhoenixWeb.LoginLive.render/1, assigns)
+    assert html =~ ~s(id="monitor-initial-error")
+    assert html =~ ~s(phx-click="retry-monitor")
+    refute html =~ ~s(class="monitor-grid")
+  end
+
   test "a read-only user refreshes users and remains data scoped", %{conn: conn} do
     parent = insert_dept("父部门")
     outside = insert_dept("外部部门")
