@@ -68,4 +68,54 @@ defmodule KeystonePhoenixWeb.AdminDictionaryFilterPaginationTest do
     assert length(live_socket(view).assigns.dict_data_rows) == 50
     assert live_socket(view).assigns.page_nums["dict-data"] == 1
   end
+
+  @tag :integration
+  test "dictionary item filtering matches value and label", %{conn: conn, admin: admin} do
+    dict_type = "live.filter.keyword.#{System.unique_integer([:positive])}"
+
+    {:ok, _type} =
+      Dictionary.create_dict_type(
+        %{"dictName" => "条目关键词字典", "dictType" => dict_type, "status" => 1},
+        authorization: %{principal: admin}
+      )
+
+    Enum.each(
+      [
+        %{"dictLabel" => "普通条目", "dictValue" => "plain"},
+        %{"dictLabel" => "目标显示名", "dictValue" => "other"},
+        %{"dictLabel" => "其他条目", "dictValue" => "keyword-value"}
+      ],
+      fn attrs ->
+        {:ok, _data} =
+          Dictionary.create_dict_data(
+            Map.merge(attrs, %{
+              "dictType" => dict_type,
+              "dictSort" => 1,
+              "isDefault" => false,
+              "status" => 1
+            }),
+            authorization: %{principal: admin}
+          )
+      end
+    )
+
+    {:ok, view, _html} = live(conn, "/")
+
+    render_submit(view, "login", %{
+      "username" => admin.username,
+      "password" => "Strong!123"
+    })
+
+    render_click(view, "show-panel", %{"panel" => "dicts"})
+    render_click(view, "select-dict-type", %{"dict-type" => dict_type})
+    render_submit(view, "filter-dict-data", %{"dictDataKeyword" => "keyword-value"})
+
+    assert live_socket(view).assigns.dict_data_total == 1
+    assert [%{"dictValue" => "keyword-value"}] = live_socket(view).assigns.dict_data_rows
+
+    render_submit(view, "filter-dict-data", %{"dictDataKeyword" => "目标显示名"})
+
+    assert live_socket(view).assigns.dict_data_total == 1
+    assert [%{"dictLabel" => "目标显示名"}] = live_socket(view).assigns.dict_data_rows
+  end
 end

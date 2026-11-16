@@ -81,6 +81,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       |> assign_new(:dict_data_page_num, fn -> 1 end)
       |> assign_new(:dict_data_page_size, fn -> 50 end)
       |> assign_new(:dict_data_total, fn -> nil end)
+      |> assign_new(:dict_data_filter, fn -> %{"keyword" => ""} end)
       |> assign_new(:dict_type_filter, fn -> %{"keyword" => ""} end)
 
     ~H"""
@@ -140,6 +141,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       <%= if @selected_dict_type == "" and @active_modal != "dict-data" do %>
         <div class="dictionaries-empty" role="status"><strong>选择一个字典类型</strong><p>左侧选择类型后查看条目。</p></div>
       <% else %>
+      <%= if @selected_dict_type != "" do %>
+        <form id="dict-data-filter" class="dictionary-items-filter-form filter-form" phx-submit="filter-dict-data">
+          <label for="dict-data-filter-keyword"><span>条目值或名称</span><input id="dict-data-filter-keyword" name="dictDataKeyword" value={@dict_data_filter["keyword"] || ""} placeholder="按值或名称筛选" autocomplete="off" /></label>
+          <div class="dictionary-items-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-dict-data-filter">重置</button></div>
+        </form>
+      <% end %>
       <%= if @active_modal == "dict-data" do %>
         <.modal id="dict-data-modal" title={if @dict_data_form["dictCode"] == "", do: "新建字典数据", else: "编辑字典数据"} description="维护字典标签、值和展示属性。">
     <form :if={!@read_only} aria-describedby="dict-feedback" phx-submit="save-dict-data">

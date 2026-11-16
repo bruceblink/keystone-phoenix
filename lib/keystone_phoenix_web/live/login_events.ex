@@ -381,6 +381,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       dict_feedback: nil,
       dict_type_form: AdminSupport.empty_dict_type_form(),
       dict_data_form: AdminSupport.empty_dict_data_form(dashboard.selected_dict_type),
+      dict_data_filter: %{"keyword" => ""},
       selected_dict_type: dashboard.selected_dict_type,
       job_rows: dashboard.job_rows,
       job_total: dashboard[:job_total] || length(dashboard.job_rows),

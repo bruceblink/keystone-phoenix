@@ -48,13 +48,18 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   def handle_event("select-dict-type", %{"dict-type" => dict_type}, socket) do
     if Support.panel_allowed?(socket, "dicts") and
          Support.dict_type_allowed?(socket, dict_type) do
-      case AdminReadSupport.dictionary_data_page(socket, dict_type, dict_page_params(socket, 1)) do
+      case AdminReadSupport.dictionary_data_page(
+             socket,
+             dict_type,
+             dict_page_params(socket, 1, %{"keyword" => ""})
+           ) do
         {:ok, page} ->
           {:noreply,
            assign(socket,
              selected_dict_type: dict_type,
              dict_data_rows: page.items,
              dict_data_total: page.total,
+             dict_data_filter: %{"keyword" => ""},
              dict_data_form: Support.empty_dict_data_form(dict_type),
              page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
              dict_feedback: nil,
@@ -72,13 +77,47 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     end
   end
 
+  def handle_event("filter-dict-data", params, socket) do
+    if Support.panel_allowed?(socket, "dicts") and socket.assigns.selected_dict_type != "" do
+      filter = %{"keyword" => String.trim(to_string(params["dictDataKeyword"] || ""))}
+
+      case AdminReadSupport.dictionary_data_page(
+             socket,
+             socket.assigns.selected_dict_type,
+             dict_page_params(socket, 1, filter)
+           ) do
+        {:ok, page} ->
+          {:noreply,
+           assign(socket,
+             dict_data_filter: filter,
+             dict_data_rows: page.items,
+             dict_data_total: page.total,
+             page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
+             page_sizes: Map.put(socket.assigns.page_sizes, "dict-data", page.size),
+             dict_feedback: nil
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             dict_feedback: Support.read_error_feedback(reason, "字典条目筛选失败，请重试")
+           )}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("reset-dict-data-filter", _params, socket),
+    do: handle_event("filter-dict-data", %{}, socket)
+
   def handle_event("paginate-dict-data", %{"page" => page}, socket) do
     case Integer.parse(to_string(page)) do
       {page, ""} when page > 0 and socket.assigns.selected_dict_type != "" ->
         case AdminReadSupport.dictionary_data_page(
                socket,
                socket.assigns.selected_dict_type,
-               dict_page_params(socket, page)
+               dict_page_params(socket, page, socket.assigns[:dict_data_filter] || %{})
              ) do
           {:ok, result} ->
             {:noreply,
@@ -441,10 +480,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   defp reset_log_page(filter), do: Map.put(filter, "pageNum", 1)
 
-  defp dict_page_params(socket, page) do
+  defp dict_page_params(socket, page, filter \\ nil) do
+    filter = filter || socket.assigns[:dict_data_filter] || %{}
+
     %{
       "pageNum" => page,
-      "pageSize" => get_in(socket.assigns, [:page_sizes, "dict-data"]) || 50
+      "pageSize" => get_in(socket.assigns, [:page_sizes, "dict-data"]) || 50,
+      "keyword" => filter["keyword"] || ""
     }
   end
 
