@@ -11,8 +11,7 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
   alias KeystonePhoenix.Authz.Principal
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Params
-  alias KeystonePhoenix.Repo
-  alias KeystonePhoenix.Role.SysRole
+  alias KeystonePhoenix.Permission
 
   @tenant_scopes ~w(ALL TENANT)
 
@@ -72,14 +71,19 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
       resource_rule.kind != :owner_or_global ->
         {:error, :data_scope_denied}
 
-      role_scope(subject) in @tenant_scopes ->
-        {:ok, :all}
-
-      role_scope(subject) == "OWNER" and canonical_id?(subject.subject_id) ->
-        {:ok, {:owner, subject.subject_id}}
-
       true ->
-        {:error, :data_scope_denied}
+        scopes = role_scopes(subject)
+
+        cond do
+          Enum.any?(scopes, &(&1 in @tenant_scopes)) ->
+            {:ok, :all}
+
+          "OWNER" in scopes and canonical_id?(subject.subject_id) ->
+            {:ok, {:owner, subject.subject_id}}
+
+          true ->
+            {:error, :data_scope_denied}
+        end
     end
   rescue
     _error -> {:error, :data_scope_denied}
@@ -126,16 +130,17 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
   end
 
   defp allowed_by_rule?(subject, %{kind: :global, scopes: allowed_scopes}, _context) do
-    scope = role_scope(subject)
-    scope in allowed_scopes and scope in @tenant_scopes
+    Enum.any?(role_scopes(subject), &(&1 in allowed_scopes and &1 in @tenant_scopes))
   end
 
   defp allowed_by_rule?(subject, %{kind: :owner_or_global}, context) do
-    case role_scope(subject) do
-      scope when scope in @tenant_scopes ->
+    scopes = role_scopes(subject)
+
+    cond do
+      Enum.any?(scopes, &(&1 in @tenant_scopes)) ->
         true
 
-      "OWNER" ->
+      "OWNER" in scopes ->
         if Map.get(context, :defer_owner, Map.get(context, "defer_owner", false)) do
           true
         else
@@ -143,7 +148,7 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
           canonical_id?(subject.subject_id) and owner_id == subject.subject_id
         end
 
-      _scope ->
+      true ->
         false
     end
   end
@@ -152,18 +157,12 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
 
   defp admin?(subject), do: Principal.admin?(subject) or Authz.admin?(subject)
 
-  defp role_scope(%Principal{raw: raw, roles: roles}) do
-    with nil <- direct_scope(raw),
-         role_id when is_binary(role_id) <- role_id(raw, roles),
-         {:ok, role_id} <- Params.parse_uuid(role_id),
-         %SysRole{data_scope: scope} <- Repo.get_by(SysRole, role_id: role_id, deleted: false) do
-      DataScope.normalize(scope)
-    else
-      scope when is_binary(scope) -> DataScope.normalize(scope)
-      _ -> nil
+  # 入口数据范围必须与用户查询使用相同的启用角色并集规则。
+  defp role_scopes(%Principal{raw: raw} = subject) do
+    case direct_scope(raw) do
+      nil -> Permission.active_data_scopes(subject)
+      scope -> [scope]
     end
-  rescue
-    _error -> nil
   end
 
   defp direct_scope(raw) when is_map(raw) do
@@ -176,12 +175,6 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
 
   defp normalize_optional_scope(scope) when is_binary(scope), do: DataScope.normalize(scope)
   defp normalize_optional_scope(_scope), do: nil
-
-  defp role_id(raw, roles) when is_map(raw) do
-    Map.get(raw, :role_id, Map.get(raw, "role_id", Map.get(raw, "roleId"))) || List.first(roles)
-  end
-
-  defp role_id(_raw, roles), do: List.first(roles)
 
   defp canonical_id?(value) do
     case Params.parse_uuid(value) do

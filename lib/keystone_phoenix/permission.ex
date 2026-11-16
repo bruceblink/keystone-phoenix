@@ -4,6 +4,7 @@ defmodule KeystonePhoenix.Permission do
   import Ecto.Query
 
   alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Authz.DataScope
   alias KeystonePhoenix.Authz.Principal
   alias KeystonePhoenix.Authz.PermissionCatalog
   alias KeystonePhoenix.Authz.SysPermission
@@ -106,6 +107,10 @@ defmodule KeystonePhoenix.Permission do
   def scope_users(query, user) do
     if admin?(user), do: query, else: scoped_users_query(query, user)
   end
+
+  @doc "返回主体全部启用角色的数据范围，供资源入口按并集执行访问判断。"
+  def active_data_scopes(user),
+    do: Enum.map(active_roles(user), &DataScope.normalize(&1.data_scope))
 
   @doc "Adds the current role's data scope before returning departments."
   def scope_departments(query, user) do
