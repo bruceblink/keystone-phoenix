@@ -10,6 +10,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   alias KeystonePhoenixWeb.Live.AdminEventsAccountsParams, as: AccountParams
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
+  alias KeystonePhoenixWeb.Live.AdminPages.AccountReload
   alias KeystonePhoenixWeb.UserController
 
   def handle_event("filter-users", params, socket) do
@@ -225,9 +226,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
           case result do
             {:ok, _user} ->
               {:noreply,
-               assign(socket,
+               assign(
+                 AccountReload.after_user_write(
+                   socket,
+                   "角色列表已刷新"
+                 ),
                  user_rows: reload_users(socket),
-                 role_rows: Support.load_roles_for_socket(socket),
                  user_form: Support.empty_user_form(),
                  active_modal: nil,
                  user_feedback: if(user_id == "", do: "用户已创建", else: "用户已更新")
@@ -569,9 +573,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
            ) do
         :ok ->
           {:noreply,
-           assign(socket,
+           assign(AccountReload.after_user_write(socket, "角色列表已刷新"),
              user_rows: reload_users(socket),
-             role_rows: Support.load_roles_for_socket(socket),
              user_form: Support.empty_user_form(),
              active_modal: nil,
              selected_user_ids: [],

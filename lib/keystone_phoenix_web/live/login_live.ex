@@ -13,6 +13,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.LoginLimiter
   alias KeystonePhoenixWeb.Live.AdminSupport
+  alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.Authentication
@@ -197,13 +198,28 @@ defmodule KeystonePhoenixWeb.LoginLive do
            )}
 
         panel == "api-keys" ->
-          {:noreply,
-           assign(socket,
-             active_panel: panel,
-             api_key_rows: AdminSupport.load_api_keys_for_socket(socket),
-             api_key_feedback: nil,
-             issued_api_key: nil
-           )}
+          case AdminReadSupport.api_keys(socket) do
+            {:ok, rows} ->
+              {:noreply,
+               assign(socket,
+                 active_panel: panel,
+                 api_key_rows: rows,
+                 api_key_feedback: nil,
+                 issued_api_key: nil
+               )}
+
+            {:error, reason} ->
+              {:noreply,
+               assign(socket,
+                 active_panel: panel,
+                 api_key_feedback:
+                   Feedback.error(
+                     Feedback.code(Feedback.from_reason(reason)),
+                     "API Key 列表读取失败，请重试"
+                   ),
+                 issued_api_key: nil
+               )}
+          end
 
         panel == "users" and not AdminSupport.admin_socket?(socket) ->
           {:noreply,

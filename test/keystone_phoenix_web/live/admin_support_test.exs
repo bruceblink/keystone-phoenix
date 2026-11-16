@@ -3,6 +3,8 @@ defmodule KeystonePhoenixWeb.Live.AdminSupportTest do
 
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.AdminReadSupport
+  alias KeystonePhoenixWeb.Live.AdminPages.AccountReload
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
 
   test "matches retained permissions and panel requirements" do
     socket = %Phoenix.LiveView.Socket{
@@ -81,6 +83,21 @@ defmodule KeystonePhoenixWeb.Live.AdminSupportTest do
     }
 
     assert {:error, :permission_denied} = AdminSupport.load_api_keys_for_socket_result(socket)
+  end
+
+  test "account role reload preserves old rows on a read failure" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{
+        __changed__: %{},
+        current_user: %{},
+        permissions: [],
+        role_rows: [%{"roleId" => "existing"}]
+      }
+    }
+
+    result = AccountReload.after_user_write(socket, "角色列表已刷新")
+    assert result.assigns.role_rows == [%{"roleId" => "existing"}]
+    assert Feedback.code(result.assigns.role_feedback) == "permission_denied"
   end
 
   test "preserves config read failures for LiveView feedback" do
