@@ -22,6 +22,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       |> assign_new(:selected_job, fn -> nil end)
       |> assign_new(:job_log_rows, fn -> [] end)
       |> assign_new(:job_log_total, fn -> length(Map.get(assigns, :job_log_rows, [])) end)
+      |> assign_new(:job_log_page_num, fn -> 1 end)
+      |> assign_new(:job_log_page_size, fn -> 50 end)
 
     ~H"""
     <div class="jobs-page operations-page">
@@ -95,7 +97,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
               <% end %>
             </tbody></table></div>
           <% end %>
-          <.pagination panel="job-logs" page_num={min(@page_nums["job-logs"], page_count(@job_log_total, @page_sizes["job-logs"]))} page_size={@page_sizes["job-logs"]} total={@job_log_total} />
+          <.pagination panel="job-logs" page_num={min(@job_log_page_num, page_count(@job_log_total, @job_log_page_size))} page_size={@job_log_page_size} total={@job_log_total} />
         </section>
       <% end %>
     </div>

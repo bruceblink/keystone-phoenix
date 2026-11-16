@@ -27,6 +27,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.FilterNavigation do
       user_display_name_query: keyword(params, "users_displayName")
     ]
 
+  def assigns("jobs", params),
+    do: [
+      job_filter: %{"keyword" => keyword(params, "jobs_keyword")},
+      selected_job_id: blank_to_nil(params["jobs_selectedJobId"])
+    ]
+
   def assigns(_panel, _params), do: []
 
   @doc "将审计日志 URL 中的页码恢复到 LiveView 分页状态。"
@@ -38,6 +44,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.FilterNavigation do
 
   def apply_page(socket, "users", params),
     do: assign_page(socket, "users", params["users_page"])
+
+  def apply_page(socket, "jobs", params) do
+    socket
+    |> assign_page("jobs", params["jobs_jobPage"])
+    |> assign_page("job-logs", params["jobs_logPage"])
+  end
 
   def apply_page(socket, _panel, _params), do: socket
 
@@ -64,9 +76,15 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.FilterNavigation do
   def path("users", filter, page),
     do: query_path("/users", "users", filter, ["username", "displayName"], page)
 
+  def path("jobs", filter, job_page, log_page, selected_job_id),
+    do: jobs_path(filter, job_page, log_page, selected_job_id)
+
   defp audit_filter(params, namespace, fields) do
     Map.new(fields, fn field -> {field, keyword(params, "#{namespace}_#{field}")} end)
   end
+
+  defp blank_to_nil(value) when value in [nil, ""], do: nil
+  defp blank_to_nil(value), do: value
 
   defp assign_page(socket, panel, value) do
     page = positive_page(value)
@@ -114,4 +132,24 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.FilterNavigation do
       encoded -> "#{path}?#{encoded}"
     end
   end
+
+  defp jobs_path(filter, job_page, log_page, selected_job_id) do
+    query =
+      %{}
+      |> put_query("jobs_keyword", filter["keyword"])
+      |> put_page("jobs_jobPage", job_page)
+      |> put_page("jobs_logPage", log_page)
+      |> put_query("jobs_selectedJobId", selected_job_id)
+
+    case URI.encode_query(query) do
+      "" -> "/jobs"
+      encoded -> "/jobs?" <> encoded
+    end
+  end
+
+  defp put_query(query, _key, value) when value in [nil, ""], do: query
+  defp put_query(query, key, value), do: Map.put(query, key, String.trim(to_string(value)))
+
+  defp put_page(query, _key, page) when page in [nil, 1], do: query
+  defp put_page(query, key, page), do: Map.put(query, key, page)
 end
