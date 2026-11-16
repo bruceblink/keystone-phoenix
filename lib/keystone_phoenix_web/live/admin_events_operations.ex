@@ -337,9 +337,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
                token_id,
                authorization(socket, "online-session:revoke")
              ) do
-          :ok -> "在线会话已强制下线"
-          {:error, :not_found} -> Feedback.error("在线会话不存在或已经失效")
-          {:error, :unavailable} -> Feedback.error("会话服务暂不可用")
+          :ok ->
+            "在线会话已强制下线"
+
+          {:error, :not_found} ->
+            Feedback.error(:resource_not_found, "在线会话不存在或已经失效")
+
+          {:error, :unavailable} ->
+            Feedback.error(:service_unavailable, "会话服务暂不可用")
         end
 
       socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, "online-users", 1))
