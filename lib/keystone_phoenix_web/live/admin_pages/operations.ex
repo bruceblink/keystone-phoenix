@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
 
   import KeystonePhoenixWeb.Live.AdminPages.Pagination
   import KeystonePhoenixWeb.Live.AdminPages.Modal
+  import KeystonePhoenixWeb.Live.AdminPages.Navigation, only: [nav_icon: 1]
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Status
 
@@ -250,7 +251,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
 
           <div class="metric-grid">
             <article class="card metric-card metric-card-cyan">
-              <div class="metric-head"><span class="metric-icon" aria-hidden="true">◌</span><span>CPU 使用率</span></div>
+              <div class="metric-head"><span class="metric-icon" aria-hidden="true"><.nav_icon name="activity" /></span><span>CPU 使用率</span></div>
               <strong class="metric-value"><%= monitor_value_label(monitor_percent(get_in(@monitor_server_info, ["cpuInfo", "used"]))) %></strong>
               <div class="metric-detail"><span>系统负载</span><span class="metric-progress-label"><%= monitor_value_label(monitor_percent(get_in(@monitor_server_info, ["cpuInfo", "used"]))) %></span></div>
               <div class="progress-track"><span style={"width: #{monitor_value_width(get_in(@monitor_server_info, ["cpuInfo", "used"]))}%"}></span></div>
@@ -262,7 +263,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
               <div class="progress-track"><span style={"width: #{monitor_value_width(get_in(@monitor_server_info, ["memoryInfo", "usage"]))}%"}></span></div>
             </article>
             <article class="card metric-card metric-card-amber">
-              <div class="metric-head"><span class="metric-icon" aria-hidden="true">▤</span><span>磁盘空间</span></div>
+              <div class="metric-head"><span class="metric-icon" aria-hidden="true"><.nav_icon name="hard-drive" /></span><span>磁盘空间</span></div>
               <strong class="metric-value"><%= monitor_value_label(monitor_percent(get_in(@monitor_server_info, ["diskInfos", Access.at(0), "usage"]))) %></strong>
               <div class="metric-detail"><span>系统 API 当前值</span><span class="metric-progress-label"><%= monitor_value_label(monitor_percent(get_in(@monitor_server_info, ["diskInfos", Access.at(0), "usage"]))) %></span></div>
               <div class="progress-track"><span style={"width: #{monitor_value_width(get_in(@monitor_server_info, ["diskInfos", Access.at(0), "usage"]))}%"}></span></div>
@@ -292,7 +293,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
             <div class="inspector-list">
               <div class="info-row"><span class="info-icon" aria-hidden="true">◆</span><div><span>节点</span><strong><%= monitor_node_name(@monitor_server_info) %></strong></div></div>
               <div class="info-row"><span class="info-icon" aria-hidden="true">↕</span><div><span>网络入口</span><strong>—</strong><small>系统 API 未提供流量采样</small></div></div>
-              <div class="info-row"><span class="info-icon" aria-hidden="true">⌁</span><div><span>处理器</span><strong><%= get_in(@monitor_server_info, ["cpuInfo", "cpuNum"]) || "—" %></strong><small>逻辑处理器数量</small></div></div>
+              <div class="info-row"><span class="info-icon" aria-hidden="true"><.nav_icon name="activity" /></span><div><span>处理器</span><strong><%= get_in(@monitor_server_info, ["cpuInfo", "cpuNum"]) || "—" %></strong><small>逻辑处理器数量</small></div></div>
               <div class="info-row"><span class="info-icon" aria-hidden="true">◇</span><div><span>活动会话</span><strong><%= @online_user_total %></strong><small>系统 API 当前活动会话</small></div></div>
             </div>
           </section>

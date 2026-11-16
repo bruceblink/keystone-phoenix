@@ -81,6 +81,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Navigation do
     do: "M3 21h18M6 21V5l6-3 6 3v16M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1"
 
   defp icon_path("briefcase"), do: "M3 7h18v13H3zM8 7V4h8v3M3 12h18M10 12v2h4v-2"
+  defp icon_path("hard-drive"), do: "M3 6h18v12H3zM7 10h.01M11 10h.01M15 10h2M7 14h10"
   defp icon_path("list-tree"), do: "M4 6h4M4 12h4M4 18h4M12 6h8M12 12h8M12 18h8M8 6v12"
   defp icon_path("key"), do: "M21 2l-2 2m-2-2 2 2-5.5 5.5a5 5 0 1 1-3-3zM7 17h.01M10 14h.01"
 

@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
 
   import KeystonePhoenixWeb.Live.AdminPages.Pagination
   import KeystonePhoenixWeb.Live.AdminPages.Modal
+  import KeystonePhoenixWeb.Live.AdminPages.Navigation, only: [nav_icon: 1]
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Status
 
@@ -112,7 +113,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         </div>
         <% page_user_rows = if @users_server_paged, do: @user_rows, else: page_rows(@user_rows, @page_num, @page_size) %>
         <%= if page_user_rows == [] do %>
-          <div class="users-empty" role="status"><span class="users-empty-icon" aria-hidden="true">◎</span><strong>没有匹配的用户</strong><p>调整筛选条件后重试，或清空筛选条件查看全部用户。</p></div>
+          <div class="users-empty" role="status"><span class="users-empty-icon" aria-hidden="true"><.nav_icon name="users" /></span><strong>没有匹配的用户</strong><p>调整筛选条件后重试，或清空筛选条件查看全部用户。</p></div>
         <% else %>
           <div class="table-wrap">
             <div class="table-scroll" role="region" tabindex="0" aria-label="用户列表"><table class="users-table"><caption class="sr-only">用户列表</caption>
