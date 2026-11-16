@@ -35,11 +35,37 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
 
     render_click(view, "show-panel", %{"panel" => "profile"})
     assert live_socket(view).assigns.active_panel == "profile"
+    assert live_socket(view).assigns.profile_loaded
     assert has_element?(view, "form[phx-submit='save-profile']")
 
     render_click(view, "show-panel", %{"panel" => "monitor"})
     assert live_socket(view).assigns.active_panel == "monitor"
     assert render(view) =~ "运行监控"
+  end
+
+  test "profile read failure preserves whether previous data was loaded" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{
+        __changed__: %{},
+        current_user: %{"userId" => Ecto.UUID.generate()},
+        profile_form: %{"nickname" => "previous"},
+        profile_loaded: false
+      }
+    }
+
+    initial = KeystonePhoenixWeb.Live.AdminSupport.assign_profile(socket)
+    refute initial.assigns.profile_loaded
+    assert initial.assigns.profile_form["nickname"] == "previous"
+    assert initial.assigns.profile_feedback
+
+    refreshed =
+      socket
+      |> Phoenix.Component.assign(profile_loaded: true)
+      |> KeystonePhoenixWeb.Live.AdminSupport.assign_profile()
+
+    assert refreshed.assigns.profile_loaded
+    assert refreshed.assigns.profile_form["nickname"] == "previous"
+    assert refreshed.assigns.profile_feedback
   end
 
   test "a read-only user refreshes users and remains data scoped", %{conn: conn} do

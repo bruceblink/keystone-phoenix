@@ -478,13 +478,13 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "monitor" -> %>
                       <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} online_user_total={@online_user_total} online_user_page_num={@page_nums["online-users"]} online_user_page_size={@page_sizes["online-users"]} network_status={@network_status} monitor_help_open={@monitor_help_open} security_access={@security_access} security_metrics={@security_metrics} security_api_keys={@security_api_keys} security_event_rows={@security_event_rows} security_event_total={@security_event_total} monitor_feedback={@monitor_feedback} read_only={@read_only} />
                     <% "profile" -> %>
-                      <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} />
+                      <.profile profile_form={@profile_form} password_form={@password_form} profile_loaded={@profile_loaded} profile_feedback={@profile_feedback} />
                     <% _ -> %>
                       <div class="panel"><p>请选择一个管理模块。</p></div>
                   <% end %>
                   <% else %>
                     <%= if @active_panel == "profile" do %>
-                      <.profile profile_form={@profile_form} password_form={@password_form} profile_feedback={@profile_feedback} />
+                      <.profile profile_form={@profile_form} password_form={@password_form} profile_loaded={@profile_loaded} profile_feedback={@profile_feedback} />
                     <% else %>
                       <div class="card">
                         <h2>登录成功</h2>

@@ -438,6 +438,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
         assign(socket,
           active_panel: "profile",
           profile_form: profile_user,
+          profile_loaded: true,
           password_form: empty_password_form(),
           profile_feedback: nil
         )
@@ -445,6 +446,10 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       _ ->
         assign(socket, active_panel: "profile", profile_feedback: @profile_unavailable_feedback)
     end
+  rescue
+    # 数据库读取异常时保留已有资料和加载状态，页面仍可重试。
+    _error ->
+      assign(socket, active_panel: "profile", profile_feedback: @profile_unavailable_feedback)
   end
 
   def normalize_options_param(params) do

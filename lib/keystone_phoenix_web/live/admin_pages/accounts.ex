@@ -156,6 +156,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
   end
 
   def profile(assigns) do
+    assigns = assign_new(assigns, :profile_loaded, fn -> true end)
+
     ~H"""
     <div class="profile-page">
       <!-- 个人资料只从顶栏头像进入，资料和密码保持两个独立卡片。 -->
@@ -168,25 +170,27 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         <div class="heading-actions"><button type="button" class="button button-secondary refresh" phx-click="show-panel" phx-value-panel="profile" phx-disable-with="刷新中…">刷新资料</button></div>
       </div>
       <%= if @profile_feedback do %><p id="profile-feedback" class={Feedback.class(@profile_feedback)} role={Feedback.role(@profile_feedback)} aria-live={Feedback.live(@profile_feedback)}><%= Feedback.message(@profile_feedback) %></p><% end %>
-      <section class="card profile-card" aria-labelledby="profile-details-title">
-        <div class="card-header"><div><h2 id="profile-details-title">基本资料</h2><p>这些字段会保存到当前账号。</p></div><span class="badge badge-info">系统 API</span></div>
-        <form class="admin-form" aria-describedby="profile-feedback" phx-submit="save-profile">
-          <label><span>用户名</span><input id="profile-username" value={@profile_form["username"] || ""} readonly /></label>
-          <label><span>展示名 *</span><input id="profile-nickname" name="nickname" value={@profile_form["nickname"] || @profile_form["displayName"] || ""} required /></label>
-          <label><span>邮箱</span><input id="profile-email" type="email" name="email" value={@profile_form["email"] || ""} /></label>
-          <label><span>联系电话</span><input id="profile-phone" name="phoneNumber" value={@profile_form["phoneNumber"] || ""} /></label>
-          <label><span>头像地址</span><input id="profile-avatar" name="avatar" value={@profile_form["avatar"] || ""} placeholder="https://..." /></label>
-          <label><span>性别</span><select id="profile-sex" name="sex"><option value="" selected={@profile_form["sex"] in [nil, 2, "2", ""]}>未知</option><option value="1" selected={@profile_form["sex"] in [1, "1"]}>男</option><option value="0" selected={@profile_form["sex"] in [0, "0"]}>女</option></select></label>
-          <div class="modal-footer"><button type="submit" class="button button-primary" phx-disable-with="保存中…">保存资料</button></div>
-        </form>
-      </section>
-      <section class="card profile-card" aria-labelledby="profile-password-title">
-        <div class="card-header"><div><h2 id="profile-password-title">修改密码</h2><p>密码更新需要当前会话完成 MFA 二次验证。</p></div></div>
-        <form class="admin-form" aria-describedby="profile-feedback" phx-submit="change-profile-password">
-          <label><span>新密码 *</span><input id="profile-password" type="password" name="password" autocomplete="new-password" required /></label>
-          <div class="modal-footer"><button type="submit" class="button button-secondary" phx-disable-with="更新中…">更新密码</button></div>
-        </form>
-      </section>
+      <%= if @profile_loaded do %>
+        <section class="card profile-card" aria-labelledby="profile-details-title">
+          <div class="card-header"><div><h2 id="profile-details-title">基本资料</h2><p>这些字段会保存到当前账号。</p></div><span class="badge badge-info">系统 API</span></div>
+          <form class="admin-form" aria-describedby="profile-feedback" phx-submit="save-profile">
+            <label><span>用户名</span><input id="profile-username" value={@profile_form["username"] || ""} readonly /></label>
+            <label><span>展示名 *</span><input id="profile-nickname" name="nickname" value={@profile_form["nickname"] || @profile_form["displayName"] || ""} required /></label>
+            <label><span>邮箱</span><input id="profile-email" type="email" name="email" value={@profile_form["email"] || ""} /></label>
+            <label><span>联系电话</span><input id="profile-phone" name="phoneNumber" value={@profile_form["phoneNumber"] || ""} /></label>
+            <label><span>头像地址</span><input id="profile-avatar" name="avatar" value={@profile_form["avatar"] || ""} placeholder="https://..." /></label>
+            <label><span>性别</span><select id="profile-sex" name="sex"><option value="" selected={@profile_form["sex"] in [nil, 2, "2", ""]}>未知</option><option value="1" selected={@profile_form["sex"] in [1, "1"]}>男</option><option value="0" selected={@profile_form["sex"] in [0, "0"]}>女</option></select></label>
+            <div class="modal-footer"><button type="submit" class="button button-primary" phx-disable-with="保存中…">保存资料</button></div>
+          </form>
+        </section>
+        <section class="card profile-card" aria-labelledby="profile-password-title">
+          <div class="card-header"><div><h2 id="profile-password-title">修改密码</h2><p>密码更新需要当前会话完成 MFA 二次验证。</p></div></div>
+          <form class="admin-form" aria-describedby="profile-feedback" phx-submit="change-profile-password">
+            <label><span>新密码 *</span><input id="profile-password" type="password" name="password" autocomplete="new-password" required /></label>
+            <div class="modal-footer"><button type="submit" class="button button-secondary" phx-disable-with="更新中…">更新密码</button></div>
+          </form>
+        </section>
+      <% end %>
     </div>
     """
   end

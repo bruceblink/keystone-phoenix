@@ -421,6 +421,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       user_feedback: nil,
       profile_form: current_user,
       password_form: AdminSupport.empty_password_form(),
+      profile_loaded: false,
       profile_feedback: nil,
       monitor_loading: false,
       monitor_initial_error: nil
