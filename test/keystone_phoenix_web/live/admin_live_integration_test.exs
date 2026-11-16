@@ -52,7 +52,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
     assert live_socket(view).assigns.active_panel == "menus"
     assert live_socket(view).assigns.menu_filter == "role"
-    assert live_socket(view).assigns.current_uri =~ "/menus?keyword=role"
+    assert live_socket(view).assigns.current_uri =~ "/menus?menus_keyword=role"
 
     render_click(view, "refresh-menus", %{"reset" => "true"})
     assert live_socket(view).assigns.menu_filter == ""

@@ -60,7 +60,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
     if AdminSupport.authenticated_socket?(socket) do
       socket = assign(socket, active_panel: requested_panel)
-      menu_filter = String.trim(params["keyword"] || "")
+      menu_filter = String.trim(params["menus_keyword"] || params["keyword"] || "")
 
       {:noreply,
        if(requested_panel == "menus", do: assign(socket, menu_filter: menu_filter), else: socket)}
