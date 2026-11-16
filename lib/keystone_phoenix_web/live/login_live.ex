@@ -61,7 +61,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
     if AdminSupport.authenticated_socket?(socket) do
       socket = assign(socket, active_panel: requested_panel)
-      {:noreply, assign(socket, FilterNavigation.assigns(requested_panel, params))}
+      socket = assign(socket, FilterNavigation.assigns(requested_panel, params))
+      {:noreply, FilterNavigation.apply_page(socket, requested_panel, params)}
     else
       {:noreply, assign(socket, requested_panel: requested_panel)}
     end

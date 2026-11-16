@@ -70,6 +70,61 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
   end
 
   @tag :integration
+  test "audit filters and pages are preserved in namespaced deep links", %{
+    conn: conn,
+    admin: admin
+  } do
+    {:ok, view, _html} = live(conn, "/")
+
+    render_submit(view, "login", %{
+      "username" => admin.username,
+      "password" => "Strong!123"
+    })
+
+    render_click(view, "show-panel", %{"panel" => "login-logs"})
+
+    render_submit(view, "filter-login-logs", %{
+      "loginUsername" => admin.username,
+      "loginStatus" => "SUCCESS"
+    })
+
+    uri = URI.parse(live_socket(view).assigns.current_uri)
+    assert uri.path == "/audit/login"
+
+    assert URI.decode_query(uri.query || "") == %{
+             "login_logs_status" => "SUCCESS",
+             "login_logs_username" => admin.username
+           }
+
+    render_click(view, "paginate", %{"panel" => "login-logs", "page" => "2"})
+    uri = URI.parse(live_socket(view).assigns.current_uri)
+    assert uri.query =~ "login_logs_page=2"
+    assert live_socket(view).assigns.page_nums["login-logs"] == 2
+
+    render_click(view, "reset-login-log-filter")
+    uri = URI.parse(live_socket(view).assigns.current_uri)
+    assert uri.path == "/audit/login"
+    assert uri.query in [nil, ""]
+
+    render_click(view, "show-panel", %{"panel" => "operation-logs"})
+
+    render_submit(view, "filter-operation-logs", %{
+      "operationActor" => admin.username,
+      "operationAction" => "UPDATE",
+      "operationResource" => "user"
+    })
+
+    uri = URI.parse(live_socket(view).assigns.current_uri)
+    assert uri.path == "/audit/operations"
+
+    assert URI.decode_query(uri.query || "") == %{
+             "operations_audit_action" => "UPDATE",
+             "operations_audit_actor" => admin.username,
+             "operations_audit_resource" => "user"
+           }
+  end
+
+  @tag :integration
   test "admin login and user management persist through LiveView", %{conn: conn, admin: admin} do
     {:ok, view, html} = live(conn, "/")
 

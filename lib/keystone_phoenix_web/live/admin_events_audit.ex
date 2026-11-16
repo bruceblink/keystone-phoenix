@@ -7,6 +7,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
+  alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   @login_headers ["ID", "用户名", "IP 地址", "登录地点", "操作系统", "浏览器", "状态", "说明", "登录时间"]
@@ -38,26 +39,27 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
         "status" => String.trim(to_string(params["loginStatus"] || ""))
       }
 
-      case Support.load_logs_for_socket_result(socket, %{
-             "login" => Map.put(login_query(filter), "pageNum", 1)
-           }) do
-        {:ok, logs} ->
-          {:noreply,
-           assign(socket,
-             login_log_filter: filter,
-             login_log_rows: logs.login_log_rows,
-             login_log_total: logs.login_log_total,
-             page_nums: Map.put(socket.assigns.page_nums, "login-logs", 1),
-             log_feedback: nil
-           )}
+      result =
+        case Support.load_logs_for_socket_result(socket, %{
+               "login" => Map.put(login_query(filter), "pageNum", 1)
+             }) do
+          {:ok, logs} ->
+            assign(socket,
+              login_log_filter: filter,
+              login_log_rows: logs.login_log_rows,
+              login_log_total: logs.login_log_total,
+              page_nums: Map.put(socket.assigns.page_nums, "login-logs", 1),
+              log_feedback: nil
+            )
 
-        {:error, reason} ->
-          {:noreply,
-           assign(socket,
-             login_log_filter: filter,
-             log_feedback: Support.read_error_feedback(reason, "登录日志查询失败，请重试")
-           )}
-      end
+          {:error, reason} ->
+            assign(socket,
+              login_log_filter: filter,
+              log_feedback: Support.read_error_feedback(reason, "登录日志查询失败，请重试")
+            )
+        end
+
+      {:noreply, push_audit_patch(result, "login", filter, 1)}
     else
       {:noreply, socket}
     end
@@ -77,26 +79,27 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
         "resource" => String.trim(to_string(params["operationResource"] || ""))
       }
 
-      case Support.load_logs_for_socket_result(socket, %{
-             "operation" => Map.put(operation_query(filter), "pageNum", 1)
-           }) do
-        {:ok, logs} ->
-          {:noreply,
-           assign(socket,
-             operation_log_filter: filter,
-             operation_log_rows: logs.operation_log_rows,
-             operation_log_total: logs.operation_log_total,
-             page_nums: Map.put(socket.assigns.page_nums, "operation-logs", 1),
-             log_feedback: nil
-           )}
+      result =
+        case Support.load_logs_for_socket_result(socket, %{
+               "operation" => Map.put(operation_query(filter), "pageNum", 1)
+             }) do
+          {:ok, logs} ->
+            assign(socket,
+              operation_log_filter: filter,
+              operation_log_rows: logs.operation_log_rows,
+              operation_log_total: logs.operation_log_total,
+              page_nums: Map.put(socket.assigns.page_nums, "operation-logs", 1),
+              log_feedback: nil
+            )
 
-        {:error, reason} ->
-          {:noreply,
-           assign(socket,
-             operation_log_filter: filter,
-             log_feedback: Support.read_error_feedback(reason, "操作审计查询失败，请重试")
-           )}
-      end
+          {:error, reason} ->
+            assign(socket,
+              operation_log_filter: filter,
+              log_feedback: Support.read_error_feedback(reason, "操作审计查询失败，请重试")
+            )
+        end
+
+      {:noreply, push_audit_patch(result, "operation", filter, 1)}
     else
       {:noreply, socket}
     end
@@ -278,20 +281,33 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
             total_key = if kind == "login", do: :login_log_total, else: :operation_log_total
 
             {:noreply,
-             assign(
-               socket,
-               [
-                 {row_key, rows},
-                 {total_key, total},
-                 page_nums: Map.put(socket.assigns.page_nums, panel, page_number),
-                 log_feedback: nil
-               ]
+             socket
+             |> assign([
+               {row_key, rows},
+               {total_key, total},
+               page_nums: Map.put(socket.assigns.page_nums, panel, page_number),
+               log_feedback: nil
+             ])
+             |> push_audit_patch(
+               kind,
+               if(kind == "login",
+                 do: socket.assigns.login_log_filter,
+                 else: socket.assigns.operation_log_filter
+               ),
+               page_number
              )}
 
           {:error, reason} ->
             {:noreply,
-             assign(socket,
-               log_feedback: Support.read_error_feedback(reason, "日志分页读取失败，请重试")
+             socket
+             |> assign(log_feedback: Support.read_error_feedback(reason, "日志分页读取失败，请重试"))
+             |> push_audit_patch(
+               kind,
+               if(kind == "login",
+                 do: socket.assigns.login_log_filter,
+                 else: socket.assigns.operation_log_filter
+               ),
+               page_number
              )}
         end
 
@@ -305,4 +321,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
   defp normalize_login_status("LOGOUT"), do: 2
   defp normalize_login_status("REGISTER"), do: 3
   defp normalize_login_status(value), do: value
+
+  defp push_audit_patch(socket, "login", filter, page),
+    do: Phoenix.LiveView.push_patch(socket, to: FilterNavigation.path("login-logs", filter, page))
+
+  defp push_audit_patch(socket, "operation", filter, page),
+    do:
+      Phoenix.LiveView.push_patch(socket,
+        to: FilterNavigation.path("operation-logs", filter, page)
+      )
 end
