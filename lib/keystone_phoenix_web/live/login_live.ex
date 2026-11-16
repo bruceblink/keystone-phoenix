@@ -245,44 +245,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
       {page, ""} when page > 0 ->
         socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, panel, page))
 
-        if panel == "configs" do
-          ConfigEvents.handle_event("paginate-configs", %{"page" => page}, socket)
-        else
-          if panel == "api-keys" do
-            SecurityEvents.handle_event("paginate-api-keys", %{"page" => page}, socket)
-          else
-            if panel == "dict-data" do
-              SystemEvents.handle_event("paginate-dict-data", %{"page" => page}, socket)
-            else
-              if panel == "jobs" do
-                OperationsEvents.handle_event("paginate-jobs", %{"page" => page}, socket)
-              else
-                if panel == "job-logs" do
-                  OperationsEvents.handle_event("paginate-job-logs", %{"page" => page}, socket)
-                else
-                  if panel == "login-logs" do
-                    AuditEvents.handle_event("paginate-login-logs", %{"page" => page}, socket)
-                  else
-                    if panel == "operation-logs" do
-                      AuditEvents.handle_event(
-                        "paginate-operation-logs",
-                        %{"page" => page},
-                        socket
-                      )
-                    else
-                      if panel == "online-users" and
-                           AdminSupport.panel_allowed?(socket, "monitor") do
-                        {:noreply, AdminSupport.assign_monitor(socket)}
-                      else
-                        {:noreply, socket}
-                      end
-                    end
-                  end
-                end
-              end
-            end
-          end
-        end
+        dispatch_pagination(panel, page, socket)
 
       _ ->
         {:noreply, socket}
@@ -329,6 +292,38 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   @impl true
   def handle_event(_event, _params, socket), do: {:noreply, socket}
+
+  defp dispatch_pagination("posts", page, socket),
+    do: OrganizationEvents.handle_event("paginate-posts", %{"page" => page}, socket)
+
+  defp dispatch_pagination("configs", page, socket),
+    do: ConfigEvents.handle_event("paginate-configs", %{"page" => page}, socket)
+
+  defp dispatch_pagination("api-keys", page, socket),
+    do: SecurityEvents.handle_event("paginate-api-keys", %{"page" => page}, socket)
+
+  defp dispatch_pagination("dict-data", page, socket),
+    do: SystemEvents.handle_event("paginate-dict-data", %{"page" => page}, socket)
+
+  defp dispatch_pagination("jobs", page, socket),
+    do: OperationsEvents.handle_event("paginate-jobs", %{"page" => page}, socket)
+
+  defp dispatch_pagination("job-logs", page, socket),
+    do: OperationsEvents.handle_event("paginate-job-logs", %{"page" => page}, socket)
+
+  defp dispatch_pagination("login-logs", page, socket),
+    do: AuditEvents.handle_event("paginate-login-logs", %{"page" => page}, socket)
+
+  defp dispatch_pagination("operation-logs", page, socket),
+    do: AuditEvents.handle_event("paginate-operation-logs", %{"page" => page}, socket)
+
+  defp dispatch_pagination("online-users", _page, socket) do
+    if AdminSupport.panel_allowed?(socket, "monitor"),
+      do: {:noreply, AdminSupport.assign_monitor(socket)},
+      else: {:noreply, socket}
+  end
+
+  defp dispatch_pagination(_panel, _page, socket), do: {:noreply, socket}
 
   defp load_notifications(socket) do
     case AdminSupport.load_public_notifications_result() do
@@ -496,7 +491,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "depts" -> %>
                       <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} dept_filter={@dept_filter} active_modal={@active_modal} read_only={@read_only} permissions={@permissions} />
                     <% "posts" -> %>
-                      <.posts post_rows={@post_rows} post_form={@post_form} post_feedback={@post_feedback} post_filter={@post_filter} active_modal={@active_modal} page_num={@page_nums["posts"]} page_size={@page_sizes["posts"]} read_only={@read_only} permissions={@permissions} />
+                      <.posts post_rows={@post_rows} post_total={@post_total} post_form={@post_form} post_feedback={@post_feedback} post_filter={@post_filter} active_modal={@active_modal} page_num={@page_nums["posts"]} page_size={@page_sizes["posts"]} read_only={@read_only} permissions={@permissions} />
                     <% "roles" -> %>
                       <.roles role_rows={@role_rows} role_form={@role_form} role_feedback={@role_feedback} role_filter={@role_filter} menu_rows={@menu_rows} active_modal={@active_modal} selected_role_ids={@selected_role_ids} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} read_only={@read_only} permissions={@permissions} />
                     <% "menus" -> %>

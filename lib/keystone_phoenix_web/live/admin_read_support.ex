@@ -68,6 +68,18 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     end
   end
 
+  @doc "读取当前岗位页，并保留总数和服务错误。"
+  def posts_page(socket, params \\ %{}) do
+    result =
+      if Support.admin_socket?(socket),
+        do: Post.list_posts(params),
+        else: Post.list_posts(params, Support.authorization_options(socket))
+
+    page_result(result)
+  rescue
+    _error -> {:error, :service_unavailable}
+  end
+
   @doc "读取组织、角色和菜单数据，并保留刷新失败结果。"
   def departments(socket) do
     actor = if Support.admin_socket?(socket), do: nil, else: socket.assigns.current_user

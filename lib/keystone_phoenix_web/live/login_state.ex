@@ -53,6 +53,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       dept_form: Support.empty_dept_form(),
       dept_filter: %{"keyword" => "", "status" => "all"},
       post_rows: [],
+      post_total: 0,
       post_feedback: nil,
       post_form: Support.empty_post_form(),
       post_filter: %{"keyword" => "", "status" => "all"},

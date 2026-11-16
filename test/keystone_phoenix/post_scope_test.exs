@@ -40,6 +40,15 @@ defmodule KeystonePhoenix.PostScopeTest do
     assert {:ok, page} = Post.list_posts(%{"postName" => "范围岗位"}, authorization)
     assert Enum.any?(page.rows, &(&1["postId"] == post.post_id))
 
+    assert {:ok, paged} =
+             Post.list_posts_page_all(
+               %{"keyword" => "范围岗位", "pageNum" => 1, "pageSize" => 1},
+               authorization
+             )
+
+    assert length(paged.rows) == 1
+    assert paged.total >= 1
+
     assert {:ok, loaded} = Post.get_post(post.post_id, authorization)
     assert loaded.post_id == post.post_id
 

@@ -367,6 +367,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       dept_feedback: nil,
       dept_form: AdminSupport.empty_dept_form(),
       post_rows: dashboard.post_rows,
+      post_total: dashboard[:post_total] || length(dashboard.post_rows),
       post_feedback: nil,
       post_form: AdminSupport.empty_post_form(),
       config_rows: dashboard.config_rows,

@@ -61,6 +61,7 @@ defmodule KeystonePhoenixWeb.NativeContractTest do
 
   test "job pagination preserves Native page metadata" do
     assert NativeContract.pagination_requested?(%{"page" => "2", "size" => "20"})
+    assert NativeContract.pagination_requested?(%{"keyword" => "operator"})
 
     page =
       NativeContract.jobs_page(
@@ -72,5 +73,31 @@ defmodule KeystonePhoenixWeb.NativeContractTest do
     assert page.size == 20
     assert page.total == 21
     assert [%{"id" => "job-1", "name" => "任务"}] = page.items
+  end
+
+  test "post pagination preserves Native page metadata" do
+    page =
+      NativeContract.posts_page(
+        %{
+          rows: [%{"postId" => "post-1", "postCode" => "operator", "postName" => "运营"}],
+          total: 3
+        },
+        %{"pageNum" => "2", "pageSize" => "2"}
+      )
+
+    assert page == %{
+             items: [
+               %{
+                 "id" => "post-1",
+                 "code" => "operator",
+                 "name" => "运营",
+                 "sortOrder" => 0,
+                 "enabled" => false
+               }
+             ],
+             page: 2,
+             size: 2,
+             total: 3
+           }
   end
 end

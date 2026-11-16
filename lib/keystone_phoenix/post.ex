@@ -46,6 +46,13 @@ defmodule KeystonePhoenix.Post do
     end
   end
 
+  @doc "完成授权后查询岗位当前页。"
+  def list_posts_page_all(params, options) when is_map(params) and is_list(options) do
+    with :ok <- Authorization.authorize_read(options, "post:read") do
+      {:ok, list_posts(params)}
+    end
+  end
+
   @doc "在检查岗位导出权限和范围后查询导出页。"
   def list_posts_for_export(params, options) when is_map(params) and is_list(options) do
     with :ok <- Authorization.authorize_read(options, "post:export") do
@@ -215,6 +222,7 @@ defmodule KeystonePhoenix.Post do
         order_by: [asc: p.post_sort, asc: p.post_id]
       )
 
+    query = filter_keyword(query, params["keyword"] || params[:keyword])
     query = filter_contains(query, :post_code, params["postCode"] || params[:post_code])
     query = filter_contains(query, :post_name, params["postName"] || params[:post_name])
     filter_status(query, params["status"] || params[:status])
@@ -239,13 +247,26 @@ defmodule KeystonePhoenix.Post do
     where(query, [post], ilike(field(post, ^field), ^pattern))
   end
 
+  defp filter_keyword(query, value) when value in [nil, ""], do: query
+
+  defp filter_keyword(query, value) do
+    pattern = "%" <> String.trim(to_string(value)) <> "%"
+    where(query, [post], ilike(post.post_code, ^pattern) or ilike(post.post_name, ^pattern))
+  end
+
   defp filter_status(query, nil), do: query
   defp filter_status(query, ""), do: query
 
   defp filter_status(query, value) do
-    case Integer.parse(to_string(value)) do
-      {status, ""} -> where(query, [post], post.status == ^status)
-      _ -> query
+    case String.downcase(to_string(value)) do
+      status when status in ["enabled", "active", "true", "1"] ->
+        where(query, [post], post.status == 1)
+
+      status when status in ["disabled", "inactive", "false", "0"] ->
+        where(query, [post], post.status == 0)
+
+      _ ->
+        query
     end
   end
 

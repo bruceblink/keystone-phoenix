@@ -147,15 +147,26 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           "postStatus"
         ])
 
-      {:noreply,
-       refresh_rows(socket, :posts, "岗位列表刷新失败，请重试",
-         page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
-         post_form: Support.empty_post_form(),
-         post_filter: filter,
-         active_modal: nil
-       )}
+      socket =
+        assign(socket,
+          post_filter: filter,
+          post_form: Support.empty_post_form(),
+          active_modal: nil
+        )
+
+      {:noreply, refresh_posts_page(socket, 1)}
     else
       {:noreply, socket}
+    end
+  end
+
+  def handle_event("paginate-posts", %{"page" => page}, socket) do
+    case Integer.parse(to_string(page)) do
+      {page_number, ""} when page_number > 0 ->
+        {:noreply, refresh_posts_page(socket, page_number)}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -549,6 +560,30 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   defp refresh_rows(socket, resource, message, extra) do
     {loader, rows_key, feedback_key} = resource_loader(resource)
     Reload.refresh(socket, loader, rows_key, feedback_key, message, extra)
+  end
+
+  defp refresh_posts_page(socket, page) do
+    filter = Map.get(socket.assigns, :post_filter, %{"keyword" => "", "status" => "all"})
+
+    params =
+      filter
+      |> Map.put("pageNum", page)
+      |> Map.put("pageSize", get_in(socket.assigns, [:page_sizes, "posts"]) || 20)
+
+    case AdminReadSupport.posts_page(socket, params) do
+      {:ok, result} ->
+        assign(socket,
+          post_rows: result.rows,
+          post_total: result.total,
+          page_nums: Map.put(socket.assigns.page_nums, "posts", page),
+          post_feedback: nil
+        )
+
+      {:error, reason} ->
+        assign(socket,
+          post_feedback: Support.read_error_feedback(reason, "岗位列表刷新失败，请重试")
+        )
+    end
   end
 
   defp after_write(socket, resource, success, message, extra \\ []) do

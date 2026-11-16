@@ -52,7 +52,11 @@ defmodule KeystonePhoenixWeb.NativeContract do
   @doc "判断请求是否显式要求服务端分页。"
   def pagination_requested?(params) when is_map(params) do
     Map.has_key?(params, "page") or Map.has_key?(params, "size") or
-      Map.has_key?(params, :page) or Map.has_key?(params, :size)
+      Map.has_key?(params, :page) or Map.has_key?(params, :size) or
+      Enum.any?(
+        ~w(keyword jobName jobGroup status postCode postName postStatus),
+        &Map.has_key?(params, &1)
+      )
   end
 
   @doc "把 Phoenix 角色分页转换为 Native 角色数组。"
@@ -91,6 +95,16 @@ defmodule KeystonePhoenixWeb.NativeContract do
   @doc "把 Phoenix 任务分页转换为 Native 的 items/page/size/total。"
   def jobs_page(%{rows: rows, total: total}, params) do
     %{items: Enum.map(rows, &job/1), page: page(params), size: size(params), total: total}
+  end
+
+  @doc "把 Phoenix 岗位分页转换为 Native 的 items/page/size/total。"
+  def posts_page(%{rows: rows, total: total}, params) do
+    %{
+      items: Enum.map(rows, &KeystonePhoenixWeb.ManagementContract.post/1),
+      page: page(params),
+      size: size(params),
+      total: total
+    }
   end
 
   @doc "把 Phoenix 任务字段转换为 Native 任务字段。"

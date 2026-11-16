@@ -87,6 +87,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:page_num, fn -> 1 end)
       |> assign_new(:page_size, fn -> 20 end)
+      |> assign_new(:post_total, fn -> length(Map.get(assigns, :post_rows, [])) end)
       |> assign_new(:post_filter, fn -> %{"keyword" => "", "status" => "all"} end)
       |> assign_new(:permissions, fn -> [] end)
 
@@ -123,21 +124,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       </form>
         </.modal>
       <% end %>
-      <% filtered_post_rows = OrganizationFilters.filtered_posts(@post_rows, @post_filter) %>
-      <% paged_post_rows = page_rows(filtered_post_rows, @page_num, @page_size) %>
       <section class="card table-card posts-table-card" aria-labelledby="posts-table-title">
         <div class="card-header">
           <div>
             <h2 id="posts-table-title">岗位列表</h2>
-            <p>当前匹配 <%= length(filtered_post_rows) %> 个岗位。</p>
+            <p>当前匹配 <%= @post_total %> 个岗位。</p>
           </div>
           <span class="badge badge-info">系统 API</span>
         </div>
-        <%= if filtered_post_rows == [] do %>
+        <%= if @post_rows == [] do %>
           <div class="posts-empty" role="status"><strong>没有匹配的岗位</strong><p>调整筛选条件后重试，或清空筛选条件查看全部岗位。</p></div>
         <% else %>
-        <div class="posts-table-wrap"><table class="posts-table"><caption class="sr-only">岗位列表</caption><thead><tr><th scope="col">岗位</th><th scope="col">编码</th><th scope="col">排序</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody><%= for post <- paged_post_rows do %><tr><td><div class="post-cell"><span class="post-cell-icon" aria-hidden="true">▣</span><div><strong><%= post["postName"] %></strong><small><%= post["postCode"] %></small></div></div></td><td class="post-code"><%= post["postCode"] %></td><td><%= post["postSort"] %></td><td><span class={"status-badge #{Status.normal_paused(post["status"])}"}><%= if post["status"] == 1, do: "启用", else: "停用" %></span></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="edit-post" phx-value-post-id={post["postId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost button-sm" phx-confirm="确认删除此岗位吗？" phx-click="delete-post" phx-value-post-id={post["postId"]} phx-disable-with="删除中…">删除</button></td></tr><% end %></tbody></table></div>
-        <.pagination panel="posts" page_num={min(@page_num, page_count(length(filtered_post_rows), @page_size))} page_size={@page_size} total={length(filtered_post_rows)} />
+        <div class="posts-table-wrap"><table class="posts-table"><caption class="sr-only">岗位列表</caption><thead><tr><th scope="col">岗位</th><th scope="col">编码</th><th scope="col">排序</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody><%= for post <- @post_rows do %><tr><td><div class="post-cell"><span class="post-cell-icon" aria-hidden="true">▣</span><div><strong><%= post["postName"] %></strong><small><%= post["postCode"] %></small></div></div></td><td class="post-code"><%= post["postCode"] %></td><td><%= post["postSort"] %></td><td><span class={"status-badge #{Status.normal_paused(post["status"])}"}><%= if post["status"] == 1, do: "启用", else: "停用" %></span></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="edit-post" phx-value-post-id={post["postId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost button-sm" phx-confirm="确认删除此岗位吗？" phx-click="delete-post" phx-value-post-id={post["postId"]} phx-disable-with="删除中…">删除</button></td></tr><% end %></tbody></table></div>
+        <.pagination panel="posts" page_num={min(@page_num, page_count(@post_total, @page_size))} page_size={@page_size} total={@post_total} />
         <% end %>
       </section>
       <span id="post-download-hook" phx-hook="DownloadFile" hidden></span>

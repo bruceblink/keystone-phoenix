@@ -17,14 +17,29 @@ defmodule KeystonePhoenixWeb.PostController do
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.ExcelResponse
   alias KeystonePhoenixWeb.ManagementContract
+  alias KeystonePhoenixWeb.NativeContract
 
   @post_export_headers ["岗位ID", "岗位编码", "岗位名称", "岗位排序", "备注", "状态", "创建时间"]
 
   @doc "Returns a paginated list of posts."
   def list(conn, params) do
-    case Post.list_posts_all(params, authorization: %{principal: conn.assigns.current_user}) do
-      {:ok, rows} ->
-        json(conn, ApiResponse.ok(Enum.map(rows, &ManagementContract.post/1)))
+    query_params = NativeContract.pagination_params(params)
+    paged? = NativeContract.pagination_requested?(params)
+    authorization = [authorization: %{principal: conn.assigns.current_user}]
+
+    result =
+      if paged?,
+        do: Post.list_posts_page_all(query_params, authorization),
+        else: Post.list_posts_all(query_params, authorization)
+
+    case result do
+      {:ok, page} ->
+        payload =
+          if paged?,
+            do: NativeContract.posts_page(page, query_params),
+            else: Enum.map(page, &ManagementContract.post/1)
+
+        json(conn, ApiResponse.ok(payload))
 
       {:error, reason} ->
         render_error(conn, reason)
