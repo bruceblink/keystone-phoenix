@@ -1,6 +1,5 @@
 defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   @moduledoc "LiveView event handlers for the organization domain."
-
   import Phoenix.Component, only: [assign: 2]
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Department
@@ -18,6 +17,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleRefresh
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleSelection
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRolePermissions
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationDepartmentRefresh
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters
   alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
@@ -297,6 +297,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       {:noreply,
        assign(socket,
          role_form: Support.empty_role_form(),
+         role_permission_query: "",
          role_feedback: nil,
          active_modal: "role"
        )}
@@ -323,7 +324,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
               |> Map.put("menuIds", Enum.join(menu_ids, ","))
               |> Map.put("permissions", Enum.join(permissions, ","))
 
-            {:noreply, assign(socket, role_form: form, role_feedback: nil, active_modal: "role")}
+            {:noreply,
+             assign(socket,
+               role_form: form,
+               role_permission_query: "",
+               role_feedback: nil,
+               active_modal: "role"
+             )}
           else
             {:error, _reason} ->
               {:noreply,
@@ -336,6 +343,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       {:noreply, socket}
     end
   end
+
+  def handle_event("filter-role-permissions", params, socket),
+    do: OrganizationRolePermissions.handle_event("filter-role-permissions", params, socket)
+
+  def handle_event("toggle-role-permission", params, socket),
+    do: OrganizationRolePermissions.handle_event("toggle-role-permission", params, socket)
 
   def handle_event("save-role", params, socket) do
     params = OrganizationMenuParams.normalize_role_menu_ids(params)

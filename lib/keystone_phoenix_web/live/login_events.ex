@@ -401,6 +401,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       role_user_feedback: nil,
       role_feedback: nil,
       role_form: AdminSupport.empty_role_form(),
+      role_permission_query: "",
       menu_rows: dashboard.menu_rows,
       menu_feedback: nil,
       menu_form: AdminSupport.empty_menu_form(),

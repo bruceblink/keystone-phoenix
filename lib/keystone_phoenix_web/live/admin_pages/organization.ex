@@ -9,6 +9,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationData
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters
   alias KeystonePhoenixWeb.Live.AdminPages.Status
+  alias KeystonePhoenix.Authz.PermissionCatalog
 
   def departments(assigns) do
     assigns =
@@ -167,6 +168,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       |> assign_new(:allocated_page_num, fn -> 1 end)
       |> assign_new(:unallocated_page_num, fn -> 1 end)
       |> assign_new(:role_user_page_size, fn -> 50 end)
+      |> assign_new(:role_permission_query, fn -> "" end)
 
     ~H"""
     <div class="roles-page">
@@ -195,7 +197,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
     <form :if={!@read_only} aria-describedby="role-feedback" phx-submit="save-role">
         <input type="hidden" name="roleId" value={@role_form["roleId"]} />
         <div class="form-grid">
-          <div><label for="role-name">角色名称</label><input id="role-name" name="roleName" value={@role_form["roleName"]} required /></div><div><label for="role-key">角色标识</label><input id="role-key" name="roleKey" value={@role_form["roleKey"]} required /></div><div><label for="role-sort">排序</label><input id="role-sort" type="number" name="roleSort" value={@role_form["roleSort"]} /></div><div><label for="role-scope">数据范围</label><select id="role-scope" name="dataScope"><%= for {value, label} <- [{"ALL", "全部数据"}, {"TENANT", "当前租户数据"}, {"CUSTOM", "自定义数据"}, {"DEPARTMENT", "本部门数据"}, {"DEPARTMENT_AND_CHILDREN", "本部门及以下"}, {"SELF", "仅本人数据"}, {"OWNER", "本人拥有"}, {"MEMBER", "成员关系"}] do %><option value={value} selected={@role_form["dataScope"] in [value, to_string(value)]}><%= label %></option><% end %></select></div><div><label for="role-status">状态</label><select id="role-status" name="status"><option value="1" selected={@role_form["status"] in [1, "1"]}>正常</option><option value="0" selected={@role_form["status"] in [0, "0"]}>停用</option></select></div><div><label for="role-depts">自定义部门 ID</label><input id="role-depts" name="deptIdSet" value={@role_form["deptIdSet"] || ""} /></div><div class="wide"><label for="role-permissions">权限标识（逗号分隔）</label><input id="role-permissions" name="permissions" value={@role_form["permissions"] || ""} placeholder="user:read,role:read" /></div><div class="wide"><label for="role-menu-ids">菜单权限</label><select id="role-menu-ids" name="menuIds[]" multiple size="8"><%= for menu <- @menu_rows do %><% menu_id = menu["menuId"] || menu["id"] %><option value={menu_id} selected={to_string(menu_id) in String.split(to_string(@role_form["menuIds"] || ""), ",", trim: true)}><%= String.duplicate("　", menu["depth"] || 0) %><%= menu["name"] || menu["menuName"] %>（<%= menu["permission"] || menu["code"] || menu["menuCode"] || "无标识" %>）</option><% end %></select><small>按住 Ctrl 或 Command 可选择多个菜单。保存后会同步角色菜单绑定。</small></div><div class="wide"><label for="role-remark">备注</label><textarea id="role-remark" name="remark"><%= @role_form["remark"] || "" %></textarea></div>
+          <div><label for="role-name">角色名称</label><input id="role-name" name="roleName" value={@role_form["roleName"]} required /></div><div><label for="role-key">角色标识</label><input id="role-key" name="roleKey" value={@role_form["roleKey"]} required /></div><div><label for="role-sort">排序</label><input id="role-sort" type="number" name="roleSort" value={@role_form["roleSort"]} /></div><div><label for="role-scope">数据范围</label><select id="role-scope" name="dataScope"><%= for {value, label} <- [{"ALL", "全部数据"}, {"TENANT", "当前租户数据"}, {"CUSTOM", "自定义数据"}, {"DEPARTMENT", "本部门数据"}, {"DEPARTMENT_AND_CHILDREN", "本部门及以下"}, {"SELF", "仅本人数据"}, {"OWNER", "本人拥有"}, {"MEMBER", "成员关系"}] do %><option value={value} selected={@role_form["dataScope"] in [value, to_string(value)]}><%= label %></option><% end %></select></div><div><label for="role-status">状态</label><select id="role-status" name="status"><option value="1" selected={@role_form["status"] in [1, "1"]}>正常</option><option value="0" selected={@role_form["status"] in [0, "0"]}>停用</option></select></div><div><label for="role-depts">自定义部门 ID</label><input id="role-depts" name="deptIdSet" value={@role_form["deptIdSet"] || ""} /></div><div class="wide"><label for="role-permission-query">权限标识</label><input id="role-permission-query" name="permissionQuery" value={@role_permission_query} placeholder="搜索权限，例如 user:read" phx-change="filter-role-permissions" phx-debounce="200" autocomplete="off" /><input type="hidden" id="role-permissions" name="permissions" value={@role_form["permissions"] || ""} /><div class="api-key-scope-groups role-permission-picker"><%= for {resource, entries} <- grouped_role_permission_entries(role_permission_entries(@permissions), @role_permission_query) do %><section class="api-key-scope-group"><h4><%= role_permission_resource_label(resource) %></h4><div><%= for entry <- entries do %><label class="checkbox-label"><input type="checkbox" phx-click="toggle-role-permission" phx-value-permission={entry.permission} phx-value-selected={if role_permission_selected?(@role_form["permissions"], entry.permission), do: "false", else: "true"} checked={role_permission_selected?(@role_form["permissions"], entry.permission)} /><span><%= role_permission_action_label(entry.action) %></span><code><%= entry.permission %></code></label><% end %></div></section><% end %></div><p :if={role_permission_entries(@permissions) == []} class="form-help" role="status">没有可配置的权限。</p><small>权限目录来自当前账号可授予的权限；保存后会同步角色权限。</small></div><div class="wide"><label for="role-menu-ids">菜单权限</label><select id="role-menu-ids" name="menuIds[]" multiple size="8"><%= for menu <- @menu_rows do %><% menu_id = menu["menuId"] || menu["id"] %><option value={menu_id} selected={to_string(menu_id) in String.split(to_string(@role_form["menuIds"] || ""), ",", trim: true)}><%= String.duplicate("　", menu["depth"] || 0) %><%= menu["name"] || menu["menuName"] %>（<%= menu["permission"] || menu["code"] || menu["menuCode"] || "无标识" %>）</option><% end %></select><small>按住 Ctrl 或 Command 可选择多个菜单。保存后会同步角色菜单绑定。</small></div><div class="wide"><label for="role-remark">备注</label><textarea id="role-remark" name="remark"><%= @role_form["remark"] || "" %></textarea></div>
         </div>
         <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存角色</button><button :if={@role_form["roleId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="role" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
@@ -315,4 +317,60 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
     </div>
     """
   end
+
+  @doc "返回当前 LiveView 主体可以授予的角色权限目录。"
+  def role_permission_entries(permissions) do
+    allowed = MapSet.new(List.wrap(permissions))
+
+    PermissionCatalog.entries()
+    |> Enum.filter(fn entry ->
+      entry.registered? and MapSet.member?(allowed, entry.permission)
+    end)
+  end
+
+  @doc "按资源分组并筛选角色权限目录。"
+  def grouped_role_permission_entries(entries, query) do
+    normalized = String.downcase(String.trim(to_string(query)))
+
+    entries
+    |> Enum.filter(fn entry ->
+      normalized == "" or
+        String.contains?(
+          String.downcase("#{entry.permission} #{entry.description} #{entry.action}"),
+          normalized
+        )
+    end)
+    |> Enum.group_by(& &1.resource)
+    |> Enum.sort_by(&elem(&1, 0))
+  end
+
+  def role_permission_selected?(permissions, permission),
+    do: permission in String.split(to_string(permissions || ""), ",", trim: true)
+
+  def role_permission_resource_label("api-key"), do: "API Key"
+  def role_permission_resource_label("user"), do: "用户管理"
+  def role_permission_resource_label("role"), do: "角色管理"
+  def role_permission_resource_label("menu"), do: "菜单与权限"
+  def role_permission_resource_label("job"), do: "定时任务"
+  def role_permission_resource_label("notice"), do: "通知公告"
+  def role_permission_resource_label("dictionary"), do: "字典管理"
+  def role_permission_resource_label("department"), do: "组织结构"
+  def role_permission_resource_label("post"), do: "岗位管理"
+  def role_permission_resource_label(resource), do: resource
+
+  def role_permission_action_label("create"), do: "新增"
+  def role_permission_action_label("delete"), do: "删除"
+  def role_permission_action_label("read"), do: "读取"
+  def role_permission_action_label("update"), do: "修改"
+  def role_permission_action_label("export"), do: "导出"
+  def role_permission_action_label("import"), do: "导入"
+  def role_permission_action_label("manage"), do: "管理"
+  def role_permission_action_label("refresh"), do: "刷新"
+  def role_permission_action_label("revoke"), do: "撤销"
+  def role_permission_action_label("rotate"), do: "轮换"
+  def role_permission_action_label("run"), do: "执行"
+  def role_permission_action_label("assign"), do: "分配"
+  def role_permission_action_label("reset-password"), do: "重置密码"
+  def role_permission_action_label("update-status"), do: "修改状态"
+  def role_permission_action_label(action), do: action
 end
