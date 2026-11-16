@@ -152,19 +152,38 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
       case result do
         {:ok, _dict_type} ->
-          dictionary =
-            Support.load_dictionary_for_socket(socket, socket.assigns.selected_dict_type)
+          # 类型写入后重新读取当前条目页，避免旧的全量读取覆盖分页结果。
+          case AdminReadSupport.dictionary_page(
+                 socket,
+                 socket.assigns.selected_dict_type,
+                 dict_page_params(socket, 1)
+               ) do
+            {:ok, dictionary} ->
+              {:noreply,
+               assign(socket,
+                 dict_type_rows: dictionary.types,
+                 dict_data_rows: dictionary.data.items,
+                 dict_data_total: dictionary.data.total,
+                 page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
+                 page_sizes:
+                   Map.put(socket.assigns.page_sizes, "dict-data", dictionary.data.size),
+                 selected_dict_type: dictionary.selected,
+                 dict_type_form: Support.empty_dict_type_form(),
+                 active_modal: nil,
+                 dict_feedback: if(dict_id == "", do: "字典类型已创建", else: "字典类型已更新")
+               )}
 
-          {:noreply,
-           assign(socket,
-             dict_type_rows: dictionary.types,
-             dict_data_rows: dictionary.data,
-             dict_data_total: length(dictionary.data),
-             selected_dict_type: dictionary.selected,
-             dict_type_form: Support.empty_dict_type_form(),
-             active_modal: nil,
-             dict_feedback: if(dict_id == "", do: "字典类型已创建", else: "字典类型已更新")
-           )}
+            {:error, reason} ->
+              {:noreply,
+               assign(socket,
+                 active_modal: nil,
+                 dict_feedback:
+                   Support.read_error_feedback(
+                     reason,
+                     "字典类型已保存，但列表刷新失败，请重试"
+                   )
+               )}
+          end
 
         error ->
           {:noreply, assign(socket, dict_feedback: Support.form_error(error))}
@@ -178,18 +197,33 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
     if Support.permission_socket?(socket, "dictionary:delete") do
       case Dictionary.delete_dict_type(dict_id, authorization: self_authorization(socket)) do
         :ok ->
-          dictionary = Support.load_dictionary_for_socket(socket, "")
+          case AdminReadSupport.dictionary_page(socket, "", dict_page_params(socket, 1)) do
+            {:ok, dictionary} ->
+              {:noreply,
+               assign(socket,
+                 dict_type_rows: dictionary.types,
+                 dict_data_rows: dictionary.data.items,
+                 dict_data_total: dictionary.data.total,
+                 page_nums: Map.put(socket.assigns.page_nums, "dict-data", 1),
+                 page_sizes:
+                   Map.put(socket.assigns.page_sizes, "dict-data", dictionary.data.size),
+                 selected_dict_type: dictionary.selected,
+                 dict_type_form: Support.empty_dict_type_form(),
+                 active_modal: nil,
+                 dict_feedback: "字典类型已删除"
+               )}
 
-          {:noreply,
-           assign(socket,
-             dict_type_rows: dictionary.types,
-             dict_data_rows: dictionary.data,
-             dict_data_total: length(dictionary.data),
-             selected_dict_type: dictionary.selected,
-             dict_type_form: Support.empty_dict_type_form(),
-             active_modal: nil,
-             dict_feedback: "字典类型已删除"
-           )}
+            {:error, reason} ->
+              {:noreply,
+               assign(socket,
+                 active_modal: nil,
+                 dict_feedback:
+                   Support.read_error_feedback(
+                     reason,
+                     "字典类型已删除，但列表刷新失败，请重试"
+                   )
+               )}
+          end
 
         error ->
           {:noreply, assign(socket, dict_feedback: Support.form_error(error))}

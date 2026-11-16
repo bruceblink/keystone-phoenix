@@ -443,6 +443,67 @@ defmodule KeystonePhoenixWeb.AdminEditingTest do
     assert Dictionary.list_dict_data(%{"dictType" => type}).total == 1
   end
 
+  @tag :integration
+  test "dictionary type writes preserve the server-side item page", ctx do
+    type = unique("editing.dict.page")
+
+    {:ok, dict_type} =
+      Dictionary.create_dict_type(
+        %{"dictName" => "分页编辑测试", "dictType" => type, "status" => 1},
+        authorization: %{principal: ctx.admin}
+      )
+
+    Enum.each(1..51, fn index ->
+      {:ok, _data} =
+        Dictionary.create_dict_data(
+          %{
+            "dictType" => type,
+            "dictLabel" => "值 #{index}",
+            "dictValue" => Integer.to_string(index),
+            "dictSort" => index,
+            "isDefault" => false,
+            "status" => 1
+          },
+          authorization: %{principal: ctx.admin}
+        )
+    end)
+
+    {:ok, view} = login(ctx.conn, ctx.admin)
+    render_click(view, "show-panel", %{"panel" => "dicts"})
+    render_click(view, "select-dict-type", %{"dict-type" => type})
+
+    assert live_socket(view).assigns.dict_data_total == 51
+    assert length(live_socket(view).assigns.dict_data_rows) == 50
+
+    render_click(view, "edit-dict-type", %{"dict-id" => to_string(dict_type.dict_id)})
+
+    render_submit(view, "save-dict-type", %{
+      "dictId" => to_string(dict_type.dict_id),
+      "dictName" => "分页编辑测试已更新",
+      "dictType" => type,
+      "status" => "1",
+      "remark" => ""
+    })
+
+    assert render(view) =~ "字典类型已更新"
+    assert live_socket(view).assigns.dict_data_total == 51
+    assert length(live_socket(view).assigns.dict_data_rows) == 50
+
+    {:ok, empty_type} =
+      Dictionary.create_dict_type(
+        %{
+          "dictName" => "待删除字典",
+          "dictType" => unique("editing.dict.delete"),
+          "status" => 1
+        },
+        authorization: %{principal: ctx.admin}
+      )
+
+    render_click(view, "delete-dict-type", %{"dict-id" => to_string(empty_type.dict_id)})
+    assert render(view) =~ "字典类型已删除"
+    assert length(live_socket(view).assigns.dict_data_rows) <= 50
+  end
+
   test "the operation-log panel is read-only", ctx do
     {:ok, view} = login(ctx.conn, ctx.admin)
     render_click(view, "show-panel", %{"panel" => "logs"})
