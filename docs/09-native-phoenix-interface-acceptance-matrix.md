@@ -156,3 +156,11 @@ Phoenix LiveView 和 admin-web 都保存筛选、页码和总数；筛选、写�
 本轮同时修复 `scripts/check_api_route_contract.py` 对 Native 多行方法声明的识别问题，提交为 Phoenix `968f8de`。GitHub Actions 运行 `43870913581` 的失败原因为 `mix check.source_lines` 将 `admin_support.ex` 识别为 601 行；该文件已随 `5576d95` 压到限制以内，本地 `mix format --check-formatted` 和 `mix check.source_lines` 已通过。修复后的推送运行 `43873433545` 和文档更新运行 `43874290343` 均已通过格式、源码行数、严格编译、单元/数据库测试、覆盖率报告和 LiveView 集成测试。
 
 当前未完成项仍包括其他页面的完整服务端分页和逐页编辑/批量写入/详情返回矩阵，以及 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和可视浏览器窗口证据。
+
+### 2026-11-16 公告分页与重复读取路由收口
+
+公告管理列表已完成三端分页闭环：Native `76685eb`、Phoenix `a86783c`、admin-web `d316150`。带 `page`/`size` 时返回 `{items,page,size,total}`，无分页参数时保留旧数组响应；筛选支持关键词、标题/内容、类型、发布状态和启用状态。Phoenix LiveView 与 admin-web 保存筛选和页码，翻页、刷新、写入、发布和删除后回到第一页；刷新失败保留旧页并显示业务错误反馈。
+
+为保持接口检查可反查，admin-web 的 API Key 和公告数组/分页读取已合并到单一客户端路由入口，提交为 `092f472`。静态路由检查重新通过：admin-web 74 条调用，Native/Phoenix 各 108 条 `/api/v1` 路由，JWK 路由一致，无旧路径标识。
+
+本轮验证：Phoenix 默认测试 `382 passed, 54 excluded`，含集成测试 `436 passed`；admin-web 公告分页后 `24 files / 135 tests passed`，类型检查和构建通过；Native 公告分页全量测试和 `quarkusBuild` 通过。CI 修复后的 Phoenix 运行 `43875384260` 已完整通过。
