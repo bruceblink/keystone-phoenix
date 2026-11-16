@@ -191,6 +191,30 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     refute has_element?(operation_view, "button[phx-click='refresh-login-logs']")
   end
 
+  test "audit log pagination queries the requested server page", %{conn: conn} do
+    role = insert_role(%{permission: "login-log:read"})
+    user = create_user(%{role_id: role.role_id})
+    {:ok, view, _html} = login_view(conn, user)
+
+    for index <- 1..24 do
+      assert :ok = Log.record_login_event("paged-user-#{index}", 1, "分页测试")
+    end
+
+    render_click(view, "show-panel", %{"panel" => "login-logs"})
+    render_click(view, "refresh-login-logs")
+
+    first_page_ids = Enum.map(live_socket(view).assigns.login_log_rows, & &1["infoId"])
+    assert length(first_page_ids) == 20
+    assert live_socket(view).assigns.login_log_total >= 25
+
+    render_click(view, "paginate", %{"panel" => "login-logs", "page" => "2"})
+
+    second_page_ids = Enum.map(live_socket(view).assigns.login_log_rows, & &1["infoId"])
+    assert live_socket(view).assigns.page_nums["login-logs"] == 2
+    assert second_page_ids != []
+    assert MapSet.disjoint?(MapSet.new(first_page_ids), MapSet.new(second_page_ids))
+  end
+
   test "a dictionary reader can select data, while an unprivileged user cannot", %{conn: conn} do
     insert_dict_fixture()
     role = insert_role(%{permission: "dictionary:read"})
