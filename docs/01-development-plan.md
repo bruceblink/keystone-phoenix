@@ -857,3 +857,11 @@ admin-web `eba91c7` 新增固定 Action SHA 的 GitHub Actions CI，统一执行
 Phoenix `467f486` 为角色成员详情补充“关闭”按钮和 `close-role-users` 事件。关闭后清理当前角色、已分配/可分配成员、反馈和成员分页状态，与 admin-web 的成员面板关闭行为一致。
 
 本轮验证：角色页面定向测试 `19 passed`，Phoenix 全量集成测试 `474 passed`，严格编译、源码行数和差异检查通过。
+
+### 2026-11-17 首屏监控读取失败闭环
+
+Phoenix `31771cb` 将登录后的默认运行监控读取纳入统一状态：读取过程中保留 loading 状态，首次读取失败显示带业务错误码的警示和“重试”按钮；已有快照刷新失败时保留旧数据并显示刷新反馈。监控读取职责拆分到 `MonitorSupport`，`AdminSupport` 保持兼容入口。非管理员账号收到 `permission_denied` 时转为可恢复的监控不可用状态，LiveView 不再崩溃。
+
+本轮验证：监控组件和页面定向测试 `13 passed`；Phoenix 全量集成测试 `476 passed`；`mix compile --warnings-as-errors`、`mix check.source_lines`、格式检查和 `git diff --check` 通过。
+
+该切片只完成运行监控首屏状态。其他页面的首次读取错误、真实浏览器窗口、Native/Phoenix 后端切换窗口验收，以及 OIDC、公钥硬件 Passkey、浏览器 CSRF/Cookie、多节点恢复、生产代理链和正式发布证据仍未完成。
