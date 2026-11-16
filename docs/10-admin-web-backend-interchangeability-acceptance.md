@@ -265,3 +265,5 @@ Phoenix `7f03904` 将登录日志和操作审计的筛选、页码和重置状�
 验证结果：Phoenix `mix test --include integration` 为 `443 passed`，`mix compile --warnings-as-errors`、格式检查、源码行数检查和差异检查通过；用户分页集成和页面组件定向测试通过。admin-web 分页状态定向测试为 `2 passed`，全量测试为 `25 files / 143 tests passed`，类型检查和生产构建通过。
 
 本轮仍不宣称完成真实可视浏览器窗口验收。Codex 内置浏览器在当前会话不能保持交互，现有 Chrome CDP/headless 证据仍按无头边界记录。OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和其余逐页面编辑、批量写入、详情返回矩阵继续作为未完成发布证据项。
+
+Phoenix `e2231de` 又将用户管理的 `users_username`、`users_displayName` 和 `users_page` 写入深链接；用户页面直接打开、查询、翻页和重置时与 admin-web 的 URL 状态一致。

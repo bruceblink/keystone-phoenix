@@ -720,3 +720,5 @@ Phoenix `bdbad56` 完成 LiveView 用户管理服务端分页。筛选、刷新�
 验证结果：Phoenix 全量集成回归 `443 passed`，严格编译、格式、源码行数和差异检查通过；admin-web 分页状态定向测试 `2 passed`，全量测试 `25 files / 143 tests passed`，类型检查和生产构建通过。
 
 主线下一步仍按页面补齐其余编辑、批量写入、详情返回和真实错误反馈矩阵。OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链以及真实可视浏览器窗口验收继续单独记录为发布证据缺口。
+
+Phoenix `e2231de` 又完成用户管理的 `users_username`、`users_displayName` 和 `users_page` 深链接。LiveView 直接打开、查询、翻页和重置时与 admin-web 保持同一 URL 状态。
