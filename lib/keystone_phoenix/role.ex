@@ -17,6 +17,7 @@ defmodule KeystonePhoenix.Role do
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.RoleMembership
   alias KeystonePhoenix.User.SysUser
+  alias KeystonePhoenix.User.SysUserRole
 
   @role_attrs [
     {"roleName", :role_name},
@@ -461,13 +462,15 @@ defmodule KeystonePhoenix.Role do
   defp list_role_users(role_id, params, mode, actor) do
     query =
       from u in SysUser,
+        left_join: membership in SysUserRole,
+        on: membership.user_id == u.user_id and membership.role_id == ^role_id,
         where: u.deleted == false,
         order_by: [desc: u.user_id]
 
     query =
       case mode do
-        :allocated -> where(query, [user], user.role_id == ^role_id)
-        :unallocated -> where(query, [user], is_nil(user.role_id) or user.role_id != ^role_id)
+        :allocated -> where(query, [_user, membership], not is_nil(membership.user_id))
+        :unallocated -> where(query, [_user, membership], is_nil(membership.user_id))
       end
 
     query = Authz.scope_query(query, actor || %{})
@@ -486,7 +489,7 @@ defmodule KeystonePhoenix.Role do
   defp normalize_user_ids(user_ids) when is_list(user_ids) do
     normalized = Enum.map(user_ids, &parse_uuid/1)
 
-    if normalized == [] or Enum.any?(normalized, &is_nil/1),
+    if Enum.any?(normalized, &is_nil/1),
       do: {:error, :invalid_ids},
       else: {:ok, Enum.uniq(normalized)}
   end

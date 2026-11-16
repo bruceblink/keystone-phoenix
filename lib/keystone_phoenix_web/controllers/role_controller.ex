@@ -221,22 +221,22 @@ defmodule KeystonePhoenixWeb.RoleController do
   end
 
   def allocated_users(conn, %{"role_id" => role_id} = params) do
-    page = Role.list_allocated_users(role_id, params, conn.assigns.current_user)
-
-    json(
-      conn,
-      ApiResponse.ok(role_users_response(page))
-    )
+    with {:ok, _role} <- Role.get_role(role_id) do
+      page = Role.list_allocated_users(role_id, params, conn.assigns.current_user)
+      json(conn, ApiResponse.ok(role_users_response(page)))
+    else
+      {:error, :not_found} -> render_error(conn, :not_found)
+    end
   end
 
   @doc "Lists users that are not assigned to a role."
   def unallocated_users(conn, %{"role_id" => role_id} = params) do
-    page = Role.list_unallocated_users(role_id, params, conn.assigns.current_user)
-
-    json(
-      conn,
-      ApiResponse.ok(role_users_response(page))
-    )
+    with {:ok, _role} <- Role.get_role(role_id) do
+      page = Role.list_unallocated_users(role_id, params, conn.assigns.current_user)
+      json(conn, ApiResponse.ok(role_users_response(page)))
+    else
+      {:error, :not_found} -> render_error(conn, :not_found)
+    end
   end
 
   @doc "Assigns users to a role."

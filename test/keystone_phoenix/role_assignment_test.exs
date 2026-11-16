@@ -164,6 +164,20 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     assert rows.total == 0
   end
 
+  test "role user lists use membership rows for non-preferred roles" do
+    preferred_role = create_role()
+    target_role = create_role()
+    user = create_user(preferred_role.role_id)
+    Repo.insert!(%SysUserRole{user_id: user.user_id, role_id: target_role.role_id})
+
+    actor = %{permissions: ["permission:manage"]}
+    allocated = Role.list_allocated_users(target_role.role_id, %{"pageSize" => 50}, actor)
+    unallocated = Role.list_unallocated_users(target_role.role_id, %{"pageSize" => 50}, actor)
+
+    assert user.user_id in Enum.map(allocated.rows, & &1["userId"])
+    refute user.user_id in Enum.map(unallocated.rows, & &1["userId"])
+  end
+
   test "role updates bump permission versions for non-preferred role members" do
     preferred_role = create_role()
     secondary_role = create_role()

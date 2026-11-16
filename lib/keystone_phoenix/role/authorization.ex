@@ -27,7 +27,9 @@ defmodule KeystonePhoenix.Role.Authorization do
     case Command.authorize_resource(options, permission, :role) do
       :ok ->
         with {:ok, principal} <- principal(options),
-             true <- is_nil(user_ids) or assignment_targets_allowed?(principal, user_ids) do
+             true <-
+               is_nil(user_ids) or user_ids == [] or
+                 assignment_targets_allowed?(principal, user_ids) do
           :ok
         else
           false -> {:error, :data_scope_denied}

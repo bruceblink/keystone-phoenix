@@ -139,11 +139,14 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
 
   @tag :integration
   test "role member HTTP queries return allocated and unallocated users" do
-    actor_role = create_role("TENANT")
+    actor_role = create_role("ALL")
     grant_permission(actor_role.role_id, "role:read")
+    grant_permission(actor_role.role_id, "role:assign")
     target_role = create_role("TENANT")
+    preferred_role = create_role("TENANT")
     actor = create_user(actor_role.role_id)
-    allocated = create_user(target_role.role_id)
+    allocated = create_user(preferred_role.role_id)
+    Repo.insert!(%SysUserRole{user_id: allocated.user_id, role_id: target_role.role_id})
     unallocated = create_user(nil)
     allocated_id = allocated.user_id
     unallocated_id = unallocated.user_id
@@ -169,6 +172,38 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
 
     assert %{"success" => true, "data" => [^unallocated_id]} =
              json_response(unallocated_response, 200)
+
+    non_allocated_response =
+      get(
+        authorized(token),
+        "/api/v1/roles/#{target_role.role_id}/users",
+        %{"allocated" => "false", "username" => allocated.username}
+      )
+
+    assert %{"success" => true, "data" => []} = json_response(non_allocated_response, 200)
+
+    for role_id <- ["not-a-uuid", Identity.v7()] do
+      missing_response = get(authorized(token), "/api/v1/roles/#{role_id}/users")
+
+      assert get_in(json_response(missing_response, 404), ["error", "code"]) ==
+               "resource_not_found"
+    end
+
+    assert %{"success" => true, "data" => %{"updated" => true}} =
+             json_response(
+               put(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+                 "userIds" => []
+               }),
+               200
+             )
+
+    assert %{"success" => true, "data" => %{"updated" => true}} =
+             json_response(
+               delete(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+                 "userIds" => []
+               }),
+               200
+             )
   end
 
   @tag :integration
