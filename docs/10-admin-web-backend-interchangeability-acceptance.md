@@ -253,3 +253,5 @@ Phoenix `93efb71` 补齐角色列表写入闭环。角色保存、状态变更�
 菜单筛选状态已同步：admin-web `b4c6c46` 与 Phoenix `8cd0295` 均把关键词保存到菜单深链接，查询、直接打开和重置行为一致。菜单树继续完整读取，以保持多级父子关系；本轮没有新增或删除菜单接口。
 
 Phoenix `05f148e` 又完成组织结构树的 URL 状态对齐，并将菜单关键词参数修正为 admin-web 使用的 `menus_keyword`。组织结构使用 `departments_keyword`；树接口、父子关系和角色绑定接口未改变。
+
+Phoenix `f7cf392` 修复了测试环境后台清理进程访问 SQL sandbox owner 的 CI 时序问题。生产配置未改变；最新 CI 的默认测试为 `386 passed, 56 excluded`，覆盖率和 LiveView 集成测试均为 `442 passed`。

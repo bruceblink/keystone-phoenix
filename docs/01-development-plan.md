@@ -710,3 +710,5 @@ Phoenix 提交 `b9d8530` 将登录日志和操作审计的 LiveView 刷新、筛
 菜单筛选状态随后完成三端对齐：admin-web `b4c6c46` 和 Phoenix `8cd0295` 将菜单关键词查询写入命名 URL，直接打开菜单深链接可以恢复筛选，重置会清除查询参数；菜单树仍保持完整读取和祖先链展示，不进行破坏层级的分页。
 
 组织结构筛选随后由 Phoenix `05f148e` 补齐，使用与 admin-web 一致的 `departments_keyword` 深链接；菜单参数统一为 `menus_keyword`。树数据继续完整读取，查询和重置行为已通过 LiveView 集成测试。
+
+CI 稳定性修复：Phoenix `034cc5b` 曾在覆盖率步骤中因测试环境后台清理进程访问已退出的 SQL sandbox owner，导致 `upload_test.exs` 失败。`f7cf392` 将会话和 Passkey 清理间隔在测试环境延后到 1 小时，不改变生产配置；本地和 CI 覆盖率、LiveView 集成测试均恢复为 `442 passed`，且日志不再包含该 ownership 错误。

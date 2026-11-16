@@ -204,3 +204,5 @@ Phoenix `93efb71` 又补齐角色分页后的写入状态转换：保存、停�
 菜单树不执行会打散父子关系的分页。admin-web `b4c6c46` 和 Phoenix `8cd0295` 已统一菜单关键词 URL 状态，直接打开 `/menus?keyword=...` 可以恢复筛选，重置会删除关键词参数；菜单树数据和角色绑定接口保持不变。
 
 Phoenix `05f148e` 将菜单参数统一为 `menus_keyword`，并为组织结构增加 `departments_keyword` 深链接。两类树形页面继续完整读取，避免分页破坏父子关系；查询、直接打开和重置行为由 LiveView 集成测试覆盖。
+
+Phoenix `f7cf392` 修复测试环境后台清理进程与 SQL sandbox owner 的时序干扰。测试环境延后会话和 Passkey 清理任务，生产清理间隔不变；覆盖率和 LiveView 集成测试在 CI 中均为 `442 passed`。
