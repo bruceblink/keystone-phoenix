@@ -277,7 +277,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
 
     account_modal_html = render_component(&Accounts.users/1, account_modal_assigns)
     assert account_modal_html =~ "初始密码"
-    assert account_modal_html =~ "角色标识"
+    assert account_modal_html =~ "角色"
     refute account_modal_html =~ "user-reset-password-form"
 
     account_html =
