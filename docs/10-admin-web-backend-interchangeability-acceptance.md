@@ -273,3 +273,7 @@ Phoenix `e2231de` 又将用户管理的 `users_username`、`users_displayName` �
 本批次验证：Phoenix 集成测试 `444 passed`；任务深链接定向测试 `3 passed`；admin-web 全量测试 `25 files / 145 tests passed`，类型检查和生产构建通过；源码行数、差异、错误码和路由契约检查通过。当前 admin-web 使用 73 条 API 调用，Native 与 Phoenix 各提供 108 条 `/api/v1` 路由，路由集合一致，21 个服务端业务错误码和 4 个 admin-web 本地错误码一致。
 
 验收边界：本批次没有新增 Codex 内置浏览器可视窗口证据。当前会话无法保持内置浏览器交互，既有 Chrome CDP/headless 结果仍按无头测试边界记录；逐页面编辑、批量写入、加载失败、详情返回和发布环境窗口矩阵，以及 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复和生产代理链仍未完成。
+
+第十二批闭环证据：Phoenix `81586f6` 将字典类型写入后的刷新改为服务端分页读取，类型新增、编辑和删除不会把字典条目恢复成全量内存列表；读取失败保留旧页并显示稳定业务错误。admin-web `2179f8d` 将运行监控的强制下线失败统一显示业务错误码、业务含义和请求标识，成功后刷新监控快照。
+
+本批次验证：Phoenix 集成测试 `445 passed`，admin-web `26 files / 147 tests passed`，类型检查和生产构建通过；三端错误码目录和接口路由集合检查通过。该批次仍不替代真实可视浏览器窗口验收，剩余页面矩阵、发布环境窗口、OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复和生产代理链继续保持未完成状态。
