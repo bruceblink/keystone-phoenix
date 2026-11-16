@@ -153,6 +153,6 @@ Phoenix LiveView 和 admin-web 都保存筛选、页码和总数；筛选、写�
 
 验证结果：Phoenix 全量测试 `382 passed, 53 excluded`，API Key 集成测试 `16 passed`；admin-web 全量测试 `24 files / 133 tests passed`，类型检查和构建通过；Native 全量 Gradle 测试和 `quarkusBuild` 通过。错误码目录检查仍为 21 个服务端代码和 4 个客户端本地代码；路由检查为 admin-web 74 条调用、Native/Phoenix 各 108 条 `/api/v1` 路由，JWK 集合一致。
 
-本轮同时修复 `scripts/check_api_route_contract.py` 对 Native 多行方法声明的识别问题，提交为 Phoenix `968f8de`。GitHub Actions 运行 `43870913581` 的失败原因为 `mix check.source_lines` 将 `admin_support.ex` 识别为 601 行；该文件已随 `5576d95` 压到限制以内，本地 `mix format --check-formatted` 和 `mix check.source_lines` 已通过。修复后的推送运行 `43873433545` 已通过格式、源码行数、严格编译、单元/数据库测试，集成测试仍在运行；完成状态需以该运行最终结果为准。
+本轮同时修复 `scripts/check_api_route_contract.py` 对 Native 多行方法声明的识别问题，提交为 Phoenix `968f8de`。GitHub Actions 运行 `43870913581` 的失败原因为 `mix check.source_lines` 将 `admin_support.ex` 识别为 601 行；该文件已随 `5576d95` 压到限制以内，本地 `mix format --check-formatted` 和 `mix check.source_lines` 已通过。修复后的推送运行 `43873433545` 和文档更新运行 `43874290343` 均已通过格式、源码行数、严格编译、单元/数据库测试、覆盖率报告和 LiveView 集成测试。
 
 当前未完成项仍包括其他页面的完整服务端分页和逐页编辑/批量写入/详情返回矩阵，以及 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和可视浏览器窗口证据。
