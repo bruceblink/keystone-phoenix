@@ -57,6 +57,17 @@ defmodule KeystonePhoenix.JobAuditScopeTest do
 
     assert {:ok, page} = Job.list_jobs(%{"jobName" => "范围任务"}, authorization)
     assert Enum.any?(page.rows, &(&1["jobId"] == job.job_id))
+
+    assert {:ok, disabled_page} =
+             Job.list_jobs(%{"status" => "disabled", "keyword" => "范围任务"}, authorization)
+
+    assert Enum.any?(disabled_page.rows, &(&1["jobId"] == job.job_id))
+
+    assert {:ok, paged} =
+             Job.list_jobs_page_all(%{"pageNum" => 1, "pageSize" => 1}, authorization)
+
+    assert length(paged.rows) == 1
+    assert paged.total >= 1
     assert {:ok, loaded} = Job.get_job(job.job_id, authorization)
     assert loaded.job_id == job.job_id
     assert {:ok, _targets} = Job.invoke_targets(authorization)

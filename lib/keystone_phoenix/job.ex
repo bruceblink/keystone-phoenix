@@ -26,18 +26,20 @@ defmodule KeystonePhoenix.Job do
   @doc "Returns a paginated task list."
   def list_jobs(params \\ %{}) do
     query = from(job in SysJob, order_by: [desc: job.create_time, desc: job.job_id])
+    query = filter_keyword(query, params["keyword"] || params[:keyword])
     query = filter_contains(query, :job_name, params["jobName"] || params[:job_name])
     query = filter_contains(query, :job_group, params["jobGroup"] || params[:job_group])
-    query = filter_integer(query, :status, params["status"] || params[:status])
+    query = filter_job_status(query, params["status"] || params[:status])
     paginate(query, params, :job_id, &job_to_map/1)
   end
 
   defp list_jobs_scoped(params, scope) do
     query = from(job in SysJob, order_by: [desc: job.create_time, desc: job.job_id])
     query = owner_filter(query, scope)
+    query = filter_keyword(query, params["keyword"] || params[:keyword])
     query = filter_contains(query, :job_name, params["jobName"] || params[:job_name])
     query = filter_contains(query, :job_group, params["jobGroup"] || params[:job_group])
-    query = filter_integer(query, :status, params["status"] || params[:status])
+    query = filter_job_status(query, params["status"] || params[:status])
     paginate(query, params, :job_id, &job_to_map/1)
   end
 
@@ -52,10 +54,24 @@ defmodule KeystonePhoenix.Job do
     with {:ok, scope} <- Authorization.authorize_read(options, "job:read") do
       query = from(job in SysJob, order_by: [desc: job.create_time, desc: job.job_id])
       query = owner_filter(query, scope)
+      query = filter_keyword(query, params["keyword"] || params[:keyword])
       query = filter_contains(query, :job_name, params["jobName"] || params[:job_name])
       query = filter_contains(query, :job_group, params["jobGroup"] || params[:job_group])
-      query = filter_integer(query, :status, params["status"] || params[:status])
+      query = filter_job_status(query, params["status"] || params[:status])
       {:ok, Repo.all(query) |> Enum.map(&job_to_map/1)}
+    end
+  end
+
+  @doc "在检查任务权限和资源范围后查询任务分页。"
+  def list_jobs_page_all(params, options) when is_map(params) and is_list(options) do
+    with {:ok, scope} <- Authorization.authorize_read(options, "job:read") do
+      query = from(job in SysJob, order_by: [desc: job.create_time, desc: job.job_id])
+      query = owner_filter(query, scope)
+      query = filter_keyword(query, params["keyword"] || params[:keyword])
+      query = filter_contains(query, :job_name, params["jobName"] || params[:job_name])
+      query = filter_contains(query, :job_group, params["jobGroup"] || params[:job_group])
+      query = filter_job_status(query, params["status"] || params[:status])
+      {:ok, paginate(query, params, :job_id, &job_to_map/1)}
     end
   end
 
@@ -436,6 +452,36 @@ defmodule KeystonePhoenix.Job do
   defp filter_contains(query, field, value) do
     pattern = "%" <> String.trim(to_string(value)) <> "%"
     where(query, [record], ilike(field(record, ^field), ^pattern))
+  end
+
+  defp filter_keyword(query, value) when value in [nil, ""], do: query
+
+  defp filter_keyword(query, value) do
+    pattern = "%" <> String.trim(to_string(value)) <> "%"
+
+    where(
+      query,
+      [job],
+      ilike(job.job_code, ^pattern) or
+        ilike(job.job_name, ^pattern) or
+        ilike(job.job_group, ^pattern) or
+        ilike(job.invoke_target, ^pattern)
+    )
+  end
+
+  defp filter_job_status(query, value) when value in [nil, ""], do: query
+
+  defp filter_job_status(query, value) do
+    case String.downcase(to_string(value)) do
+      status when status in ["enabled", "active", "true", "1"] ->
+        where(query, [job], job.status == 1)
+
+      status when status in ["disabled", "inactive", "false", "0"] ->
+        where(query, [job], job.status == 0)
+
+      _ ->
+        query
+    end
   end
 
   defp filter_integer(query, _field, value) when value in [nil, ""], do: query

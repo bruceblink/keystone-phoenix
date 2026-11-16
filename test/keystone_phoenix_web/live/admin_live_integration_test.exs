@@ -271,6 +271,10 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     })
 
     assert render(view) =~ "任务已创建"
+    render_submit(view, "filter-jobs", %{"jobKeyword" => job_name})
+    assert live_socket(view).assigns.job_total == 1
+    assert Enum.any?(live_socket(view).assigns.job_rows, &(&1["jobName"] == job_name))
+
     job = Job.list_jobs(%{"jobName" => job_name, "pageSize" => 10}).rows |> List.first()
     assert job["jobName"] == job_name
 

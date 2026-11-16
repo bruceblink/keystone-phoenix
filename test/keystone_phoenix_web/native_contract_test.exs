@@ -58,4 +58,19 @@ defmodule KeystonePhoenixWeb.NativeContractTest do
     refute Map.has_key?(dto, "status")
     refute Map.has_key?(dto, "legacyField")
   end
+
+  test "job pagination preserves Native page metadata" do
+    assert NativeContract.pagination_requested?(%{"page" => "2", "size" => "20"})
+
+    page =
+      NativeContract.jobs_page(
+        %{rows: [%{"jobId" => "job-1", "jobName" => "任务"}], total: 21},
+        %{"pageNum" => "2", "pageSize" => "20"}
+      )
+
+    assert page.page == 2
+    assert page.size == 20
+    assert page.total == 21
+    assert [%{"id" => "job-1", "name" => "任务"}] = page.items
+  end
 end

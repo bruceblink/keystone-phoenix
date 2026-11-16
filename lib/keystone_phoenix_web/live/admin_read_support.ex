@@ -29,10 +29,34 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
       else: load_authorized(&Job.list_jobs(&1, Support.authorization_options(socket)))
   end
 
+  @doc "读取当前任务页，并保留总数和服务错误。"
+  def jobs_page(socket, params \\ %{}) do
+    result =
+      if Support.admin_socket?(socket),
+        do: Job.list_jobs(params),
+        else: Job.list_jobs(params, Support.authorization_options(socket))
+
+    page_result(result)
+  rescue
+    _error -> {:error, :service_unavailable}
+  end
+
   def job_logs(socket) do
     if Support.admin_socket?(socket),
       do: load_all(&Job.list_job_logs/1),
       else: load_authorized(&Job.list_job_logs(&1, Support.authorization_options(socket)))
+  end
+
+  @doc "读取当前任务的执行日志页，并保留总数和服务错误。"
+  def job_logs_page(socket, params \\ %{}) do
+    result =
+      if Support.admin_socket?(socket),
+        do: Job.list_job_logs(params),
+        else: Job.list_job_logs(params, Support.authorization_options(socket))
+
+    page_result(result)
+  rescue
+    _error -> {:error, :service_unavailable}
   end
 
   @doc "读取岗位列表并区分空结果和服务端读取失败。"
@@ -279,6 +303,11 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
       do: selected,
       else: List.first(types, %{})["dictType"] || ""
   end
+
+  defp page_result({:ok, page}), do: {:ok, page}
+  defp page_result(page) when is_map(page), do: {:ok, page}
+  defp page_result({:error, reason}), do: {:error, reason}
+  defp page_result(_other), do: {:error, :invalid_page}
 
   defp page_number(params),
     do:

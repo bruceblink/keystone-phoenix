@@ -5,16 +5,19 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
+  alias KeystonePhoenixWeb.Live.AdminReadSupport, as: ReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-jobs", _params, socket) do
     if Support.panel_allowed?(socket, "jobs") do
-      case Support.load_jobs_for_socket_result(socket) do
-        {:ok, rows} ->
+      case ReadSupport.jobs_page(socket, job_page_params(socket, 1, current_job_filter(socket))) do
+        {:ok, page} ->
           {:noreply,
            assign(socket,
-             job_rows: rows,
+             job_rows: page.rows,
+             job_total: page.total,
              selected_job_ids: [],
+             selected_job: nil,
              page_nums: Map.put(socket.assigns.page_nums, "jobs", 1),
              job_form: Support.empty_job_form(),
              job_feedback: nil,
@@ -34,29 +37,23 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("filter-jobs", params, socket) do
     if Support.panel_allowed?(socket, "jobs") do
-      {:noreply,
-       assign(socket,
-         job_filter: %{"keyword" => String.trim(to_string(params["jobKeyword"] || ""))},
-         selected_job_ids: [],
-         page_nums: Map.put(socket.assigns.page_nums, "jobs", 1)
-       )}
+      filter = %{"keyword" => String.trim(to_string(params["jobKeyword"] || ""))}
+      socket = assign(socket, job_filter: filter, selected_job_ids: [], selected_job: nil)
+      {:noreply, refresh_job_page(socket, 1)}
     else
       {:noreply, socket}
     end
   end
 
   def handle_event("reset-job-filter", _params, socket) do
-    if Support.panel_allowed?(socket, "jobs") do
-      {:noreply,
-       assign(socket,
-         job_filter: %{"keyword" => ""},
-         selected_job_ids: [],
-         page_nums: Map.put(socket.assigns.page_nums, "jobs", 1)
-       )}
-    else
-      {:noreply, socket}
-    end
+    handle_event("filter-jobs", %{"jobKeyword" => ""}, socket)
   end
+
+  def handle_event("paginate-jobs", %{"page" => page}, socket),
+    do: paginate_jobs(socket, page)
+
+  def handle_event("paginate-job-logs", %{"page" => page}, socket),
+    do: paginate_job_logs(socket, page)
 
   def handle_event("toggle-job-selection", %{"job-id" => job_id, "selected" => selected}, socket) do
     selected_ids = Map.get(socket.assigns, :selected_job_ids, [])
@@ -71,10 +68,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("toggle-all-job-selection", %{"selected" => selected}, socket) do
     page_ids =
-      socket.assigns.job_rows
-      |> filtered_job_rows(socket.assigns[:job_filter] || %{})
-      |> page_rows(socket.assigns.page_nums["jobs"], socket.assigns.page_sizes["jobs"])
-      |> Enum.map(&to_string(&1["jobId"]))
+      Enum.map(socket.assigns.job_rows, &to_string(&1["jobId"]))
 
     selected_ids = Map.get(socket.assigns, :selected_job_ids, [])
 
@@ -88,16 +82,22 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("select-job", %{"job-id" => job_id}, socket) do
     if Support.panel_allowed?(socket, "jobs") do
-      case Support.load_job_logs_for_socket_result(socket) do
-        {:ok, rows} ->
-          {:noreply,
-           assign(socket,
-             selected_job_id: job_id,
-             job_log_rows: rows,
-             page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
-             job_log_feedback: nil
-           )}
-
+      with {:ok, job} <- Job.get_job(job_id, Support.authorization_options(socket, "job:read")),
+           {:ok, page} <-
+             ReadSupport.job_logs_page(
+               socket,
+               job_log_page_params(socket, job_id, 1)
+             ) do
+        {:noreply,
+         assign(socket,
+           selected_job_id: job_id,
+           selected_job: Job.job_to_map(job),
+           job_log_rows: page.rows,
+           job_log_total: page.total,
+           page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
+           job_log_feedback: nil
+         )}
+      else
         {:error, reason} ->
           {:noreply,
            assign(socket,
@@ -118,12 +118,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
         :ok ->
           {:noreply,
            assign(socket,
-             job_rows: Support.load_jobs_for_socket(socket),
              selected_job_ids: [],
+             selected_job: nil,
              job_form: Support.empty_job_form(),
              active_modal: nil,
              job_feedback: "已删除 #{length(ids)} 个任务"
-           )}
+           )
+           |> refresh_job_page(1)}
 
         error ->
           {:noreply, assign(socket, job_feedback: Support.form_error(error))}
@@ -144,17 +145,23 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def handle_event("edit-job", %{"job-id" => job_id}, socket) do
     if Support.permission_socket?(socket, "job:update") do
-      case Enum.find(socket.assigns.job_rows, &(to_string(&1["jobId"]) == job_id)) do
-        nil ->
-          {:noreply, assign(socket, job_feedback: Feedback.error(:resource_not_found, "找不到指定任务"))}
-
-        job ->
+      case Job.get_job(job_id, Support.authorization_options(socket, "job:read")) do
+        {:ok, job} ->
           {:noreply,
            assign(socket,
-             job_form: Map.merge(Support.empty_job_form(), job),
+             job_form: Map.merge(Support.empty_job_form(), Job.job_to_map(job)),
+             selected_job: Job.job_to_map(job),
              job_feedback: nil,
              active_modal: "job"
            )}
+
+        {:error, reason} ->
+          feedback =
+            if reason in [:permission_denied, :data_scope_denied],
+              do: Feedback.error(:resource_not_found, "找不到指定任务"),
+              else: Support.read_error_feedback(reason, "找不到指定任务")
+
+          {:noreply, assign(socket, job_feedback: feedback)}
       end
     else
       {:noreply, socket}
@@ -175,12 +182,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
         {:ok, _job} ->
           {:noreply,
            assign(socket,
-             job_rows: Support.load_jobs_for_socket(socket),
              selected_job_ids: [],
+             selected_job: nil,
              job_form: Support.empty_job_form(),
              active_modal: nil,
              job_feedback: if(job_id == "", do: "任务已创建", else: "任务已更新")
-           )}
+           )
+           |> refresh_job_page(1)}
 
         error ->
           {:noreply, assign(socket, job_feedback: Support.form_error(error))}
@@ -196,12 +204,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
         :ok ->
           {:noreply,
            assign(socket,
-             job_rows: Support.load_jobs_for_socket(socket),
              selected_job_ids: [],
+             selected_job: nil,
              job_form: Support.empty_job_form(),
              active_modal: nil,
              job_feedback: "任务已删除"
-           )}
+           )
+           |> refresh_job_page(1)}
 
         error ->
           {:noreply, assign(socket, job_feedback: Support.form_error(error))}
@@ -262,8 +271,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
           :not_found -> Feedback.error(:resource_conflict, "没有正在运行的任务")
         end
 
-      {:noreply,
-       assign(socket, job_rows: Support.load_jobs_for_socket(socket), job_feedback: feedback)}
+      {:noreply, refresh_job_page(assign(socket, job_feedback: feedback), 1)}
     else
       {:noreply, socket}
     end
@@ -287,20 +295,23 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
             )
         end
 
-      {:noreply,
-       assign(socket, job_rows: Support.load_jobs_for_socket(socket), job_feedback: feedback)}
+      {:noreply, refresh_job_page(assign(socket, job_feedback: feedback), 1)}
     else
       {:noreply, socket}
     end
   end
 
   def handle_event("refresh-job-logs", _params, socket) do
-    if Support.panel_allowed?(socket, "job-logs") do
-      case Support.load_job_logs_for_socket_result(socket) do
-        {:ok, rows} ->
+    if Support.panel_allowed?(socket, "job-logs") and socket.assigns.selected_job_id do
+      case ReadSupport.job_logs_page(
+             socket,
+             job_log_page_params(socket, socket.assigns.selected_job_id, 1)
+           ) do
+        {:ok, page} ->
           {:noreply,
            assign(socket,
-             job_log_rows: rows,
+             job_log_rows: page.rows,
+             job_log_total: page.total,
              page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
              job_log_feedback: nil
            )}
@@ -362,24 +373,68 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
     [authorization: %{principal: principal, permission: permission}]
   end
 
-  defp filtered_job_rows(rows, filter) do
-    keyword = String.trim(to_string(filter["keyword"] || "")) |> String.downcase()
+  defp current_job_filter(socket), do: Map.get(socket.assigns, :job_filter, %{"keyword" => ""})
 
-    Enum.filter(rows, fn job ->
-      keyword == "" or
-        String.contains?(
-          String.downcase(
-            "#{job["jobName"] || ""} #{job["jobGroup"] || ""} #{job["invokeTarget"] || ""}" <>
-              " #{job["jobCode"] || ""}"
-          ),
-          keyword
-        )
-    end)
+  defp job_page_params(socket, page, filter) do
+    Map.merge(filter, %{
+      "pageNum" => page,
+      "pageSize" => get_in(socket.assigns, [:page_sizes, "jobs"]) || 20
+    })
   end
 
-  defp page_rows(rows, page_num, page_size) do
-    rows
-    |> Enum.drop(max(page_num - 1, 0) * page_size)
-    |> Enum.take(page_size)
+  defp job_log_page_params(socket, job_id, page) do
+    %{
+      "jobId" => job_id,
+      "pageNum" => page,
+      "pageSize" => get_in(socket.assigns, [:page_sizes, "job-logs"]) || 50
+    }
+  end
+
+  defp refresh_job_page(socket, page) do
+    case ReadSupport.jobs_page(socket, job_page_params(socket, page, current_job_filter(socket))) do
+      {:ok, result} ->
+        assign(socket,
+          job_rows: result.rows,
+          job_total: result.total,
+          page_nums: Map.put(socket.assigns.page_nums, "jobs", page)
+        )
+
+      {:error, reason} ->
+        assign(socket, job_feedback: Support.read_error_feedback(reason, "任务列表读取失败，请重试"))
+    end
+  end
+
+  defp paginate_jobs(socket, page) do
+    case Integer.parse(to_string(page)) do
+      {page_number, ""} when page_number > 0 ->
+        {:noreply, refresh_job_page(socket, page_number)}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  defp paginate_job_logs(socket, page) do
+    with {page_number, ""} when page_number > 0 <- Integer.parse(to_string(page)),
+         job_id when is_binary(job_id) <- socket.assigns.selected_job_id,
+         {:ok, result} <-
+           ReadSupport.job_logs_page(socket, job_log_page_params(socket, job_id, page_number)) do
+      {:noreply,
+       assign(socket,
+         job_log_rows: result.rows,
+         job_log_total: result.total,
+         page_nums: Map.put(socket.assigns.page_nums, "job-logs", page_number),
+         job_log_feedback: nil
+       )}
+    else
+      {:error, reason} ->
+        {:noreply,
+         assign(socket,
+           job_log_feedback: Support.read_error_feedback(reason, "任务日志分页读取失败，请重试")
+         )}
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 end

@@ -15,9 +15,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:page_num, fn -> 1 end)
       |> assign_new(:page_size, fn -> 50 end)
+      |> assign_new(:job_total, fn -> length(Map.get(assigns, :job_rows, [])) end)
       |> assign_new(:job_filter, fn -> %{"keyword" => ""} end)
       |> assign_new(:selected_job_ids, fn -> [] end)
       |> assign_new(:selected_job_id, fn -> nil end)
+      |> assign_new(:selected_job, fn -> nil end)
+      |> assign_new(:job_log_rows, fn -> [] end)
+      |> assign_new(:job_log_total, fn -> length(Map.get(assigns, :job_log_rows, [])) end)
 
     ~H"""
     <div class="jobs-page operations-page">
@@ -60,38 +64,38 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       <% end %>
       <section class="card jobs-table-card" aria-labelledby="jobs-table-title">
         <header class="card-header table-card-heading">
-          <div><h2 id="jobs-table-title">任务列表</h2><p>共 <%= length(filtered_job_rows(@job_rows, @job_filter)) %> 个匹配任务</p></div>
+          <div><h2 id="jobs-table-title">任务列表</h2><p>共 <%= @job_total %> 个匹配任务</p></div>
           <span class="badge badge-info">系统 API</span>
         </header>
-        <%= if filtered_job_rows(@job_rows, @job_filter) == [] do %>
+        <%= if @job_rows == [] do %>
           <div class="jobs-empty" role="status"><strong>没有匹配的任务</strong><p>调整筛选条件后重试。</p></div>
         <% else %>
-        <div class="jobs-table-wrap" role="region" tabindex="0" aria-label="定时任务列表"><table class="jobs-table"><caption class="sr-only">定时任务列表</caption><thead><tr><th scope="col"><input type="checkbox" aria-label="选择当前任务" checked={page_rows(filtered_job_rows(@job_rows, @job_filter), @page_num, @page_size) != [] and Enum.all?(page_rows(filtered_job_rows(@job_rows, @job_filter), @page_num, @page_size), &(to_string(&1["jobId"]) in @selected_job_ids))} phx-click="toggle-all-job-selection" phx-value-selected={if page_rows(filtered_job_rows(@job_rows, @job_filter), @page_num, @page_size) != [] and Enum.all?(page_rows(filtered_job_rows(@job_rows, @job_filter), @page_num, @page_size), &(to_string(&1["jobId"]) in @selected_job_ids)), do: "false", else: "true"} /></th><th scope="col">任务</th><th scope="col">分组</th><th scope="col">Cron</th><th scope="col">状态</th><th scope="col">最近运行</th><th scope="col">查看</th><th scope="col">操作</th></tr></thead><tbody>
-          <%= for job <- page_rows(filtered_job_rows(@job_rows, @job_filter), @page_num, @page_size) do %>
+        <div class="jobs-table-wrap" role="region" tabindex="0" aria-label="定时任务列表"><table class="jobs-table"><caption class="sr-only">定时任务列表</caption><thead><tr><th scope="col"><input type="checkbox" aria-label="选择当前任务" checked={Enum.all?(@job_rows, &(to_string(&1["jobId"]) in @selected_job_ids))} phx-click="toggle-all-job-selection" phx-value-selected={if Enum.all?(@job_rows, &(to_string(&1["jobId"]) in @selected_job_ids)), do: "false", else: "true"} /></th><th scope="col">任务</th><th scope="col">分组</th><th scope="col">Cron</th><th scope="col">状态</th><th scope="col">最近运行</th><th scope="col">查看</th><th scope="col">操作</th></tr></thead><tbody>
+          <%= for job <- @job_rows do %>
             <tr class={if to_string(job["jobId"]) == to_string(@selected_job_id), do: "jobs-row-selected", else: nil}><td><input type="checkbox" aria-label={"选择任务 #{job["jobName"]}"} checked={to_string(job["jobId"]) in @selected_job_ids} phx-click="toggle-job-selection" phx-value-job-id={job["jobId"]} phx-value-selected={if to_string(job["jobId"]) in @selected_job_ids, do: "false", else: "true"} /></td><td><div class="job-cell"><span class="job-marker" aria-hidden="true">▣</span><div><strong><%= job["jobName"] %></strong><small><%= job["jobCode"] || job["jobId"] %></small></div></div></td><td><%= job["jobGroup"] || "—" %></td><td><code class="job-cron"><%= job["cronExpression"] || "—" %></code></td><td><span class={"badge #{if job["status"] == 1, do: "badge-success", else: "badge-neutral"}"}><%= if job["status"] == 1, do: "启用", else: "停用" %></span></td><td class="jobs-time"><%= job["lastRunAt"] || job["lastRunTime"] || "—" %></td><td><button type="button" class="button button-ghost button-sm" phx-click="select-job" phx-value-job-id={job["jobId"]} phx-disable-with="读取中…">日志</button></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="edit-job" phx-value-job-id={job["jobId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-ghost button-sm" phx-click="toggle-job-status" phx-value-job-id={job["jobId"]} phx-value-status={if job["status"] == 1, do: 0, else: 1} phx-disable-with="处理中…"><%= if job["status"] == 1, do: "停用", else: "启用" %></button><button type="button" class="button button-ghost button-sm" phx-click="run-job" phx-value-job-id={job["jobId"]} phx-disable-with="执行中…" disabled={job["status"] != 1}>执行</button></td></tr>
           <% end %>
         </tbody></table></div>
         <% end %>
-        <.pagination panel="jobs" page_num={min(@page_num, page_count(length(filtered_job_rows(@job_rows, @job_filter)), @page_size))} page_size={@page_size} total={length(filtered_job_rows(@job_rows, @job_filter))} />
+        <.pagination panel="jobs" page_num={min(@page_num, page_count(@job_total, @page_size))} page_size={@page_size} total={@job_total} />
       </section>
       <%= if @selected_job_id do %>
-        <% selected_job = Enum.find(@job_rows, &(to_string(&1["jobId"]) == to_string(@selected_job_id))) %>
-        <% selected_logs = Enum.filter(@job_log_rows, &(to_string(&1["jobId"]) == to_string(@selected_job_id))) %>
+        <% selected_job = @selected_job || Enum.find(@job_rows, &(to_string(&1["jobId"]) == to_string(@selected_job_id))) %>
+        <% selected_logs = @job_log_rows %>
         <section :if={selected_job} class="card job-logs-card" aria-labelledby="selected-job-logs-title">
           <header class="card-header">
-            <div><h2 id="selected-job-logs-title"><%= selected_job["jobName"] %> · 执行日志</h2><p>共 <%= length(selected_logs) %> 条记录</p></div>
+            <div><h2 id="selected-job-logs-title"><%= selected_job["jobName"] %> · 执行日志</h2><p>共 <%= @job_log_total %> 条记录</p></div>
             <div class="heading-actions"><span class="badge badge-info">只读</span><button type="button" class="button button-ghost button-sm" phx-click="refresh-job-logs" phx-disable-with="刷新中…">刷新</button></div>
           </header>
           <%= if selected_logs == [] do %>
             <div class="jobs-empty" role="status"><strong>暂无执行日志</strong><p>任务运行后，日志会显示在这里。</p></div>
           <% else %>
             <div class="jobs-table-wrap"><table class="jobs-table"><caption class="sr-only">执行日志</caption><thead><tr><th scope="col">时间</th><th scope="col">触发方式</th><th scope="col">状态</th><th scope="col">耗时</th><th scope="col">说明</th></tr></thead><tbody>
-              <%= for log <- page_rows(selected_logs, @page_nums["job-logs"], @page_sizes["job-logs"]) do %>
+              <%= for log <- selected_logs do %>
                 <tr><td class="jobs-time"><%= job_log_time(log) %></td><td><%= job_log_trigger(log) %></td><td><span class={"badge #{job_log_badge(log["status"])}"}><%= job_log_status(log["status"]) %></span></td><td><%= job_log_duration(log) %></td><td class="audit-detail"><%= log["jobMessage"] || log["exceptionInfo"] || "—" %></td></tr>
               <% end %>
             </tbody></table></div>
           <% end %>
-          <.pagination panel="job-logs" page_num={min(@page_nums["job-logs"], page_count(length(selected_logs), @page_sizes["job-logs"]))} page_size={@page_sizes["job-logs"]} total={length(selected_logs)} />
+          <.pagination panel="job-logs" page_num={min(@page_nums["job-logs"], page_count(@job_log_total, @page_sizes["job-logs"]))} page_size={@page_sizes["job-logs"]} total={@job_log_total} />
         </section>
       <% end %>
     </div>
@@ -134,20 +138,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       </section>
     </div>
     """
-  end
-
-  defp filtered_job_rows(rows, filter) do
-    keyword = String.trim(to_string(filter["keyword"] || "")) |> String.downcase()
-
-    Enum.filter(rows, fn job ->
-      keyword == "" or
-        String.contains?(
-          String.downcase(
-            "#{job["jobName"] || ""} #{job["jobGroup"] || ""} #{job["invokeTarget"] || ""} #{job["jobCode"] || ""}"
-          ),
-          keyword
-        )
-    end)
   end
 
   # 将旧任务日志字段转换为 admin-web 同一组可读列。

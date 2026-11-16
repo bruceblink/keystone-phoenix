@@ -22,16 +22,28 @@ defmodule KeystonePhoenixWeb.JobController do
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.NativeContract
 
-  @doc "按 Native 约定返回任务数组。"
+  @doc "按 Native 约定返回任务数组或分页结果。"
   def list(conn, params) do
     query_params = NativeContract.pagination_params(params)
+    paged? = NativeContract.pagination_requested?(params)
 
     result =
-      Job.list_jobs_all(query_params, authorization: %{principal: conn.assigns.current_user})
+      if paged? do
+        Job.list_jobs_page_all(query_params,
+          authorization: %{principal: conn.assigns.current_user}
+        )
+      else
+        Job.list_jobs_all(query_params, authorization: %{principal: conn.assigns.current_user})
+      end
 
     case result do
       {:ok, page} ->
-        json(conn, ApiResponse.ok(NativeContract.jobs(page)))
+        payload =
+          if paged?,
+            do: NativeContract.jobs_page(page, query_params),
+            else: NativeContract.jobs(page)
+
+        json(conn, ApiResponse.ok(payload))
 
       {:error, reason} ->
         render_error(conn, reason)

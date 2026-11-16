@@ -206,6 +206,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
         panel == "notices" ->
           SystemEvents.handle_event("refresh-notices", %{}, assign(socket, active_panel: panel))
 
+        panel == "jobs" ->
+          OperationsEvents.handle_event("refresh-jobs", %{}, assign(socket, active_panel: panel))
+
         panel == "users" and not AdminSupport.admin_socket?(socket) ->
           {:noreply,
            assign(socket,
@@ -251,16 +254,29 @@ defmodule KeystonePhoenixWeb.LoginLive do
             if panel == "dict-data" do
               SystemEvents.handle_event("paginate-dict-data", %{"page" => page}, socket)
             else
-              if panel == "login-logs" do
-                AuditEvents.handle_event("paginate-login-logs", %{"page" => page}, socket)
+              if panel == "jobs" do
+                OperationsEvents.handle_event("paginate-jobs", %{"page" => page}, socket)
               else
-                if panel == "operation-logs" do
-                  AuditEvents.handle_event("paginate-operation-logs", %{"page" => page}, socket)
+                if panel == "job-logs" do
+                  OperationsEvents.handle_event("paginate-job-logs", %{"page" => page}, socket)
                 else
-                  if panel == "online-users" and AdminSupport.panel_allowed?(socket, "monitor") do
-                    {:noreply, AdminSupport.assign_monitor(socket)}
+                  if panel == "login-logs" do
+                    AuditEvents.handle_event("paginate-login-logs", %{"page" => page}, socket)
                   else
-                    {:noreply, socket}
+                    if panel == "operation-logs" do
+                      AuditEvents.handle_event(
+                        "paginate-operation-logs",
+                        %{"page" => page},
+                        socket
+                      )
+                    else
+                      if panel == "online-users" and
+                           AdminSupport.panel_allowed?(socket, "monitor") do
+                        {:noreply, AdminSupport.assign_monitor(socket)}
+                      else
+                        {:noreply, socket}
+                      end
+                    end
                   end
                 end
               end
@@ -500,7 +516,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "operation-logs" -> %>
                       <.logs kind="operation" login_log_rows={@login_log_rows} login_log_total={@login_log_total} operation_log_rows={@operation_log_rows} operation_log_total={@operation_log_total} log_feedback={@log_feedback} login_log_filter={@login_log_filter} operation_log_filter={@operation_log_filter} login_page_num={@page_nums["login-logs"]} operation_page_num={@page_nums["operation-logs"]} page_size={@page_sizes["operation-logs"]} read_only={@read_only} />
                     <% "jobs" -> %>
-                      <.jobs job_rows={@job_rows} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} job_filter={@job_filter} active_modal={@active_modal} page_num={@page_nums["jobs"]} page_size={@page_sizes["jobs"]} selected_job_ids={@selected_job_ids} selected_job_id={@selected_job_id} read_only={@read_only} />
+                      <.jobs job_rows={@job_rows} job_total={@job_total} job_form={@job_form} job_targets={@job_targets} job_feedback={@job_feedback} job_filter={@job_filter} active_modal={@active_modal} page_num={@page_nums["jobs"]} page_size={@page_sizes["jobs"]} selected_job_ids={@selected_job_ids} selected_job_id={@selected_job_id} selected_job={@selected_job} job_log_total={@job_log_total} read_only={@read_only} />
                     <% "monitor" -> %>
                       <.monitor monitor_server_info={@monitor_server_info} monitor_cache_info={@monitor_cache_info} online_user_rows={@online_user_rows} online_user_total={@online_user_total} online_user_page_num={@page_nums["online-users"]} online_user_page_size={@page_sizes["online-users"]} network_status={@network_status} monitor_help_open={@monitor_help_open} security_access={@security_access} security_metrics={@security_metrics} security_api_keys={@security_api_keys} security_event_rows={@security_event_rows} security_event_total={@security_event_total} monitor_feedback={@monitor_feedback} read_only={@read_only} />
                     <% "profile" -> %>
