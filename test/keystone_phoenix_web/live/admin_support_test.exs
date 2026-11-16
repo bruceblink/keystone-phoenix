@@ -2,6 +2,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupportTest do
   use ExUnit.Case, async: true
 
   alias KeystonePhoenixWeb.Live.AdminSupport
+  alias KeystonePhoenixWeb.Live.AdminReadSupport
 
   test "matches retained permissions and panel requirements" do
     socket = %Phoenix.LiveView.Socket{
@@ -59,6 +60,15 @@ defmodule KeystonePhoenixWeb.Live.AdminSupportTest do
     }
 
     assert {:error, :permission_denied} = AdminSupport.load_posts_for_socket_result(socket)
+  end
+
+  test "preserves organization role and menu read failures" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{__changed__: %{}, current_user: %{}, permissions: []}
+    }
+
+    assert {:error, :permission_denied} = AdminReadSupport.roles(socket)
+    assert {:error, :permission_denied} = AdminReadSupport.menus(socket)
   end
 
   test "preserves API Key read failures for LiveView feedback" do

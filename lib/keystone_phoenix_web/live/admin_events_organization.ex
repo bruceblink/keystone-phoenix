@@ -16,6 +16,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleSelection
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters
+  alias KeystonePhoenixWeb.Live.AdminPages.Reload
+  alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-depts", params, socket) do
@@ -27,10 +29,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         ])
 
       {:noreply,
-       assign(socket,
-         dept_rows: Support.load_depts_for_socket(socket),
+       refresh_rows(socket, :depts, "部门列表刷新失败，请重试",
          dept_form: Support.empty_dept_form(),
-         dept_feedback: nil,
          dept_filter: filter,
          active_modal: nil
        )}
@@ -86,11 +86,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       case result do
         {:ok, _dept} ->
           {:noreply,
-           assign(socket,
-             dept_rows: Support.load_depts_for_socket(socket),
+           after_write(
+             socket,
+             :depts,
+             if(dept_id == "", do: "部门已创建", else: "部门已更新"),
+             "部门已保存，但列表刷新失败，请重试",
              dept_form: Support.empty_dept_form(),
-             active_modal: nil,
-             dept_feedback: if(dept_id == "", do: "部门已创建", else: "部门已更新")
+             active_modal: nil
            )}
 
         error ->
@@ -109,11 +111,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
              authorization(socket, "department:update")
            ) do
         {:ok, _dept} ->
-          {:noreply,
-           assign(socket,
-             dept_rows: Support.load_depts_for_socket(socket),
-             dept_feedback: "部门状态已更新"
-           )}
+          {:noreply, after_write(socket, :depts, "部门状态已更新", "部门状态已更新，但列表刷新失败，请重试")}
 
         error ->
           {:noreply, assign(socket, dept_feedback: Support.form_error(error))}
@@ -128,11 +126,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       case Department.delete_dept(dept_id, authorization(socket, "department:delete")) do
         :ok ->
           {:noreply,
-           assign(socket,
-             dept_rows: Support.load_depts_for_socket(socket),
+           after_write(socket, :depts, "部门已删除", "部门已删除，但列表刷新失败，请重试",
              dept_form: Support.empty_dept_form(),
-             active_modal: nil,
-             dept_feedback: "部门已删除"
+             active_modal: nil
            )}
 
         error ->
@@ -151,25 +147,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           "postStatus"
         ])
 
-      case Support.load_posts_for_socket_result(socket) do
-        {:ok, rows} ->
-          {:noreply,
-           assign(socket,
-             post_rows: rows,
-             page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
-             post_form: Support.empty_post_form(),
-             post_feedback: nil,
-             post_filter: filter,
-             active_modal: nil
-           )}
-
-        {:error, reason} ->
-          {:noreply,
-           assign(socket,
-             post_filter: filter,
-             post_feedback: Support.read_error_feedback(reason, "岗位列表刷新失败，请重试")
-           )}
-      end
+      {:noreply,
+       refresh_rows(socket, :posts, "岗位列表刷新失败，请重试",
+         page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
+         post_form: Support.empty_post_form(),
+         post_filter: filter,
+         active_modal: nil
+       )}
     else
       {:noreply, socket}
     end
@@ -224,12 +208,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       case result do
         {:ok, _post} ->
           {:noreply,
-           assign(socket,
-             post_rows: Support.load_posts_for_socket(socket),
+           after_write(
+             socket,
+             :posts,
+             if(post_id == "", do: "岗位已创建", else: "岗位已更新"),
+             "岗位已保存，但列表刷新失败，请重试",
              page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
              post_form: Support.empty_post_form(),
-             active_modal: nil,
-             post_feedback: if(post_id == "", do: "岗位已创建", else: "岗位已更新")
+             active_modal: nil
            )}
 
         error ->
@@ -249,10 +235,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            ) do
         {:ok, _post} ->
           {:noreply,
-           assign(socket,
-             post_rows: Support.load_posts_for_socket(socket),
-             page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
-             post_feedback: "岗位状态已更新"
+           after_write(socket, :posts, "岗位状态已更新", "岗位状态已更新，但列表刷新失败，请重试",
+             page_nums: Map.put(socket.assigns.page_nums, "posts", 1)
            )}
 
         error ->
@@ -268,12 +252,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       case Post.delete_posts([post_id], authorization(socket, "post:delete")) do
         :ok ->
           {:noreply,
-           assign(socket,
-             post_rows: Support.load_posts_for_socket(socket),
+           after_write(socket, :posts, "岗位已删除", "岗位已删除，但列表刷新失败，请重试",
              page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
              post_form: Support.empty_post_form(),
-             active_modal: nil,
-             post_feedback: "岗位已删除"
+             active_modal: nil
            )}
 
         error ->
@@ -293,10 +275,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
         ])
 
       {:noreply,
-       assign(socket,
-         role_rows: Support.load_roles_for_socket(socket),
+       refresh_rows(socket, :roles, "角色列表刷新失败，请重试",
          role_form: Support.empty_role_form(),
-         role_feedback: nil,
          role_filter: filter,
          active_modal: nil,
          selected_role_ids: [],
@@ -377,11 +357,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       case result do
         {:ok, _role} ->
           socket =
-            assign(socket,
-              role_rows: Support.load_roles_for_socket(socket),
+            after_write(
+              socket,
+              :roles,
+              if(role_id == "", do: "角色已创建", else: "角色已更新"),
+              "角色已保存，但列表刷新失败，请重试",
               role_form: Support.empty_role_form(),
-              active_modal: nil,
-              role_feedback: if(role_id == "", do: "角色已创建", else: "角色已更新")
+              active_modal: nil
             )
 
           {:noreply, clear_role_selection(socket)}
@@ -405,11 +387,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       case Role.change_status(role_id, status, authorization(socket, "role:update")) do
         {:ok, _role} ->
           socket =
-            assign(socket,
-              role_rows: Support.load_roles_for_socket(socket),
-              selected_role_ids: [],
-              role_feedback: "角色状态已更新"
-            )
+            after_write(socket, :roles, "角色状态已更新", "角色状态已更新，但列表刷新失败，请重试", selected_role_ids: [])
 
           {:noreply, clear_role_selection(socket)}
 
@@ -441,20 +419,29 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            )}
 
         role ->
-          users = Support.load_role_users(role_id, socket.assigns.current_user)
+          case AdminReadSupport.role_users(role_id, socket.assigns.current_user) do
+            {:ok, users} ->
+              {:noreply,
+               assign(socket,
+                 selected_role_id: role_id,
+                 selected_role_name: role["roleName"],
+                 page_nums:
+                   socket.assigns.page_nums
+                   |> Map.put("role-users-allocated", 1)
+                   |> Map.put("role-users-unallocated", 1),
+                 allocated_role_user_rows: users.allocated,
+                 unallocated_role_user_rows: users.unallocated,
+                 role_user_feedback: nil
+               )}
 
-          {:noreply,
-           assign(socket,
-             selected_role_id: role_id,
-             selected_role_name: role["roleName"],
-             page_nums:
-               socket.assigns.page_nums
-               |> Map.put("role-users-allocated", 1)
-               |> Map.put("role-users-unallocated", 1),
-             allocated_role_user_rows: users.allocated,
-             unallocated_role_user_rows: users.unallocated,
-             role_user_feedback: nil
-           )}
+            {:error, reason} ->
+              {:noreply,
+               assign(socket,
+                 selected_role_id: role_id,
+                 selected_role_name: role["roleName"],
+                 role_user_feedback: Support.read_error_feedback(reason, "角色成员读取失败，请重试")
+               )}
+          end
       end
     else
       {:noreply, socket}
@@ -474,10 +461,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       filter = OrganizationFilters.menu_filter(params, socket.assigns[:menu_filter])
 
       {:noreply,
-       assign(socket,
-         menu_rows: Support.load_menus_for_socket(socket),
+       refresh_rows(socket, :menus, "菜单列表刷新失败，请重试",
          menu_form: Support.empty_menu_form(),
-         menu_feedback: nil,
          menu_filter: filter,
          menu_role_codes: [],
          active_modal: nil
@@ -513,11 +498,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
              authorization(socket, "menu:update")
            ) do
         {:ok, _menu} ->
-          {:noreply,
-           assign(socket,
-             menu_rows: Support.load_menus_for_socket(socket),
-             menu_feedback: "菜单状态已更新"
-           )}
+          {:noreply, after_write(socket, :menus, "菜单状态已更新", "菜单状态已更新，但列表刷新失败，请重试")}
 
         error ->
           {:noreply, assign(socket, menu_feedback: Support.form_error(error))}
@@ -532,12 +513,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       case Menu.delete_menu(menu_id, authorization(socket, "menu:delete")) do
         :ok ->
           {:noreply,
-           assign(socket,
-             menu_rows: Support.load_menus_for_socket(socket),
+           after_write(socket, :menus, "菜单已删除", "菜单已删除，但列表刷新失败，请重试",
              menu_form: Support.empty_menu_form(),
              menu_role_codes: [],
-             active_modal: nil,
-             menu_feedback: "菜单已删除"
+             active_modal: nil
            )}
 
         error ->
@@ -566,4 +545,19 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       role_user_feedback: nil
     )
   end
+
+  defp refresh_rows(socket, resource, message, extra) do
+    {loader, rows_key, feedback_key} = resource_loader(resource)
+    Reload.refresh(socket, loader, rows_key, feedback_key, message, extra)
+  end
+
+  defp after_write(socket, resource, success, message, extra \\ []) do
+    {loader, rows_key, feedback_key} = resource_loader(resource)
+    Reload.after_success(socket, loader, rows_key, feedback_key, success, message, extra)
+  end
+
+  defp resource_loader(:depts), do: {&AdminReadSupport.departments/1, :dept_rows, :dept_feedback}
+  defp resource_loader(:posts), do: {&AdminReadSupport.posts/1, :post_rows, :post_feedback}
+  defp resource_loader(:roles), do: {&AdminReadSupport.roles/1, :role_rows, :role_feedback}
+  defp resource_loader(:menus), do: {&AdminReadSupport.menus/1, :menu_rows, :menu_feedback}
 end

@@ -9,6 +9,8 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
   alias KeystonePhoenix.Notice
   alias KeystonePhoenix.Log
   alias KeystonePhoenix.Post
+  alias KeystonePhoenix.Role
+  alias KeystonePhoenixWeb.Live.AdminPages.OrganizationData
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
@@ -40,6 +42,31 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     else
       load_authorized(&Post.list_posts(&1, Support.authorization_options(socket)))
     end
+  end
+
+  @doc "读取组织、角色和菜单数据，并保留刷新失败结果。"
+  def departments(socket) do
+    actor = if Support.admin_socket?(socket), do: nil, else: socket.assigns.current_user
+    OrganizationData.load_depts_result(actor)
+  end
+
+  def roles(socket), do: OrganizationData.load_roles_result(organization_options(socket))
+  def menus(socket), do: OrganizationData.load_menus_result(organization_options(socket))
+
+  @doc "读取角色成员列表，并区分空列表和服务失败。"
+  def role_users(role_id, actor \\ nil) do
+    with {:ok, allocated} <-
+           Excel.all_rows_result(fn params ->
+             Role.list_allocated_users(role_id, params, actor)
+           end),
+         {:ok, unallocated} <-
+           Excel.all_rows_result(fn params ->
+             Role.list_unallocated_users(role_id, params, actor)
+           end) do
+      {:ok, %{allocated: allocated, unallocated: unallocated}}
+    end
+  rescue
+    _error -> {:error, :service_unavailable}
   end
 
   @doc "读取系统配置并区分空结果和服务端读取失败。"
@@ -154,6 +181,10 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
 
   defp current_user_id(socket),
     do: socket.assigns.current_user["userId"] || socket.assigns.current_user[:user_id]
+
+  defp organization_options(socket) do
+    if Support.admin_socket?(socket), do: [], else: Support.authorization_options(socket)
+  end
 
   # 读取失败必须与空结果区分，避免页面把服务故障显示成“暂无数据”。
   def read_error_feedback(reason, message),

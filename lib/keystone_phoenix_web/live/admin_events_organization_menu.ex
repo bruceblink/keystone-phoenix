@@ -7,7 +7,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenu do
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Menu.RoleAssignment
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
+  alias KeystonePhoenixWeb.Live.AdminPages.Reload
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenuParams
+  alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def edit(%{"menu-id" => menu_id}, socket) do
@@ -69,12 +71,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenu do
     case replace_role_codes(menu_id, role_codes, socket) do
       :ok ->
         {:noreply,
-         assign(socket,
-           menu_rows: Support.load_menus_for_socket(socket),
+         Reload.after_success(
+           socket,
+           &AdminReadSupport.menus/1,
+           :menu_rows,
+           :menu_feedback,
+           if(previous_id == "", do: "菜单已创建", else: "菜单已更新"),
+           "菜单已保存，但列表刷新失败，请重试",
            menu_form: Support.empty_menu_form(),
            menu_role_codes: [],
-           active_modal: nil,
-           menu_feedback: if(previous_id == "", do: "菜单已创建", else: "菜单已更新")
+           active_modal: nil
          )}
 
       {:error, reason} ->

@@ -8,27 +8,40 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
 
   # 加载部门列表并补充页面需要的层级信息。
   def load_depts(actor \\ nil) do
-    Department.list_depts(%{}, actor)
-    |> Enum.map(fn dept -> Map.put(dept, "depth", dept_depth(dept["ancestors"])) end)
+    case load_depts_result(actor) do
+      {:ok, rows} -> rows
+      {:error, _reason} -> []
+    end
+  end
+
+  @doc "读取部门列表并保留数据库或数据范围错误。"
+  def load_depts_result(actor \\ nil) do
+    rows = Department.list_depts(%{}, actor)
+    {:ok, Enum.map(rows, fn dept -> Map.put(dept, "depth", dept_depth(dept["ancestors"])) end)}
+  rescue
+    _error -> {:error, :service_unavailable}
   end
 
   # 加载角色列表并补充数据范围、状态和用户数量。
-  def load_roles([]), do: load_roles_full()
-
   def load_roles(options) when is_list(options) do
-    roles =
-      Excel.all_rows(fn params ->
-        case Role.list_roles(params, options) do
-          {:ok, page} -> page
-          {:error, _reason} -> %{rows: [], total: 0}
-        end
-      end)
-
-    enrich_roles(roles)
+    case load_roles_result(options) do
+      {:ok, rows} -> rows
+      {:error, _reason} -> []
+    end
   end
 
-  defp load_roles_full do
-    enrich_roles(Excel.all_rows(&Role.list_roles/1))
+  @doc "读取角色列表并保留授权或数据库错误。"
+  def load_roles_result(options) when is_list(options) do
+    fetcher =
+      if options == [],
+        do: &Role.list_roles/1,
+        else: fn params -> Role.list_roles(params, options) end
+
+    with {:ok, roles} <- Excel.all_rows_result(fetcher) do
+      {:ok, enrich_roles(roles)}
+    end
+  rescue
+    _error -> {:error, :service_unavailable}
   end
 
   defp enrich_roles(roles) do
@@ -54,20 +67,25 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
   def data_scope_label(_scope), do: "未知"
 
   # 加载菜单列表并补充树深度、类型和状态文字。
-  def load_menus([]), do: load_menus_full()
-
   def load_menus(options) when is_list(options) do
-    menus =
-      case Menu.list_menus(%{}, options) do
-        {:ok, rows} -> rows
-        {:error, _reason} -> []
-      end
-
-    menu_tree_rows(menus)
+    case load_menus_result(options) do
+      {:ok, rows} -> rows
+      {:error, _reason} -> []
+    end
   end
 
-  defp load_menus_full do
-    menu_tree_rows(Menu.list_menus())
+  @doc "读取菜单树并保留授权或数据库错误。"
+  def load_menus_result(options) when is_list(options) do
+    result =
+      if options == [], do: {:ok, Menu.list_menus(%{})}, else: Menu.list_menus(%{}, options)
+
+    case result do
+      {:ok, menus} when is_list(menus) -> {:ok, menu_tree_rows(menus)}
+      {:error, reason} -> {:error, reason}
+      _other -> {:error, :invalid_page}
+    end
+  rescue
+    _error -> {:error, :service_unavailable}
   end
 
   @doc "按父级关系展开菜单树，并为每个节点补充层级字段。"

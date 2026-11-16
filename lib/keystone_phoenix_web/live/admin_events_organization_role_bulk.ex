@@ -4,6 +4,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk do
   import Phoenix.Component, only: [assign: 2]
 
   alias KeystonePhoenix.Role
+  alias KeystonePhoenixWeb.Live.AdminPages.Reload
+  alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def delete_roles(socket, role_ids) do
@@ -13,12 +15,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk do
       case Role.delete_roles(role_ids, authorization(socket, "role:delete")) do
         {:ok, _} ->
           {:noreply,
-           assign(socket,
-             role_rows: Support.load_roles_for_socket(socket),
+           Reload.after_success(
+             socket,
+             &AdminReadSupport.roles/1,
+             :role_rows,
+             :role_feedback,
+             "已删除 #{length(role_ids)} 个角色",
+             "角色已删除，但列表刷新失败，请重试",
              selected_role_ids: [],
              role_form: Support.empty_role_form(),
              active_modal: nil,
-             role_feedback: "已删除 #{length(role_ids)} 个角色",
              selected_role_id: "",
              selected_role_name: "",
              allocated_role_user_rows: [],

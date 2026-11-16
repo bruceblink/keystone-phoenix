@@ -6,6 +6,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
   alias KeystonePhoenix.Auth.ApiKey
   alias KeystonePhoenixWeb.Live.AdminPages.ApiKeys
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
+  alias KeystonePhoenixWeb.Live.AdminPages.Reload
+  alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-api-keys", _params, socket) do
@@ -71,10 +73,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
           case result do
             {:ok, issued} ->
               {:noreply,
-               assign(socket,
-                 api_key_rows: Support.load_api_keys_for_socket(socket),
+               Reload.after_success(
+                 socket,
+                 &AdminReadSupport.api_keys/1,
+                 :api_key_rows,
+                 :api_key_feedback,
+                 "API Key 已签发",
+                 "API Key 已签发，但列表刷新失败，请重试",
                  api_key_form: ApiKeys.empty_form(),
-                 api_key_feedback: "API Key 已签发",
                  issued_api_key: issued,
                  active_modal: nil
                )}
@@ -101,9 +107,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
       case ApiKey.rotate(current_user_id(socket), id, authorization(socket)) do
         {:ok, issued} ->
           {:noreply,
-           assign(socket,
-             api_key_rows: Support.load_api_keys_for_socket(socket),
-             api_key_feedback: "API Key 已轮换",
+           Reload.after_success(
+             socket,
+             &AdminReadSupport.api_keys/1,
+             :api_key_rows,
+             :api_key_feedback,
+             "API Key 已轮换",
+             "API Key 已轮换，但列表刷新失败，请重试",
              issued_api_key: issued
            )}
 
@@ -120,9 +130,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
       case ApiKey.revoke(current_user_id(socket), id, authorization(socket)) do
         :ok ->
           {:noreply,
-           assign(socket,
-             api_key_rows: Support.load_api_keys_for_socket(socket),
-             api_key_feedback: "API Key 已撤销"
+           Reload.after_success(
+             socket,
+             &AdminReadSupport.api_keys/1,
+             :api_key_rows,
+             :api_key_feedback,
+             "API Key 已撤销",
+             "API Key 已撤销，但列表刷新失败，请重试"
            )}
 
         error ->
