@@ -58,6 +58,15 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert live_socket(view).assigns.menu_filter == ""
     assert URI.parse(live_socket(view).assigns.current_uri).path == "/menus"
     assert URI.parse(live_socket(view).assigns.current_uri).query in [nil, ""]
+
+    render_click(view, "show-panel", %{"panel" => "depts"})
+    render_submit(view, "refresh-depts", %{"deptKeyword" => "root"})
+    assert live_socket(view).assigns.dept_filter["keyword"] == "root"
+    assert live_socket(view).assigns.current_uri =~ "/departments?departments_keyword=root"
+
+    render_click(view, "refresh-depts", %{"reset" => "true"})
+    assert live_socket(view).assigns.dept_filter["keyword"] == ""
+    assert URI.parse(live_socket(view).assigns.current_uri).path == "/departments"
   end
 
   @tag :integration

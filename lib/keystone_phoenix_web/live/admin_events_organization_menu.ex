@@ -12,9 +12,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenu do
   alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
-  def filter_path(""), do: "/menus"
-  def filter_path(keyword), do: "/menus?#{URI.encode_query(%{"menus_keyword" => keyword})}"
-
   def edit(%{"menu-id" => menu_id}, socket) do
     if Support.permission_socket?(socket, "menu:update") do
       case Enum.find(socket.assigns.menu_rows, &(to_string(&1["menuId"] || &1["id"]) == menu_id)) do

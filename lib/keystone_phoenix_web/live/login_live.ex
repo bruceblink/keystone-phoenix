@@ -15,6 +15,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Navigation
+  alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.LoginState
   alias KeystonePhoenixWeb.Live.AdminEvents.Accounts, as: AccountsEvents
@@ -60,10 +61,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
     if AdminSupport.authenticated_socket?(socket) do
       socket = assign(socket, active_panel: requested_panel)
-      menu_filter = String.trim(params["menus_keyword"] || params["keyword"] || "")
-
-      {:noreply,
-       if(requested_panel == "menus", do: assign(socket, menu_filter: menu_filter), else: socket)}
+      {:noreply, assign(socket, FilterNavigation.assigns(requested_panel, params))}
     else
       {:noreply, assign(socket, requested_panel: requested_panel)}
     end

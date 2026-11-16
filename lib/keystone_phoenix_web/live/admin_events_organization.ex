@@ -18,25 +18,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleRefresh
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleSelection
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationDepartmentRefresh
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters
+  alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
   alias KeystonePhoenixWeb.Live.AdminPages.Reload
   alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-depts", params, socket) do
     if Support.panel_allowed?(socket, "depts") do
-      filter =
-        OrganizationFilters.organization_filter(params, socket.assigns[:dept_filter], [
-          "deptKeyword",
-          "deptStatus"
-        ])
-
-      {:noreply,
-       refresh_rows(socket, :depts, "部门列表刷新失败，请重试",
-         dept_form: Support.empty_dept_form(),
-         dept_filter: filter,
-         active_modal: nil
-       )}
+      {:noreply, OrganizationDepartmentRefresh.refresh(socket, params)}
     else
       {:noreply, socket}
     end
@@ -475,7 +466,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
           active_modal: nil
         )
 
-      {:noreply, Phoenix.LiveView.push_patch(socket, to: OrganizationMenu.filter_path(filter))}
+      {:noreply, Phoenix.LiveView.push_patch(socket, to: FilterNavigation.path("menus", filter))}
     else
       {:noreply, socket}
     end
