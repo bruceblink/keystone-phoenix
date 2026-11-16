@@ -19,6 +19,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       |> assign_new(:users_server_paged, fn -> false end)
       |> assign_new(:user_query, fn -> "" end)
       |> assign_new(:user_display_name_query, fn -> "" end)
+      |> assign_new(:role_rows, fn -> [] end)
       |> assign_new(:permissions, fn -> [] end)
       |> assign_new(:user_import_upload, fn -> nil end)
       |> assign_new(:user_import_result, fn -> nil end)
@@ -66,7 +67,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <div><label for="user-post">岗位 UUID</label><input id="user-post" name="postId" value={@user_form["postId"] || ""} placeholder="可选" /></div>
           <div><label for="user-email">邮箱</label><input id="user-email" type="email" name="email" value={@user_form["email"] || ""} /></div>
           <div><label for="user-phone">联系电话</label><input id="user-phone" name="phoneNumber" value={@user_form["phoneNumber"] || ""} /></div>
-          <div><label for="user-role-codes">角色标识</label><input id="user-role-codes" name="roleCodes" value={@user_form["roleCodes"] || ""} placeholder="多个角色用逗号分隔" /></div>
+          <fieldset class="wide user-role-picker"><legend>角色</legend><input type="hidden" name="roleCodes[]" value="" /><div class="user-role-options"><%= for role <- enabled_roles(@role_rows) do %><% role_code = role_code(role) %><label class="checkbox-label"><input type="checkbox" name="roleCodes[]" value={role_code} checked={role_code_selected?(@user_form["roleCodes"], role_code)} /><span><%= role["roleName"] || role["name"] || role_code %></span><code><%= role_code %></code></label><% end %></div><p :if={enabled_roles(@role_rows) == []} class="form-help" role="status">没有可选择的启用角色。</p><small>角色来自当前账号可配置的启用角色；未选择角色会清空用户角色。</small></fieldset>
           <div class="wide"><label for="user-remark">备注</label><textarea id="user-remark" name="remark"><%= @user_form["remark"] || "" %></textarea></div>
         </div>
         <div class="form-options"><label><input type="checkbox" name="enabled" checked={@user_form["enabled"] in [true, 1, "1", "on"]} />账号启用</label><label :if={@user_form["userId"] != ""}><input type="checkbox" name="clearDept" checked={@user_form["clearDept"] in [true, 1, "1", "on"]} />清除部门归属</label></div>
@@ -134,6 +135,23 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       </section>
     </div>
     """
+  end
+
+  defp enabled_roles(roles),
+    do:
+      Enum.filter(
+        List.wrap(roles),
+        &(&1["status"] in [1, "1", true] or &1["enabled"] in [1, "1", true])
+      )
+
+  defp role_code(role), do: to_string(role["roleKey"] || role["code"] || "")
+
+  defp role_code_selected?(value, code) do
+    value
+    |> to_string()
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.member?(code)
   end
 
   def profile(assigns) do
