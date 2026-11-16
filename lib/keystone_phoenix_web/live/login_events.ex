@@ -402,7 +402,10 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       notice_feedback: nil,
       notice_form: AdminSupport.empty_notice_form(),
       login_log_rows: dashboard.login_log_rows,
+      login_log_total: dashboard[:login_log_total] || length(dashboard.login_log_rows),
       operation_log_rows: dashboard.operation_log_rows,
+      operation_log_total:
+        dashboard[:operation_log_total] || length(dashboard.operation_log_rows),
       log_feedback: nil,
       user_form: AdminSupport.empty_user_form(),
       user_feedback: nil,

@@ -327,7 +327,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
           {:noreply,
            assign(socket,
              login_log_rows: logs.login_log_rows,
+             login_log_total: logs.login_log_total,
              operation_log_rows: logs.operation_log_rows,
+             operation_log_total: logs.operation_log_total,
              page_nums:
                socket.assigns.page_nums
                |> Map.put("login-logs", 1)
@@ -349,12 +351,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   def handle_event("refresh-login-logs", _params, socket) do
     if Support.panel_allowed?(socket, "login-logs") do
       case Support.load_logs_for_socket_result(socket, %{
-             "login" => Map.get(socket.assigns, :login_log_filter, %{})
+             "login" => reset_log_page(Map.get(socket.assigns, :login_log_filter, %{}))
            }) do
         {:ok, logs} ->
           {:noreply,
            assign(socket,
              login_log_rows: logs.login_log_rows,
+             login_log_total: logs.login_log_total,
              page_nums: Map.put(socket.assigns.page_nums, "login-logs", 1),
              log_feedback: nil
            )}
@@ -373,12 +376,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
   def handle_event("refresh-operation-logs", _params, socket) do
     if Support.panel_allowed?(socket, "operation-logs") do
       case Support.load_logs_for_socket_result(socket, %{
-             "operation" => Map.get(socket.assigns, :operation_log_filter, %{})
+             "operation" => reset_log_page(Map.get(socket.assigns, :operation_log_filter, %{}))
            }) do
         {:ok, logs} ->
           {:noreply,
            assign(socket,
              operation_log_rows: logs.operation_log_rows,
+             operation_log_total: logs.operation_log_total,
              page_nums: Map.put(socket.assigns.page_nums, "operation-logs", 1),
              log_feedback: nil
            )}
@@ -396,10 +400,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   defp current_log_filters(socket) do
     %{
-      "login" => Map.get(socket.assigns, :login_log_filter, %{}),
-      "operation" => Map.get(socket.assigns, :operation_log_filter, %{})
+      "login" => reset_log_page(Map.get(socket.assigns, :login_log_filter, %{})),
+      "operation" => reset_log_page(Map.get(socket.assigns, :operation_log_filter, %{}))
     }
   end
+
+  defp reset_log_page(filter), do: Map.put(filter, "pageNum", 1)
 
   defp dict_page_params(socket, page) do
     %{

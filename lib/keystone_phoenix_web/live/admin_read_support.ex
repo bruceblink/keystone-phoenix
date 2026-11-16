@@ -215,25 +215,33 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     login_filter = Map.get(filters, "login", %{})
     operation_filter = Map.get(filters, "operation", %{})
 
-    with {:ok, login_rows} <-
-           log_rows(
+    with {:ok, login_page} <-
+           log_page(
              socket,
              options,
              "login-log:read",
              &Log.list_login_logs/1,
              &Log.list_login_logs/2,
-             login_filter
+             login_filter,
+             "login-logs"
            ),
-         {:ok, operation_rows} <-
-           log_rows(
+         {:ok, operation_page} <-
+           log_page(
              socket,
              options,
              "operation-log:read",
              &Log.list_operation_logs/1,
              &Log.list_operation_logs/2,
-             operation_filter
+             operation_filter,
+             "operation-logs"
            ) do
-      {:ok, %{login_log_rows: login_rows, operation_log_rows: operation_rows}}
+      {:ok,
+       %{
+         login_log_rows: login_page.rows,
+         login_log_total: login_page.total,
+         operation_log_rows: operation_page.rows,
+         operation_log_total: operation_page.total
+       }}
     end
   end
 
@@ -245,17 +253,25 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     end
   end
 
-  defp log_rows(socket, options, permission, admin_fetcher, authorized_fetcher, filters) do
+  defp log_page(socket, options, permission, admin_fetcher, authorized_fetcher, filters, panel) do
+    params = page_params(socket, panel, filters)
+
     cond do
       Support.admin_socket?(socket) ->
-        load_all(admin_fetcher, filters)
+        {:ok, admin_fetcher.(params)}
 
       permission in List.wrap(socket.assigns[:permissions]) ->
-        load_authorized(fn page -> authorized_fetcher.(page, options) end, filters)
+        authorized_fetcher.(params, options)
 
       true ->
-        {:ok, []}
+        {:ok, %{rows: [], total: 0, page: params["pageNum"], size: params["pageSize"]}}
     end
+  end
+
+  defp page_params(socket, panel, filters) do
+    filters
+    |> Map.put_new("pageNum", get_in(socket.assigns, [:page_nums, panel]) || 1)
+    |> Map.put_new("pageSize", get_in(socket.assigns, [:page_sizes, panel]) || 20)
   end
 
   defp selected_dictionary_type(selected, types) do

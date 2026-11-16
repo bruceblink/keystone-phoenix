@@ -38,12 +38,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
         "status" => String.trim(to_string(params["loginStatus"] || ""))
       }
 
-      case Support.load_logs_for_socket_result(socket, %{"login" => login_query(filter)}) do
+      case Support.load_logs_for_socket_result(socket, %{
+             "login" => Map.put(login_query(filter), "pageNum", 1)
+           }) do
         {:ok, logs} ->
           {:noreply,
            assign(socket,
              login_log_filter: filter,
              login_log_rows: logs.login_log_rows,
+             login_log_total: logs.login_log_total,
              page_nums: Map.put(socket.assigns.page_nums, "login-logs", 1),
              log_feedback: nil
            )}
@@ -63,6 +66,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
   def handle_event("reset-login-log-filter", _params, socket),
     do: handle_event("filter-login-logs", %{}, socket)
 
+  def handle_event("paginate-login-logs", %{"page" => page}, socket),
+    do: paginate_logs(socket, "login", page)
+
   def handle_event("filter-operation-logs", params, socket) do
     if Support.panel_allowed?(socket, "operation-logs") do
       filter = %{
@@ -71,12 +77,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
         "resource" => String.trim(to_string(params["operationResource"] || ""))
       }
 
-      case Support.load_logs_for_socket_result(socket, %{"operation" => operation_query(filter)}) do
+      case Support.load_logs_for_socket_result(socket, %{
+             "operation" => Map.put(operation_query(filter), "pageNum", 1)
+           }) do
         {:ok, logs} ->
           {:noreply,
            assign(socket,
              operation_log_filter: filter,
              operation_log_rows: logs.operation_log_rows,
+             operation_log_total: logs.operation_log_total,
              page_nums: Map.put(socket.assigns.page_nums, "operation-logs", 1),
              log_feedback: nil
            )}
@@ -95,6 +104,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
 
   def handle_event("reset-operation-log-filter", _params, socket),
     do: handle_event("filter-operation-logs", %{}, socket)
+
+  def handle_event("paginate-operation-logs", %{"page" => page}, socket),
+    do: paginate_logs(socket, "operation", page)
 
   def handle_event("filter-dict-types", params, socket) do
     if Support.panel_allowed?(socket, "dicts") do
@@ -245,6 +257,48 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
 
   defp operation_query(%{"actor" => actor, "action" => action, "resource" => resource}),
     do: %{"username" => actor, "action" => action, "requestModule" => resource}
+
+  defp paginate_logs(socket, kind, page) do
+    panel = if kind == "login", do: "login-logs", else: "operation-logs"
+
+    case Integer.parse(to_string(page)) do
+      {page_number, ""} when page_number > 0 ->
+        query =
+          if kind == "login",
+            do: login_query(socket.assigns.login_log_filter),
+            else: operation_query(socket.assigns.operation_log_filter)
+
+        filters = %{kind => Map.put(query, "pageNum", page_number)}
+
+        case Support.load_logs_for_socket_result(socket, filters) do
+          {:ok, logs} ->
+            rows = if kind == "login", do: logs.login_log_rows, else: logs.operation_log_rows
+            total = if kind == "login", do: logs.login_log_total, else: logs.operation_log_total
+            row_key = if kind == "login", do: :login_log_rows, else: :operation_log_rows
+            total_key = if kind == "login", do: :login_log_total, else: :operation_log_total
+
+            {:noreply,
+             assign(
+               socket,
+               [
+                 {row_key, rows},
+                 {total_key, total},
+                 page_nums: Map.put(socket.assigns.page_nums, panel, page_number),
+                 log_feedback: nil
+               ]
+             )}
+
+          {:error, reason} ->
+            {:noreply,
+             assign(socket,
+               log_feedback: Support.read_error_feedback(reason, "日志分页读取失败，请重试")
+             )}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
 
   defp normalize_login_status("SUCCESS"), do: 1
   defp normalize_login_status("FAILURE"), do: 0
