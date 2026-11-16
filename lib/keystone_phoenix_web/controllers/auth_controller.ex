@@ -3,7 +3,9 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   plug KeystonePhoenixWeb.Plugs.RejectApiKey
 
-  plug KeystonePhoenixWeb.Plugs.Authenticate when action in [:logout]
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+       [permissions: %{logout: "session:revoke"}]
+       when action in [:logout]
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
        [

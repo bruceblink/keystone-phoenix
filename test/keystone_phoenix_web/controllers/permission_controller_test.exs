@@ -52,6 +52,7 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
     role = insert_role()
     menu = insert_menu(role.role_id, "post:read")
     insert_menu(role.role_id, "post:update")
+    insert_menu(role.role_id, "session:revoke")
     assert menu.permission == "post:read"
     user = insert_user(role.role_id)
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
@@ -98,6 +99,27 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
              json_response(post(logout_conn, "/api/v1/auth/logout", %{}), 200)
 
     assert {:error, :invalid_token} = Auth.authenticate_access_token(tokens.token)
+  end
+
+  @tag :integration
+  test "logout requires the session revoke permission", %{conn: conn} do
+    role = insert_role()
+    insert_menu(role.role_id, "post:read")
+    user = insert_user(role.role_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
+    authorization = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
+
+    denied = post(authorization, "/api/v1/auth/logout", %{})
+    assert get_in(json_response(denied, 403), ["error", "code"]) == "permission_denied"
+    assert {:ok, _} = Auth.authenticate_access_token(tokens.token)
+    assert :ok = Auth.logout(tokens.refresh_token)
+
+    insert_menu(role.role_id, "session:revoke")
+    {:ok, refreshed} = Auth.login_plaintext(user.username, "Strong!123")
+    authorized = put_req_header(build_conn(), "authorization", "Bearer #{refreshed.token}")
+
+    assert %{"success" => true} = json_response(post(authorized, "/api/v1/auth/logout", %{}), 200)
+    assert {:error, :invalid_token} = Auth.authenticate_access_token(refreshed.token)
   end
 
   @tag :integration
