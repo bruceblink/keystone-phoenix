@@ -268,6 +268,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     render_click(view, "show-panel", %{"panel" => "api-keys"})
     assert has_element?(view, "button[phx-click='new-api-key']")
     assert render(view) =~ "签发 API Key"
+    assert live_socket(view).assigns.api_key_total == 0
     refute render(view) =~ "配置接口权限"
 
     render_click(view, "new-api-key")
@@ -322,11 +323,15 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     render_click(view, "filter-api-keys", %{"query" => "liveview-test", "status" => "active"})
     assert live_socket(view).assigns.api_key_query == "liveview-test"
     assert live_socket(view).assigns.api_key_status == "active"
+    assert live_socket(view).assigns.api_key_total == 1
 
     render_click(view, "rotate-api-key", %{"id" => issued.id})
     replacement = live_socket(view).assigns.issued_api_key
     assert replacement.id != issued.id
     render_click(view, "revoke-api-key", %{"id" => replacement.id})
+
+    assert live_socket(view).assigns.api_key_total == 0
+    render_click(view, "filter-api-keys", %{"query" => "", "status" => "all"})
 
     assert Enum.any?(
              live_socket(view).assigns.api_key_rows,

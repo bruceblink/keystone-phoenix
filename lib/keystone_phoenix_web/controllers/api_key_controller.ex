@@ -36,12 +36,28 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
   end
 
   @doc "返回当前用户拥有的 API Key 元数据。"
-  def index(conn, _params) do
+  def index(conn, params) do
     with :ok <- require_permission(conn, "api-key:read") do
-      with {:ok, metadata} <- ApiKey.list(current_user_id(conn), authorization(conn)) do
-        json(conn, ApiResponse.ok(Enum.map(metadata, &metadata_to_map/1)))
+      if paged_request?(params) do
+        with {:ok, page} <-
+               ApiKey.list_page(current_user_id(conn), paging_params(params), authorization(conn)) do
+          data = %{
+            "items" => Enum.map(page.items, &metadata_to_map/1),
+            "page" => page.page,
+            "size" => page.size,
+            "total" => page.total
+          }
+
+          json(conn, ApiResponse.ok(data))
+        else
+          {:error, reason} -> render_error(conn, reason)
+        end
       else
-        {:error, reason} -> render_error(conn, reason)
+        with {:ok, metadata} <- ApiKey.list(current_user_id(conn), authorization(conn)) do
+          json(conn, ApiResponse.ok(Enum.map(metadata, &metadata_to_map/1)))
+        else
+          {:error, reason} -> render_error(conn, reason)
+        end
       end
     else
       {:error, reason} -> render_error(conn, reason)
@@ -129,6 +145,14 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
 
   defp format_datetime(nil), do: nil
   defp format_datetime(%DateTime{} = value), do: DateTime.to_iso8601(value)
+
+  defp paged_request?(params), do: Map.has_key?(params, "page") or Map.has_key?(params, "size")
+
+  defp paging_params(params) do
+    params
+    |> Map.put_new("page", params["page"] || "1")
+    |> Map.put_new("size", params["size"] || "20")
+  end
 
   defp render_error(conn, reason, message \\ nil) do
     {status, code, default_message} =

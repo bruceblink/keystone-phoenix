@@ -110,6 +110,15 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     end
   end
 
+  @doc "读取当前 API Key 页并保留页码、总数和服务失败结果。"
+  def api_keys_page(socket, params \\ %{}) do
+    try do
+      ApiKey.list_page(current_user_id(socket), params, Support.authorization_options(socket))
+    rescue
+      _error -> {:error, :service_unavailable}
+    end
+  end
+
   @doc "读取字典类型和当前类型条目，并保留任一读取失败结果。"
   def dictionary(socket, selected, params \\ %{}) do
     options = Support.authorization_options(socket)

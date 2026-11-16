@@ -6,27 +6,19 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
   alias KeystonePhoenix.Auth.ApiKey
   alias KeystonePhoenixWeb.Live.AdminPages.ApiKeys
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
-  alias KeystonePhoenixWeb.Live.AdminPages.Reload
   alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   def handle_event("refresh-api-keys", _params, socket) do
     if Support.panel_allowed?(socket, "api-keys") do
-      case Support.load_api_keys_for_socket_result(socket) do
-        {:ok, rows} ->
-          {:noreply,
-           assign(socket,
-             api_key_rows: rows,
-             api_key_feedback: nil,
-             issued_api_key: nil
-           )}
-
-        {:error, reason} ->
-          {:noreply,
-           assign(socket,
-             api_key_feedback: Support.read_error_feedback(reason, "API Key 列表刷新失败，请重试")
-           )}
-      end
+      {:noreply,
+       load_page(
+         socket,
+         socket.assigns.api_key_query,
+         socket.assigns.api_key_status,
+         current_page(socket),
+         nil
+       )}
     else
       {:noreply, socket}
     end
@@ -73,13 +65,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
           case result do
             {:ok, issued} ->
               {:noreply,
-               Reload.after_success(
+               load_page(
                  socket,
-                 &AdminReadSupport.api_keys/1,
-                 :api_key_rows,
-                 :api_key_feedback,
+                 socket.assigns.api_key_query,
+                 socket.assigns.api_key_status,
+                 current_page(socket),
                  "API Key 已签发",
-                 "API Key 已签发，但列表刷新失败，请重试",
                  api_key_form: ApiKeys.empty_form(),
                  issued_api_key: issued,
                  active_modal: nil
@@ -107,13 +98,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
       case ApiKey.rotate(current_user_id(socket), id, authorization(socket)) do
         {:ok, issued} ->
           {:noreply,
-           Reload.after_success(
+           load_page(
              socket,
-             &AdminReadSupport.api_keys/1,
-             :api_key_rows,
-             :api_key_feedback,
+             socket.assigns.api_key_query,
+             socket.assigns.api_key_status,
+             current_page(socket),
              "API Key 已轮换",
-             "API Key 已轮换，但列表刷新失败，请重试",
              issued_api_key: issued
            )}
 
@@ -130,13 +120,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
       case ApiKey.revoke(current_user_id(socket), id, authorization(socket)) do
         :ok ->
           {:noreply,
-           Reload.after_success(
+           load_page(
              socket,
-             &AdminReadSupport.api_keys/1,
-             :api_key_rows,
-             :api_key_feedback,
-             "API Key 已撤销",
-             "API Key 已撤销，但列表刷新失败，请重试"
+             socket.assigns.api_key_query,
+             socket.assigns.api_key_status,
+             current_page(socket),
+             "API Key 已撤销"
            )}
 
         error ->
@@ -148,7 +137,18 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
   end
 
   def handle_event("filter-api-keys", %{"query" => query, "status" => status}, socket) do
-    {:noreply, assign(socket, api_key_query: query, api_key_status: status)}
+    {:noreply, load_page(socket, query, status, 1, nil)}
+  end
+
+  def handle_event("paginate-api-keys", %{"page" => page}, socket) do
+    case Integer.parse(to_string(page)) do
+      {page, ""} when page > 0 ->
+        {:noreply,
+         load_page(socket, socket.assigns.api_key_query, socket.assigns.api_key_status, page, nil)}
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("filter-api-key-scopes", %{"scopeQuery" => query} = params, socket) do
@@ -206,6 +206,47 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
     case DateTime.from_iso8601(value) do
       {:ok, date_time, _offset} -> {:ok, date_time}
       _ -> {:error, :invalid_expiry}
+    end
+  end
+
+  defp current_page(socket), do: get_in(socket.assigns, [:page_nums, "api-keys"]) || 1
+
+  defp load_page(socket, query, status, page, success, extra \\ []) do
+    params = %{
+      "keyword" => String.trim(to_string(query || "")),
+      "status" => status || "all",
+      "pageNum" => page,
+      "pageSize" => get_in(socket.assigns, [:page_sizes, "api-keys"]) || 20
+    }
+
+    socket =
+      assign(socket,
+        api_key_query: query || "",
+        api_key_status: status || "all",
+        page_nums: Map.put(socket.assigns.page_nums, "api-keys", page)
+      )
+
+    case AdminReadSupport.api_keys_page(socket, params) do
+      {:ok, result} ->
+        assign(
+          socket,
+          Keyword.merge(extra,
+            api_key_rows: result.items,
+            api_key_total: result.total,
+            api_key_feedback: success,
+            page_nums: Map.put(socket.assigns.page_nums, "api-keys", result.page),
+            page_sizes: Map.put(socket.assigns.page_sizes, "api-keys", result.size)
+          )
+        )
+
+      {:error, reason} ->
+        assign(socket,
+          api_key_feedback:
+            Support.read_error_feedback(
+              reason,
+              if(success, do: "#{success}，但列表刷新失败，请重试", else: "API Key 列表刷新失败，请重试")
+            )
+        )
     end
   end
 end

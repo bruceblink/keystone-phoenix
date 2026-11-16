@@ -83,6 +83,50 @@ defmodule KeystonePhoenix.Auth.ApiKey do
     end
   end
 
+  @doc "按筛选条件分页查询当前用户的 API Key 元数据。"
+  def list_page(user_id, params \\ %{}) when is_map(params) do
+    with {:ok, user_id} <- canonical_id(user_id) do
+      query =
+        from key in Key,
+          where: key.user_id == ^user_id,
+          order_by: [desc: key.inserted_at, desc: key.id]
+
+      query =
+        query
+        |> filter_page_keyword(
+          params["keyword"] || params[:keyword] || params["query"] || params[:query]
+        )
+        |> filter_page_status(params["status"] || params[:status])
+
+      page =
+        positive_page(params["page"] || params[:page] || params["pageNum"] || params[:page_num])
+
+      size =
+        positive_size(params["size"] || params[:size] || params["pageSize"] || params[:page_size])
+
+      total = Repo.aggregate(query, :count, :id)
+
+      rows =
+        query
+        |> limit(^size)
+        |> offset(^((page - 1) * size))
+        |> Repo.all()
+        |> Enum.map(&metadata/1)
+
+      %{items: rows, page: page, size: size, total: total}
+    else
+      {:error, _reason} -> %{items: [], page: 1, size: 20, total: 0}
+    end
+  end
+
+  @doc "通过显式人类授权上下文分页查询本人 API Key 元数据。"
+  def list_page(user_id, params, options) when is_map(params) and is_list(options) do
+    with {:ok, user_id} <- canonical_id(user_id),
+         :ok <- authorize_management(options, "api-key:read", user_id) do
+      {:ok, list_page(user_id, params)}
+    end
+  end
+
   @doc "撤销指定用户拥有的 API Key；重复撤销保持成功。"
   def revoke(user_id, key_id) do
     with {:ok, user_id} <- canonical_id(user_id),
@@ -327,6 +371,38 @@ defmodule KeystonePhoenix.Auth.ApiKey do
       last_used_at: key.last_used_at,
       created_at: key.inserted_at
     }
+  end
+
+  defp filter_page_keyword(query, nil), do: query
+  defp filter_page_keyword(query, ""), do: query
+
+  defp filter_page_keyword(query, value) do
+    pattern = "%#{String.trim(to_string(value))}%"
+
+    where(
+      query,
+      [key],
+      ilike(key.name, ^pattern) or ilike(key.key_prefix, ^pattern) or ilike(key.scopes, ^pattern)
+    )
+  end
+
+  defp filter_page_status(query, status) when status in [nil, "", "all"], do: query
+  defp filter_page_status(query, "active"), do: where(query, [key], is_nil(key.revoked_at))
+  defp filter_page_status(query, "revoked"), do: where(query, [key], not is_nil(key.revoked_at))
+  defp filter_page_status(query, _status), do: query
+
+  defp positive_page(value) do
+    case Integer.parse(to_string(value || "1")) do
+      {number, ""} when number > 0 -> number
+      _ -> 1
+    end
+  end
+
+  defp positive_size(value) do
+    case Integer.parse(to_string(value || "20")) do
+      {number, ""} when number > 0 -> min(number, 100)
+      _ -> 20
+    end
   end
 
   defp ensure_scope_subset(scopes, permissions) do

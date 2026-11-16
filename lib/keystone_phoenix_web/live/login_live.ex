@@ -13,7 +13,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.LoginLimiter
   alias KeystonePhoenixWeb.Live.AdminSupport
-  alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.Authentication
@@ -198,28 +197,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
            )}
 
         panel == "api-keys" ->
-          case AdminReadSupport.api_keys(socket) do
-            {:ok, rows} ->
-              {:noreply,
-               assign(socket,
-                 active_panel: panel,
-                 api_key_rows: rows,
-                 api_key_feedback: nil,
-                 issued_api_key: nil
-               )}
-
-            {:error, reason} ->
-              {:noreply,
-               assign(socket,
-                 active_panel: panel,
-                 api_key_feedback:
-                   Feedback.error(
-                     Feedback.code(Feedback.from_reason(reason)),
-                     "API Key 列表读取失败，请重试"
-                   ),
-                 issued_api_key: nil
-               )}
-          end
+          SecurityEvents.handle_event(
+            "refresh-api-keys",
+            %{},
+            assign(socket, active_panel: panel, issued_api_key: nil)
+          )
 
         panel == "users" and not AdminSupport.admin_socket?(socket) ->
           {:noreply,
@@ -245,6 +227,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
              "jobs",
              "job-logs",
              "configs",
+             "api-keys",
              "dict-data",
              "login-logs",
              "operation-logs",
@@ -259,10 +242,14 @@ defmodule KeystonePhoenixWeb.LoginLive do
         if panel == "configs" do
           ConfigEvents.handle_event("paginate-configs", %{"page" => page}, socket)
         else
-          if panel == "online-users" and AdminSupport.panel_allowed?(socket, "monitor") do
-            {:noreply, AdminSupport.assign_monitor(socket)}
+          if panel == "api-keys" do
+            SecurityEvents.handle_event("paginate-api-keys", %{"page" => page}, socket)
           else
-            {:noreply, socket}
+            if panel == "online-users" and AdminSupport.panel_allowed?(socket, "monitor") do
+              {:noreply, AdminSupport.assign_monitor(socket)}
+            else
+              {:noreply, socket}
+            end
           end
         end
 
@@ -279,7 +266,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   @system_events ~w(refresh-dicts select-dict-type new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs refresh-login-logs refresh-operation-logs new-notice edit-notice cancel-notice save-notice toggle-notice-status publish-notice toggle-notice-selection toggle-all-notice-selection delete-notice delete-notices refresh-notices filter-notices reset-notice-filter)
   @audit_events ~w(filter-login-logs reset-login-log-filter filter-operation-logs reset-operation-log-filter filter-dict-types reset-dict-type-filter export-login-logs export-operation-logs)
   @operations_events ~w(refresh-jobs filter-jobs reset-job-filter toggle-job-selection toggle-all-job-selection select-job new-job edit-job save-job delete-job delete-jobs run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor toggle-monitor-help logout-online-user)
-  @security_events ~w(refresh-api-keys new-api-key save-api-key rotate-api-key revoke-api-key filter-api-keys filter-api-key-scopes toggle-api-key-scope dismiss-api-key-secret)
+  @security_events ~w(refresh-api-keys new-api-key save-api-key rotate-api-key revoke-api-key filter-api-keys paginate-api-keys filter-api-key-scopes toggle-api-key-scope dismiss-api-key-secret)
 
   @impl true
   def handle_event(event, params, socket) when event in @organization_events,
@@ -486,7 +473,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "users" -> %>
                       <.users user_rows={@user_rows} user_form={@user_form} user_feedback={@user_feedback} user_query={@user_query} user_display_name_query={@user_display_name_query} selected_user_ids={@selected_user_ids} user_import_result={@user_import_result} active_modal={@active_modal} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} page_num={@page_nums["users"]} page_size={@page_sizes["users"]} read_only={@read_only} permissions={@permissions} user_import_upload={@uploads.user_import} />
                     <% "api-keys" -> %>
-                      <.api_keys api_key_rows={@api_key_rows} api_key_feedback={@api_key_feedback} api_key_form={@api_key_form} api_key_query={@api_key_query} api_key_status={@api_key_status} issued_api_key={@issued_api_key} permissions={@permissions} active_modal={@active_modal} read_only={@read_only} />
+                      <.api_keys api_key_rows={@api_key_rows} api_key_total={@api_key_total} api_key_page_num={@page_nums["api-keys"]} api_key_page_size={@page_sizes["api-keys"]} api_key_feedback={@api_key_feedback} api_key_form={@api_key_form} api_key_query={@api_key_query} api_key_status={@api_key_status} issued_api_key={@issued_api_key} permissions={@permissions} active_modal={@active_modal} read_only={@read_only} />
                     <% "configs" -> %>
                       <.configs config_rows={@config_rows} config_total={@config_total} config_page_num={@page_nums["configs"]} config_page_size={@page_sizes["configs"]} config_form={@config_form} config_feedback={@config_feedback} config_filter={@config_filter} active_modal={@active_modal} read_only={@read_only} />
                     <% "dicts" -> %>

@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
   use Phoenix.Component
 
   import KeystonePhoenixWeb.Live.AdminPages.Modal
+  import KeystonePhoenixWeb.Live.AdminPages.Pagination, only: [pagination: 1]
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenix.Authz.PermissionCatalog
 
@@ -11,6 +12,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
     assigns =
       assigns
       |> assign_new(:api_key_rows, fn -> [] end)
+      |> assign_new(:api_key_total, fn -> nil end)
+      |> assign_new(:api_key_page_num, fn -> 1 end)
+      |> assign_new(:api_key_page_size, fn -> 20 end)
       |> assign_new(:api_key_feedback, fn -> nil end)
       |> assign_new(:api_key_form, fn -> empty_form() end)
       |> assign_new(:api_key_query, fn -> "" end)
@@ -75,21 +79,24 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
       </section>
       <section class="card table-card api-keys-table-card" aria-labelledby="api-keys-table-title">
         <header class="card-header table-card-heading">
-          <div><h2 id="api-keys-table-title">API Key 列表</h2><p>共 <%= length(filtered_rows(@api_key_rows, @api_key_query, @api_key_status)) %> 个匹配凭据</p></div>
+          <div><h2 id="api-keys-table-title">API Key 列表</h2><p>共 <%= @api_key_total || length(@api_key_rows) %> 个匹配凭据</p></div>
           <span class="badge badge-info">仅显示元数据</span>
         </header>
-        <%= if filtered_rows(@api_key_rows, @api_key_query, @api_key_status) == [] do %>
+        <%= if @api_key_rows == [] do %>
           <div class="api-keys-empty empty-state" role="status"><strong>暂无匹配的 API Key</strong><p>调整筛选条件后重试，或清空筛选条件查看全部凭据。</p></div>
         <% else %>
           <div class="table-wrap"><div class="table-scroll" role="region" tabindex="0" aria-label="API Key 列表">
             <table class="api-keys-table"><caption class="sr-only">API Key 列表</caption><thead><tr><th scope="col">名称</th><th scope="col">密钥前缀</th><th scope="col">授权范围</th><th scope="col">创建时间</th><th scope="col">最近使用</th><th scope="col">到期时间</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody>
-              <%= for key <- filtered_rows(@api_key_rows, @api_key_query, @api_key_status) do %>
+              <%= for key <- @api_key_rows do %>
                 <% revoked = not is_nil(key.revoked_at) %>
                 <tr><td><div class="api-key-cell"><strong><%= key.name %></strong><small><%= key.id %></small></div></td><td><code>ks_live_<%= key.prefix %>_••••</code></td><td><div class="api-key-scopes"><%= for scope <- key.scopes do %><span class="badge badge-neutral"><%= scope %></span><% end %></div></td><td><%= format_datetime(key.created_at) %></td><td><%= format_datetime(key.last_used_at) %></td><td><%= format_datetime(key.expires_at) %></td><td><span class={if revoked, do: "status-badge status-badge--failure", else: "status-badge status-badge--success"}><%= if revoked, do: "已撤销", else: "有效" %></span></td><td class="table-actions"><button :if={!revoked and "api-key:rotate" in @permissions} type="button" class="button button-ghost refresh" phx-click="rotate-api-key" phx-value-id={key.id} phx-disable-with="轮换中…">轮换</button><button :if={!revoked and "api-key:revoke" in @permissions} type="button" class="button button-danger refresh danger-action" phx-confirm="确认撤销此 API Key 吗？" phx-click="revoke-api-key" phx-value-id={key.id} phx-disable-with="撤销中…">撤销</button></td></tr>
               <% end %>
             </tbody></table>
           </div></div>
         <% end %>
+        <div class="table-card-footer">
+          <.pagination panel="api-keys" page_num={@api_key_page_num} page_size={@api_key_page_size} total={@api_key_total || length(@api_key_rows)} />
+        </div>
       </section>
     </div>
     """
@@ -169,21 +176,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
     |> Enum.reject(&(&1 == ""))
     |> Enum.uniq()
     |> Enum.sort()
-  end
-
-  defp filtered_rows(rows, query, status) do
-    normalized = String.downcase(String.trim(to_string(query)))
-
-    Enum.filter(rows, fn key ->
-      revoked = not is_nil(key.revoked_at)
-
-      matches_status =
-        status == "all" or (status == "revoked" and revoked) or
-          (status == "active" and not revoked)
-
-      haystack = Enum.join([key.name, key.prefix | key.scopes], " ") |> String.downcase()
-      matches_status and (normalized == "" or String.contains?(haystack, normalized))
-    end)
   end
 
   defp format_datetime(nil), do: "永不过期"

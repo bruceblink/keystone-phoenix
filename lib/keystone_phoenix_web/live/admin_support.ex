@@ -558,7 +558,6 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def permission_socket?(_socket, _permission), do: false
 
-  @doc "Checks whether a dashboard panel has at least one required permission."
   def panel_allowed?(socket, panel) do
     admin_socket?(socket) or
       (authenticated_socket?(socket) and

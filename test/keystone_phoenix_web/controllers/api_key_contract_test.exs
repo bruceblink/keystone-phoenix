@@ -75,6 +75,19 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
 
     refute Map.has_key?(metadata, "apiKey")
 
+    assert %{
+             "success" => true,
+             "data" => %{
+               "items" => [%{"id" => ^key_id}],
+               "page" => 1,
+               "size" => 1,
+               "total" => 1
+             }
+           } =
+             authorized_conn
+             |> get("/api/v1/api-keys?page=1&size=1&keyword=http%20worker&status=active")
+             |> json_response(200)
+
     rotate_response = post(authorized_conn, "/api/v1/api-keys/#{key_id}/rotate", %{})
 
     assert %{"success" => true, "data" => %{"id" => replacement_id, "apiKey" => replacement_key}} =
