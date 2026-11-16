@@ -7,12 +7,11 @@ defmodule KeystonePhoenix.Menu do
   alias KeystonePhoenix.Authz.Command
   alias KeystonePhoenix.Authz.SysMenuPermission
   alias KeystonePhoenix.Authz.SysPermission
-  alias KeystonePhoenix.Authz.SysRolePermission
   alias KeystonePhoenix.Authz.PolicyCache
   alias KeystonePhoenix.Menu.SysMenu
+  alias KeystonePhoenix.Menu.RoleAccess
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Repo
-  alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.Role.SysRoleMenu
   alias KeystonePhoenix.Tree
 
@@ -198,48 +197,14 @@ defmodule KeystonePhoenix.Menu do
     end
   end
 
-  def menus_for_user(%{role_id: nil}), do: []
-  def menus_for_user(%{"roleId" => nil}), do: []
-
   def menus_for_user(user) do
-    from(m in SysMenu,
-      join: rm in SysRoleMenu,
-      on: rm.menu_id == m.menu_id,
-      join: role in SysRole,
-      on: role.role_id == rm.role_id,
-      where:
-        m.deleted == false and m.status == 1 and role.deleted == false and role.status == 1 and
-          rm.role_id == ^user.role_id,
-      order_by: [asc: m.parent_id, asc: m.menu_sort, asc: m.menu_id],
-      distinct: true
-    )
-    |> Repo.all()
+    RoleAccess.menu_rows(user)
     |> Enum.map(&menu_to_map/1)
   end
 
   @doc "Returns the button and route permission strings for an authenticated user."
   @spec permissions_for_user(map()) :: [String.t()]
-  def permissions_for_user(%{role_id: nil}), do: []
-  def permissions_for_user(%{"roleId" => nil}), do: []
-
-  def permissions_for_user(user) do
-    role_id = Map.get(user, :role_id, Map.get(user, "roleId"))
-
-    # 使用带有 `:binary_id` 字段类型的 schema，让 Ecto 把 UUID 字符串转换为
-    # PostgreSQL 的 16 字节 uuid。直接查询表名会跳过类型转换并导致绑定失败。
-    from(role_permission in SysRolePermission,
-      join: permission in SysPermission,
-      on: permission.permission_id == role_permission.permission_id,
-      join: role in SysRole,
-      on: role.role_id == role_permission.role_id,
-      where:
-        role_permission.role_id == ^role_id and role.deleted == false and role.status == 1 and
-          permission.status == 1 and permission.deprecated == false,
-      select: permission.permission,
-      order_by: permission.permission
-    )
-    |> Repo.all()
-  end
+  def permissions_for_user(user), do: RoleAccess.permissions(user)
 
   @doc "Builds the authenticated user's router tree."
   def routers_for_user(user) do
