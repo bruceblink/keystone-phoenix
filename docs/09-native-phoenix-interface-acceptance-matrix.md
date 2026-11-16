@@ -174,3 +174,9 @@ Phoenix LiveView 和 admin-web 在选择字典类型后使用服务端分页，�
 验证结果：Phoenix 默认测试 `382 passed, 54 excluded`，集成测试 `436 passed`；admin-web 全量测试 `24 files / 137 tests passed`，类型检查和构建通过；Native 全量测试和 `quarkusBuild` 通过。跨项目错误码、路由集合和源码行数检查继续通过。
 
 下一阶段继续处理登录日志、操作审计和其他尚未完成的逐页面写入、详情返回及真实浏览器矩阵；OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复和生产代理链仍单独保留为发布证据缺口。
+
+### 2026-11-16 审计日志分页复核
+
+Phoenix `b9d8530` 已将 LiveView 登录日志和操作审计的刷新、筛选、翻页接入服务端分页查询。当前页由 `pageNum`、`pageSize` 决定，页面总数使用服务端 `total`；刷新和筛选在查询前重置到第 1 页。Native、Phoenix HTTP 和 admin-web 已有相同的分页字段与筛选约定，Phoenix LiveView 现在也遵循该约定。
+
+验证：Phoenix 默认测试 `382 passed, 54 excluded`，集成测试 `436 passed`；编译、格式、源码行数和差异检查通过。该结果属于代码与自动化测试证据，不替代 Codex 内置浏览器可视窗口验收；当前环境只能保留既有 Chrome CDP/headless 证据边界。

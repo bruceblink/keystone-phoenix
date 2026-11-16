@@ -223,3 +223,9 @@ Phoenix LiveView 和 admin-web 在选择字典类型后使用服务端分页，�
 验证结果：Phoenix 默认测试 `382 passed, 54 excluded`，集成测试 `436 passed`；admin-web 全量测试 `24 files / 137 tests passed`，类型检查和构建通过；Native 全量测试和 `quarkusBuild` 通过。跨项目错误码、路由集合和源码行数检查继续通过。
 
 下一阶段继续处理登录日志、操作审计和其他尚未完成的逐页面写入、详情返回及真实浏览器矩阵；OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复和生产代理链仍单独保留为发布证据缺口。
+
+### 2026-11-16 LiveView 审计日志分页对齐
+
+Phoenix `b9d8530` 将 admin-web 已使用的登录日志和操作审计分页约定重新实现到 LiveView。LiveView 事件现在携带当前页和筛选条件，页面显示服务端总数，筛选、刷新和翻页失败时保留旧数据并显示错误反馈；导出接口继续使用完整结果集。这样，Native 和 Phoenix 可以继续互换作为同一份 admin-web 的后端，查询参数和返回总数不因前端实现不同而变化。
+
+验证结果：Phoenix `382 passed, 54 excluded`，集成测试 `436 passed`；错误码目录和 API 路由集合检查继续通过。剩余未闭环项仍需按页面补齐编辑、批量写入、详情返回、加载状态和真实窗口验收。
