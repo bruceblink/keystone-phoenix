@@ -54,7 +54,7 @@ defmodule KeystonePhoenixWeb.NativeContract do
     Map.has_key?(params, "page") or Map.has_key?(params, "size") or
       Map.has_key?(params, :page) or Map.has_key?(params, :size) or
       Enum.any?(
-        ~w(keyword jobName jobGroup status postCode postName postStatus),
+        ~w(keyword status postCode postName postStatus),
         &Map.has_key?(params, &1)
       )
   end

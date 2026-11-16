@@ -20,7 +20,8 @@ defmodule KeystonePhoenixWeb.Live.OrganizationPostsPaginationTest do
 
     html =
       render_component(&Organization.posts/1,
-        post_rows: rows,
+        post_rows: [List.last(rows)],
+        post_total: length(rows),
         post_form: %{},
         post_feedback: nil,
         active_modal: nil,
