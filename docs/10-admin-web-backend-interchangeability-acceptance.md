@@ -386,3 +386,9 @@ Phoenix `mix test --include integration` 为 `486 passed`。`mix compile --warni
 Phoenix `02eee98` 将入口资源范围判断改为合并全部启用角色的数据范围。真实 HTTP 集成测试覆盖允许和拒绝结果：主体有 `TENANT` 或 `ALL` 启用角色时可以读取角色成员；主体只有非全局范围，或全局范围只来自已停用角色时，接口返回 `403 data_scope_denied`。Phoenix `mix test --include integration` 全量结果为 `488 passed`。
 
 此证据确认 Phoenix 多角色范围入口行为，不代表 Native 与 Phoenix 已通过完整范围替换验收。角色成员查询仍有接口差异：Phoenix 支持 `username`、`phoneNumber` 的大小写不敏感包含筛选，Native 目前只接收 `allocated`；两端返回用户 ID 数组的顺序也相反，Phoenix 按 UUID 降序，Native 按 ID 升序。筛选参数、空值处理和结果顺序均标记为待对齐，在两端真实 HTTP/ORM 回归完成前不宣称接口一致。
+
+### 2026-11-17 Native 隔离环境 Chrome 窗口验收
+
+测试环境使用独立 MySQL `8.4.13` 数据库，并执行 Native 迁移 `V1`–`V58`。admin-web 通过 Vite 代理连接 Native，在 Chrome 真实窗口中使用临时凭据登录成功。检查了 14 个路径；`monitor` 与 `dashboard` 是同一视图，因此共有 13 个独立视图。检查期间未出现页面 alert，捕获的 15 个 API 响应均为 HTTP `200`。这轮检查只读，没有执行页面写操作。
+
+本次未覆盖完整写操作矩阵、生产环境或新库初始账号开箱流程。新库启动检查发现 `V46` 会导致 README 首次登录失败，并丢失强制改密标记。Native `V59` 修复正在进行，尚未验收；因此初始账号登录和强制改密流程仍为未通过验收的项目。临时凭据不记录在本文。
