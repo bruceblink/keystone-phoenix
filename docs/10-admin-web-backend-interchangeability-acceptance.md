@@ -380,3 +380,9 @@ Phoenix `mix test --include integration` 为 `486 passed`。`mix compile --warni
 浏览器证据使用 Chrome 真实窗口回退：Codex 内置浏览器在本轮无法交互。已在 `320`、`390`、`768` 和 `1200` 宽度对照 admin-web 与 Phoenix LiveView 登录页面；同一份 admin-web 连接 Phoenix 后，对 13 个主要页面完成只读检查。该检查没有覆盖 Native 后端切换，也没有执行写操作，因此不代表后端替换或页面写操作矩阵通过。
 
 仍未完成的验收：监控读取仍在事件处理中同步执行；Native 后端切换和完整写操作矩阵仍待真实窗口验证。角色 HTTP 筛选参数以及多角色数据范围结果的跨后端差异仍在核查，本轮不将这两项标记为一致或完成。Codex 内置浏览器恢复交互后，应优先使用它完成窗口验收；不可用时继续把 Chrome 结果标为回退证据。
+
+### 2026-11-17 多角色资源范围 HTTP 验收和角色成员查询差异
+
+Phoenix `02eee98` 将入口资源范围判断改为合并全部启用角色的数据范围。真实 HTTP 集成测试覆盖允许和拒绝结果：主体有 `TENANT` 或 `ALL` 启用角色时可以读取角色成员；主体只有非全局范围，或全局范围只来自已停用角色时，接口返回 `403 data_scope_denied`。Phoenix `mix test --include integration` 全量结果为 `488 passed`。
+
+此证据确认 Phoenix 多角色范围入口行为，不代表 Native 与 Phoenix 已通过完整范围替换验收。角色成员查询仍有接口差异：Phoenix 支持 `username`、`phoneNumber` 的大小写不敏感包含筛选，Native 目前只接收 `allocated`；两端返回用户 ID 数组的顺序也相反，Phoenix 按 UUID 降序，Native 按 ID 升序。筛选参数、空值处理和结果顺序均标记为待对齐，在两端真实 HTTP/ORM 回归完成前不宣称接口一致。

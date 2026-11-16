@@ -896,3 +896,11 @@ Chrome 真实窗口回退验收已在 `320`、`390`、`768` 和 `1200` 宽度对
 4. 继续补齐未完成页面的编辑、批量写入、详情返回和读取失败矩阵，并保留 OIDC、公钥硬件 Passkey、CSRF/Cookie、多节点恢复、生产代理链和正式发布验收为独立未完成项。
 
 角色 HTTP 筛选和多角色数据范围差异仍在核查；Native 后端切换与完整写操作矩阵仍未完成。本轮不宣称 Native/Phoenix 全面一致。
+
+### 2026-11-17 多角色资源范围修复与待对齐接口
+
+Phoenix `02eee98` 修复多角色主体的资源范围入口判断。`Permission.active_data_scopes/1` 返回全部启用角色的数据范围；`ResourceScope` 按角色范围并集合并判断资源访问，避免只使用首选角色范围。新增真实 HTTP 集成覆盖：一个角色为 `DEPARTMENT`、另一个启用角色为 `TENANT` 或 `ALL` 时允许读取角色成员；只有 `DEPARTMENT`/`SELF` 或带有已停用的 `ALL` 角色时拒绝读取，返回 `403 data_scope_denied`。
+
+Phoenix 全量集成测试为 `488 passed`。该结果验证 Phoenix 内的多角色入口规则和 HTTP 允许/拒绝结果，不代表 Native/Phoenix 跨后端范围行为已完全一致。
+
+Native 与 Phoenix 的角色成员查询仍待对齐：Phoenix 支持 `username` 和 `phoneNumber` 筛选，使用大小写不敏感的包含匹配；Native 目前只接收 `allocated`，不应用这两个筛选参数。两端返回的用户 ID 数组排序方向也不同，Phoenix 按 UUID 降序，Native 按 ID 升序。下一步核对筛选参数、空值语义和数组顺序，并补齐两端 HTTP/ORM 回归后再更新替换结论。
