@@ -79,7 +79,8 @@ defmodule KeystonePhoenix.Auth do
       {:error, :validation_failed} ->
         {:error, :validation_failed}
 
-      {:error, reason} when reason in [:already_logged_in, :token_configuration] ->
+      {:error, reason}
+      when reason in [:already_logged_in, :precondition_required, :token_configuration] ->
         {:error, reason}
 
       _ ->
@@ -106,6 +107,9 @@ defmodule KeystonePhoenix.Auth do
     case User.get_user_by_username(username) do
       {:ok, user} ->
         cond do
+          user.status != 1 ->
+            {:error, :invalid_credentials}
+
           not Bcrypt.verify_pass(current_password, user.password || "") ->
             {:error, :invalid_credentials}
 
@@ -249,6 +253,8 @@ defmodule KeystonePhoenix.Auth do
     with {:ok, user} <- User.get_user(user_id),
          true <- user.status == 1,
          true <- Bcrypt.verify_pass(plaintext_password, user.password || ""),
+         # 首次改密完成前，不创建 MFA 挑战或认证会话。
+         false <- user.must_change_password,
          {:ok, preparation} <- Mfa.prepare_login(user.user_id, client_id) do
       case preparation do
         %{required: true, challenge: challenge} when is_map(challenge) ->
@@ -265,6 +271,7 @@ defmodule KeystonePhoenix.Auth do
     else
       {:error, :not_found} -> {:error, :invalid_credentials}
       false -> {:error, :invalid_credentials}
+      true -> {:error, :precondition_required}
       {:error, reason} -> {:error, reason}
     end
   end
@@ -296,7 +303,13 @@ defmodule KeystonePhoenix.Auth do
           {:ok, tokens}
       end
     else
-      {:error, reason} when reason in [:unavailable, :token_configuration, :already_logged_in] ->
+      {:error, reason}
+      when reason in [
+             :unavailable,
+             :token_configuration,
+             :already_logged_in,
+             :precondition_required
+           ] ->
         {:error, reason}
 
       {:error, :mfa_enrollment_required} ->

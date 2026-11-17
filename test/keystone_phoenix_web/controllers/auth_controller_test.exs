@@ -2,6 +2,8 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Auth.AuthSession
+  alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Auth.Token
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Config.SysConfig
@@ -69,8 +71,69 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert is_binary(response["data"]["refreshToken"])
   end
 
+  test "blocks an initial-password account before issuing a session", %{conn: conn, user: user} do
+    Repo.update!(Ecto.Changeset.change(user, must_change_password: true))
+
+    assert {:error, :precondition_required} = Auth.login_plaintext(user.username, "Strong!123")
+
+    response =
+      conn
+      |> post("/api/v1/auth/login", %{
+        "username" => user.username,
+        "password" => "Strong!123"
+      })
+      |> json_response(428)
+
+    assert get_in(response, ["error", "code"]) == "precondition_required"
+    refute Map.has_key?(response["data"] || %{}, "accessToken")
+    assert Repo.get_by(AuthSession, user_id: user.user_id) == nil
+  end
+
+  test "rejects initial-password change for a disabled account", %{user: user} do
+    user = Repo.update!(Ecto.Changeset.change(user, must_change_password: true, status: 0))
+
+    response =
+      build_conn()
+      |> post("/api/v1/auth/change-initial-password", %{
+        "username" => user.username,
+        "currentPassword" => "Strong!123",
+        "newPassword" => "Changed!456"
+      })
+      |> json_response(401)
+
+    assert get_in(response, ["error", "code"]) == "invalid_credential"
+    assert Repo.get!(SysUser, user.user_id).must_change_password
+  end
+
   test "changes a flagged initial password and revokes the requirement", %{user: user} do
     user = Repo.update!(Ecto.Changeset.change(user, must_change_password: true))
+    password_hash = Repo.get!(SysUser, user.user_id).password
+
+    invalid_current_password =
+      build_conn()
+      |> post("/api/v1/auth/change-initial-password", %{
+        "username" => user.username,
+        "currentPassword" => "Wrong!123",
+        "newPassword" => "Changed!456"
+      })
+      |> json_response(401)
+
+    assert get_in(invalid_current_password, ["error", "code"]) == "invalid_credential"
+
+    same_password =
+      build_conn()
+      |> post("/api/v1/auth/change-initial-password", %{
+        "username" => user.username,
+        "currentPassword" => "Strong!123",
+        "newPassword" => "Strong!123"
+      })
+      |> json_response(422)
+
+    assert get_in(same_password, ["error", "code"]) == "validation_failed"
+
+    unchanged = Repo.get!(SysUser, user.user_id)
+    assert unchanged.password == password_hash
+    assert unchanged.must_change_password
 
     response =
       build_conn()
@@ -82,6 +145,8 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       |> json_response(200)
 
     assert response["data"] == %{"updated" => true}
+
+    assert Repo.get!(SysUser, user.user_id).must_change_password == false
 
     assert {:ok, _tokens} = Auth.login_plaintext(user.username, "Changed!456")
   end
@@ -96,7 +161,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       })
       |> json_response(409)
 
-    assert get_in(response, ["error", "code"]) == "validation_failed"
+    assert get_in(response, ["error", "code"]) == "resource_conflict"
   end
 
   test "uses the shared token response schema for login and refresh", %{user: user} do
@@ -117,6 +182,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert data["clientId"] == "web"
     refute Map.has_key?(data, "token")
     refute Map.has_key?(data, "currentUser")
+    assert Session.valid?(data["sessionId"], user.user_id)
 
     refreshed =
       build_conn()

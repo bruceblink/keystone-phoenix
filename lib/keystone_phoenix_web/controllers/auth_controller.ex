@@ -82,6 +82,10 @@ defmodule KeystonePhoenixWeb.AuthController do
               )
             )
 
+          {:error, :precondition_required} ->
+            Log.record_login(conn, username, 0, "必须先更改初始密码")
+            render_error(conn, :precondition_required)
+
           {:error, :invalid_credentials} ->
             Log.record_login(conn, username, 0, "用户名或密码错误")
             render_error(conn, :invalid_credentials)
@@ -152,7 +156,7 @@ defmodule KeystonePhoenixWeb.AuthController do
       {:error, :password_change_not_required} ->
         conn
         |> put_status(:conflict)
-        |> json(ApiResponse.error(:validation_failed, "密码不需要初始化修改"))
+        |> json(ApiResponse.error(:resource_conflict, "密码不需要初始化修改"))
 
       {:error, :same_password} ->
         conn
@@ -444,6 +448,12 @@ defmodule KeystonePhoenixWeb.AuthController do
     conn
     |> put_status(:unauthorized)
     |> json(ApiResponse.error(:invalid_credential, "用户名或密码错误"))
+  end
+
+  defp render_error(conn, :precondition_required) do
+    conn
+    |> put_status(428)
+    |> json(ApiResponse.error(:precondition_required, "请先修改初始密码"))
   end
 
   defp render_error(conn, :captcha_required) do

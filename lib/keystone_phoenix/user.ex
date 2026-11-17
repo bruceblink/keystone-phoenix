@@ -363,6 +363,8 @@ defmodule KeystonePhoenix.User do
              true <- Bcrypt.verify_pass(old_password, user.password || ""),
              false <- Bcrypt.verify_pass(new_password, user.password || "") do
           SysUser.password_changeset(user, %{password: new_password})
+          # 在更新密码的同一事务中解除首次改密状态。
+          |> Ecto.Changeset.put_change(:must_change_password, false)
           |> Audit.put_actor(:updater_id, actor_id)
           |> Repo.update()
         else
