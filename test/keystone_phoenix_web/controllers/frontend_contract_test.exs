@@ -77,6 +77,49 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     assert notice["createdBy"] == fixtures.user.username
   end
 
+  # 使用 Native 资料字段执行 HTTP 写入，再核对数据库和独立读取结果。
+  @tag :integration
+  test "profile update persists Native fields and returns them from a later read" do
+    fixtures = fixtures()
+
+    attrs = %{
+      "displayName" => "更新后的展示名",
+      "email" => "profile-roundtrip@example.com",
+      "phoneNumber" => "13800138000",
+      "sex" => 1,
+      "avatar" => "/profile/avatar/profile-roundtrip.png"
+    }
+
+    response =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{fixtures.token}")
+      |> put("/api/v1/profile", attrs)
+
+    assert %{"success" => true, "data" => updated_profile} = json_response(response, 200)
+
+    for field <- ["displayName", "email", "phoneNumber", "sex", "avatar"] do
+      assert updated_profile[field] == attrs[field]
+    end
+
+    # 检查数据库记录，确保成功响应对应真实持久化。
+    persisted_user = Repo.get!(SysUser, fixtures.user.user_id)
+    assert persisted_user.nickname == attrs["displayName"]
+    assert persisted_user.email == attrs["email"]
+    assert persisted_user.phone_number == attrs["phoneNumber"]
+    assert persisted_user.sex == attrs["sex"]
+    assert persisted_user.avatar == attrs["avatar"]
+
+    assert %{"success" => true, "data" => read_profile} =
+             build_conn()
+             |> put_req_header("authorization", "Bearer #{fixtures.token}")
+             |> get("/api/v1/profile")
+             |> json_response(200)
+
+    for field <- ["displayName", "email", "phoneNumber", "sex", "avatar"] do
+      assert read_profile[field] == attrs[field]
+    end
+  end
+
   defp fixtures do
     department =
       %SysDept{dept_id: Identity.v7()}
@@ -110,6 +153,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     insert_permission(role.role_id, "department:read", 0, true)
     insert_permission(role.role_id, "post:read", 0, true)
     insert_permission(role.role_id, "user:read", 0, true)
+    insert_permission(role.role_id, "user:update", 0, true)
     insert_permission(role.role_id, "dictionary:read", 0, true)
     insert_permission(role.role_id, "notice:read", 0, true)
 

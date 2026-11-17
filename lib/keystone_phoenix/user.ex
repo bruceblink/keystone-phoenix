@@ -328,7 +328,8 @@ defmodule KeystonePhoenix.User do
   defp do_update_profile(id, attrs, actor_id) when is_map(attrs) do
     attrs =
       %{}
-      |> maybe_put(attrs, "nickname", ["nickName", "nickname"])
+      # Native 个人资料使用 displayName；Phoenix 内部仍把展示名保存到 nickname。
+      |> maybe_put(attrs, "nickname", ["nickName", "nickname", "displayName"])
       |> maybe_put(attrs, "phoneNumber", ["phoneNumber", "phone_number"])
       |> maybe_put(attrs, "email", ["email"])
       |> maybe_put(attrs, "sex", ["sex"])
