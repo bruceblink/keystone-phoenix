@@ -12,6 +12,7 @@ defmodule KeystonePhoenix.Role do
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.Role.Permissions
+  alias KeystonePhoenix.Role.MemberIdentity
   alias KeystonePhoenix.Role.PermissionVersion
   alias KeystonePhoenix.Role.Authorization
   alias KeystonePhoenix.User
@@ -480,10 +481,14 @@ defmodule KeystonePhoenix.Role do
       |> filter_user_contains(:username, params["username"] || params[:username])
       |> filter_user_contains(:phone_number, params["phoneNumber"] || params[:phone_number])
 
-    # 成员查询需要一次性加载关联名称，不能把单个用户结构直接传给列表映射器。
-    query
-    |> Pagination.page_rows(params, :user_id)
-    |> Map.update!(:rows, &User.user_maps/1)
+    if params["include"] == "identity" do
+      MemberIdentity.page(query, params)
+    else
+      # 默认模式保持旧用户映射；控制器继续将结果转换成完整 ID 数组。
+      query
+      |> Pagination.page_rows(params, :user_id)
+      |> Map.update!(:rows, &User.user_maps/1)
+    end
   end
 
   defp normalize_user_ids(user_ids) when is_list(user_ids) do

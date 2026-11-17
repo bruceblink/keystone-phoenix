@@ -39,6 +39,22 @@ defmodule KeystonePhoenixWeb.ResourceScopeMultiRoleControllerTest do
       assert %{"success" => true, "data" => [user_id]} = json_response(response, 200)
       assert user_id == user.user_id
 
+      identity_response =
+        get(
+          authorized(build_conn(), tokens.token),
+          "/api/v1/roles/#{global_role.role_id}/users",
+          %{"allocated" => "true", "include" => "identity"}
+        )
+
+      assert %{"success" => true, "data" => [identity]} =
+               json_response(identity_response, 200)
+
+      assert identity == %{
+               "id" => user.user_id,
+               "username" => user.username,
+               "displayName" => user.nickname
+             }
+
       principal = %Principal{
         subject_id: user.user_id,
         roles: [preferred_role.role_id, global_role.role_id],
@@ -83,6 +99,16 @@ defmodule KeystonePhoenixWeb.ResourceScopeMultiRoleControllerTest do
       )
 
     assert get_in(json_response(response, 403), ["error", "code"]) == "data_scope_denied"
+
+    identity_response =
+      get(
+        authorized(build_conn(), tokens.token),
+        "/api/v1/roles/#{other_role.role_id}/users",
+        %{"allocated" => "true", "include" => "identity"}
+      )
+
+    assert get_in(json_response(identity_response, 403), ["error", "code"]) ==
+             "data_scope_denied"
   end
 
   defp authorized(conn, token), do: put_req_header(conn, "authorization", "Bearer #{token}")

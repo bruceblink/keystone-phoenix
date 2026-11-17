@@ -222,8 +222,8 @@ defmodule KeystonePhoenixWeb.RoleController do
 
   def allocated_users(conn, %{"role_id" => role_id} = params) do
     with {:ok, _role} <- Role.get_role(role_id) do
-      case role_user_ids(role_id, params, conn.assigns.current_user, &Role.list_allocated_users/3) do
-        {:ok, user_ids} -> json(conn, ApiResponse.ok(user_ids))
+      case role_users(role_id, params, conn.assigns.current_user, &Role.list_allocated_users/3) do
+        {:ok, users} -> json(conn, ApiResponse.ok(users))
         {:error, reason} -> render_error(conn, reason)
       end
     else
@@ -234,13 +234,13 @@ defmodule KeystonePhoenixWeb.RoleController do
   @doc "Lists users that are not assigned to a role."
   def unallocated_users(conn, %{"role_id" => role_id} = params) do
     with {:ok, _role} <- Role.get_role(role_id) do
-      case role_user_ids(
+      case role_users(
              role_id,
              params,
              conn.assigns.current_user,
              &Role.list_unallocated_users/3
            ) do
-        {:ok, user_ids} -> json(conn, ApiResponse.ok(user_ids))
+        {:ok, users} -> json(conn, ApiResponse.ok(users))
         {:error, reason} -> render_error(conn, reason)
       end
     else
@@ -302,14 +302,19 @@ defmodule KeystonePhoenixWeb.RoleController do
     |> NativeContract.role()
   end
 
-  # Native 忽略该接口的分页参数并返回完整数组；分批查询保持 Phoenix 单次读取有界。
-  defp role_user_ids(role_id, params, actor, fetch_page) do
+  # Native 忽略该接口的分页参数并返回完整结果；分批查询保持 Phoenix 单次读取有界。
+  defp role_users(role_id, params, actor, fetch_page) do
     case Excel.all_rows_result(
            fn page_params -> fetch_page.(role_id, page_params, actor) end,
            params
          ) do
-      {:ok, rows} -> {:ok, NativeContract.role_user_ids(rows)}
-      {:error, reason} -> {:error, reason}
+      {:ok, rows} ->
+        if params["include"] == "identity",
+          do: {:ok, rows},
+          else: {:ok, NativeContract.role_user_ids(rows)}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

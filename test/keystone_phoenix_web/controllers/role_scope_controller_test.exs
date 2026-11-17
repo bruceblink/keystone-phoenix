@@ -168,6 +168,22 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     assert %{"success" => true, "data" => [^allocated_id]} =
              json_response(allocated_response, 200)
 
+    allocated_identity =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "true",
+        "include" => "identity",
+        "username" => allocated.username
+      })
+
+    assert %{"success" => true, "data" => [identity]} =
+             json_response(allocated_identity, 200)
+
+    assert identity == %{
+             "id" => allocated_id,
+             "username" => allocated.username,
+             "displayName" => allocated.nickname
+           }
+
     blank_phone =
       get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
         "allocated" => "true",
@@ -185,6 +201,22 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
 
     assert %{"success" => true, "data" => [^unallocated_id]} =
              json_response(unallocated_response, 200)
+
+    unallocated_identity =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "false",
+        "include" => "identity",
+        "username" => unallocated.username
+      })
+
+    assert %{"success" => true, "data" => [identity]} =
+             json_response(unallocated_identity, 200)
+
+    assert identity == %{
+             "id" => unallocated_id,
+             "username" => unallocated.username,
+             "displayName" => unallocated.nickname
+           }
 
     non_allocated_response =
       get(
@@ -273,6 +305,23 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     unallocated_result = json_response(unallocated_response, 200)
     assert MapSet.subset?(MapSet.new(unallocated_ids), MapSet.new(unallocated_result["data"]))
 
+    identity_response =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "true",
+        "include" => "identity",
+        "pageNum" => "2",
+        "pageSize" => "3"
+      })
+
+    identity_rows = json_response(identity_response, 200)["data"]
+    assert length(identity_rows) == 501
+    assert MapSet.new(Enum.map(identity_rows, & &1["id"])) == MapSet.new(allocated_ids)
+
+    assert Enum.all?(
+             identity_rows,
+             &(Map.keys(&1) |> Enum.sort() == ["displayName", "id", "username"])
+           )
+
     explicit_page =
       get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
         "allocated" => "true",
@@ -287,11 +336,23 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     assert get_in(json_response(missing_role, 404), ["error", "code"]) == "resource_not_found"
 
     unprivileged = create_user(nil)
+    unprivileged_token = step_up_token(unprivileged)
 
     denied =
-      get(authorized(step_up_token(unprivileged)), "/api/v1/roles/#{target_role.role_id}/users")
+      get(authorized(unprivileged_token), "/api/v1/roles/#{target_role.role_id}/users")
 
     assert get_in(json_response(denied, 403), ["error", "code"]) == "permission_denied"
+
+    identity_denied =
+      get(
+        authorized(unprivileged_token),
+        "/api/v1/roles/#{target_role.role_id}/users",
+        %{
+          "include" => "identity"
+        }
+      )
+
+    assert get_in(json_response(identity_denied, 403), ["error", "code"]) == "permission_denied"
   end
 
   @tag :integration
