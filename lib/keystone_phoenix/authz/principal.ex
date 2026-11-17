@@ -98,11 +98,27 @@ defmodule KeystonePhoenix.Authz.Principal do
   def to_user(user) when is_map(user), do: user
   def to_user(_user), do: %{}
 
-  @doc "Returns whether a principal has administrator status."
-  def admin?(%__MODULE__{permissions: permissions}) when is_list(permissions),
-    do: "permission:manage" in permissions
+  @doc "判断主体是否使用 API Key 认证。"
+  @spec api_key?(term()) :: boolean()
+  def api_key?(%__MODULE__{credential_type: "API_KEY"}), do: true
 
-  def admin?(user) when is_map(user), do: "permission:manage" in List.wrap(permissions(user))
+  def api_key?(user) when is_map(user) do
+    credential_type =
+      Map.get(user, :credential_type) ||
+        Map.get(user, "credential_type") ||
+        Map.get(user, :credentialType) ||
+        Map.get(user, "credentialType")
+
+    credential_type == "API_KEY"
+  end
+
+  def api_key?(_user), do: false
+
+  @doc "Returns whether a principal has administrator status."
+  # API Key scope 只授权具体接口，不授予全局管理员身份。
+  def admin?(user) when is_map(user),
+    do: not api_key?(user) and "permission:manage" in List.wrap(permissions(user))
+
   def admin?(_user), do: false
 
   defp roles(user) do

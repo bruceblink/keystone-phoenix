@@ -45,7 +45,10 @@ defmodule KeystonePhoenix.Authz do
   def allowed?(_principal, _permission, _context), do: false
 
   @doc "Returns whether a principal has the catalog permission used for administration."
-  def admin?(principal), do: allowed?(principal, "permission:manage")
+  # API Key scope 只授权具体接口，不授予人类管理员的全局数据范围。
+  def admin?(principal) do
+    not Principal.api_key?(principal) and allowed?(principal, "permission:manage")
+  end
 
   @doc "Checks the resource-level data scope used by controller entry points."
   def resource_scope_allowed?(principal, resource, context \\ %{}) do

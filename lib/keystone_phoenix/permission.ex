@@ -98,10 +98,12 @@ defmodule KeystonePhoenix.Permission do
 
   @doc "Returns whether the authenticated user is an administrator."
   @spec admin?(map()) :: boolean()
-  def admin?(%{permissions: permissions}) when is_list(permissions),
-    do: "permission:manage" in permissions
+  # API Key 的 permission:manage 不得覆盖所属角色的数据范围。
+  def admin?(%{permissions: permissions} = user) when is_list(permissions),
+    do: not Principal.api_key?(user) and "permission:manage" in permissions
 
-  def admin?(user), do: allowed?(user, "permission:manage")
+  def admin?(user),
+    do: not Principal.api_key?(user) and allowed?(user, "permission:manage")
 
   @doc "Adds the current role's user data scope before counting or pagination."
   def scope_users(query, user) do
