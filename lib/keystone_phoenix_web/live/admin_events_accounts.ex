@@ -8,6 +8,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   alias KeystonePhoenix.Upload
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminEventsAccountsParams, as: AccountParams
+  alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.AccountReload
@@ -357,16 +358,31 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   def handle_event("change-profile-password", params, socket) do
     if Support.authenticated_socket?(socket) do
-      case User.update_password(
-             socket.assigns.current_user["userId"],
-             params,
-             authorization: self_authorization(socket)
-           ) do
-        {:ok, _user} ->
-          {:noreply, Support.expire_authentication(socket, "密码已更新，请重新登录")}
+      if Support.permission_socket?(socket, "user:reset-password") do
+        case Authentication.profile_password_step_up(socket) do
+          :required ->
+            {:noreply, Authentication.require_step_up(socket, "修改密码需要完成二次认证")}
 
-        error ->
-          {:noreply, assign(socket, profile_feedback: Support.form_error(error))}
+          :unavailable ->
+            {:noreply,
+             assign(socket, profile_feedback: Support.form_error({:error, :unavailable}))}
+
+          :allowed ->
+            case User.update_password(
+                   socket.assigns.current_user["userId"],
+                   params,
+                   authorization: self_authorization(socket)
+                 ) do
+              {:ok, _user} ->
+                {:noreply, Support.expire_authentication(socket, "密码已更新，请重新登录")}
+
+              error ->
+                {:noreply, assign(socket, profile_feedback: Support.form_error(error))}
+            end
+        end
+      else
+        {:noreply,
+         assign(socket, profile_feedback: Support.form_error({:error, :permission_denied}))}
       end
     else
       {:noreply, socket}

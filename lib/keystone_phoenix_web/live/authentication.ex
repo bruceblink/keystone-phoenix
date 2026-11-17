@@ -6,6 +6,7 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
   require Logger
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Auth.Mfa
   alias KeystonePhoenix.Auth.Captcha
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.Live.LoginState
@@ -29,7 +30,6 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
     rotate-api-key
     revoke-api-key
     logout-online-user
-    change-profile-password
   )
 
   def guard_event(event, _params, socket) when event in @public_events, do: {:cont, socket}
@@ -40,14 +40,7 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
   def guard_event(event, _params, socket) do
     with {:cont, socket} <- authenticate(socket) do
       if event in @aal2_events and not aal2?(socket) do
-        {:halt,
-         assign(socket,
-           mfa_step_up_required: true,
-           mfa_step_up_challenge: nil,
-           mfa_step_up_code: "",
-           mfa_step_up_error: step_up_message(event),
-           mfa_step_up_notice: nil
-         )}
+        {:halt, require_step_up(socket, step_up_message(event))}
       else
         {:cont, assign(socket, mfa_step_up_notice: nil)}
       end
@@ -62,6 +55,29 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
       {:ok, %{authentication_level: "AAL2"}} -> true
       _ -> false
     end
+  end
+
+  # 个人改密沿用 HTTP 端的账号 MFA 策略，只在策略要求时判断当前会话是否为 AAL2。
+  def profile_password_step_up(socket) do
+    user_id = get_in(socket.assigns, [:current_user, "userId"])
+
+    case Mfa.status(user_id) do
+      {:ok, %{required: false}} -> :allowed
+      {:ok, %{required: true}} -> if(aal2?(socket), do: :allowed, else: :required)
+      {:error, _reason} -> :unavailable
+      _status -> :unavailable
+    end
+  end
+
+  # LiveView 事件和通用 AAL2 守卫共用相同的 step-up 面板状态。
+  def require_step_up(socket, message) when is_binary(message) do
+    assign(socket,
+      mfa_step_up_required: true,
+      mfa_step_up_challenge: nil,
+      mfa_step_up_code: "",
+      mfa_step_up_error: message,
+      mfa_step_up_notice: nil
+    )
   end
 
   @doc "Captures permission and data-scope fields; display-only profile changes remain valid."
