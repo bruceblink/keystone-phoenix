@@ -55,6 +55,13 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
     |> halt()
   end
 
+  defp render_authentication_error(conn, {:error, :invalid_user_ids}) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> Phoenix.Controller.json(ApiResponse.error(:validation_failed, "用户编号无效"))
+    |> halt()
+  end
+
   defp render_authentication_error(conn, _reason) do
     conn
     |> put_status(:unauthorized)
@@ -69,6 +76,9 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
 
       not permission_allowed?(user, conn, Keyword.get(opts, :permissions, %{})) ->
         {:error, :permission_denied}
+
+      invalid_bulk_user_ids?(conn, Keyword.get(opts, :data_scope, %{})) ->
+        {:error, :invalid_user_ids}
 
       not data_scope_allowed?(user, conn, Keyword.get(opts, :data_scope, %{})) ->
         {:error, :data_scope_denied}
@@ -96,6 +106,29 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
     end
   end
 
+  # 先区分无效编号和越权目标；缺少参数时仍交由控制器处理。
+  defp invalid_bulk_user_ids?(conn, scopes) do
+    case Map.get(scopes, conn.private[:phoenix_action]) do
+      {:users, key} ->
+        case param(conn.params, key) do
+          nil ->
+            false
+
+          value when is_binary(value) ->
+            ids = String.split(value, ",")
+
+            ids == [] or
+              Enum.any?(ids, &(not KeystonePhoenix.Identity.canonical?(String.trim(&1))))
+
+          _value ->
+            true
+        end
+
+      _ ->
+        false
+    end
+  end
+
   defp data_scope_allowed?(_user, _conn, scopes) when map_size(scopes) == 0, do: true
 
   defp data_scope_allowed?(user, conn, scopes) do
@@ -112,7 +145,8 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
       {:users, key} ->
         # 缺少批量目标时交给控制器返回参数错误；存在目标时仍逐项检查数据范围。
         if Map.has_key?(conn.params, key) or Map.has_key?(conn.params, String.to_atom(key)) do
-          Authz.scope_allowed?(user, :users, param(conn.params, key), %{params: conn.params})
+          ids = param(conn.params, key) |> String.split(",") |> Enum.map(&String.trim/1)
+          Authz.scope_allowed?(user, :users, ids, %{params: conn.params})
         else
           true
         end

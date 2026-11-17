@@ -165,7 +165,10 @@ defmodule KeystonePhoenixWeb.UserController do
   def delete_single(conn, %{"user_id" => user_id}), do: delete_users(conn, user_id, true)
 
   defp delete_users(conn, user_ids, single?) do
-    case User.delete_users(String.split(user_ids, ","),
+    # 与 Native 一致，批量编号允许逗号两侧的空格。
+    ids = user_ids |> String.split(",") |> Enum.map(&String.trim/1)
+
+    case User.delete_users(ids,
            authorization: %{
              principal: conn.assigns.current_user,
              permission: "user:delete"

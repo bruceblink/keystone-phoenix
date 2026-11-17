@@ -84,6 +84,43 @@ defmodule KeystonePhoenixWeb.HumanAdminDataScopeTest do
     assert get_in(json_response(forbidden, 403), ["error", "code"]) == "permission_denied"
   end
 
+  @tag :integration
+  test "invalid bulk user ids return validation errors before scope checks" do
+    role = create_role(["user:delete"], "SELF")
+    actor = create_user(role, "invalid_bulk_actor")
+    other = create_user(role, "invalid_bulk_other")
+    {:ok, tokens} = Auth.login_plaintext(actor.username, "Strong!123")
+
+    # 格式错误不能被误报为越权；混合目标也不能执行部分删除。
+    for ids <- ["", "not-a-uuid", "#{other.user_id},not-a-uuid"] do
+      response = delete_bearer(tokens.token, "/api/v1/users?ids=#{ids}")
+      assert get_in(json_response(response, 422), ["error", "code"]) == "validation_failed"
+    end
+
+    non_string = delete_bearer(tokens.token, "/api/v1/users?ids[]=not-a-uuid")
+    assert get_in(json_response(non_string, 422), ["error", "code"]) == "validation_failed"
+
+    assert Repo.get!(SysUser, other.user_id).deleted == false
+
+    no_delete = create_user(create_role(["user:read"], "ALL"), "invalid_no_permission")
+    {:ok, no_delete_tokens} = Auth.login_plaintext(no_delete.username, "Strong!123")
+    denied = delete_bearer(no_delete_tokens.token, "/api/v1/users?ids=not-a-uuid")
+    assert get_in(json_response(denied, 403), ["error", "code"]) == "permission_denied"
+  end
+
+  @tag :integration
+  test "bulk user ids accept surrounding whitespace" do
+    role = create_role(["user:delete"], "ALL")
+    actor = create_user(role, "whitespace_actor")
+    target = create_user(role, "whitespace_target")
+    {:ok, tokens} = Auth.login_plaintext(actor.username, "Strong!123")
+
+    # Native 会去除编号首尾空格；Phoenix 应使用同一编号执行范围检查和删除。
+    response = delete_bearer(tokens.token, "/api/v1/users?ids=%20#{target.user_id}%20")
+    assert %{"success" => true, "data" => %{"deleted" => 1}} = json_response(response, 200)
+    assert Repo.get!(SysUser, target.user_id).deleted
+  end
+
   defp create_role(permission_codes, data_scope) do
     role =
       %SysRole{}
