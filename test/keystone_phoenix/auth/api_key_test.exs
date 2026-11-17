@@ -35,6 +35,14 @@ defmodule KeystonePhoenix.Auth.ApiKeyTest do
              ApiKey.issue(user.user_id, "worker", ["api-key:read", "api-key:revoke"])
   end
 
+  test "rejects API Key expiry beyond the 90-day limit with a specific reason" do
+    # 超期判断在访问用户和数据库前完成，因此使用有效 UUID 即可验证服务错误原因。
+    expiry = DateTime.add(DateTime.utc_now(), 91 * 24 * 60 * 60, :second)
+
+    assert {:error, :expiry_out_of_range} =
+             ApiKey.issue(Identity.v7(), "long-lived worker", ["api-key:read"], expiry)
+  end
+
   test "multi-role scopes use the permission union and shrink after role revocation" do
     primary = create_role(["api-key:create", "api-key:read", "user:read"])
     secondary = create_role(["user:update"])

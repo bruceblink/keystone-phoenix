@@ -23,6 +23,27 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
     assert get(build_conn(), "/api/v1/api-keys").status == 401
   end
 
+  @tag :integration
+  test "API Key expiry limit keeps the HTTP validation response contract", %{conn: conn} do
+    # 期限错误细化为内部原因后，HTTP 状态、业务码和消息保持原约定。
+    user = create_user(["api-key:create"])
+    token = step_up_token(user)
+    expiry = DateTime.add(DateTime.utc_now(), 91 * 24 * 60 * 60, :second)
+
+    response =
+      conn
+      |> put_req_header("authorization", "Bearer #{token}")
+      |> post("/api/v1/api-keys", %{
+        "name" => "long-lived worker",
+        "scopes" => ["api-key:create"],
+        "expiresAt" => DateTime.to_iso8601(expiry)
+      })
+
+    assert response.status == 422
+    assert get_in(json_response(response, 422), ["error", "code"]) == "validation_failed"
+    assert json_response(response, 422)["message"] == "请求参数无效"
+  end
+
   test "API Key authenticates an allowed business resource", %{conn: conn} do
     user = create_user(["api-key:create", "user:read"])
     assert {:ok, issued} = ApiKey.issue(user.user_id, "worker", ["user:read"])

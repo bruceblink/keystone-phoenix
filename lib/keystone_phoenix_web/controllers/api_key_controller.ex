@@ -30,6 +30,7 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
     else
       {:error, :permission_denied} -> render_error(conn, :permission_denied)
       {:error, :validation_failed} -> render_error(conn, :validation_failed)
+      {:error, :expiry_out_of_range} -> render_error(conn, :expiry_out_of_range)
       {:error, :scope_exceeds_permissions} -> render_error(conn, :permission_denied)
       {:error, reason} -> render_error(conn, reason)
     end
@@ -171,6 +172,10 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
 
         :not_found ->
           {:not_found, :resource_not_found, "API Key 不存在"}
+
+        # 仅细化内部原因；API 对外仍返回原有 422 与 validation_failed。
+        :expiry_out_of_range ->
+          {:unprocessable_entity, :validation_failed, "请求参数无效"}
 
         _ ->
           {:unprocessable_entity, :validation_failed, "请求参数无效"}

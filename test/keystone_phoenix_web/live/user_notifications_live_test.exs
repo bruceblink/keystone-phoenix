@@ -106,6 +106,26 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
     assert LiveSupport.live_socket(view).assigns.api_key_form["expiresAtLocal"] ==
              expires_at_local
 
+    too_late = DateTime.add(DateTime.utc_now(), 91 * 24 * 60 * 60, :second)
+
+    # LiveView 应显示到期规则和已有业务码，并保留签发弹窗供用户修正。
+    render_submit(view, "save-api-key", %{
+      "name" => "out of range",
+      "scopes" => "api-key:read",
+      "expiresAt" => DateTime.to_iso8601(too_late)
+    })
+
+    assert has_element?(
+             view,
+             "#api-key-modal #api-key-form-feedback[role='alert']",
+             "到期时间必须晚于当前时间且不超过 90 天"
+           )
+
+    assert has_element?(view, "#api-key-form[aria-describedby='api-key-form-feedback']")
+    assert has_element?(view, "#api-key-form-feedback", "错误码：validation_failed")
+    refute has_element?(view, "#api-key-feedback")
+    assert LiveSupport.live_socket(view).assigns.issued_api_key == nil
+
     render_submit(view, "save-api-key", %{
       "name" => "inbox lifecycle",
       "scopes" => "api-key:read",
@@ -115,6 +135,8 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
     issued = LiveSupport.live_socket(view).assigns.issued_api_key
     assert is_binary(issued.api_key)
     assert DateTime.compare(issued.expires_at, expires_at) == :eq
+    assert has_element?(view, "#api-key-feedback[role='status']", "API Key 已签发")
+    refute has_element?(view, "#api-key-form-feedback")
     assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 1
     assert has_element?(view, ".notification-count", "1")
 

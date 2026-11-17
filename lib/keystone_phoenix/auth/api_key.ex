@@ -481,10 +481,11 @@ defmodule KeystonePhoenix.Auth.ApiKey do
   defp validate_expiry(%DateTime{} = expires_at) do
     now = DateTime.utc_now()
 
+    # 超出时间范围使用独立内部原因，避免和 ISO 日期格式错误共用提示。
     if DateTime.compare(expires_at, now) in [:gt, :eq] and
          DateTime.compare(expires_at, DateTime.add(now, @max_expiry_seconds, :second)) != :gt,
        do: :ok,
-       else: {:error, :validation_failed}
+       else: {:error, :expiry_out_of_range}
   end
 
   defp validate_expiry(_value), do: {:error, :validation_failed}

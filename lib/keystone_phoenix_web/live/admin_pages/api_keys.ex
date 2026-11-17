@@ -36,9 +36,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
           <p class="page-description">查询当前账号的机器凭据、授权范围和生命周期状态。密钥明文只在签发时返回一次。</p>
         </div>
       </div>
-      <%= if @api_key_feedback do %>
-        <p id="api-key-feedback" class={Feedback.class(@api_key_feedback)} role={Feedback.role(@api_key_feedback)} aria-live={Feedback.live(@api_key_feedback)}><%= Feedback.message(@api_key_feedback) %></p>
-      <% end %>
+      <.api_key_feedback :if={@api_key_feedback && @active_modal != "api-key"} id="api-key-feedback" feedback={@api_key_feedback} />
       <%= if @issued_api_key do %>
         <div id="api-key-secret" class="card secret-banner" role="alert">
           <div>
@@ -51,7 +49,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
       <% end %>
       <%= if @active_modal == "api-key" do %>
         <.modal id="api-key-modal" title="签发 API Key" description="API Key 只返回一次明文。请在签发成功后立即保存。">
-          <form id="api-key-form" phx-change="filter-api-key-scopes" phx-submit="save-api-key" phx-hook="LocalDateTimeInput" aria-describedby="api-key-feedback">
+          <.api_key_feedback :if={@api_key_feedback} id="api-key-form-feedback" feedback={@api_key_feedback} />
+          <form id="api-key-form" phx-change="filter-api-key-scopes" phx-submit="save-api-key" phx-hook="LocalDateTimeInput" aria-describedby={if @api_key_feedback, do: "api-key-form-feedback", else: nil}>
             <div class="form-grid">
               <div><label for="api-key-name">密钥名称</label><input id="api-key-name" name="name" value={@api_key_form["name"]} required /></div>
               <div><label for="api-key-expires-local">到期时间</label><input id="api-key-expires-local" type="datetime-local" name="expiresAtLocal" value={@api_key_form["expiresAtLocal"]} /></div>
@@ -128,6 +127,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
 
   def empty_form,
     do: %{"name" => "", "scopes" => "", "expiresAt" => "", "expiresAtLocal" => ""}
+
+  # 页面和弹窗共用反馈语义；调用位置按当前可见区域提供唯一 ID。
+  defp api_key_feedback(assigns) do
+    ~H"""
+    <p id={@id} class={Feedback.class(@feedback)} role={Feedback.role(@feedback)} aria-live={Feedback.live(@feedback)}>
+      <%= Feedback.message(@feedback) %>
+      <small :if={Feedback.code(@feedback)}>错误码：<%= Feedback.code(@feedback) %></small>
+    </p>
+    """
+  end
 
   def scope_entries(permissions) do
     allowed = MapSet.new(List.wrap(permissions))
