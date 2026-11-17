@@ -214,6 +214,9 @@ defmodule KeystonePhoenixWeb.Router do
     post "/notices/:notice_id/publish", NoticeController, :publish
     delete "/notices", NoticeController, :delete
     delete "/notices/:notice_id", NoticeController, :delete
+    get "/notifications", NotificationController, :index
+    get "/notifications/:id", NotificationController, :show
+    post "/notifications/:id/read", NotificationController, :read
     get "/login-logs", LogController, :login_logs
     get "/login-logs/export", LogController, :export_login_logs
     get "/operation-logs", LogController, :operation_logs

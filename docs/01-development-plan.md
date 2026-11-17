@@ -2,6 +2,12 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
+## 2026-11-18 私有站内通知
+
+- Phoenix 和 Native 均提供当前用户通知列表、详情和幂等已读接口，拒绝 API Key 读取。API Key 签发、轮换和首次撤销会在业务事务内生成通知；通知和公告分别存储，通知不包含密钥明文或摘要。
+- admin-web 切换 Native 和 Phoenix 后，Codex 内置浏览器均验证了通知列表、三种密钥事件、详情与已读数；Phoenix LiveView 也验证了登录时未读提示、签发后刷新、详情和本地时间。通知在加载后被删除时，两种界面均可从错误提示刷新列表。
+- Phoenix 本轮全量集成回归为 561 项通过；之后针对已删除通知的恢复入口补充的定向测试为 45 项通过。Native 全量测试为 258 项通过，admin-web 全量测试为 185 项通过；恢复入口随后另通过组件与浏览器定向测试。完整页面写操作矩阵和生产环境验收仍未完成。
+
 ## 2026-11-18 任务最近运行状态对齐
 
 - Phoenix 在任务和执行日志写入时同步保存最近状态和时间，并从已有日志回填。接口返回 `lastStatus` 和 UTC `lastRunAt`；LiveView 按浏览器本地时区显示，与 admin-web 保持一致。

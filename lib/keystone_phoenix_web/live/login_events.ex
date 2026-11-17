@@ -13,6 +13,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.InitialPasswordEvents
+  alias KeystonePhoenixWeb.LoginNotifications
 
   def handle_login(%{"username" => username, "password" => password} = params, socket, remote_ip) do
     username = String.trim(username)
@@ -375,6 +376,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
     panel_access = AdminSupport.panel_access(permissions, current_user)
 
     socket
+    |> LoginNotifications.cancel()
     |> assign(
       username: username,
       password: "",
@@ -406,8 +408,14 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       notifications_open: false,
       notifications_loading: false,
       notifications_error: nil,
+      notification_read_error: nil,
+      notification_read_error_action: nil,
+      notification_read_error_label: nil,
+      notifications_async_name: nil,
       selected_notification_id: nil,
-      in_app_notifications: dashboard.in_app_notifications,
+      notifications_user_id: Map.get(current_user, "userId") || Map.get(current_user, :user_id),
+      notifications_unread_count: 0,
+      in_app_notifications: [],
       active_modal: nil,
       user_rows: dashboard.user_rows,
       user_total: dashboard[:user_total] || length(dashboard.user_rows),
@@ -472,6 +480,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       monitor_initial_error: nil
     )
     |> load_initial_monitor()
+    |> LoginNotifications.refresh()
   end
 
   # 登录成功后立即读取默认监控面板，失败时保留可重试状态。

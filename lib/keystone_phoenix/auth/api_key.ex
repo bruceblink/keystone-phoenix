@@ -13,6 +13,7 @@ defmodule KeystonePhoenix.Auth.ApiKey do
   alias KeystonePhoenix.Authz.Command
   alias KeystonePhoenix.Authz.PermissionCatalog
   alias KeystonePhoenix.Menu
+  alias KeystonePhoenix.Notification
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.User.SysUser
 
@@ -33,7 +34,7 @@ defmodule KeystonePhoenix.Auth.ApiKey do
         permissions = Menu.permissions_for_user(user)
         :ok = ensure_scope_subset(scopes, permissions)
         subject_id = ensure_subject!(user_id)
-        issue_locked!(user, subject_id, name, scopes, expires_at)
+        issue_locked!(user, subject_id, name, scopes, expires_at, :created)
       end)
     end
   end
@@ -133,6 +134,7 @@ defmodule KeystonePhoenix.Auth.ApiKey do
          {:ok, key_id} <- canonical_id(key_id) do
       case run_transaction(fn ->
              key = lock_key!(user_id, key_id)
+             first_revoke? = is_nil(key.revoked_at)
 
              key
              |> Ecto.Changeset.change(
@@ -140,6 +142,8 @@ defmodule KeystonePhoenix.Auth.ApiKey do
                revoked_reason: key.revoked_reason || "revoked by owner"
              )
              |> Repo.update!()
+
+             if first_revoke?, do: Notification.create_api_key_event!(user_id, :revoked)
 
              :ok
            end) do
@@ -171,7 +175,14 @@ defmodule KeystonePhoenix.Auth.ApiKey do
         if scopes == [], do: Repo.rollback(:scope_exceeds_permissions)
 
         replacement =
-          issue_locked!(user, current.subject_id, current.name, scopes, current.expires_at)
+          issue_locked!(
+            user,
+            current.subject_id,
+            current.name,
+            scopes,
+            current.expires_at,
+            :rotated
+          )
 
         now = DateTime.utc_now()
 
@@ -267,7 +278,7 @@ defmodule KeystonePhoenix.Auth.ApiKey do
     result
   end
 
-  defp issue_locked!(user, subject_id, name, scopes, expires_at) do
+  defp issue_locked!(user, subject_id, name, scopes, expires_at, event) do
     prefix = random(@key_prefix_bytes)
     secret = random(@secret_bytes)
     value = @prefix <> prefix <> "_" <> secret
@@ -286,6 +297,9 @@ defmodule KeystonePhoenix.Auth.ApiKey do
         expires_at: expires_at
       })
       |> Repo.insert!()
+
+    # 通知写入与凭据持久化共用一个事务；不保存密钥明文或摘要。
+    Notification.create_api_key_event!(user.user_id, event)
 
     %{
       id: key.id,

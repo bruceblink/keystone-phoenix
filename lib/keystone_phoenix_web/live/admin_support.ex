@@ -72,7 +72,6 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       role_user_feedback: nil,
       menu_rows: load_menus(),
       notice_rows: load_notices(),
-      in_app_notifications: load_public_notifications(),
       selected_notice_ids: [],
       notice_filter: %{"title" => "", "published" => "all"},
       login_log_rows: logs.login_log_rows,
@@ -100,7 +99,6 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       role_user_feedback: nil,
       menu_rows: [],
       notice_rows: [],
-      in_app_notifications: [],
       selected_notice_ids: [],
       notice_filter: %{"title" => "", "published" => "all"},
       login_log_rows: [],
@@ -132,7 +130,6 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     |> Map.put(:dict_data_rows, dictionary.data)
     |> Map.put(:selected_dict_type, dictionary.selected)
     |> Map.put(:notice_rows, if(access["notices"], do: load_notices(options), else: []))
-    |> Map.put(:in_app_notifications, load_public_notifications())
     |> Map.put(:job_rows, if(access["jobs"], do: load_jobs(options), else: []))
     |> Map.put(:job_log_rows, if(access["job-logs"], do: load_job_logs(options), else: []))
     |> Map.put(:login_log_rows, logs.login_log_rows)
@@ -217,21 +214,6 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   @doc "读取公告列表并保留失败结果，供 LiveView 刷新反馈使用。"
   def load_notices_for_socket_result(socket, params \\ %{}),
     do: AdminReadSupport.notices(socket, params)
-
-  @doc "读取已发布且启用的公开通知，供顶栏站内通知使用。"
-  def load_public_notifications do
-    case load_public_notifications_result() do
-      {:ok, notifications} -> notifications
-      {:error, _reason} -> []
-    end
-  end
-
-  @doc "读取公开通知并保留错误结果，供站内通知弹层显示重试入口。"
-  def load_public_notifications_result do
-    {:ok, Notice.list_public_notices()}
-  rescue
-    _ -> {:error, "站内通知暂时无法读取，请重试"}
-  end
 
   def page_rows(rows, page_num, page_size), do: Pagination.page_rows(rows, page_num, page_size)
 

@@ -8,6 +8,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
+  alias KeystonePhoenixWeb.LoginNotifications
 
   def handle_event("refresh-api-keys", _params, socket) do
     if Support.panel_allowed?(socket, "api-keys") do
@@ -64,17 +65,19 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
 
           case result do
             {:ok, issued} ->
-              {:noreply,
-               load_page(
-                 socket,
-                 socket.assigns.api_key_query,
-                 socket.assigns.api_key_status,
-                 1,
-                 "API Key 已签发",
-                 api_key_form: ApiKeys.empty_form(),
-                 issued_api_key: issued,
-                 active_modal: nil
-               )}
+              socket =
+                load_page(
+                  socket,
+                  socket.assigns.api_key_query,
+                  socket.assigns.api_key_status,
+                  1,
+                  "API Key 已签发",
+                  api_key_form: ApiKeys.empty_form(),
+                  issued_api_key: issued,
+                  active_modal: nil
+                )
+
+              {:noreply, LoginNotifications.refresh(socket)}
 
             error ->
               {:noreply, assign(socket, api_key_feedback: Support.form_error(error))}
@@ -97,15 +100,17 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
     if Support.permission_socket?(socket, "api-key:rotate") do
       case ApiKey.rotate(current_user_id(socket), id, authorization(socket)) do
         {:ok, issued} ->
-          {:noreply,
-           load_page(
-             socket,
-             socket.assigns.api_key_query,
-             socket.assigns.api_key_status,
-             1,
-             "API Key 已轮换",
-             issued_api_key: issued
-           )}
+          socket =
+            load_page(
+              socket,
+              socket.assigns.api_key_query,
+              socket.assigns.api_key_status,
+              1,
+              "API Key 已轮换",
+              issued_api_key: issued
+            )
+
+          {:noreply, LoginNotifications.refresh(socket)}
 
         error ->
           {:noreply, assign(socket, api_key_feedback: Support.form_error(error))}
@@ -119,14 +124,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
     if Support.permission_socket?(socket, "api-key:revoke") do
       case ApiKey.revoke(current_user_id(socket), id, authorization(socket)) do
         :ok ->
-          {:noreply,
-           load_page(
-             socket,
-             socket.assigns.api_key_query,
-             socket.assigns.api_key_status,
-             1,
-             "API Key 已撤销"
-           )}
+          socket =
+            load_page(
+              socket,
+              socket.assigns.api_key_query,
+              socket.assigns.api_key_status,
+              1,
+              "API Key 已撤销"
+            )
+
+          {:noreply, LoginNotifications.refresh(socket)}
 
         error ->
           {:noreply, assign(socket, api_key_feedback: Support.form_error(error))}

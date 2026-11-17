@@ -5,19 +5,25 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Notifications do
 
   @doc "渲染只读的站内通知列表或选中通知详情。"
   def menu(assigns) do
-    assigns = assign_new(assigns, :loading, fn -> false end)
+    assigns =
+      assigns
+      |> assign_new(:loading, fn -> false end)
+      |> assign_new(:unread_count, fn -> 0 end)
+      |> assign_new(:read_error, fn -> nil end)
+      |> assign_new(:read_error_action, fn -> "retry-notification-read" end)
+      |> assign_new(:read_error_label, fn -> "重试标记已读" end)
 
     ~H"""
     <div class="notification-menu">
-      <button type="button" class="icon-button" phx-click="toggle-notifications" aria-label="通知" aria-expanded={@open}>
+      <button type="button" class="icon-button" phx-click="toggle-notifications" aria-label={notification_label(@unread_count)} aria-expanded={@open}>
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
-        <span :if={@notifications != []} class="notification-dot" aria-hidden="true"></span>
+        <span :if={@unread_count > 0} class="notification-count" aria-hidden="true"><%= count_label(@unread_count) %></span>
       </button>
       <section :if={@open} class="notification-popover" role="dialog" aria-label="站内通知">
         <header class="notification-popover-header">
           <button :if={@selected} type="button" class="button button-ghost button-sm" phx-click="back-notifications" aria-label="返回通知列表">←</button>
           <span :if={!@selected} class="notification-popover-icon" aria-hidden="true">●</span>
-          <div><strong><%= if @selected, do: "通知详情", else: "站内通知" %></strong><span><%= if @selected, do: "查看通知内容", else: "#{length(@notifications)} 条可见通知" %></span></div>
+          <div><strong><%= if @selected, do: "通知详情", else: "站内通知" %></strong><span><%= if @selected, do: "查看通知内容", else: "#{length(@notifications)} 条通知 · #{@unread_count} 条未读" %></span></div>
           <button type="button" class="button button-ghost button-sm" phx-click="close-notifications" aria-label="关闭通知">×</button>
         </header>
         <%= cond do %>
@@ -27,9 +33,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Notifications do
             <div class="notification-state notification-state-error" role="alert"><span><%= @error %></span><button type="button" class="button button-ghost button-sm" phx-click="retry-notifications">重试</button></div>
           <% @selected -> %>
             <article class="notification-detail">
-              <p class="notification-detail-meta"><%= notification_time(@selected["publishAt"] || @selected["createdAt"]) %> · <%= @selected["noticeType"] || "通知" %></p>
+              <p class="notification-detail-meta"><.local_time id="notification-detail-created-at" value={@selected["createdAt"]} /> · <%= @selected["type"] %></p>
               <h3><%= @selected["title"] %></h3>
               <p><%= @selected["content"] %></p>
+              <div :if={@read_error} class="notification-state notification-state-error" role="alert"><span><%= @read_error %></span><button type="button" class="button button-ghost button-sm" phx-click={@read_error_action}><%= @read_error_label %></button></div>
             </article>
           <% true -> %>
             <div class="notification-list" role="list">
@@ -37,9 +44,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Notifications do
                 <div class="notification-state" role="status">暂无站内通知</div>
               <% else %>
                 <%= for notification <- @notifications do %>
-                  <button type="button" class="notification-list-item" phx-click="open-notification" phx-value-notification-id={notification["id"]}>
-                    <span class="notification-list-dot" aria-hidden="true"></span>
-                    <span><strong><%= notification["title"] %></strong><small><%= notification_time(notification["publishAt"] || notification["createdAt"]) %></small></span>
+                  <button type="button" class={if is_nil(notification["readAt"]), do: "notification-list-item notification-unread", else: "notification-list-item"} phx-click="open-notification" phx-value-notification-id={notification["id"]}>
+                    <span :if={is_nil(notification["readAt"])} class="notification-list-dot" aria-hidden="true"></span>
+                    <span><strong><%= notification["title"] %></strong><small><.local_time id={"notification-created-at-#{notification["id"]}"} value={notification["createdAt"]} /></small></span>
                   </button>
                 <% end %>
               <% end %>
@@ -50,14 +57,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Notifications do
     """
   end
 
-  def notification_time(nil), do: "刚刚"
-
-  def notification_time(value) when is_binary(value) do
-    case DateTime.from_iso8601(value) do
-      {:ok, datetime, _offset} -> Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
-      _ -> value
-    end
+  @doc "通过 LocalDateTime hook 在浏览器本地时区显示 UTC 时间戳。"
+  def local_time(assigns) do
+    ~H"""
+    <time id={@id} phx-hook="LocalDateTime" data-utc-time={@value}><%= @value %></time>
+    """
   end
 
-  def notification_time(value), do: to_string(value)
+  def notification_label(0), do: "通知"
+  def notification_label(count), do: "通知，#{count} 条未读"
+
+  def count_label(count) when count > 99, do: "99+"
+  def count_label(count), do: Integer.to_string(count)
 end
