@@ -21,6 +21,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.RemainingFeedbackTest do
   end
 
   test "API key expiry range uses a distinct internal reason and the validation business code" do
+    # 超过 90 天与日期格式错误共用 validation_failed，但按内部原因显示不同提示。
     feedback = Feedback.from_reason(:expiry_out_of_range)
 
     assert Feedback.code(feedback) == "validation_failed"
