@@ -110,7 +110,12 @@ defmodule KeystonePhoenixWeb.Plugs.Authenticate do
         Authz.scope_allowed?(user, :user_update, param(conn.params, key), %{attrs: conn.params})
 
       {:users, key} ->
-        Authz.scope_allowed?(user, :users, param(conn.params, key), %{params: conn.params})
+        # 缺少批量目标时交给控制器返回参数错误；存在目标时仍逐项检查数据范围。
+        if Map.has_key?(conn.params, key) or Map.has_key?(conn.params, String.to_atom(key)) do
+          Authz.scope_allowed?(user, :users, param(conn.params, key), %{params: conn.params})
+        else
+          true
+        end
 
       nil ->
         true

@@ -62,6 +62,28 @@ defmodule KeystonePhoenixWeb.HumanAdminDataScopeTest do
     assert get_in(json_response(response, 403), ["error", "code"]) == "permission_denied"
   end
 
+  @tag :integration
+  test "missing bulk user ids return validation error without bypassing permissions or scope" do
+    role = create_role(["user:delete"], "SELF")
+    actor = create_user(role, "bulk_actor")
+    other = create_user(role, "bulk_other")
+    {:ok, tokens} = Auth.login_plaintext(actor.username, "Strong!123")
+
+    # 缺少规范 ids 时由控制器返回参数错误，旧查询字段不能替代规范参数。
+    missing = delete_bearer(tokens.token, "/api/v1/users?user_ids=#{other.user_id}")
+    assert get_in(json_response(missing, 422), ["error", "code"]) == "validation_failed"
+
+    # 真实目标仍受 SELF 数据范围限制。
+    denied = delete_bearer(tokens.token, "/api/v1/users?ids=#{other.user_id}")
+    assert get_in(json_response(denied, 403), ["error", "code"]) == "data_scope_denied"
+
+    no_delete_role = create_role(["user:read"], "ALL")
+    no_delete = create_user(no_delete_role, "bulk_no_permission")
+    {:ok, no_delete_tokens} = Auth.login_plaintext(no_delete.username, "Strong!123")
+    forbidden = delete_bearer(no_delete_tokens.token, "/api/v1/users?user_ids=#{other.user_id}")
+    assert get_in(json_response(forbidden, 403), ["error", "code"]) == "permission_denied"
+  end
+
   defp create_role(permission_codes, data_scope) do
     role =
       %SysRole{}
@@ -102,5 +124,11 @@ defmodule KeystonePhoenixWeb.HumanAdminDataScopeTest do
     build_conn()
     |> Plug.Conn.put_req_header("authorization", "Bearer #{token}")
     |> get(path)
+  end
+
+  defp delete_bearer(token, path) do
+    build_conn()
+    |> Plug.Conn.put_req_header("authorization", "Bearer #{token}")
+    |> delete(path)
   end
 end
