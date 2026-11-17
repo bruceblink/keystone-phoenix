@@ -62,13 +62,13 @@ Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。�
 
 为保存 Native 所需的业务字段，新增并应用了部门编码、菜单编码、菜单排序、配置启用状态、任务编码和字典字符串值迁移。部门和菜单保留旧 LiveView 原始写入的数据库触发器。任务编码另有更高版本修复迁移，覆盖“迁移记录已存在但列未创建”的旧安装状态。
 
-仍有五个明确边界：Phoenix 用户表只有一个 `role_id`，HTTP 写入支持零个或一个 `roleCodes`，多个角色编码返回校验错误；Native 的角色成员接口支持多角色绑定，而 Phoenix 的角色成员分配会覆盖用户当前角色，尚未达到可替换语义；两端角色成员接口目前只返回用户 ID 数组，没有统一的用户名、昵称和服务端分页字段；Phoenix 任务列表的 `lastStatus` 和 `lastRunAt` 没有独立持久化来源，返回空值；Phoenix 的 BEAM 运行时按 Native 监控字段提供结构化结果，Java 专属含义不适用。以上边界不会静默丢弃请求字段。
+Phoenix 已使用 `sys_user_role` 保存多角色成员关系。两端角色成员接口默认返回完整用户 ID 数组；指定 `include=identity` 时，只返回用户 ID、用户名和显示名。成员列表尚未提供服务端分页，大型组织仍需评估完整列表的读取成本。Phoenix 任务列表的 `lastStatus` 和 `lastRunAt` 没有独立持久化来源，返回空值。Phoenix 的 BEAM 运行时按 Native 监控字段提供结构化结果，Java 专属含义不适用。
 
 ## UI 验收边界
 
 Native 与 admin-web 的真实 HTTP 联调已经覆盖健康检查、RSA 公钥、登录、监控、角色、API Key、登出和 AAL2 step-up。admin-web 当前正式页面构建的 `pnpm test:run`（86 项）、`pnpm typecheck` 和 `pnpm build` 均通过。Phoenix 当前提交的 `mix test --include integration` 通过 410 项；`mix format --check-formatted`、`mix compile --warnings-as-errors`、`mix check.source_lines` 和 `git diff --check` 均通过。Native 当前提交执行 `./gradlew test --no-daemon --rerun-tasks` 返回 `BUILD SUCCESSFUL`，菜单接口专项 HTTP 测试也通过。
 
-个人资料密码更新已与 Native/admin-web 接口对齐：`PUT /api/v1/profile/password` 在 AAL2 会话中接收单个 `password` 字段，并在成功后撤销当前会话。Phoenix LiveView 个人资料页也只显示新密码字段。用户和任务列表 DTO 已在 Phoenix `61511e7` 收敛为 Native canonical 字段，旧字段不会通过兼容合并继续返回。
+个人资料密码更新已与 Native/admin-web 接口对齐：`PUT /api/v1/profile/password` 接收单个 `password` 字段，在账号要求 MFA 时检查 AAL2 会话，并在成功后撤销当前会话。Phoenix LiveView 个人资料页也只显示新密码字段。用户和任务列表 DTO 已在 Phoenix `61511e7` 收敛为 Native canonical 字段，旧字段不会通过兼容合并继续返回。
 
 Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `mfa_required` 策略检查 step-up，用户导入和 Passkey 注册使用 `enforce=true`，始终要求 AAL2 step-up。该策略与 Native 的接口行为保持一致。
 

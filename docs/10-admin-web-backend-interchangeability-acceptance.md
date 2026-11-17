@@ -155,7 +155,7 @@ Phoenix 角色控制器的 `unassign_users` 权限声明也已统一为 `role:as
 
 主线继续收口：admin-web `0f66cd3` 新增角色成员入口，调用统一的 `GET/PUT/DELETE /roles/:id/users`，支持已分配/可分配列表、分页、MFA step-up、刷新、重试和错误反馈；角色成员 API 客户端与 Native/Phoenix 的用户 ID 数组响应一致。Phoenix `85e9d7e` 修复角色成员撤销忽略 URL `role_id` 的问题，只有用户当前属于目标角色时才清除绑定，并补充跨角色回归；Phoenix `b460ad3` 将注销接口权限与 Native 对齐为 `session:revoke`，补充无权限 403 和有权限成功回归。
 
-多角色数据语义的替换阻塞已关闭：Phoenix 已通过 `sys_user_role` 关联表支持多角色用户，用户写入、角色成员分配、鉴权、菜单、数据范围和认证响应已完成对应切片。角色成员读取按目标角色关联判断，并对齐缺失角色的 `404 resource_not_found` 和空 `userIds` 操作结果。Native/Phoenix 继续使用双方已有的用户 ID 数组接口；统一用户详情和服务端分页 DTO 属于后续页面体验增强，不再是后端替换前置条件。
+多角色数据语义的替换阻塞已关闭：Phoenix 已通过 `sys_user_role` 关联表支持多角色用户，用户写入、角色成员分配、鉴权、菜单、数据范围和认证响应已完成对应切片。角色成员读取按目标角色关联判断，并对齐缺失角色的 `404 resource_not_found` 和空 `userIds` 操作结果。Native/Phoenix 默认继续返回用户 ID 数组；`include=identity` 返回成员的 ID、用户名和显示名。服务端分页仍待实现。
 
 ## 发布前证据
 
@@ -410,3 +410,15 @@ Codex 内置浏览器当前无法操作，以下均为 Chrome 真实窗口回退
 admin-web `pnpm test:run` 结果为 `27 files / 167 passed`；`pnpm typecheck` 和 `pnpm build` 通过。Phoenix 全量集成测试 `492 passed`，严格编译、格式、源码行数和差异检查通过。
 
 本轮不代表完整替换验收完成。Native 与 Phoenix 的密码策略仍需对齐；Unicode 筛选可能受到 MySQL 与 PostgreSQL 排序规则差异影响。其余页面写操作矩阵、生产环境和正式发布验收仍未完成。
+
+### 2026-11-17 个人改密和角色成员名称增量
+
+Phoenix `d4d032f` 修复 LiveView 个人资料改密：检查 `user:reset-password`，只在账号要求 MFA 时要求当前会话达到 AAL2。真实 Chrome 窗口使用隔离账号验证了未要求 MFA 时的改密、旧会话失效及新密码登录。Native `069c8ae` 补充个人改密 HTTP 测试：不要求 MFA 时改密成功并撤销旧会话；要求 MFA 但未完成二次验证时返回 `403/mfa_required`，数据库密码哈希保持不变。独立 MySQL 测试库的 `UserResourceTest` 共 10 项通过。admin-web `9a69195` 同步说明文字。角色成员窗口的刷新页码与确认按钮由 admin-web `47960d5` 修复；真实窗口在 `320×568` 和 `1200×893` 验证了确认按钮单行显示及取消不发送 DELETE。
+
+Native `319e2d4` 和 Phoenix `fd49fbb` 为角色成员查询新增 `include=identity`。旧调用仍收到 ID 数组；新调用只收到 `id`、`username` 和 `displayName`，并沿用 `role:read` 与角色资源范围。两个后端的真实 HTTP 测试覆盖默认响应、身份字段、筛选和拒绝场景。admin-web `651a58b` 显示用户名和展示名，连接旧版后端时回退显示 ID；移除确认框同时显示用户名与 ID。真实 Chrome 窗口连接隔离 Phoenix 后，已分配和可分配成员查询均返回 200，用户名与展示名正确显示；`320×568` 确认框完整显示，取消没有发送 DELETE。
+
+Codex 内置浏览器连接独立 MySQL 8.4.13 上的 Native 后，已验证登录、角色成员用户名与展示名，以及 `320×568` 确认框；取消操作后确认没有发送 DELETE。用户列表按用户名搜索返回唯一匹配项；编辑窗口正确显示用户和多角色信息，取消后没有发送写请求。登录页在 `320×568` 和 `1200×893` 均无页面溢出。验收仅覆盖上述路径，其他页面和完整写操作矩阵仍待验证。
+
+Native `319e2d4` 全量 Gradle 测试为 92 个套件、243 项通过；后续 `069c8ae` 新增测试已单独通过，尚未重跑 Native 全量测试。Phoenix `mix test --include integration` 为 498 项通过。admin-web 测试为 27 个文件、170 项通过，类型检查和生产构建通过。
+
+成员列表仍一次读取全部匹配用户，服务端分页尚未实现。现有证据不覆盖全部页面写操作、生产部署或正式发布；密码策略和跨数据库 Unicode 筛选差异继续保持待完成状态。
