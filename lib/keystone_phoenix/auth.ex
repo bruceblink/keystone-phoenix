@@ -149,7 +149,10 @@ defmodule KeystonePhoenix.Auth do
            Session.with_user_lock(user.user_id, fn ->
              with {:ok, verification} <-
                     Mfa.verify_login(user.user_id, challenge_id, client_id, code, ip_address),
-                  {:ok, tokens} <- issue_pair(user, force_login, client_id, "AAL2") do
+                  {:ok, tokens} <-
+                    issue_pair(user, force_login, client_id, verification.assurance, [
+                      verification.amr
+                    ]) do
                {:ok,
                 %{
                   tokens: Map.put(tokens, :current_user, current_login_user(user)),
@@ -355,7 +358,7 @@ defmodule KeystonePhoenix.Auth do
   def login_passkey_user(user_id, client_id) when is_binary(user_id) and is_binary(client_id) do
     with {:ok, user} <- User.get_user(user_id),
          true <- user.status == 1,
-         {:ok, tokens} <- issue_pair(user, false, client_id, "AAL2") do
+         {:ok, tokens} <- issue_pair(user, false, client_id, "AAL2", ["webauthn"]) do
       {:ok, Map.put(tokens, :current_user, current_login_user(user))}
     else
       false -> {:error, :invalid_credentials}
@@ -440,28 +443,30 @@ defmodule KeystonePhoenix.Auth do
   end
 
   defp issue_pair(user, force_login, client_id),
-    do: issue_pair(user, force_login, client_id, "AAL1")
+    do: issue_pair(user, force_login, client_id, "AAL1", nil)
 
-  defp issue_pair(user, force_login, client_id, authentication_level) do
+  defp issue_pair(user, force_login, client_id, authentication_level, amr) do
     session_id = Session.new_session_id()
 
     with {:ok, refresh} <-
-           Token.issue(
+           Token.issue_with_amr(
              user,
              Token.refresh_type(),
              session_id,
              nil,
              authentication_level,
-             client_id
+             client_id,
+             amr
            ),
          {:ok, access} <-
-           Token.issue(
+           Token.issue_with_amr(
              user,
              Token.access_type(),
              session_id,
              nil,
              authentication_level,
-             client_id
+             client_id,
+             amr
            ),
          :ok <-
            Session.occupy(

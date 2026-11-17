@@ -172,6 +172,107 @@ defmodule KeystonePhoenixWeb.MfaContractTest do
 
     assert completed["success"] == true
     assert completed["data"]["authenticationLevel"] == "AAL2"
+    assert completed["data"]["amr"] == "recovery"
+
+    assert {:ok, recovery_access_claims} =
+             Token.verify(completed["data"]["accessToken"], Token.access_type())
+
+    assert recovery_access_claims["aal"] == "AAL2"
+    assert recovery_access_claims["amr"] == ["recovery"]
+
+    assert {:ok, recovery_refresh_claims} =
+             Token.verify(completed["data"]["refreshToken"], Token.refresh_type())
+
+    assert recovery_refresh_claims["amr"] == ["recovery"]
+
+    passkey_user = create_user(admin_role.role_id)
+    assert {:ok, passkey_tokens} = Auth.login_passkey_user(passkey_user.user_id, "passkey")
+    assert {:ok, passkey_claims} = Token.verify(passkey_tokens.token, Token.access_type())
+    assert passkey_claims["aal"] == "AAL2"
+    assert passkey_claims["amr"] == ["webauthn"]
+  end
+
+  @tag :integration
+  test "TOTP login JWT records otp as the authentication method" do
+    previous_key = Application.get_env(:keystone_phoenix, :mfa_master_key)
+    previous_pepper = Application.get_env(:keystone_phoenix, :mfa_recovery_pepper)
+
+    Application.put_env(
+      :keystone_phoenix,
+      :mfa_master_key,
+      Base.encode64(:crypto.strong_rand_bytes(32))
+    )
+
+    Application.put_env(:keystone_phoenix, :mfa_recovery_pepper, "mfa-totp-login-pepper")
+
+    on_exit(fn ->
+      Application.put_env(:keystone_phoenix, :mfa_master_key, previous_key)
+      Application.put_env(:keystone_phoenix, :mfa_recovery_pepper, previous_pepper)
+    end)
+
+    admin_role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+    user = create_user(admin_role.role_id)
+    {:ok, initial_tokens} = Auth.login_plaintext(user.username, "Strong!123", true)
+    assert {:ok, initial_claims} = Token.verify(initial_tokens.token, Token.access_type())
+
+    {:ok, enrollment} =
+      Mfa.begin_enrollment(
+        user.user_id,
+        user.username,
+        initial_claims["client_id"],
+        initial_claims["sid"]
+      )
+
+    enrollment_time = System.system_time(:second)
+
+    assert {:ok, %{recovery_codes: _codes}} =
+             Mfa.verify_enrollment(
+               user.user_id,
+               enrollment.challenge_id,
+               initial_claims["client_id"],
+               initial_claims["sid"],
+               Totp.code(enrollment.secret, enrollment_time)
+             )
+
+    assert {:ok, :ok} = Mfa.set_required(user.user_id, true)
+
+    login =
+      build_conn()
+      |> post("/api/v1/auth/login", %{
+        "username" => user.username,
+        "password" => encrypted_password("Strong!123"),
+        "forceLogin" => true
+      })
+      |> json_response(401)
+
+    assert login["error"]["code"] == "mfa_required"
+
+    current_step = div(System.system_time(:second), Totp.step_seconds())
+    enrollment_step = div(enrollment_time, Totp.step_seconds())
+    login_code_time = max(current_step, enrollment_step + 1) * Totp.step_seconds() + 1
+
+    completed =
+      build_conn()
+      |> post("/api/v1/auth/mfa/verify", %{
+        "username" => user.username,
+        "challengeId" => login["data"]["challengeId"],
+        "code" => Totp.code(enrollment.secret, login_code_time),
+        "forceLogin" => true
+      })
+      |> json_response(200)
+
+    assert completed["data"]["amr"] == "otp"
+
+    assert {:ok, access_claims} =
+             Token.verify(completed["data"]["accessToken"], Token.access_type())
+
+    assert access_claims["aal"] == "AAL2"
+    assert access_claims["amr"] == ["otp"]
+
+    assert {:ok, refresh_claims} =
+             Token.verify(completed["data"]["refreshToken"], Token.refresh_type())
+
+    assert refresh_claims["amr"] == ["otp"]
   end
 
   @tag :integration

@@ -82,14 +82,40 @@ defmodule KeystonePhoenix.Auth.TokenContractTest do
              Token.verify(token_without_session.token, Token.refresh_type())
   end
 
-  test "issues a short-lived AAL2 access token for step-up" do
+  test "requires explicit authentication methods for AAL2 tokens" do
     user = %{user_id: Identity.v7(), username: "token_contract", permission_version: 1}
     session_id = Identity.v7()
 
-    assert {:ok, token} = Token.issue(user, Token.access_type(), session_id, nil, "AAL2", "admin")
+    assert {:error, :authentication_method_required} =
+             Token.issue(user, Token.access_type(), session_id, nil, "AAL2", "admin")
+
+    assert {:ok, token} =
+             Token.issue_with_amr(user, Token.access_type(), session_id, nil, "AAL2", "admin", [
+               "otp"
+             ])
+
     assert {:ok, claims} = Token.verify(token.token, Token.access_type())
     assert claims["aal"] == "AAL2"
-    assert claims["amr"] == ["pwd", "otp"]
+    assert claims["amr"] == ["otp"]
     assert claims["client_id"] == "admin"
+  end
+
+  test "issues AAL2 passkey tokens with the Native authentication method value" do
+    user = %{user_id: Identity.v7(), username: "token_contract", permission_version: 1}
+
+    assert {:ok, token} =
+             Token.issue_with_amr(
+               user,
+               Token.access_type(),
+               Identity.v7(),
+               nil,
+               "AAL2",
+               "passkey",
+               ["webauthn"]
+             )
+
+    assert {:ok, claims} = Token.verify(token.token, Token.access_type())
+    assert claims["aal"] == "AAL2"
+    assert claims["amr"] == ["webauthn"]
   end
 end

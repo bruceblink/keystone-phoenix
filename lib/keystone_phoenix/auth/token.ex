@@ -40,7 +40,7 @@ defmodule KeystonePhoenix.Auth.Token do
     )
   end
 
-  @doc "签发带指定认证方法的令牌；step-up 使用单独的 otp 或 recovery 方法。"
+  @doc "签发带实际认证方法的令牌；AAL2 必须明确传入已完成的方法。"
   @spec issue_with_amr(
           map(),
           String.t(),
@@ -50,6 +50,18 @@ defmodule KeystonePhoenix.Auth.Token do
           String.t(),
           [String.t()] | nil
         ) :: {:ok, map()} | {:error, term()}
+  def issue_with_amr(
+        _user,
+        token_type,
+        _session_id,
+        _ttl_override,
+        "AAL2",
+        _client_id,
+        nil
+      )
+      when token_type in [@access_type, @refresh_type],
+      do: {:error, :authentication_method_required}
+
   def issue_with_amr(
         user,
         token_type,
@@ -145,7 +157,9 @@ defmodule KeystonePhoenix.Auth.Token do
   defp normalize_authentication_level(_value),
     do: raise(ArgumentError, "invalid authentication level")
 
-  defp authentication_methods("AAL2"), do: ["pwd", "otp"]
+  defp authentication_methods("AAL2"),
+    do: raise(ArgumentError, "AAL2 tokens require explicit authentication methods")
+
   defp authentication_methods("AAL1"), do: ["pwd"]
 
   defp normalize_authentication_methods(methods) when is_list(methods) and methods != [] do
