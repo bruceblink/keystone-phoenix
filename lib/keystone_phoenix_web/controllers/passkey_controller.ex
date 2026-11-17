@@ -9,7 +9,7 @@ defmodule KeystonePhoenixWeb.PasskeyController do
   @registration_key :keystone_passkey_registration
   @authentication_key :keystone_passkey_authentication
 
-  @doc "为已经完成 step-up 的本地用户创建 passkey 注册 challenge。"
+  @doc "按当前账号 MFA 策略为已认证用户创建 passkey 注册 challenge。"
   def registration_challenge(conn, _params) do
     with {:ok, config} <- Config.validate(),
          {:ok, account} <- Accounts.for_user(conn.assigns.current_user),

@@ -69,6 +69,9 @@ defmodule KeystonePhoenixWeb.AdminRoleDeleteConfirmationTest do
     assert {:ok, %{authentication_level: "AAL1"}} =
              Auth.session_context(live_socket(view).assigns.access_token)
 
+    # 此用例验证策略开启后的 step-up；直接设置策略值以保留当前 AAL1 测试会话。
+    Repo.update!(Ecto.Changeset.change(Repo.get!(SysUser, ctx.admin.user_id), mfa_required: true))
+
     open_role_delete_confirmation(view, role)
     render_submit(view, "delete-role", %{"role-ids" => [to_string(role.role_id)]})
 

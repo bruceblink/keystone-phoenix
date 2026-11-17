@@ -6,7 +6,7 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
   require Logger
 
   alias KeystonePhoenix.Auth
-  alias KeystonePhoenix.Auth.Mfa
+  alias KeystonePhoenix.Auth.Mfa.RecentAuthentication
   alias KeystonePhoenix.Auth.Captcha
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.Live.LoginState
@@ -14,7 +14,10 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
   @public_events ~w(login force-login cancel-force-login verify-login-mfa cancel-login-mfa refresh-captcha logout change-initial-password cancel-initial-password)
   @step_up_events ~w(begin-liveview-step-up verify-liveview-step-up cancel-liveview-step-up)
 
-  # 这些事件会改变身份、授权结果、API Key 或在线会话，必须先取得 AAL2。
+  # 用户导入对应 REST 的显式 enforce；其他敏感事件按账号 MFA 策略处理。
+  @enforced_step_up_events ~w(import-users)
+
+  # 这些事件会改变身份、授权结果、API Key 或在线会话，需要检查相应 REST 策略。
   @aal2_events ~w(
     import-users
     save-user
@@ -39,13 +42,25 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
 
   def guard_event(event, _params, socket) do
     with {:cont, socket} <- authenticate(socket) do
-      if event in @aal2_events and not aal2?(socket) do
-        {:halt,
-         socket
-         |> close_role_delete_confirmation(event)
-         |> require_step_up(step_up_message(event))}
-      else
-        {:cont, assign(socket, mfa_step_up_notice: nil)}
+      case if(
+             event in @aal2_events,
+             do: step_up_status(socket, event in @enforced_step_up_events),
+             else: :allowed
+           ) do
+        :allowed ->
+          {:cont, assign(socket, mfa_step_up_notice: nil)}
+
+        :required ->
+          {:halt,
+           socket
+           |> close_role_delete_confirmation(event)
+           |> require_step_up(step_up_message(event))}
+
+        :unavailable ->
+          {:halt,
+           socket
+           |> close_role_delete_confirmation(event)
+           |> require_step_up("认证服务暂不可用，请稍后重试")}
       end
     end
   end
@@ -61,25 +76,32 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
 
   def guard_info(_message, socket), do: authenticate(socket)
 
-  @doc "返回当前 LiveView access token 是否已经完成 AAL2。"
-  def aal2?(socket) do
+  @doc "核验当前 LiveView 会话是否完成有效的 TOTP 或恢复码 step-up。"
+  def step_up_status(socket, enforce?) when is_boolean(enforce?) do
     case Auth.session_context(socket.assigns[:access_token]) do
-      {:ok, %{authentication_level: "AAL2"}} -> true
-      _ -> false
+      {:ok, context} ->
+        user_id = Map.get(context.user, :user_id)
+
+        RecentAuthentication.check(
+          %{
+            "sub" => user_id,
+            "sid" => context.session_id,
+            "client_id" => context.client_id,
+            "jti" => context.access_token_id,
+            "aal" => context.authentication_level,
+            "amr" => context.amr
+          },
+          enforce?,
+          false
+        )
+
+      _ ->
+        :required
     end
   end
 
-  # 个人改密沿用 HTTP 端的账号 MFA 策略，只在策略要求时判断当前会话是否为 AAL2。
-  def profile_password_step_up(socket) do
-    user_id = get_in(socket.assigns, [:current_user, "userId"])
-
-    case Mfa.status(user_id) do
-      {:ok, %{required: false}} -> :allowed
-      {:ok, %{required: true}} -> if(aal2?(socket), do: :allowed, else: :required)
-      {:error, _reason} -> :unavailable
-      _status -> :unavailable
-    end
-  end
+  # 个人改密沿用账号 MFA 策略；策略关闭时保持现有放行行为。
+  def profile_password_step_up(socket), do: step_up_status(socket, false)
 
   # LiveView 事件和通用 AAL2 守卫共用相同的 step-up 面板状态。
   def require_step_up(socket, message) when is_binary(message) do

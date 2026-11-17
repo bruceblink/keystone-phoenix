@@ -6,8 +6,10 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.Mfa
+  alias KeystonePhoenix.Auth.AuthSession
   alias KeystonePhoenix.Auth.Mfa.Totp
   alias KeystonePhoenix.Auth.Token
+  alias KeystonePhoenix.Repo
 
   @password "Strong!123"
 
@@ -36,7 +38,7 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
 
   test "password login displays and completes the LiveView MFA challenge", %{conn: conn} do
     {:ok, user} = create_user(%{})
-    {secret, _initial} = enroll_mfa(user)
+    {secret, _initial, _recovery_codes} = enroll_mfa(user)
     assert {:ok, :ok} = Mfa.set_required(user.user_id, true)
 
     {:ok, view, _html} = live(conn, "/")
@@ -82,14 +84,29 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
     assert has_element?(view, "nav[aria-label='主导航']")
   end
 
-  test "sensitive LiveView events require step-up before the handler runs", %{conn: conn} do
+  test "policy-required LiveView events require recent step-up before the handler runs", %{
+    conn: conn
+  } do
     role = create_admin_role()
     {:ok, admin} = create_user(%{"role_id" => role.role_id})
     {:ok, target} = create_user(%{})
-    {secret, _initial} = enroll_mfa(admin)
+    {secret, _initial, recovery_codes} = enroll_mfa(admin)
+    assert {:ok, :ok} = Mfa.set_required(admin.user_id, true)
 
     {:ok, view, _html} = live(conn, "/")
     render_submit(view, "login", %{"username" => admin.username, "password" => @password})
+
+    assert has_element?(view, "#mfa-login-form")
+    render_submit(view, "verify-login-mfa", %{"code" => hd(recovery_codes)})
+    assert has_element?(view, "nav[aria-label='主导航']")
+
+    {:ok, claims} = Token.verify(live_socket(view).assigns.access_token, Token.access_type())
+
+    Repo.update!(
+      Ecto.Changeset.change(Repo.get!(AuthSession, claims["sid"]),
+        mfa_verified_at: DateTime.add(DateTime.utc_now(), -601, :second)
+      )
+    )
 
     render_submit(view, "reset-user-password", %{
       "userId" => to_string(target.user_id),
@@ -117,6 +134,35 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
     assert Bcrypt.verify_pass("Changed!456", updated.password)
   end
 
+  test "ordinary sensitive LiveView events follow the disabled MFA policy", %{conn: conn} do
+    role = create_admin_role()
+    {:ok, admin} = create_user(%{"role_id" => role.role_id})
+    {:ok, target} = create_user(%{})
+
+    {:ok, view, _html} = live(conn, "/")
+    render_submit(view, "login", %{"username" => admin.username, "password" => @password})
+
+    render_submit(view, "reset-user-password", %{
+      "userId" => to_string(target.user_id),
+      "password" => "Changed!456"
+    })
+
+    refute has_element?(view, "#mfa-step-up-panel")
+    assert {:ok, updated} = KeystonePhoenix.User.get_user(target.user_id)
+    assert Bcrypt.verify_pass("Changed!456", updated.password)
+  end
+
+  test "user import keeps its explicit step-up requirement when policy is disabled", %{conn: conn} do
+    {:ok, admin} = create_user(%{"role_id" => create_admin_role().role_id})
+    {:ok, view, _html} = live(conn, "/")
+    render_submit(view, "login", %{"username" => admin.username, "password" => @password})
+
+    render_submit(view, "import-users", %{})
+
+    assert live_socket(view).assigns.mfa_step_up_required
+    assert has_element?(view, "#mfa-step-up-panel")
+  end
+
   defp enroll_mfa(user) do
     {:ok, initial} = Auth.login_plaintext(user.username, @password, true)
     {:ok, claims} = Token.verify(initial.token, Token.access_type())
@@ -124,7 +170,7 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
     {:ok, enrollment} =
       Mfa.begin_enrollment(user.user_id, user.username, claims["client_id"], claims["sid"])
 
-    {:ok, _verification} =
+    {:ok, verification} =
       Mfa.verify_enrollment(
         user.user_id,
         enrollment.challenge_id,
@@ -134,7 +180,7 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
       )
 
     Auth.logout(initial.refresh_token)
-    {enrollment.secret, initial}
+    {enrollment.secret, initial, verification.recovery_codes}
   end
 
   # 保留已有 AAL1 会话，验证 MFA 冲突时 challenge 可以在事务回滚后重试。

@@ -182,7 +182,6 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     render_click(view, "show-panel", %{"panel" => "notices"})
     assert live_socket(view).assigns.active_panel == "notices"
     assert Log.list_login_logs(%{"username" => admin.username, "pageSize" => 10}).total >= 1
-
     mfa_secret = enroll_liveview_factor(view, admin)
     render_click(view, "logout")
     assert has_element?(view, "#login-form")
@@ -194,6 +193,8 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
     assert has_element?(view, "nav[aria-label='主导航']")
 
+    # 此用例验证策略开启后的用户写操作 step-up；直接设置策略值以保留 AAL1 测试会话。
+    Repo.update!(Ecto.Changeset.change(Repo.get!(SysUser, admin.user_id), mfa_required: true))
     render_click(view, "show-panel", %{"panel" => "profile"})
     refute has_element?(view, "#profile-avatar-upload-form")
 

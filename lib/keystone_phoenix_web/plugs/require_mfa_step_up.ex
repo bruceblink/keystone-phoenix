@@ -3,7 +3,7 @@ defmodule KeystonePhoenixWeb.Plugs.RequireMfaStepUp do
 
   import Plug.Conn
 
-  alias KeystonePhoenix.Auth.Mfa
+  alias KeystonePhoenix.Auth.Mfa.RecentAuthentication
   alias KeystonePhoenix.Auth.Token
   alias KeystonePhoenixWeb.ApiResponse
 
@@ -11,35 +11,36 @@ defmodule KeystonePhoenixWeb.Plugs.RequireMfaStepUp do
 
   def call(conn, opts) do
     with ["Bearer " <> token] <- get_req_header(conn, "authorization"),
-         {:ok, claims} <- Token.verify(token, Token.access_type()),
-         true <-
-           claims["aal"] == "AAL2" or
-             initial_enrollment?(conn, claims) or
-             not required_step_up?(claims, opts) do
-      conn
+         {:ok, claims} <- Token.verify(token, Token.access_type()) do
+      case RecentAuthentication.check(
+             claims,
+             Keyword.get(opts, :enforce, false),
+             initial_enrollment_action?(conn)
+           ) do
+        :allowed -> conn
+        :required -> step_up_required(conn)
+        :unavailable -> authorization_unavailable(conn)
+      end
     else
-      _ ->
-        conn
-        |> put_status(:forbidden)
-        |> Phoenix.Controller.json(
-          ApiResponse.error(:mfa_step_up_required, "MFA step-up required")
-        )
-        |> halt()
+      _ -> step_up_required(conn)
     end
   end
 
-  # 未启用强制 MFA 的账号沿用 Native 的策略；enforce 用于必须升级认证的入口。
-  defp required_step_up?(claims, opts) do
-    Keyword.get(opts, :enforce, false) or
-      case Mfa.status(claims["sub"]) do
-        {:ok, %{required: true}} -> true
-        {:ok, %{required: false}} -> false
-        _ -> true
-      end
+  defp initial_enrollment_action?(conn) do
+    conn.private[:phoenix_action] in [:begin_mfa_enrollment, :verify_mfa_enrollment]
   end
 
-  defp initial_enrollment?(conn, claims) do
-    conn.private[:phoenix_action] in [:begin_mfa_enrollment, :verify_mfa_enrollment] and
-      match?({:ok, %{enabled: false}}, Mfa.status(claims["sub"]))
+  defp step_up_required(conn) do
+    conn
+    |> put_status(:forbidden)
+    |> Phoenix.Controller.json(ApiResponse.error(:mfa_step_up_required, "MFA step-up required"))
+    |> halt()
+  end
+
+  defp authorization_unavailable(conn) do
+    conn
+    |> put_status(:service_unavailable)
+    |> Phoenix.Controller.json(ApiResponse.error(:authorization_unavailable, "认证服务暂不可用"))
+    |> halt()
   end
 end

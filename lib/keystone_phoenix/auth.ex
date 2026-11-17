@@ -1,7 +1,7 @@
 defmodule KeystonePhoenix.Auth do
   @moduledoc "Local password authentication and refresh token rotation."
 
-  alias KeystonePhoenix.Auth.{Captcha, Mfa, Session, Token}
+  alias KeystonePhoenix.Auth.{Captcha, Mfa, Session, SessionAccess, Token}
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Role
@@ -152,7 +152,14 @@ defmodule KeystonePhoenix.Auth do
                   {:ok, tokens} <-
                     issue_pair(user, force_login, client_id, verification.assurance, [
                       verification.amr
-                    ]) do
+                    ]),
+                  :ok <-
+                    SessionAccess.mark_mfa_verified(
+                      user.user_id,
+                      tokens.session_id,
+                      client_id,
+                      verification
+                    ) do
                {:ok,
                 %{
                   tokens: Map.put(tokens, :current_user, current_login_user(user)),
@@ -178,6 +185,8 @@ defmodule KeystonePhoenix.Auth do
          user: user,
          session_id: session_id,
          client_id: claims["client_id"],
+         # 将已验证 access token ID 交给 LiveView 的近期认证检查，绑定当前会话版本。
+         access_token_id: claims["jti"],
          authentication_level: claims["aal"],
          amr: claims["amr"]
        }}
@@ -209,7 +218,15 @@ defmodule KeystonePhoenix.Auth do
              client_id,
              [verification.amr]
            ),
-         :ok <- Session.replace_access_token(user_id, session_id, access_token_id, access.jti) do
+         :ok <-
+           SessionAccess.replace_access_token(
+             user_id,
+             session_id,
+             access_token_id,
+             access.jti,
+             verification,
+             client_id
+           ) do
       {:ok,
        %{
          token: access.token,

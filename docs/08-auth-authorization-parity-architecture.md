@@ -109,9 +109,9 @@ scope_allowed(principal, scope, resource, context)
 
 - 密码会话：只用于人类用户登录，创建独立会话和刷新令牌族。
 - API Key：使用 `ks_live_<prefix>_<secret>` 格式。数据库只保存哈希、前缀、主体、范围、过期和撤销状态。明文只返回一次。有效范围是请求范围、签发者可授予范围和主体当前权限的交集。API Key 不能访问密码修改、MFA 或 API Key 管理路径。
-- MFA：第一版使用 TOTP、一次性恢复码和短期认证请求。敏感写操作需要 AAL2 step-up。并发消费必须只有一次成功。同一用户、同一会话默认每 60 秒最多签发 10 个 `STEP_UP` 请求；超限返回 HTTP 429 和 `rate_limited`。
+- MFA：第一版使用 TOTP、一次性恢复码和短期认证请求。账号启用 MFA 策略时，普通敏感写操作和 MFA 管理操作需要最近 600 秒内完成 OTP 或恢复码 step-up；同一用户、当前活动会话、客户端和 access token ID 必须一致，TOTP 因子必须仍启用。Passkey 的 `webauthn` 认证方法不能替代该 step-up。用户批量导入即使策略关闭也要求 step-up。并发消费必须只有一次成功。同一用户、同一会话默认每 60 秒最多签发 10 个 `STEP_UP` 请求；超限返回 HTTP 429 和 `rate_limited`。
 - 外部身份：OIDC 使用 Authorization Code + PKCE。服务端生成并保存 `state`、`nonce` 和 verifier，回调只接受一次性 `code` 与 `state`，并校验 JWKS、RS256、issuer、audience、`azp`、nonce 和时间窗口。外部主体按完整 issuer 与 subject 绑定本地用户。
-- Passkey：WebAuthn 使用一次性 challenge、受控 RP ID/origin、凭据公钥、算法、签名计数器和账户映射。注册要求已完成 AAL2 step-up；登录成功签发 AAL2 会话。API Key 不能进入注册和登录入口。
+- Passkey：WebAuthn 使用一次性 challenge、受控 RP ID/origin、凭据公钥、算法、签名计数器和账户映射。注册按账号 MFA 策略检查；登录成功签发 AAL2 会话，但 `webauthn` 不满足策略要求的敏感操作最近认证。API Key 不能进入注册和登录入口。
 
 ## Phoenix 适配边界
 
@@ -129,7 +129,7 @@ TOTP 因子、短期 `LOGIN`/`STEP_UP`/`ENROLL`/`RECOVERY` 请求、一次性恢
 不得调用 MFA 管理和 step-up 路径。密钥主键和恢复码 pepper 必须从运行时配置读取，
 配置缺失时 enrollment 和恢复码生成失败关闭。
 
-REST step-up 创建和核验只要求有效的 Bearer 人类会话及已登记因子；目标业务接口仍独立检查业务权限。enrollment、恢复码轮换和 MFA 策略变更继续要求 `mfa:manage`。
+REST step-up 创建和核验只要求有效的 Bearer 人类会话及已登记因子；目标业务接口仍独立检查业务权限。MFA enrollment、恢复码轮换和 MFA 策略变更按账号策略执行 step-up，并独立检查 `mfa:manage`。Passkey 注册要求有效人类会话并按账号策略执行 step-up，但路由不检查 `mfa:manage`。策略关闭时，这些入口不额外要求 AAL2；用户导入仍使用显式强制 step-up。
 
 step-up 签发在现有 PostgreSQL 用户事务锁内统计当前会话的 `STEP_UP` 记录并创建新记录。计数窗口按请求创建时间计算，不排除已经消费或已经过期的记录。`ChallengeCleanup` 每分钟分批处理最多 500 条过期认证请求；只有请求已过期，且 `STEP_UP` 请求已离开计数窗口时才会删除。清理查询使用 `FOR UPDATE SKIP LOCKED`，多个 Phoenix 实例可以从同一数据库领取不同记录。migration `20261118130000_add_mfa_challenge_rate_limit_indexes` 为计数和过期查询增加索引。
 
@@ -139,7 +139,11 @@ Phoenix 的 API Key 领域服务使用 `ks_live_<prefix>_<secret>` 格式，保�
 
 两个项目的管理资源统一使用 `/api/v1/{users,roles,departments,posts,menus,configs,dictionaries,notices,jobs,login-logs,operation-logs,profile}`，并共享 Principal、权限、范围、错误和审计语义；旧 `/system/*` 与 `/logs/*` 路径已删除。公告公开读取使用 `/api/v1/notices`，管理读取使用受保护的 `/api/v1/notices/manage`，发布使用 `/api/v1/notices/{id}/publish`。认证统一使用 `/api/v1/auth/*`；OIDC 入口为 `/api/v1/auth/oidc/{authorize,callback}`，两个项目的 WebAuthn 入口统一为 `/api/v1/auth/webauthn/{register,register/options,login,login/options}`。Native 的 `POST /api/v1/auth/change-initial-password` 也由 Phoenix 提供相同的初始密码标记、密码校验和会话撤销行为。JWK Set 保留标准路径 `/api/.well-known/jwks.json`。两项目均把公开 RSA key 登记到持久化 registry，使用 `ACTIVE/RETIRING` 保留窗口、过期清理和未知 `kid` 拒绝；私钥只由运行时密钥配置提供。
 
-Phoenix 的 step-up 成功后签发短时 `AAL2` access token，并要求敏感 MFA 管理接口携带该令牌；会话记录单独保存当前 `access_token_id`，step-up 在会话行锁内替换该标识，因此旧 `jti` 立即失效，同时保留 refresh token 哈希、令牌族和到期状态。step-up 的 JWT `amr` 只表示 `otp` 或 `recovery`；刷新流程重新签发 `AAL1` access token，客户端需要再次完成 step-up。该边界避免把短时二次认证结果延长到整个刷新令牌生命周期。
+Phoenix 的 MFA 登录和 step-up 会把认证时间、强度和方法写入 `auth_sessions`。最近认证查询绑定当前 `user_id`、`session_id`、`client_id` 和 `access_token_id`，并检查会话有效、因子启用、时间在 600 秒内、AAL 为 `AAL2`，AMR 为 `otp` 或 `recovery`。新增迁移 `20261118150000_add_mfa_session_verification_state` 为会话表添加这些状态字段，并使用 `add_if_not_exists` 支持部分完成后的重放。
+
+Phoenix 的 step-up 成功后签发短时 `AAL2` access token；会话行锁事务同时替换当前 `access_token_id` 和保存最近认证结果，因此旧 `jti` 立即失效，同时保留 refresh token 族和到期状态。刷新流程重新签发 `AAL1` access token，客户端需要再次完成 step-up。该边界避免把短时二次认证结果延长到整个刷新令牌生命周期。
+
+已知状态差异：未登记 MFA 时创建 step-up 请求，Phoenix 返回 HTTP 422，Native 返回 HTTP 409。现有状态在差异解决前保持不变；登录和 verify 的上下文状态差异也不能共用一张映射表直接替换。step-up 的一次性认证请求在签发 token 和替换会话 ID 前已被消费；后续失败时必须创建新请求，Native 当前顺序相同。Phoenix 在验证前检查会话有效，但最终替换 token 的行锁查询没有再次检查到期时间；Native 会在最终替换时检查。该边界仍需单独验收。
 
 ## Native 适配边界
 

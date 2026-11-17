@@ -21,6 +21,11 @@ defmodule KeystonePhoenix.Auth.AuthSession do
     field :active, :boolean, default: true
     field :revoked_at, :utc_datetime_usec
 
+    # 仅保存 TOTP 和恢复码的近期验证状态，不把 Passkey 登录当作敏感操作 step-up。
+    field :mfa_verified_at, :utc_datetime_usec
+    field :mfa_assurance, :string
+    field :mfa_amr, :string
+
     timestamps(type: :utc_datetime_usec)
   end
 
@@ -39,7 +44,10 @@ defmodule KeystonePhoenix.Auth.AuthSession do
       :last_seen_at,
       :expires_at,
       :active,
-      :revoked_at
+      :revoked_at,
+      :mfa_verified_at,
+      :mfa_assurance,
+      :mfa_amr
     ])
     |> validate_required([
       :user_id,

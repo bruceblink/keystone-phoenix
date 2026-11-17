@@ -2,6 +2,18 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
+## 2026-11-18 MFA 最近认证与页面策略回归
+
+- Phoenix 新增会话 MFA 认证时间、强度和方式字段。TOTP/恢复码登录记录本次验证时间；step-up 在会话行锁事务内同时更新验证记录和当前 access token ID。敏感操作要求当前会话、用户、客户端和 token ID 一致，账号因子仍启用，验证时间不超过 600 秒，token AAL 为 `AAL2`，AMR 为 `otp` 或 `recovery`。`webauthn` Passkey 登录虽为 AAL2，但不满足这项敏感操作检查。
+- REST 和 LiveView 普通敏感操作、MFA 管理、Passkey 注册都按账号策略检查。用户导入继续强制 step-up。策略关闭时，普通用户写操作不要求 MFA。MFA 管理端点仍独立检查 `mfa:manage`；Passkey 注册要求有效人类会话和账号策略，但不要求 `mfa:manage`。REST 拒绝保持 403，认证状态读取失败使用既有 503 和 `authorization_unavailable`。
+- 新迁移 `20261118150000_add_mfa_session_verification_state` 使用 `add_if_not_exists`。隔离 PostgreSQL 18 测试库验证了缺少一列时重放迁移、列已存在时再次重放；两次均成功，最后只存在一个迁移版本记录和三列。
+- 真实 PostgreSQL 定向集成测试覆盖了策略关闭时的 AAL1 写入、恢复码登录、OTP step-up、600 秒期限、刷新后的 AAL1、用户/会话/客户端/token ID 绑定、已撤销会话、因子停用、Passkey `webauthn` 拒绝，以及 token ID 冲突时会话字段整体回滚。LiveView 测试覆盖策略关闭时普通敏感事件放行和导入强制 step-up。启用策略的旧 LiveView 用例已显式设置 MFA 策略，并保留原操作断言。
+- Codex 内置浏览器在独立 PostgreSQL 18 测试库中完成实际窗口验收：MFA 策略关闭时，管理员创建角色并在列表中看到新角色；用户导入开始后显示需要二次认证。测试服务已停止，临时数据库已删除。未验证硬件 Passkey 仪式。
+- Native/Phoenix 仍有已确认的状态码差异：未登记 MFA 时创建 step-up 请求，Phoenix 返回 422，Native 返回 409。本轮保持现有 HTTP 状态，不统一错误映射；登录和 verify 的上下文差异也未在此处合并。step-up 认证请求会先被消费，再签发 token 和更新会话；后续失败时需重新创建认证请求，Native 当前采用相同顺序。Phoenix 在验证前检查会话有效，但最终替换 token 的行锁查询没有再次检查到期时间；Native 会在最终替换时检查。该到期边界本轮未扩展处理。
+- API Key 的 `permission:manage` + `SELF` 数据范围绕过已由 Phoenix `409f9de` 修复；真实 PostgreSQL HTTP 和授权定向测试 18 项通过。仍待验收：人类管理员角色范围与 Native 的差异，以及 API Key `ServiceSubject` ID 与 owner 用户 ID 在 `OWNER` 范围检查中的对应关系。
+
+隔离 PostgreSQL 18 测试库中的全量集成回归在最后一次 Passkey 权限测试调整前为 `541 passed`。该测试调整后，MFA 定向集成回归为 `4 passed`。本地没有执行硬件 Passkey 仪式、多节点恢复、CSRF/Cookie 浏览器行为或生产代理链验收；这些检查仍需单独安排。
+
 ## 2026-11-16 业务错误码目录基线
 
 跨项目错误码目录见 [`11-business-error-code-catalog.md`](11-business-error-code-catalog.md)。Phoenix `56ba348`、Native `aea1a35`/`7cb6533` 和 admin-web `33c20ff`/`dd1b280`/`9e6e5e9` 当前登记相同的 21 个服务端代码；其中 Phoenix `56ba348` 补齐了 `mfa_invalid_code`、`mfa_state_conflict` 和 `https_required`，admin-web `9e6e5e9` 补齐了缺少业务码的失败响应兜底。admin-web 另有 4 个客户端本地代码，不能进入服务端响应。目录规则明确了代码到业务条件的反查、HTTP 状态保持和 `authorization_unavailable`、`invalid_credentials` 的兼容范围。
@@ -159,7 +171,7 @@ Native 和 Phoenix 的同一份 admin-web 已通过 Chrome CDP 页面验收：�
 - 登录与操作日志、定时任务、运行监控和 LiveView 管理页面。
 - Redis 移除、ETS 临时数据、运行时指标、组合索引、测试工作流和 release 镜像构建工作流。
 - OIDC Authorization Code + PKCE：服务端保存短期 state、nonce 和 verifier；回调校验 JWKS、RS256、issuer、audience、`azp`、nonce、时间窗口和完整 issuer/subject 映射。
-- Passkey：Ithibati/Wax 校验注册与认证数据，数据库保存账户映射、凭据、公钥和签名计数器；注册要求 step-up，登录签发 AAL2 会话，challenge 单次消费并定期清理。
+- Passkey：Ithibati/Wax 校验注册与认证数据，数据库保存账户映射、凭据、公钥和签名计数器；注册按账号 MFA 策略检查，登录签发 AAL2 会话，challenge 单次消费并定期清理。
 
 2026-11-14 服务层授权切片：`40e8a37` 将岗位列表、详情、创建、更新和删除接入显式授权上下文；`5f2b898` 将菜单和配置的查询、写入及缓存刷新接入同一边界；`4a939ee` 将字典类型、字典数据和公告的查询、写入及缓存刷新接入同一边界；`6973751` 将任务、任务日志、登录日志和操作日志的查询、导出、执行、取消及删除接入同一边界；`0e8c0b8` 将会话和文件操作接入同一边界；`8736c1a` 将 API Key 签发、列表、轮换和撤销接入同一边界；`68d693f` 为公告和任务增加真实 owner 字段、`OWNER` 查询过滤和混合删除回滚；`b60a7fe` 将角色、岗位、登录日志和操作日志的列表、详情及导出查询接入授权上下文；`6d537f4` 将角色写操作、角色用户批量分配和菜单元数据读取接入同一边界。用户、部门、个人资料、公告和任务使用实际主体关系；角色、岗位、菜单、配置、字典、审计、会话等全局资源要求 `ALL` 或 `TENANT`，不虚构不存在的 owner/member 关系。全部本地批量和导出入口已有 HTTP 回归；多节点和生产数据恢复仍属于外部运维验收。
 

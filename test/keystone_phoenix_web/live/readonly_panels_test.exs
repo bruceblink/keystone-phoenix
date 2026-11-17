@@ -331,6 +331,9 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     render_submit(view, "login", %{"username" => admin.username, "password" => @password})
     assert has_element?(view, "nav[aria-label='主导航']")
 
+    # 此用例验证策略开启后的 API Key step-up；直接设置策略值以保留 AAL1 测试会话。
+    Repo.update!(Ecto.Changeset.change(Repo.get!(SysUser, admin.user_id), mfa_required: true))
+
     render_click(view, "show-panel", %{"panel" => "api-keys"})
     assert has_element?(view, "button[phx-click='new-api-key']")
     assert render(view) =~ "签发 API Key"

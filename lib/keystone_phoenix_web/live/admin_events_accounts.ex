@@ -3,7 +3,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   import Phoenix.LiveView, only: [consume_uploaded_entries: 3, push_event: 3]
   import Phoenix.Component, only: [assign: 2]
-  alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Upload
   alias KeystonePhoenix.User
@@ -151,15 +150,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("import-users", _params, socket) do
-    cond do
-      not Support.permission_socket?(socket, "user:import") ->
-        {:noreply, socket}
-
-      not mfa_step_up?(socket) ->
-        discard_import_upload(socket, :mfa_required)
-
-      true ->
-        import_uploaded_users(socket)
+    if Support.permission_socket?(socket, "user:import") do
+      case Authentication.step_up_status(socket, true) do
+        :allowed -> import_uploaded_users(socket)
+        :required -> discard_import_upload(socket, :mfa_required)
+        :unavailable -> discard_import_upload(socket, :unavailable)
+      end
+    else
+      {:noreply, socket}
     end
   end
 
@@ -519,13 +517,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
       _ ->
         {:noreply, assign(socket, user_feedback: Feedback.import_error(reason))}
-    end
-  end
-
-  defp mfa_step_up?(socket) do
-    case Auth.session_context(socket.assigns[:access_token]) do
-      {:ok, %{authentication_level: "AAL2"}} -> true
-      _ -> false
     end
   end
 

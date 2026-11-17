@@ -29,7 +29,12 @@ defmodule KeystonePhoenix.Auth.Mfa do
   @challenge_lifetime_seconds 300
   @factor_lock_seconds 300
 
-  @type verification :: %{assurance: String.t(), amr: String.t()}
+  # 验证时间来自因子核验事务，登录和 step-up 会话必须保存同一时间值。
+  @type verification :: %{
+          assurance: String.t(),
+          amr: String.t(),
+          verified_at: DateTime.t()
+        }
 
   @doc "读取用户 MFA 策略和当前 TOTP 因子状态，不返回密钥或恢复码。"
   def status(user_id) do
@@ -293,7 +298,7 @@ defmodule KeystonePhoenix.Auth.Mfa do
         |> Repo.update!()
 
         consume_challenge!(challenge, now)
-        {:ok, %{assurance: "AAL2", amr: "otp"}}
+        {:ok, %{assurance: "AAL2", amr: "otp", verified_at: now}}
 
       :error ->
         case consume_recovery_code!(user_id, code, now) do
@@ -307,7 +312,7 @@ defmodule KeystonePhoenix.Auth.Mfa do
             |> Repo.update!()
 
             consume_challenge!(challenge, now)
-            {:ok, %{assurance: "AAL2", amr: "recovery"}}
+            {:ok, %{assurance: "AAL2", amr: "recovery", verified_at: now}}
 
           false ->
             register_failure!(challenge, factor, now)
