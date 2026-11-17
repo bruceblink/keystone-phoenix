@@ -120,6 +120,26 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     end
   end
 
+  @tag :integration
+  test "profile update rejects missing and whitespace-only display names like Native" do
+    fixtures = fixtures()
+    original = Repo.get!(SysUser, fixtures.user.user_id)
+
+    # Native 对缺失、空值和纯空白 displayName 都返回 422，Phoenix 保持相同业务码。
+    for attrs <- [%{}, %{"displayName" => ""}, %{"displayName" => " \t "}] do
+      response =
+        build_conn()
+        |> put_req_header("authorization", "Bearer #{fixtures.token}")
+        |> put("/api/v1/profile", attrs)
+
+      assert response.status == 422
+      assert json_response(response, 422)["message"] == "displayName is required"
+      assert get_in(json_response(response, 422), ["error", "code"]) == "validation_failed"
+    end
+
+    assert Repo.get!(SysUser, fixtures.user.user_id).nickname == original.nickname
+  end
+
   defp fixtures do
     department =
       %SysDept{dept_id: Identity.v7()}

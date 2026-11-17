@@ -7,6 +7,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   alias KeystonePhoenix.Upload
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminEventsAccountsParams, as: AccountParams
+  alias KeystonePhoenixWeb.Live.AdminEvents.Profile, as: ProfileEvents
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
@@ -324,34 +325,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("save-profile", params, socket) do
-    if Support.authenticated_socket?(socket) do
-      user_id = socket.assigns.current_user["userId"]
-
-      case User.update_profile(user_id, normalize_profile_params(params),
-             authorization: self_authorization(socket)
-           ) do
-        {:ok, _user} ->
-          case User.profile(user_id) do
-            {:ok, profile} ->
-              profile_user = profile["user"] || profile
-
-              {:noreply,
-               assign(socket,
-                 current_user: profile_user,
-                 profile_form: profile_user,
-                 profile_feedback: "个人资料已保存"
-               )}
-
-            _ ->
-              {:noreply, assign(socket, profile_feedback: "个人资料已保存")}
-          end
-
-        error ->
-          {:noreply, assign(socket, profile_feedback: Support.form_error(error))}
-      end
-    else
-      {:noreply, socket}
-    end
+    ProfileEvents.handle_event(params, socket)
   end
 
   def handle_event("change-profile-password", params, socket) do
@@ -465,14 +439,6 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       end
     else
       {:noreply, socket}
-    end
-  end
-
-  # 将 admin-web 的空性别选项映射为 Phoenix 数据模型使用的未知值 2。
-  defp normalize_profile_params(params) when is_map(params) do
-    case Map.get(params, "sex") do
-      "" -> Map.put(params, "sex", "2")
-      _ -> params
     end
   end
 

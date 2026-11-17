@@ -49,6 +49,11 @@ defmodule KeystonePhoenixWeb.ProfileController do
       {:error, :not_found} ->
         render_error(conn, :not_found)
 
+      {:error, :display_name_required} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(ApiResponse.error(:validation_failed, "displayName is required"))
+
       {:error, changeset} ->
         render_error(conn, changeset)
     end

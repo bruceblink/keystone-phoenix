@@ -988,7 +988,7 @@ Phoenix 本轮已完成同一用户/会话每 60 秒最多签发 10 个 `STEP_UP
 
 Phoenix 个人资料更新接口支持 admin-web 和 Native 使用的 `displayName` 字段，并保留已有字段的兼容行为。真实数据库 HTTP 测试覆盖更新响应、数据库记录和再次读取；Codex 内置浏览器验证 admin-web 修改、保存和刷新后的展示名一致。admin-web 同时在刷新时保留未保存的表单内容。
 
-仍需核对两端对缺失或空 `displayName` 的校验行为：Native 当前返回 422，Phoenix 当前接受该输入。本次未改变既有 HTTP 状态码。
+随后已对齐缺失或空白 `displayName`：Phoenix 原先接受该输入，现在与 Native 一样返回 422 和 `validation_failed`；既有昵称别名继续受支持。LiveView 在资料表单显示错误并保留输入。Codex 内置浏览器验证空白拒绝和有效值保存；隔离 PostgreSQL 全量集成测试 570 项通过。其他既有错误的 HTTP 状态保持不变。
 
 ### 2026-11-18 LiveView API Key 到期时间
 

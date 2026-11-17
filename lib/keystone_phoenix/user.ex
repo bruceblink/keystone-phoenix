@@ -318,7 +318,8 @@ defmodule KeystonePhoenix.User do
   def update_profile(id, attrs, options)
 
   def update_profile(id, attrs, options) when is_map(attrs) and is_list(options) do
-    with :ok <- Authorization.authorize_self(id, options) do
+    with :ok <- Authorization.authorize_self(id, options),
+         :ok <- validate_profile_display_name(attrs) do
       do_update_profile(id, attrs, Authorization.actor_id(options))
     end
   end
@@ -336,6 +337,19 @@ defmodule KeystonePhoenix.User do
       |> maybe_put(attrs, "avatar", ["avatar"])
 
     do_update_user(id, attrs, actor_id)
+  end
+
+  # Native 将缺失或纯空白展示名拒绝为参数错误；昵称别名按旧字段优先级读取。
+  defp validate_profile_display_name(attrs) do
+    source_key = Enum.find(["nickName", "nickname", "displayName"], &Map.has_key?(attrs, &1))
+
+    case source_key && Map.get(attrs, source_key) do
+      value when is_binary(value) ->
+        if String.trim(value) == "", do: {:error, :display_name_required}, else: :ok
+
+      _ ->
+        {:error, :display_name_required}
+    end
   end
 
   @doc "Changes a password after checking the current password or an authorized AAL2 step-up."

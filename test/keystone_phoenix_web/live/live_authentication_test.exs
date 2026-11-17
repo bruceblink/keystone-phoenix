@@ -131,13 +131,41 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     render_submit(view, "save-profile", %{"nickname" => "第一次更新"})
     assert render(view) =~ "个人资料已保存"
 
-    render_submit(view, "save-profile", %{"email" => "second@example.com"})
+    render_submit(view, "save-profile", %{
+      "nickname" => "第一次更新",
+      "email" => "second@example.com"
+    })
 
     assert authenticated?(live_socket(view).assigns)
     refute render(view) =~ "登录状态已失效，请重新登录"
     assert {:ok, updated} = User.get_user(user.user_id)
     assert updated.nickname == "第一次更新"
     assert updated.email == "second@example.com"
+  end
+
+  test "a whitespace-only profile display name is rejected and kept in the form", %{conn: conn} do
+    disable_captcha()
+    {:ok, user} = create_user(%{"nickname" => "原展示名", "email" => "before@example.com"})
+    {:ok, view, _html} = login_view(conn, user)
+    render_click(view, "show-panel", %{"panel" => "profile"})
+
+    # 空白展示名必须阻止保存，并让用户在同一表单里修正输入。
+    render_submit(view, "save-profile", %{
+      "nickname" => " \t ",
+      "email" => "after@example.com"
+    })
+
+    assert has_element?(
+             view,
+             "form[phx-submit='save-profile'] #profile-feedback[role='alert']",
+             "展示名不能为空"
+           )
+
+    assert has_element?(view, "#profile-feedback", "错误码：validation_failed")
+    assert live_socket(view).assigns.profile_form["nickname"] == " \t "
+    assert {:ok, persisted} = User.get_user(user.user_id)
+    assert persisted.nickname == "原展示名"
+    assert persisted.email == "before@example.com"
   end
 
   test "revoked sessions cannot submit a profile event", %{conn: conn, admin: admin} do
