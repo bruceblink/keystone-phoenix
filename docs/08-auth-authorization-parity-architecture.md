@@ -109,7 +109,7 @@ scope_allowed(principal, scope, resource, context)
 
 - 密码会话：只用于人类用户登录，创建独立会话和刷新令牌族。
 - API Key：使用 `ks_live_<prefix>_<secret>` 格式。数据库只保存哈希、前缀、主体、范围、过期和撤销状态。明文只返回一次。有效范围是请求范围、签发者可授予范围和主体当前权限的交集。API Key 不能访问密码修改、MFA 或 API Key 管理路径。
-- MFA：第一版使用 TOTP、一次性恢复码和短期认证请求。敏感写操作需要 AAL2 step-up。并发消费必须只有一次成功。
+- MFA：第一版使用 TOTP、一次性恢复码和短期认证请求。敏感写操作需要 AAL2 step-up。并发消费必须只有一次成功。同一用户、同一会话默认每 60 秒最多签发 10 个 `STEP_UP` 请求；超限返回 HTTP 429 和 `rate_limited`。
 - 外部身份：OIDC 使用 Authorization Code + PKCE。服务端生成并保存 `state`、`nonce` 和 verifier，回调只接受一次性 `code` 与 `state`，并校验 JWKS、RS256、issuer、audience、`azp`、nonce 和时间窗口。外部主体按完整 issuer 与 subject 绑定本地用户。
 - Passkey：WebAuthn 使用一次性 challenge、受控 RP ID/origin、凭据公钥、算法、签名计数器和账户映射。注册要求已完成 AAL2 step-up；登录成功签发 AAL2 会话。API Key 不能进入注册和登录入口。
 
@@ -130,6 +130,10 @@ TOTP 因子、短期 `LOGIN`/`STEP_UP`/`ENROLL`/`RECOVERY` 请求、一次性恢
 配置缺失时 enrollment 和恢复码生成失败关闭。
 
 REST step-up 创建和核验只要求有效的 Bearer 人类会话及已登记因子；目标业务接口仍独立检查业务权限。enrollment、恢复码轮换和 MFA 策略变更继续要求 `mfa:manage`。
+
+step-up 签发在现有 PostgreSQL 用户事务锁内统计当前会话的 `STEP_UP` 记录并创建新记录。计数窗口按请求创建时间计算，不排除已经消费或已经过期的记录。`ChallengeCleanup` 每分钟分批处理最多 500 条过期认证请求；只有请求已过期，且 `STEP_UP` 请求已离开计数窗口时才会删除。清理查询使用 `FOR UPDATE SKIP LOCKED`，多个 Phoenix 实例可以从同一数据库领取不同记录。migration `20261118130000_add_mfa_challenge_rate_limit_indexes` 为计数和过期查询增加索引。
+
+真实 PostgreSQL 18.6 定向测试 `8 passed`，验证了 10 次成功、第 11 次 `429/rate_limited`、新会话额度隔离、窗口到期、窗口内过期请求保留计数和分批清理。该验证没有启动两个 Phoenix 实例同时请求，因此多节点运行验收仍未完成。Native 与 Phoenix 的最近二次认证时间规则仍有差异；Passkey 是否满足敏感写操作和真实硬件 Passkey 认证也仍需验收。
 
 Phoenix 的 API Key 领域服务使用 `ks_live_<prefix>_<secret>` 格式，保存服务主体、密钥摘要、批准范围、过期和撤销状态。`/api/v1/api-keys` 由 Bearer 会话和 `api-key:*` 权限保护；API Key 认证入口单独建立服务主体 Principal，认证时再次计算当前权限与批准范围的交集。API Key 不能调用密码、MFA 或 API Key 管理路径。
 

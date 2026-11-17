@@ -16,6 +16,7 @@ defmodule KeystonePhoenix.Application do
         KeystonePhoenix.Monitor.CpuSampler,
         KeystonePhoenix.Repo,
         KeystonePhoenix.Auth.SessionCleanup,
+        KeystonePhoenix.Auth.Mfa.ChallengeCleanup,
         KeystonePhoenix.Auth.JwtKeyCleanup,
         KeystonePhoenix.Auth.Passkey.Cleanup,
         KeystonePhoenix.Job.Lock,

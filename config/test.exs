@@ -19,6 +19,7 @@ config :keystone_phoenix,
   job_scheduler_enabled: false,
   # 测试进程使用 SQL sandbox；延后后台清理，避免独立 GenServer 在测试 owner 退出后访问数据库。
   auth_session_cleanup_interval_ms: 3_600_000,
+  mfa_challenge_cleanup_interval_ms: 3_600_000,
   passkey_cleanup_interval_ms: 3_600_000,
   jwt_key_registry_cleanup_interval_ms: 3_600_000
 
@@ -36,7 +37,10 @@ config :keystone_phoenix,
   mfa_master_key: Base.encode64(String.duplicate("m", 32)),
   mfa_master_key_version: 1,
   mfa_recovery_pepper: "test-only-mfa-recovery-pepper",
-  mfa_challenge_lifetime_seconds: 300
+  mfa_challenge_lifetime_seconds: 300,
+  mfa_step_up_issue_max_requests: 10,
+  mfa_step_up_issue_window_seconds: 60,
+  mfa_challenge_cleanup_batch_size: 500
 
 config :ex_unit, exclude: [:integration]
 

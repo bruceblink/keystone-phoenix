@@ -122,6 +122,10 @@ if config_env() == :prod do
       parse_integer_env.("JOB_EXECUTION_TIMEOUT_MS", 30_000, 250, 86_400_000),
     auth_session_cleanup_interval_ms:
       parse_integer_env.("AUTH_SESSION_CLEANUP_INTERVAL_MS", 60_000, 250, 86_400_000),
+    mfa_challenge_cleanup_interval_ms:
+      parse_integer_env.("MFA_CHALLENGE_CLEANUP_INTERVAL_MS", 60_000, 1_000, 86_400_000),
+    mfa_challenge_cleanup_batch_size:
+      parse_integer_env.("MFA_CHALLENGE_CLEANUP_BATCH_SIZE", 500, 1, 10_000),
     jwt_key_registry_cleanup_interval_ms:
       parse_integer_env.("JWT_KEY_REGISTRY_CLEANUP_INTERVAL_MS", 3_600_000, 1_000, 86_400_000),
     monitor_snapshot_interval_ms:
@@ -163,6 +167,12 @@ if config_env() == :prod do
   mfa_challenge_lifetime_seconds =
     parse_integer_env.("MFA_CHALLENGE_LIFETIME_SECONDS", 300, 60, 600)
 
+  mfa_step_up_issue_max_requests =
+    parse_integer_env.("MFA_STEP_UP_ISSUE_MAX_REQUESTS", 10, 1, 10_000)
+
+  mfa_step_up_issue_window_seconds =
+    parse_integer_env.("MFA_STEP_UP_ISSUE_WINDOW_SECONDS", 60, 1, 86_400)
+
   config :keystone_phoenix,
     jwt_private_key: jwt_private_key,
     jwt_public_key: jwt_public_key,
@@ -171,7 +181,9 @@ if config_env() == :prod do
     mfa_master_key: mfa_master_key,
     mfa_master_key_version: mfa_master_key_version,
     mfa_recovery_pepper: mfa_recovery_pepper,
-    mfa_challenge_lifetime_seconds: mfa_challenge_lifetime_seconds
+    mfa_challenge_lifetime_seconds: mfa_challenge_lifetime_seconds,
+    mfa_step_up_issue_max_requests: mfa_step_up_issue_max_requests,
+    mfa_step_up_issue_window_seconds: mfa_step_up_issue_window_seconds
 
   oidc_enabled = parse_boolean_env.("OIDC_ENABLED", false)
   oidc_client_secret = System.get_env("OIDC_CLIENT_SECRET")

@@ -20,6 +20,7 @@ defmodule KeystonePhoenix.Auth.Mfa do
     Totp
   }
 
+  alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.User.SysUser
 
@@ -152,7 +153,30 @@ defmodule KeystonePhoenix.Auth.Mfa do
          {:ok, client_id} <- normalize_client_id(client_id),
          {:ok, session_id} <- required_id(session_id),
          {:ok, context_hash} <- normalize_context_hash(context_hash) do
-      create_challenge(status.user_id, "STEP_UP", client_id, session_id, context_hash)
+      {max_requests, window_seconds} = step_up_issue_limits!()
+
+      Session.with_user_lock(status.user_id, fn ->
+        now = DateTime.utc_now()
+        cutoff = DateTime.add(now, -window_seconds, :second)
+
+        issued_count =
+          Repo.aggregate(
+            from(challenge in Challenge,
+              where:
+                challenge.user_id == ^status.user_id and
+                  challenge.session_id == ^session_id and challenge.purpose == "STEP_UP" and
+                  challenge.inserted_at > ^cutoff
+            ),
+            :count,
+            :id
+          )
+
+        if issued_count >= max_requests do
+          {:error, :rate_limited}
+        else
+          {:ok, create_challenge!(status.user_id, "STEP_UP", client_id, session_id, context_hash)}
+        end
+      end)
     else
       false -> {:error, :mfa_not_enrolled}
       {:error, _} = error -> error
@@ -462,6 +486,21 @@ defmodule KeystonePhoenix.Auth.Mfa do
     if is_integer(value) and value in 60..600,
       do: value,
       else: raise(ArgumentError, "invalid MFA challenge lifetime")
+  end
+
+  defp step_up_issue_limits! do
+    max_requests =
+      Application.get_env(:keystone_phoenix, :mfa_step_up_issue_max_requests, 10)
+
+    window_seconds =
+      Application.get_env(:keystone_phoenix, :mfa_step_up_issue_window_seconds, 60)
+
+    if is_integer(max_requests) and max_requests > 0 and is_integer(window_seconds) and
+         window_seconds > 0 do
+      {max_requests, window_seconds}
+    else
+      raise ArgumentError, "MFA step-up issue limits must be positive integers"
+    end
   end
 
   defp normalize_client_id(value) do
