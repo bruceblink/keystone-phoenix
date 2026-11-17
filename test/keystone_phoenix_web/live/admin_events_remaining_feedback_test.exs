@@ -20,6 +20,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.RemainingFeedbackTest do
     assert Feedback.message(result.assigns.api_key_feedback) == "到期时间格式无效"
   end
 
+  test "API key expiry range uses a distinct internal reason and the validation business code" do
+    feedback = Feedback.from_reason(:expiry_out_of_range)
+
+    assert Feedback.code(feedback) == "validation_failed"
+    assert Feedback.message(feedback) == "到期时间必须晚于当前时间且不超过 90 天"
+  end
+
   test "missing configuration uses a stable resource error code" do
     socket = socket(%{permissions: ["config:update"], config_rows: []})
 
