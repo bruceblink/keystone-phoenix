@@ -151,6 +151,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     assert has_element?(view, ".sidebar-version", "v0.1.0 · dev")
     assert has_element?(view, "button[aria-label='通知'] svg")
     assert has_element?(view, "button[aria-label='打开个人资料'] .profile-chevron")
+    assert has_element?(view, "button.logout-button[aria-label='退出']")
     assert has_element?(view, "button.logout-button svg")
     assert has_element?(view, "nav[aria-label='主导航'] .nav-item .nav-icon-svg")
     assert has_element?(view, "a[href='/api/swagger'][phx-click='close-sidebar']", "接口文档")
