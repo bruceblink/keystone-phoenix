@@ -15,8 +15,18 @@
 .app-shell > .sidebar > .sidebar-brand { position: static; inset: auto; width: auto; transform: none; grid-column: auto; grid-row: auto; }
 .app-shell > .sidebar > .primary-nav { display: flex; position: static; top: auto; min-height: 0; flex-direction: column; flex-wrap: nowrap; gap: 0; margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
 .app-shell > .sidebar > .sidebar-foot { position: static; left: auto; bottom: auto; z-index: auto; width: auto; margin-top: auto; }
+/* 主侧栏和内容区直接相邻，保持与 admin-web 相同的桌面布局。 */
+.app-shell { gap: 0; }
 .app-shell > .shell-content > .topbar { margin-bottom: 0; }
-.app-shell > .shell-content > .shell-main { grid-column: auto; grid-row: auto; min-width: 0; }
+.app-shell > .shell-content > .shell-main { grid-column: auto; grid-row: auto; width: 100%; max-width: 1640px; min-width: 0; margin: 0 auto; }
+/* 移除旧版外层面板和表格卡片内距，页面只保留 admin-web 定义的组件间距。 */
+.app-shell > .shell-content > .shell-main > .panel { overflow: visible; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
+.app-shell > .shell-content > .shell-main .table-card,
+.app-shell > .shell-content > .shell-main .jobs-table-card,
+.app-shell > .shell-content > .shell-main .job-logs-card { padding: 0; }
+/* 用户表格只覆盖旧主题遗留的表头底色、粘性定位和复选框尺寸。 */
+.users-table th { position: static; z-index: auto; background: transparent; }
+.users-table input[type="checkbox"] { width: 16px; height: 16px; min-height: 16px; margin: 0; padding: 0; accent-color: var(--indigo); }
 .dashboard { width: 100%; min-width: 0; flex: 1 1 auto; }
 .dashboard > .module-nav.primary-nav { display: flex; flex-direction: column; min-width: 0; }
 .dashboard > .module-nav.primary-nav .nav-item { display: flex; width: 100%; align-items: center; gap: 10px; min-width: 0; text-align: left; }

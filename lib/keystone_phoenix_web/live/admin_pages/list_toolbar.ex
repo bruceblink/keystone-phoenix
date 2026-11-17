@@ -1,5 +1,5 @@
 defmodule KeystonePhoenixWeb.Live.AdminPages.ListToolbar do
-  @moduledoc "列表页筛选条件下方的操作按钮组。"
+  @moduledoc "列表卡片中的操作按钮组。"
 
   use Phoenix.Component
 

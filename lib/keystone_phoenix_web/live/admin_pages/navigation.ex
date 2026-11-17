@@ -67,6 +67,15 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Navigation do
     """
   end
 
+  # 供列表操作按钮复用 admin-web 同款的常用线性图标。
+  defp icon_path("plus"), do: "M12 5v14M5 12h14"
+  defp icon_path("search"), do: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.35-4.35"
+  defp icon_path("upload"), do: "M12 16V4m-4 4 4-4 4 4M4 20h16"
+  defp icon_path("download"), do: "M12 4v12m-4-4 4 4 4-4M4 20h16"
+
+  defp icon_path("refresh"),
+    do: "M20 7v5h-5M4 17v-5h5m-4.1-3A8 8 0 0 1 18.8 6L20 7M4 17l1.2 1A8 8 0 0 0 19.1 15"
+
   defp icon_path("activity"), do: "M3 12h4l3-9 4 18 3-9h4"
 
   defp icon_path("users"),

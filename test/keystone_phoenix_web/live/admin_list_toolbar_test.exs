@@ -7,7 +7,7 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
 
   alias KeystonePhoenixWeb.Live.AdminPages.{Accounts, Organization}
 
-  # 列表操作必须在筛选卡之后、结果卡之前，避免依赖查询结果渲染。
+  # 列表操作留在结果卡内并位于标题前，初次读取错误时也保持可见。
   test "用户和组织列表在空结果或错误状态下保留工具栏" do
     user_html =
       render_component(&Accounts.users/1, %{
@@ -16,7 +16,7 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
         permissions: ["user:import", "user:export", "user:delete"]
       })
 
-    assert_toolbar_between(user_html, "users-filter-card", "list-toolbar", "users-table-card")
+    assert_toolbar_in_card(user_html, "users-filter-card", "users-table-card")
 
     assert_event_order(user_html, [
       ~s(phx-click="new-user"),
@@ -26,18 +26,19 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
       ~s(phx-click="refresh-users")
     ])
 
+    assert [toolbar_html] =
+             Regex.run(~r/<div class="list-toolbar".*?<div class="card-header">/s, user_html)
+
+    assert length(Regex.scan(~r/class="nav-icon-svg"/, toolbar_html)) == 4
+    assert Regex.match?(~r/phx-disable-with="查询中…"><svg class="nav-icon-svg"/, user_html)
+
     department_html =
       render_component(&Organization.departments/1, %{
         dept_rows: [],
         dept_feedback: {:error, "读取组织失败"}
       })
 
-    assert_toolbar_between(
-      department_html,
-      "departments-filter-card",
-      "list-toolbar",
-      "departments-table-card"
-    )
+    assert_toolbar_in_card(department_html, "departments-filter-card", "departments-table-card")
 
     assert_event_order(department_html, [~s(phx-click="new-dept"), ~s(phx-click="refresh-depts")])
 
@@ -48,7 +49,7 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
         permissions: ["post:export"]
       })
 
-    assert_toolbar_between(post_html, "posts-filter-card", "list-toolbar", "posts-table-card")
+    assert_toolbar_in_card(post_html, "posts-filter-card", "posts-table-card")
 
     assert_event_order(post_html, [
       ~s(phx-click="new-post"),
@@ -63,7 +64,7 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
         permissions: ["role:export"]
       })
 
-    assert_toolbar_between(role_html, "roles-filter-card", "list-toolbar", "roles-table-card")
+    assert_toolbar_in_card(role_html, "roles-filter-card", "roles-table-card")
     assert role_html =~ ~s(phx-click="new-role")
     assert role_html =~ ~s(phx-click="export-roles")
     assert role_html =~ ~s(id="role-delete-toolbar-action")
@@ -85,7 +86,7 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
         menu_feedback: {:error, "读取菜单失败"}
       })
 
-    assert_toolbar_between(menu_html, "menus-filter-card", "list-toolbar", "menus-table-card")
+    assert_toolbar_in_card(menu_html, "menus-filter-card", "menus-table-card")
     assert_event_order(menu_html, [~s(phx-click="new-menu"), ~s(phx-click="refresh-menus")])
   end
 
@@ -124,13 +125,31 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
            )
   end
 
-  defp assert_toolbar_between(html, filter_class, toolbar_class, results_class) do
-    filter_index = index!(html, filter_class)
-    toolbar_index = index!(html, toolbar_class)
-    results_index = index!(html, results_class)
+  # 用户表格直接使用 admin-web 的滚动区域，避免旧 table-scroll 外观叠加。
+  test "用户表格使用页面级横向滚动容器" do
+    html =
+      render_component(&Accounts.users/1, %{
+        user_rows: [
+          %{"userId" => "user-1", "username" => "operator", "nickname" => "操作员", "status" => 1}
+        ],
+        user_feedback: nil,
+        permissions: []
+      })
 
-    assert filter_index < toolbar_index
-    assert toolbar_index < results_index
+    assert html =~ ~s(class="users-table-wrap" role="region" tabindex="0" aria-label="用户列表")
+    refute html =~ ~s(class="table-scroll" role="region" tabindex="0" aria-label="用户列表")
+    assert html =~ ~s(<th scope="col">用户</th>)
+  end
+
+  defp assert_toolbar_in_card(html, filter_class, results_class) do
+    filter_index = index!(html, filter_class)
+    results_index = index!(html, results_class)
+    toolbar_index = index!(html, ~s(<div class="list-toolbar"), results_index)
+    heading_index = index!(html, ~s(class="card-header"), toolbar_index)
+
+    assert filter_index < results_index
+    assert results_index < toolbar_index
+    assert toolbar_index < heading_index
   end
 
   defp assert_event_order(html, markers) do

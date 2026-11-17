@@ -42,18 +42,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <label for="user-query"><span>用户名</span><input id="user-query" name="username" value={@user_query} placeholder="按用户名筛选" autocomplete="off" /></label>
           <label for="user-display-name-query"><span>展示名</span><input id="user-display-name-query" name="displayName" value={@user_display_name_query} placeholder="按展示名筛选" autocomplete="off" /></label>
           <div class="users-filter-actions">
-            <button type="submit" class="button button-primary refresh" phx-disable-with="查询中…">查询</button>
+            <button type="submit" class="button button-primary refresh" phx-disable-with="查询中…"><.nav_icon name="search" />查询</button>
             <button type="button" class="button button-ghost refresh secondary" phx-click="reset-user-filter" phx-disable-with="处理中…">重置</button>
           </div>
         </form>
       </section>
-      <.list_toolbar label="用户列表操作">
-        <button :if={!@read_only} type="button" class="button button-primary refresh" phx-click="new-user" phx-disable-with="处理中…">新增用户</button>
-        <button :if={!@read_only and "user:import" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="new-user-import" phx-disable-with="处理中…">导入 Excel</button>
-        <button :if={"user:export" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="export-users" phx-disable-with="导出中…">导出 Excel</button>
-        <button :if={!@read_only and "user:delete" in @permissions} type="button" class="button button-danger refresh danger-action" phx-click="delete-users" phx-value-user-ids={Enum.join(@selected_user_ids, ",")} phx-confirm="确认删除选中的用户吗？" disabled={@selected_user_ids == []} phx-disable-with="删除中…">删除用户（<%= length(@selected_user_ids) %>）</button>
-        <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…">刷新列表</button>
-      </.list_toolbar>
       <%= if @user_feedback do %>
         <p id="user-feedback" class={Feedback.class(@user_feedback)} role={Feedback.role(@user_feedback)} aria-live={Feedback.live(@user_feedback)}><%= Feedback.message(@user_feedback) %></p>
       <% end %>
@@ -119,6 +112,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       <% end %>
       <span id="user-download-hook" phx-hook="DownloadFile" hidden></span>
       <section class="card table-card users-table-card" aria-labelledby="users-table-title">
+        <.list_toolbar label="用户列表操作">
+          <button :if={!@read_only} type="button" class="button button-primary refresh" phx-click="new-user" phx-disable-with="处理中…"><.nav_icon name="plus" />新增用户</button>
+          <button :if={!@read_only and "user:import" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="new-user-import" phx-disable-with="处理中…"><.nav_icon name="upload" />导入 Excel</button>
+          <button :if={"user:export" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="export-users" phx-disable-with="导出中…"><.nav_icon name="download" />导出 Excel</button>
+          <button :if={!@read_only and "user:delete" in @permissions} type="button" class="button button-danger refresh danger-action" phx-click="delete-users" phx-value-user-ids={Enum.join(@selected_user_ids, ",")} phx-confirm="确认删除选中的用户吗？" disabled={@selected_user_ids == []} phx-disable-with="删除中…">删除用户（<%= length(@selected_user_ids) %>）</button>
+          <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新列表</button>
+        </.list_toolbar>
         <div class="card-header">
           <div>
             <h2 id="users-table-title">用户列表</h2>
@@ -130,8 +130,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         <%= if page_user_rows == [] do %>
           <div class="users-empty" role="status"><span class="users-empty-icon" aria-hidden="true"><.nav_icon name="users" /></span><strong>没有匹配的用户</strong><p>调整筛选条件后重试，或清空筛选条件查看全部用户。</p></div>
         <% else %>
-          <div class="table-wrap">
-            <div class="table-scroll" role="region" tabindex="0" aria-label="用户列表"><table class="users-table"><caption class="sr-only">用户列表</caption>
+          <div class="users-table-wrap" role="region" tabindex="0" aria-label="用户列表"><table class="users-table"><caption class="sr-only">用户列表</caption>
               <% all_selected = Enum.all?(page_user_rows, &(to_string(&1["userId"]) in @selected_user_ids)) %>
               <thead><tr><th scope="col"><input type="checkbox" aria-label="选择当前页用户" checked={all_selected} phx-click="toggle-all-user-selection" phx-value-selected={if all_selected, do: "false", else: "true"} /></th><th scope="col">用户</th><th scope="col">UUID</th><th scope="col">部门</th><th scope="col">岗位</th><th scope="col">角色</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
               <tbody>
@@ -143,7 +142,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
                 <% end %>
               </tbody>
             </table></div>
-          </div>
         <% end %>
         <div class="table-card-footer">
           <.pagination panel="users" page_num={@page_num} page_size={@page_size} total={@user_total} />

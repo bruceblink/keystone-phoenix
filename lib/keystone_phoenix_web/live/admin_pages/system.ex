@@ -33,13 +33,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       <section class="card configs-filter-card filter-card">
         <form id="configs-filter" class="configs-filter-form filter-form" phx-change="filter-configs" phx-submit="filter-configs">
           <label for="configs-filter-keyword"><span>配置键或说明</span><input id="configs-filter-keyword" name="configKeyword" value={@config_filter["keyword"] || ""} placeholder="按配置键或说明筛选" autocomplete="off" /></label>
-          <div class="configs-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-config-filter">重置</button></div>
+          <div class="configs-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm"><.nav_icon name="search" />查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-config-filter">重置</button></div>
         </form>
       </section>
-      <.list_toolbar label="系统配置列表操作">
-        <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-config" phx-disable-with="处理中…">新增配置</button>
-        <button type="button" class="button button-secondary button-sm" phx-click="refresh-config" phx-disable-with="刷新中…">刷新配置</button>
-      </.list_toolbar>
       <%= if @active_modal == "config" do %>
         <.modal id="config-modal" title={if @config_form["configId"] == "", do: "新建配置", else: "编辑配置"} description="维护系统配置和值域。">
     <form :if={!@read_only} aria-describedby="config-feedback" phx-submit="save-config">
@@ -57,6 +53,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         </.modal>
       <% end %>
       <section class="card configs-table-card table-card" aria-labelledby="configs-table-title">
+        <.list_toolbar label="系统配置列表操作">
+          <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-config" phx-disable-with="处理中…"><.nav_icon name="plus" />新增配置</button>
+          <button type="button" class="button button-secondary button-sm" phx-click="refresh-config" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新配置</button>
+        </.list_toolbar>
         <header class="card-header table-card-heading">
           <div><h2 id="configs-table-title">配置列表</h2><p>共 <%= @config_total || length(@config_rows) %> 项匹配配置</p></div>
           <span class="badge badge-info">系统 API</span>
@@ -99,13 +99,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       <section class="card dictionaries-filter-card filter-card">
         <form id="dict-type-filter" class="dictionaries-filter-form filter-form" phx-submit="filter-dict-types">
           <label for="dict-type-filter-keyword"><span>类型编码或名称</span><input id="dict-type-filter-keyword" name="dictTypeKeyword" value={@dict_type_filter["keyword"] || ""} placeholder="按类型编码或名称筛选" autocomplete="off" /></label>
-          <div class="dictionaries-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-dict-type-filter">重置</button></div>
+          <div class="dictionaries-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm"><.nav_icon name="search" />查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-dict-type-filter">重置</button></div>
         </form>
       </section>
-      <.list_toolbar label="字典类型列表操作">
-        <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-dict-type" phx-disable-with="处理中…">新增类型</button>
-        <button type="button" class="button button-secondary button-sm" phx-click="refresh-dicts" phx-disable-with="刷新中…">刷新字典</button>
-      </.list_toolbar>
       <%= if @active_modal == "dict-type" do %>
         <.modal id="dict-type-modal" title={if @dict_type_form["dictId"] == "", do: "新建字典类型", else: "编辑字典类型"} description="维护字典类型和状态。">
     <form :if={!@read_only} aria-describedby="dict-feedback" phx-submit="save-dict-type">
@@ -121,6 +117,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         </.modal>
       <% end %>
       <section class="card dictionary-types-card table-card" aria-labelledby="dict-types-title">
+        <.list_toolbar label="字典类型列表操作">
+          <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-dict-type" phx-disable-with="处理中…"><.nav_icon name="plus" />新增类型</button>
+          <button type="button" class="button button-secondary button-sm" phx-click="refresh-dicts" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新字典</button>
+        </.list_toolbar>
         <header class="card-header table-card-heading">
           <div><h2 id="dict-types-title">字典类型</h2><p>共 <%= length(filtered_dict_type_rows(@dict_type_rows, @dict_type_filter)) %> 个匹配类型</p></div>
           <span class="badge badge-info">系统 API</span>
@@ -139,14 +139,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       <%= if @selected_dict_type != "" do %>
         <form id="dict-data-filter" class="dictionary-items-filter-form filter-form" phx-submit="filter-dict-data">
           <label for="dict-data-filter-keyword"><span>条目值或名称</span><input id="dict-data-filter-keyword" name="dictDataKeyword" value={@dict_data_filter["keyword"] || ""} placeholder="按值或名称筛选" autocomplete="off" /></label>
-          <div class="dictionary-items-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-dict-data-filter">重置</button></div>
+          <div class="dictionary-items-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm"><.nav_icon name="search" />查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-dict-data-filter">重置</button></div>
         </form>
       <% end %>
-      <div :if={@selected_dict_type != "" and !@read_only} class="dictionary-items-toolbar">
-        <.list_toolbar label="字典条目列表操作">
-          <button type="button" class="button button-primary button-sm" phx-click="new-dict-data" phx-disable-with="处理中…">新增条目</button>
-        </.list_toolbar>
-      </div>
+      <.list_toolbar :if={@selected_dict_type != "" and !@read_only} label="字典条目列表操作">
+        <button type="button" class="button button-primary button-sm" phx-click="new-dict-data" phx-disable-with="处理中…"><.nav_icon name="plus" />新增条目</button>
+      </.list_toolbar>
         <header class="card-header table-card-heading">
           <div><h2 id="dict-items-title"><%= if @selected_dict_type == "", do: "字典条目", else: "#{@selected_dict_type} · 字典条目" %></h2><p><%= if @selected_dict_type == "", do: "选择类型后查看条目。", else: "当前类型的标签、值和展示属性" %></p></div>
           <span :if={@selected_dict_type == ""} class="badge badge-neutral">选择类型后维护</span>
@@ -226,14 +224,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         <form id="notice-filter" class="notices-filter-form filter-form" phx-submit="filter-notices">
           <label for="notice-filter-title"><span>标题或内容</span><input id="notice-filter-title" name="noticeTitle" value={@notice_filter["title"] || ""} placeholder="按标题、内容或类型筛选" /></label>
           <label for="notice-filter-published"><span>发布状态</span><select id="notice-filter-published" name="published"><option value="all" selected={@notice_filter["published"] in [nil, "all"]}>全部状态</option><option value="true" selected={@notice_filter["published"] == "true"}>已发布</option><option value="false" selected={@notice_filter["published"] == "false"}>未发布</option></select></label>
-          <div class="notices-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-notice-filter">重置</button></div>
+          <div class="notices-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm"><.nav_icon name="search" />查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-notice-filter">重置</button></div>
         </form>
       </section>
-      <.list_toolbar label="公告列表操作">
-        <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-notice" phx-disable-with="处理中…">新增公告</button>
-        <button :if={!@read_only} type="button" class="button button-danger button-sm" phx-click="delete-notices" phx-value-notice-ids={Enum.join(@selected_notice_ids, ",")} phx-confirm="确认删除选中的公告吗？" disabled={@selected_notice_ids == []} phx-disable-with="删除中…">删除公告（<%= length(@selected_notice_ids) %>）</button>
-        <button type="button" class="button button-secondary button-sm" phx-click="refresh-notices" phx-disable-with="刷新中…">刷新公告</button>
-      </.list_toolbar>
       <% filtered_notices = filtered_notice_rows(@notice_rows, @notice_filter) %>
       <% all_notices_selected = filtered_notices != [] and Enum.all?(filtered_notices, &(to_string(&1["noticeId"]) in @selected_notice_ids)) %>
       <%= if @active_modal == "notice" do %>
@@ -252,6 +245,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         </.modal>
       <% end %>
       <section class="card notices-table-card table-card" aria-labelledby="notices-table-title">
+        <.list_toolbar label="公告列表操作">
+          <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-notice" phx-disable-with="处理中…"><.nav_icon name="plus" />新增公告</button>
+          <button :if={!@read_only} type="button" class="button button-danger button-sm" phx-click="delete-notices" phx-value-notice-ids={Enum.join(@selected_notice_ids, ",")} phx-confirm="确认删除选中的公告吗？" disabled={@selected_notice_ids == []} phx-disable-with="删除中…">删除公告（<%= length(@selected_notice_ids) %>）</button>
+          <button type="button" class="button button-secondary button-sm" phx-click="refresh-notices" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新公告</button>
+        </.list_toolbar>
         <header class="card-header table-card-heading">
           <div><h2 id="notices-table-title">公告列表</h2><p>共 <%= @notice_total || length(filtered_notice_rows(@notice_rows, @notice_filter)) %> 条匹配公告</p></div>
           <span class="badge badge-info">系统 API</span>
@@ -333,15 +331,15 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         <form id="login-log-filter" class="audit-filter-form filter-form" phx-submit="filter-login-logs">
           <label for="login-log-filter-username"><span>用户名</span><input id="login-log-filter-username" name="loginUsername" value={@login_log_filter["username"] || ""} placeholder="按用户名筛选" autocomplete="off" /></label>
           <label for="login-log-filter-status"><span>登录状态</span><input id="login-log-filter-status" name="loginStatus" value={@login_log_filter["status"] || ""} placeholder="例如 SUCCESS、FAILURE" autocomplete="off" /></label>
-          <div class="audit-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-login-log-filter">重置</button></div>
+          <div class="audit-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm"><.nav_icon name="search" />查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-login-log-filter">重置</button></div>
         </form>
       </section>
-      <.list_toolbar :if={@kind in ["both", "login"]} label="登录日志列表操作">
-        <button :if={@kind == "both"} type="button" class="refresh" phx-click="refresh-logs" phx-disable-with="刷新中…">刷新日志</button>
-        <button :if={@kind == "login"} type="button" class="button button-secondary button-sm" phx-click="export-login-logs" phx-disable-with="导出中…">导出 Excel</button>
-        <button :if={@kind == "login"} type="button" class="button button-secondary button-sm" phx-click="refresh-login-logs" phx-disable-with="刷新中…">刷新列表</button>
-      </.list_toolbar>
       <section class="card audit-table-card table-card" aria-labelledby="login-logs-title">
+        <.list_toolbar :if={@kind in ["both", "login"]} label="登录日志列表操作">
+          <button :if={@kind == "both"} type="button" class="button button-secondary button-sm" phx-click="refresh-logs" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新日志</button>
+          <button :if={@kind == "login"} type="button" class="button button-secondary button-sm" phx-click="export-login-logs" phx-disable-with="导出中…"><.nav_icon name="download" />导出 Excel</button>
+          <button :if={@kind == "login"} type="button" class="button button-secondary button-sm" phx-click="refresh-login-logs" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新列表</button>
+        </.list_toolbar>
         <header class="card-header table-card-heading">
           <div><h2 id="login-logs-title">登录日志</h2><p>共 <%= @login_log_total %> 条记录</p></div>
           <span class="badge badge-info">系统 API</span>
@@ -364,14 +362,14 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <label for="operation-log-filter-actor"><span>操作用户</span><input id="operation-log-filter-actor" name="operationActor" value={@operation_log_filter["actor"] || ""} placeholder="按用户名筛选" autocomplete="off" /></label>
           <label for="operation-log-filter-action"><span>操作动作</span><input id="operation-log-filter-action" name="operationAction" value={@operation_log_filter["action"] || ""} placeholder="例如 UPDATE、DELETE" autocomplete="off" /></label>
           <label for="operation-log-filter-resource"><span>资源类型</span><input id="operation-log-filter-resource" name="operationResource" value={@operation_log_filter["resource"] || ""} placeholder="例如 user、role" autocomplete="off" /></label>
-          <div class="audit-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-operation-log-filter">重置</button></div>
+          <div class="audit-filter-actions filter-actions"><button type="submit" class="button button-primary button-sm"><.nav_icon name="search" />查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-operation-log-filter">重置</button></div>
         </form>
       </section>
-      <.list_toolbar :if={@kind == "operation"} label="操作审计列表操作">
-        <button type="button" class="button button-secondary button-sm" phx-click="export-operation-logs" phx-disable-with="导出中…">导出 Excel</button>
-        <button type="button" class="button button-secondary button-sm" phx-click="refresh-operation-logs" phx-disable-with="刷新中…">刷新列表</button>
-      </.list_toolbar>
       <section class="card audit-table-card table-card" aria-labelledby="operation-logs-title">
+        <.list_toolbar :if={@kind == "operation"} label="操作审计列表操作">
+          <button type="button" class="button button-secondary button-sm" phx-click="export-operation-logs" phx-disable-with="导出中…"><.nav_icon name="download" />导出 Excel</button>
+          <button type="button" class="button button-secondary button-sm" phx-click="refresh-operation-logs" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新列表</button>
+        </.list_toolbar>
         <header class="card-header table-card-heading">
           <div><h2 id="operation-logs-title">操作审计</h2><p>共 <%= @operation_log_total %> 条记录</p></div>
           <span class="badge badge-info">系统 API</span>

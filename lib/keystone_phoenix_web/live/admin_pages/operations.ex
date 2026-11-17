@@ -40,14 +40,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       <section class="card jobs-filter-card">
         <form id="jobs-filter" class="jobs-filter-form filter-form" phx-submit="filter-jobs">
           <label for="jobs-filter-keyword"><span>任务名称、编码或分组</span><input id="jobs-filter-keyword" name="jobKeyword" value={@job_filter["keyword"] || ""} placeholder="按任务名称、调用目标或分组筛选" autocomplete="off" /></label>
-          <div class="jobs-filter-actions"><button type="submit" class="button button-primary button-sm">查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-job-filter">重置</button></div>
+          <div class="jobs-filter-actions"><button type="submit" class="button button-primary button-sm"><.nav_icon name="search" />查询</button><button type="button" class="button button-ghost button-sm" phx-click="reset-job-filter">重置</button></div>
         </form>
       </section>
-      <.list_toolbar label="定时任务列表操作">
-        <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-job" phx-disable-with="处理中…">新增任务</button>
-        <button :if={!@read_only} type="button" class="button button-danger button-sm" phx-click="delete-jobs" phx-value-job-ids={Enum.join(@selected_job_ids, ",")} phx-confirm="确认删除选中的任务吗？" disabled={@selected_job_ids == []} phx-disable-with="删除中…">删除任务（<%= length(@selected_job_ids) %>）</button>
-        <button type="button" class="button button-secondary button-sm" phx-click="refresh-jobs" phx-disable-with="刷新中…">刷新任务</button>
-      </.list_toolbar>
       <%= if @active_modal == "job" do %>
         <.modal id="job-modal" title={if @job_form["jobId"] == "", do: "新建任务", else: "编辑任务"} description="维护调度目标、执行计划和运行状态。">
     <form :if={!@read_only} aria-describedby="job-feedback" phx-submit="save-job">
@@ -67,6 +62,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
         </.modal>
       <% end %>
       <section class="card jobs-table-card" aria-labelledby="jobs-table-title">
+        <.list_toolbar label="定时任务列表操作">
+          <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-job" phx-disable-with="处理中…"><.nav_icon name="plus" />新增任务</button>
+          <button :if={!@read_only} type="button" class="button button-danger button-sm" phx-click="delete-jobs" phx-value-job-ids={Enum.join(@selected_job_ids, ",")} phx-confirm="确认删除选中的任务吗？" disabled={@selected_job_ids == []} phx-disable-with="删除中…">删除任务（<%= length(@selected_job_ids) %>）</button>
+          <button type="button" class="button button-secondary button-sm" phx-click="refresh-jobs" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新任务</button>
+        </.list_toolbar>
         <header class="card-header table-card-heading">
           <div><h2 id="jobs-table-title">任务列表</h2><p>共 <%= @job_total %> 个匹配任务</p></div>
           <span class="badge badge-info">系统 API</span>
@@ -85,10 +85,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       <%= if @selected_job_id do %>
         <% selected_job = @selected_job || Enum.find(@job_rows, &(to_string(&1["jobId"]) == to_string(@selected_job_id))) %>
         <% selected_logs = @job_log_rows %>
-        <.list_toolbar :if={selected_job != nil} label="任务执行日志操作">
-          <button type="button" class="button button-ghost button-sm" phx-click="refresh-job-logs" phx-disable-with="刷新中…">刷新</button>
-        </.list_toolbar>
         <section :if={selected_job} class="card job-logs-card" aria-labelledby="selected-job-logs-title">
+          <.list_toolbar label="任务执行日志操作">
+            <button type="button" class="button button-ghost button-sm" phx-click="refresh-job-logs" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新</button>
+          </.list_toolbar>
           <header class="card-header">
             <div><h2 id="selected-job-logs-title"><%= selected_job["jobName"] %> · 执行日志</h2><p>共 <%= @job_log_total %> 条记录</p></div>
             <span class="badge badge-info">只读</span>
@@ -126,10 +126,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
         </div>
       </header>
       <%= if @job_log_feedback do %><p id="job-log-feedback" class={Feedback.class(@job_log_feedback)} role={Feedback.role(@job_log_feedback)} aria-live={Feedback.live(@job_log_feedback)}><%= Feedback.message(@job_log_feedback) %></p><% end %>
-      <.list_toolbar label="任务日志列表操作">
-        <button type="button" class="refresh secondary" phx-click="refresh-job-logs" phx-disable-with="刷新中…">刷新任务日志</button>
-      </.list_toolbar>
       <section class="card job-logs-card table-card" aria-labelledby="job-logs-title">
+        <.list_toolbar label="任务日志列表操作">
+          <button type="button" class="refresh secondary" phx-click="refresh-job-logs" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新任务日志</button>
+        </.list_toolbar>
         <header class="card-header table-card-heading">
           <div><h2 id="job-logs-title">执行日志</h2><p>共 <%= length(@job_log_rows) %> 条记录</p></div>
           <span class="status-badge status-badge--normal">只读</span>

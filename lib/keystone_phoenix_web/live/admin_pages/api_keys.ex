@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
 
   import KeystonePhoenixWeb.Live.AdminPages.Modal
   import KeystonePhoenixWeb.Live.AdminPages.Pagination, only: [pagination: 1]
+  import KeystonePhoenixWeb.Live.AdminPages.Navigation, only: [nav_icon: 1]
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenix.Authz.PermissionCatalog
   import KeystonePhoenixWeb.Live.AdminPages.ListToolbar, only: [list_toolbar: 1]
@@ -71,14 +72,14 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
         <form class="filter-form api-keys-filter-form" phx-submit="filter-api-keys">
           <label for="api-key-query"><span>名称、前缀或范围</span><input id="api-key-query" name="query" value={@api_key_query} placeholder="按名称、前缀或权限范围筛选" autocomplete="off" /></label>
           <label for="api-key-status"><span>状态</span><select id="api-key-status" name="status"><option value="all" selected={@api_key_status == "all"}>全部状态</option><option value="active" selected={@api_key_status == "active"}>有效</option><option value="revoked" selected={@api_key_status == "revoked"}>已撤销</option></select></label>
-          <div class="filter-actions api-keys-filter-actions"><button type="submit" class="button button-primary refresh">查询</button><button type="button" class="button button-ghost refresh secondary" phx-click="filter-api-keys" phx-value-query="" phx-value-status="all">重置</button></div>
+          <div class="filter-actions api-keys-filter-actions"><button type="submit" class="button button-primary refresh"><.nav_icon name="search" />查询</button><button type="button" class="button button-ghost refresh secondary" phx-click="filter-api-keys" phx-value-query="" phx-value-status="all">重置</button></div>
         </form>
       </section>
-      <.list_toolbar label="API Key 列表操作">
-        <button :if={"api-key:create" in @permissions} type="button" class="button button-primary refresh" phx-click="new-api-key" phx-disable-with="处理中…">签发 API Key</button>
-        <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-api-keys" phx-disable-with="刷新中…">刷新列表</button>
-      </.list_toolbar>
       <section class="card table-card api-keys-table-card" aria-labelledby="api-keys-table-title">
+        <.list_toolbar label="API Key 列表操作">
+          <button :if={"api-key:create" in @permissions} type="button" class="button button-primary refresh" phx-click="new-api-key" phx-disable-with="处理中…"><.nav_icon name="plus" />签发 API Key</button>
+          <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-api-keys" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新列表</button>
+        </.list_toolbar>
         <header class="card-header table-card-heading">
           <div><h2 id="api-keys-table-title">API Key 列表</h2><p>共 <%= @api_key_total || length(@api_key_rows) %> 个匹配凭据</p></div>
           <span class="badge badge-info">仅显示元数据</span>
