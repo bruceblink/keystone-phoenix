@@ -41,6 +41,23 @@ defmodule KeystonePhoenixWeb.ProfilePasswordLiveTest do
   end
 
   @tag :integration
+  test "profile policy rejects a weak password without changing credentials", %{conn: conn} do
+    user = profile_user(true)
+    view = login_profile(conn, user)
+    original_hash = Repo.get!(SysUser, user.user_id).password
+
+    {:ok, %{session_id: session_id}} =
+      Auth.session_context(live_socket(view).assigns.access_token)
+
+    render_submit(view, "change-profile-password", %{"password" => "test-only-disallowed"})
+
+    assert has_element?(view, "#profile-feedback[role='alert']")
+    assert render(view) =~ "密码不符合安全策略"
+    assert Repo.get!(SysUser, user.user_id).password == original_hash
+    assert Auth.Session.active?(user.user_id, session_id)
+  end
+
+  @tag :integration
   test "a user without password reset permission is rejected without changing the password", %{
     conn: conn
   } do

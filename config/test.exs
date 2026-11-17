@@ -22,6 +22,16 @@ config :keystone_phoenix,
   passkey_cleanup_interval_ms: 3_600_000,
   jwt_key_registry_cleanup_interval_ms: 3_600_000
 
+# 密码测试值与 Native test profile 一致，不覆盖生产默认策略。
+config :keystone_phoenix, :password_policy, %{
+  min_length: 8,
+  require_uppercase: false,
+  require_lowercase: false,
+  require_digit: false,
+  require_special: false,
+  disallowed: "test-only-disallowed"
+}
+
 config :keystone_phoenix,
   mfa_master_key: Base.encode64(String.duplicate("m", 32)),
   mfa_master_key_version: 1,

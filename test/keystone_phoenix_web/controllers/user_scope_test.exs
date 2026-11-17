@@ -234,6 +234,18 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert json_response(response, 201)["success"] == true
     {:ok, created} = User.get_user_by_username(username)
 
+    rejected_username = unique("policy_rejected_create")
+
+    rejected =
+      post(authorized(tokens.token), "/api/v1/users", %{
+        "username" => rejected_username,
+        "password" => "test-only-disallowed",
+        "deptId" => ctx.child.dept_id
+      })
+
+    assert get_in(json_response(rejected, 422), ["error", "code"]) == "validation_failed"
+    assert {:error, :not_found} = User.get_user_by_username(rejected_username)
+
     on_exit(fn ->
       Repo.update!(Ecto.Changeset.change(Repo.get!(SysUser, created.user_id), deleted: true))
     end)

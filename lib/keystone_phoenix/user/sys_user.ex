@@ -52,15 +52,15 @@ defmodule KeystonePhoenix.User.SysUser do
     :remark
   ]
 
-  @password_pattern ~r/^(?!\s)(?!.*\s$)(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d\s]).*$/
-
   @doc "Validates fields accepted when an administrator creates a user."
   def create_changeset(user, attrs) do
     user
-    |> cast(attrs, @user_fields ++ [:password])
+    |> cast(attrs, @user_fields)
     |> put_new_id()
-    |> validate_required([:username, :password])
+    |> validate_required([:username])
     |> validate_user_fields()
+    # Ecto 默认会先裁剪并丢弃 Unicode 空白密码；空白规则由 Native 兼容校验统一处理。
+    |> cast(attrs, [:password], empty_values: [])
     |> validate_password()
     |> update_change(:password, &Bcrypt.hash_pwd_salt/1)
     |> unique_constraint(:username, name: :sys_user_username_unique_index)
@@ -85,8 +85,7 @@ defmodule KeystonePhoenix.User.SysUser do
   @doc "Validates and hashes a replacement password."
   def password_changeset(user, attrs) do
     user
-    |> cast(attrs, [:password])
-    |> validate_required([:password])
+    |> cast(attrs, [:password], empty_values: [])
     |> validate_password()
     |> update_change(:password, &Bcrypt.hash_pwd_salt/1)
   end
@@ -109,9 +108,7 @@ defmodule KeystonePhoenix.User.SysUser do
   end
 
   defp validate_password(changeset) do
-    changeset
-    |> validate_length(:password, min: 8, max: 32)
-    |> validate_format(:password, @password_pattern, message: "密码首尾不能包含空格，且必须包含字母、数字和特殊符号")
+    KeystonePhoenix.User.PasswordPolicy.validate_changeset(changeset)
   end
 
   defp validate_avatar(changeset) do

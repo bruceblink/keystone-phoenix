@@ -8,6 +8,7 @@ defmodule KeystonePhoenixWeb.LoginInitialPasswordTest do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.User.SysUser
 
   @current_password "Strong!123"
   @new_password "Changed!456"
@@ -65,7 +66,25 @@ defmodule KeystonePhoenixWeb.LoginInitialPasswordTest do
     })
 
     assert has_element?(view, ".initial-password-panel [role='alert']", "新密码不符合系统密码要求")
-    assert Repo.get!(KeystonePhoenix.User.SysUser, user.user_id).must_change_password
+    assert Repo.get!(SysUser, user.user_id).must_change_password
+
+    original_hash = Repo.get!(SysUser, user.user_id).password
+
+    render_submit(view, "change-initial-password", %{
+      "currentPassword" => @current_password,
+      "newPassword" => "test-only-disallowed",
+      "confirmPassword" => "test-only-disallowed"
+    })
+
+    assert has_element?(
+             view,
+             ".initial-password-panel [role='alert']",
+             "新密码不符合系统密码要求"
+           )
+
+    unchanged = Repo.get!(SysUser, user.user_id)
+    assert unchanged.password == original_hash
+    assert unchanged.must_change_password
 
     render_submit(view, "change-initial-password", %{
       "currentPassword" => @current_password,
@@ -81,7 +100,7 @@ defmodule KeystonePhoenixWeb.LoginInitialPasswordTest do
     refute html =~ @new_password
     refute inspect(live_socket(view).assigns) =~ @current_password
     refute inspect(live_socket(view).assigns) =~ @new_password
-    refute Repo.get!(KeystonePhoenix.User.SysUser, user.user_id).must_change_password
+    refute Repo.get!(SysUser, user.user_id).must_change_password
 
     assert {:ok, tokens} = Auth.login_plaintext(user.username, @new_password)
     Auth.logout(tokens.refresh_token)

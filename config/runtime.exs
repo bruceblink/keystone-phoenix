@@ -42,6 +42,21 @@ parse_boolean_env = fn name, default ->
   end
 end
 
+if config_env() != :test do
+  config :keystone_phoenix, :password_policy, %{
+    min_length: parse_integer_env.("PASSWORD_MIN_LENGTH", 12, 8, 256),
+    require_uppercase: parse_boolean_env.("PASSWORD_REQUIRE_UPPERCASE", true),
+    require_lowercase: parse_boolean_env.("PASSWORD_REQUIRE_LOWERCASE", true),
+    require_digit: parse_boolean_env.("PASSWORD_REQUIRE_DIGIT", true),
+    require_special: parse_boolean_env.("PASSWORD_REQUIRE_SPECIAL", true),
+    disallowed:
+      System.get_env(
+        "PASSWORD_DISALLOWED",
+        "password,password1,1234567890,qwerty123,admin"
+      )
+  }
+end
+
 config :keystone_phoenix, KeystonePhoenixWeb.Endpoint,
   http: [port: parse_integer_env.("PORT", 4000, 1, 65_535)]
 

@@ -39,6 +39,14 @@ config :keystone_phoenix,
   cors_allowed_origins: [],
   trusted_proxy_cidrs: [],
   force_ssl_enabled: false,
+  password_policy: %{
+    min_length: 12,
+    require_uppercase: true,
+    require_lowercase: true,
+    require_digit: true,
+    require_special: true,
+    disallowed: "password,password1,1234567890,qwerty123,admin"
+  },
   oidc: %{
     enabled: false,
     issuer: nil,

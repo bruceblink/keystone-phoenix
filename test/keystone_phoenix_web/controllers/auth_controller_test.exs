@@ -77,6 +77,21 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert is_binary(response["data"]["refreshToken"])
   end
 
+  test "stored legacy passwords remain valid for login after policy tightening" do
+    username = "legacy_login_#{System.unique_integer([:positive])}"
+
+    legacy_user =
+      Repo.insert!(%SysUser{
+        user_id: KeystonePhoenix.Identity.v7(),
+        username: username,
+        password: Bcrypt.hash_pwd_salt("old"),
+        status: 1
+      })
+
+    assert {:ok, tokens} = Auth.login_plaintext(legacy_user.username, "old")
+    assert {:ok, _session} = Auth.session_context(tokens.token)
+  end
+
   test "blocks an initial-password account before issuing a session", %{conn: conn, user: user} do
     Repo.update!(Ecto.Changeset.change(user, must_change_password: true))
 
@@ -206,6 +221,17 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       |> json_response(422)
 
     assert get_in(same_password, ["error", "code"]) == "validation_failed"
+
+    rejected_policy =
+      build_conn()
+      |> post("/api/v1/auth/change-initial-password", %{
+        "username" => user.username,
+        "currentPassword" => "Strong!123",
+        "newPassword" => "test-only-disallowed"
+      })
+      |> json_response(422)
+
+    assert get_in(rejected_policy, ["error", "code"]) == "validation_failed"
 
     unchanged = Repo.get!(SysUser, user.user_id)
     assert unchanged.password == password_hash

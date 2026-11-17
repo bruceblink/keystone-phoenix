@@ -81,6 +81,34 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
     assert Auth.Session.active?(user.user_id, session_id(token))
   end
 
+  @tag :integration
+  test "password policy rejects administrator reset and profile changes without revoking the session",
+       %{
+         conn: conn,
+         user: user,
+         token: token
+       } do
+    original_hash = Repo.get!(SysUser, user.user_id).password
+
+    reset =
+      conn
+      |> authorized(token)
+      |> put("/api/v1/users/#{user.user_id}/password", %{"password" => "test-only-disallowed"})
+
+    assert get_in(json_response(reset, 422), ["error", "code"]) == "validation_failed"
+    assert Repo.get!(SysUser, user.user_id).password == original_hash
+    assert Auth.Session.active?(user.user_id, session_id(token))
+
+    profile =
+      conn
+      |> authorized(token)
+      |> put("/api/v1/profile/password", %{"password" => "test-only-disallowed"})
+
+    assert get_in(json_response(profile, 422), ["error", "code"]) == "validation_failed"
+    assert Repo.get!(SysUser, user.user_id).password == original_hash
+    assert Auth.Session.active?(user.user_id, session_id(token))
+  end
+
   defp authorized(conn, token),
     do: Plug.Conn.put_req_header(conn, "authorization", "Bearer #{token}")
 
