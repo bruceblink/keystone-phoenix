@@ -27,6 +27,9 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
 
   @error_codes ~w(
     active_session_conflict
+    api_key_expiry_invalid
+    api_key_expiry_out_of_range
+    api_key_name_invalid
     authentication_required
     authorization_unavailable
     data_scope_denied

@@ -11,7 +11,7 @@ defmodule KeystonePhoenixWeb.ProfileComponentTest do
     html = render_component(&Accounts.profile/1, profile_assigns(false))
 
     assert html =~ "个人资料暂不可用，请重试"
-    assert html =~ ~s(phx-value-panel="profile")
+    assert html =~ ~s(phx-click="refresh-profile")
     refute html =~ ~s(phx-submit="save-profile")
     refute html =~ ~s(phx-submit="change-profile-password")
   end
