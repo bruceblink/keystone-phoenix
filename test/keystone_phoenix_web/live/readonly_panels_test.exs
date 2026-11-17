@@ -385,6 +385,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     assert is_binary(issued.api_key)
     assert String.starts_with?(issued.api_key, "ks_live_")
     assert render(view) =~ issued.api_key
+    assert render(view) =~ "从未使用" and render(view) =~ "永不过期"
 
     render_click(view, "dismiss-api-key-secret")
     refute render(view) =~ issued.api_key
