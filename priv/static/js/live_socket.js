@@ -1,5 +1,21 @@
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
 const Hooks = {
+  LocalDateTime: {
+    mounted() {
+      this.formatTime();
+    },
+    updated() {
+      this.formatTime();
+    },
+    formatTime() {
+      // 服务端传 UTC 时间戳；浏览器按本地时区显示，与 admin-web 使用同一格式。
+      const value = this.el.dataset.utcTime || "";
+      const date = new Date(value);
+      this.el.textContent = Number.isNaN(date.getTime())
+        ? value || "—"
+        : date.toLocaleString("zh-CN", { hour12: false });
+    }
+  },
   DownloadFile: {
     mounted() {
       this.handleEvent("download-xlsx", (payload) => {

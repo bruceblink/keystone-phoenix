@@ -19,6 +19,9 @@ defmodule KeystonePhoenix.Job.SysJob do
     field :concurrent, :integer, default: 0
     field :status, :integer, default: 0
     field :remark, :string
+    # 最近一次完成运行的结果，独立于任务启停状态保存。
+    field :last_status, :string
+    field :last_run_at, :utc_datetime_usec
     field :creator_id, :binary_id
     field :created_by, :binary_id
     field :updater_id, :binary_id

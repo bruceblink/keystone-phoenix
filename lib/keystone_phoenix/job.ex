@@ -393,6 +393,8 @@ defmodule KeystonePhoenix.Job do
       "status" => job.status,
       "statusStr" => job_status(job.status),
       "remark" => job.remark,
+      "lastStatus" => job.last_status,
+      "lastRunAt" => format_job_run_time(job.last_run_at),
       "createTime" => format_datetime(job.create_time)
     }
   end
@@ -541,4 +543,12 @@ defmodule KeystonePhoenix.Job do
 
   defp format_datetime(%NaiveDateTime{} = datetime),
     do: Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S")
+
+  # lastRunAt 对外按 Native 的 Instant 格式返回，并明确标记 UTC 时区。
+  defp format_job_run_time(nil), do: nil
+
+  defp format_job_run_time(%DateTime{} = datetime), do: DateTime.to_iso8601(datetime)
+
+  defp format_job_run_time(%NaiveDateTime{} = datetime),
+    do: datetime |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_iso8601()
 end

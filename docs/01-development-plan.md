@@ -2,6 +2,12 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
+## 2026-11-18 任务最近运行状态对齐
+
+- Phoenix 在任务和执行日志写入时同步保存最近状态和时间，并从已有日志回填。接口返回 `lastStatus` 和 UTC `lastRunAt`；LiveView 按浏览器本地时区显示，与 admin-web 保持一致。
+- PostgreSQL 18 定向测试覆盖成功、失败、跳过及迁移重放。Codex 内置浏览器核验了任务列表中的“最近成功”和本地时间；隔离测试服务和数据库在验收后清理。Phoenix 在保存最近状态失败时会回滚同事务的日志；Native 当前的失败处理不同，该差异仍需后续评估。
+- 其他页面的写操作矩阵、硬件 Passkey、多节点和生产代理链验收仍未完成。
+
 ## 2026-11-18 MFA 最近认证与页面策略回归
 
 - Phoenix 新增会话 MFA 认证时间、强度和方式字段。TOTP/恢复码登录记录本次验证时间；step-up 在会话行锁事务内同时更新验证记录和当前 access token ID。敏感操作要求当前会话、用户、客户端和 token ID 一致，账号因子仍启用，验证时间不超过 600 秒，token AAL 为 `AAL2`，AMR 为 `otp` 或 `recovery`。`webauthn` Passkey 登录虽为 AAL2，但不满足这项敏感操作检查。

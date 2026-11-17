@@ -4,6 +4,8 @@ defmodule KeystonePhoenix.Job.Runner do
   alias KeystonePhoenix.Job.{Invoke, Lock, SysJob, SysJobLog}
   alias KeystonePhoenix.Repo
 
+  import Ecto.Query
+
   @max_message_length 500
   @max_exception_length 2000
 
@@ -154,11 +156,36 @@ defmodule KeystonePhoenix.Job.Runner do
   end
 
   defp persist_log(attrs, return) do
-    case Repo.insert(SysJobLog.changeset(%SysJobLog{}, attrs)) do
-      {:ok, _log} -> return
-      {:error, _changeset} -> {:error, :log_persist_failed}
+    Repo.transaction(fn ->
+      case Repo.insert(SysJobLog.changeset(%SysJobLog{}, attrs)) do
+        {:ok, _log} ->
+          persist_last_run(attrs)
+          return
+
+        {:error, _changeset} ->
+          Repo.rollback(:log_persist_failed)
+      end
+    end)
+    |> case do
+      {:ok, result} -> result
+      {:error, :log_persist_failed} -> {:error, :log_persist_failed}
     end
   end
+
+  # 运行状态与执行日志同事务写入，只有任务结果和日志都保存成功时才更新最近状态。
+  defp persist_last_run(%{job_id: job_id, status: status, end_time: run_at})
+       when not is_nil(job_id) and not is_nil(run_at) do
+    from(job in SysJob,
+      where: job.job_id == ^job_id and (is_nil(job.last_run_at) or job.last_run_at <= ^run_at)
+    )
+    |> Repo.update_all(set: [last_status: job_run_status(status), last_run_at: run_at])
+  end
+
+  defp persist_last_run(_attrs), do: {0, nil}
+
+  defp job_run_status(0), do: "FAILED"
+  defp job_run_status(1), do: "SUCCESS"
+  defp job_run_status(2), do: "SKIPPED"
 
   defp result_fields(:ok), do: {1, "任务执行成功", "", :ok}
 
