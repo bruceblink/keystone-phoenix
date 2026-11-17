@@ -7,6 +7,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
   import KeystonePhoenixWeb.Live.AdminPages.Pagination, only: [pagination: 1]
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenix.Authz.PermissionCatalog
+  import KeystonePhoenixWeb.Live.AdminPages.ListToolbar, only: [list_toolbar: 1]
 
   def api_keys(assigns) do
     assigns =
@@ -32,10 +33,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
           <p class="eyebrow">SECURITY / API KEYS</p>
           <h1>API Key 管理</h1>
           <p class="page-description">查询当前账号的机器凭据、授权范围和生命周期状态。密钥明文只在签发时返回一次。</p>
-        </div>
-        <div class="heading-actions form-actions">
-          <button :if={"api-key:create" in @permissions} type="button" class="button button-primary refresh" phx-click="new-api-key" phx-disable-with="处理中…">签发 API Key</button>
-          <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-api-keys" phx-disable-with="刷新中…">刷新列表</button>
         </div>
       </div>
       <%= if @api_key_feedback do %>
@@ -77,6 +74,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
           <div class="filter-actions api-keys-filter-actions"><button type="submit" class="button button-primary refresh">查询</button><button type="button" class="button button-ghost refresh secondary" phx-click="filter-api-keys" phx-value-query="" phx-value-status="all">重置</button></div>
         </form>
       </section>
+      <.list_toolbar label="API Key 列表操作">
+        <button :if={"api-key:create" in @permissions} type="button" class="button button-primary refresh" phx-click="new-api-key" phx-disable-with="处理中…">签发 API Key</button>
+        <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-api-keys" phx-disable-with="刷新中…">刷新列表</button>
+      </.list_toolbar>
       <section class="card table-card api-keys-table-card" aria-labelledby="api-keys-table-title">
         <header class="card-header table-card-heading">
           <div><h2 id="api-keys-table-title">API Key 列表</h2><p>共 <%= @api_key_total || length(@api_key_rows) %> 个匹配凭据</p></div>

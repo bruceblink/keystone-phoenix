@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
 
   import KeystonePhoenixWeb.Live.AdminPages.Pagination
   import KeystonePhoenixWeb.Live.AdminPages.Modal
+  import KeystonePhoenixWeb.Live.AdminPages.ListToolbar
   import KeystonePhoenixWeb.Live.AdminPages.Navigation, only: [nav_icon: 1]
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Status
@@ -35,13 +36,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <h1>用户管理</h1>
           <p class="page-description">查询用户身份、组织归属和授权角色。新增和编辑在模态框中完成。</p>
         </div>
-        <div class="heading-actions">
-          <button :if={!@read_only and "user:delete" in @permissions} type="button" class="button button-danger refresh danger-action" phx-click="delete-users" phx-value-user-ids={Enum.join(@selected_user_ids, ",")} phx-confirm="确认删除选中的用户吗？" disabled={@selected_user_ids == []} phx-disable-with="删除中…">删除用户（<%= length(@selected_user_ids) %>）</button>
-          <button :if={!@read_only and "user:import" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="new-user-import" phx-disable-with="处理中…">导入 Excel</button>
-          <button :if={"user:export" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="export-users" phx-disable-with="导出中…">导出 Excel</button>
-          <button :if={!@read_only} type="button" class="button button-primary refresh" phx-click="new-user" phx-disable-with="处理中…">新增用户</button>
-          <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…">刷新列表</button>
-        </div>
       </div>
       <section class="card users-filter-card" aria-labelledby="users-filter-title">
         <form class="filter-form users-filter-form" phx-submit="filter-users">
@@ -53,6 +47,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           </div>
         </form>
       </section>
+      <.list_toolbar label="用户列表操作">
+        <button :if={!@read_only} type="button" class="button button-primary refresh" phx-click="new-user" phx-disable-with="处理中…">新增用户</button>
+        <button :if={!@read_only and "user:import" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="new-user-import" phx-disable-with="处理中…">导入 Excel</button>
+        <button :if={"user:export" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="export-users" phx-disable-with="导出中…">导出 Excel</button>
+        <button :if={!@read_only and "user:delete" in @permissions} type="button" class="button button-danger refresh danger-action" phx-click="delete-users" phx-value-user-ids={Enum.join(@selected_user_ids, ",")} phx-confirm="确认删除选中的用户吗？" disabled={@selected_user_ids == []} phx-disable-with="删除中…">删除用户（<%= length(@selected_user_ids) %>）</button>
+        <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…">刷新列表</button>
+      </.list_toolbar>
       <%= if @user_feedback do %>
         <p id="user-feedback" class={Feedback.class(@user_feedback)} role={Feedback.role(@user_feedback)} aria-live={Feedback.live(@user_feedback)}><%= Feedback.message(@user_feedback) %></p>
       <% end %>
