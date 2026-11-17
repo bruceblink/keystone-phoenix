@@ -447,10 +447,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
 
             {:error, reason} ->
               {:noreply,
-               assign(socket,
-                 selected_role_id: role_id,
-                 selected_role_name: role["roleName"],
-                 role_user_feedback: Support.read_error_feedback(reason, "角色成员读取失败，请重试")
+               OrganizationRoleSelection.role_users_failed(
+                 socket,
+                 role_id,
+                 role["roleName"],
+                 reason
                )}
           end
       end

@@ -3,7 +3,28 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleSelection do
 
   import Phoenix.Component, only: [assign: 2]
 
+  alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationFilters
+
+  @doc "角色切换读取失败时清理其他角色的数据；重试当前角色失败时保留已显示的数据。"
+  def role_users_failed(socket, role_id, role_name, reason) do
+    socket =
+      if socket.assigns.selected_role_id == role_id do
+        socket
+      else
+        assign(socket,
+          allocated_role_user_rows: [],
+          unallocated_role_user_rows: [],
+          page_nums: reset_member_pages(socket.assigns.page_nums)
+        )
+      end
+
+    assign(socket,
+      selected_role_id: role_id,
+      selected_role_name: role_name,
+      role_user_feedback: AdminSupport.read_error_feedback(reason, "角色成员读取失败，请重试")
+    )
+  end
 
   @doc "关闭角色成员面板并重置当前成员分页，避免旧选择残留。"
   def clear_role_selection(socket) do
