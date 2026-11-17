@@ -1,14 +1,19 @@
 defmodule KeystonePhoenixWeb.AuthControllerTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
+  import Ecto.Query
+
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.AuthSession
   alias KeystonePhoenix.Auth.RefreshToken
   alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Auth.Token
+  alias KeystonePhoenix.RateLimiter
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Config.SysConfig
+  alias KeystonePhoenix.Log.SysLoginInfo
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.RuntimeStore
   alias KeystonePhoenix.User.SysUser
 
   setup do
@@ -106,15 +111,85 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert Repo.get!(SysUser, user.user_id).must_change_password
   end
 
+  test "limits repeated initial-password attempts and returns Retry-After", %{user: user} do
+    Repo.update!(Ecto.Changeset.change(user, must_change_password: true))
+
+    params = %{
+      "username" => user.username,
+      "currentPassword" => "Wrong!123",
+      "newPassword" => "Changed!456"
+    }
+
+    for _attempt <- 1..10 do
+      conn = build_conn() |> post("/api/v1/auth/change-initial-password", params)
+      response = json_response(conn, 401)
+      assert get_in(response, ["error", "code"]) == "invalid_credential"
+      refute Jason.encode!(response) =~ params["currentPassword"]
+      refute Jason.encode!(response) =~ params["newPassword"]
+    end
+
+    conn = build_conn() |> post("/api/v1/auth/change-initial-password", params)
+    response = json_response(conn, 429)
+    assert get_in(response, ["error", "code"]) == "rate_limited"
+    assert [retry_after] = get_resp_header(conn, "retry-after")
+    assert String.to_integer(retry_after) >= 1
+    refute Jason.encode!(response) =~ params["currentPassword"]
+    refute Jason.encode!(response) =~ params["newPassword"]
+    assert Repo.get_by(AuthSession, user_id: user.user_id) == nil
+    assert Repo.get!(SysUser, user.user_id).must_change_password
+    assert_login_audit_excludes(user.username, [params["currentPassword"], params["newPassword"]])
+  end
+
+  test "returns service unavailable when the shared limiter has no capacity", %{user: user} do
+    Repo.update!(Ecto.Changeset.change(user, must_change_password: true))
+    previous_max = Application.get_env(:keystone_phoenix, :rate_limit_max_entries)
+    limiter_key = "test-initial-password-capacity-#{System.unique_integer([:positive])}"
+
+    on_exit(fn ->
+      RateLimiter.delete(limiter_key)
+
+      if is_nil(previous_max),
+        do: Application.delete_env(:keystone_phoenix, :rate_limit_max_entries),
+        else: Application.put_env(:keystone_phoenix, :rate_limit_max_entries, previous_max)
+    end)
+
+    Application.put_env(:keystone_phoenix, :rate_limit_max_entries, 1)
+
+    :ets.insert(RuntimeStore.rate_limit_table(), {
+      limiter_key,
+      1,
+      System.monotonic_time(:millisecond) + 60_000
+    })
+
+    params = %{
+      "username" => user.username,
+      "currentPassword" => "Strong!123",
+      "newPassword" => "Changed!456"
+    }
+
+    response =
+      build_conn()
+      |> post("/api/v1/auth/change-initial-password", params)
+      |> json_response(503)
+
+    assert get_in(response, ["error", "code"]) == "service_unavailable"
+    refute Jason.encode!(response) =~ params["currentPassword"]
+    refute Jason.encode!(response) =~ params["newPassword"]
+    assert Repo.get_by(AuthSession, user_id: user.user_id) == nil
+    assert Repo.get!(SysUser, user.user_id).must_change_password
+    assert_login_audit_excludes(user.username, [params["currentPassword"], params["newPassword"]])
+  end
+
   test "changes a flagged initial password and revokes the requirement", %{user: user} do
     user = Repo.update!(Ecto.Changeset.change(user, must_change_password: true))
     password_hash = Repo.get!(SysUser, user.user_id).password
+    wrong_current_password = "Wrong!123"
 
     invalid_current_password =
       build_conn()
       |> post("/api/v1/auth/change-initial-password", %{
         "username" => user.username,
-        "currentPassword" => "Wrong!123",
+        "currentPassword" => wrong_current_password,
         "newPassword" => "Changed!456"
       })
       |> json_response(401)
@@ -136,16 +211,26 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert unchanged.password == password_hash
     assert unchanged.must_change_password
 
+    params = %{
+      "username" => user.username,
+      "currentPassword" => "Strong!123",
+      "newPassword" => "Changed!456"
+    }
+
     response =
       build_conn()
-      |> post("/api/v1/auth/change-initial-password", %{
-        "username" => user.username,
-        "currentPassword" => "Strong!123",
-        "newPassword" => "Changed!456"
-      })
+      |> post("/api/v1/auth/change-initial-password", params)
       |> json_response(200)
 
     assert response["data"] == %{"updated" => true}
+    refute Jason.encode!(response) =~ params["currentPassword"]
+    refute Jason.encode!(response) =~ params["newPassword"]
+
+    assert_login_audit_excludes(user.username, [
+      wrong_current_password,
+      params["currentPassword"],
+      params["newPassword"]
+    ])
 
     assert Repo.get!(SysUser, user.user_id).must_change_password == false
 
@@ -381,6 +466,20 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
 
     if ttl > 0, do: Process.sleep(2)
     {key, answer}
+  end
+
+  # 确认 HTTP 改密审计记录只保存稳定消息，不保存密码内容。
+  defp assert_login_audit_excludes(username, secrets) do
+    messages =
+      from(log in SysLoginInfo,
+        where: log.username == ^username,
+        select: log.msg
+      )
+      |> Repo.all()
+
+    Enum.each(secrets, fn secret ->
+      refute Enum.any?(messages, &String.contains?(&1, secret))
+    end)
   end
 
   defp encrypted_password(password) do

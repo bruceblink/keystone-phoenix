@@ -146,11 +146,35 @@ defmodule KeystonePhoenixWeb.AuthController do
         }
       )
       when is_binary(username) and is_binary(current_password) and is_binary(new_password) do
+    case LoginLimiter.check_http(username, conn.remote_ip) do
+      :allow ->
+        change_initial_password_result(conn, username, current_password, new_password)
+
+      {:deny, retry_after} ->
+        Log.record_login(conn, username, 0, "初始密码修改尝试过于频繁")
+
+        conn
+        |> put_resp_header("retry-after", Integer.to_string(retry_after))
+        |> render_error(:rate_limited)
+
+      {:error, reason} when reason in [:capacity, :unavailable] ->
+        Log.record_login(conn, username, 0, "限流服务暂不可用")
+        render_error(conn, :rate_limited_unavailable)
+    end
+  end
+
+  def change_initial_password(conn, _params),
+    do: render_error(conn, :validation_failed)
+
+  # 密码验证结果和操作日志只包含稳定错误信息，不写入当前密码或新密码。
+  defp change_initial_password_result(conn, username, current_password, new_password) do
     case Auth.change_initial_password(username, current_password, new_password) do
       {:ok, data} ->
+        Log.record_login(conn, username, 1, "初始密码修改成功")
         json(conn, ApiResponse.ok(data))
 
       {:error, :invalid_credentials} ->
+        Log.record_login(conn, username, 0, "初始密码校验失败")
         render_error(conn, :invalid_credentials)
 
       {:error, :password_change_not_required} ->
@@ -174,9 +198,6 @@ defmodule KeystonePhoenixWeb.AuthController do
         render_error(conn, :unavailable)
     end
   end
-
-  def change_initial_password(conn, _params),
-    do: render_error(conn, :validation_failed)
 
   @doc "Completes a public login MFA challenge and creates a session."
   def verify_mfa(
