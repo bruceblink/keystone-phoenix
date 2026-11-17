@@ -16,16 +16,22 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.RemainingFeedbackTest do
                socket
              )
 
-    assert Feedback.code(result.assigns.api_key_feedback) == "validation_failed"
-    assert Feedback.message(result.assigns.api_key_feedback) == "到期时间格式无效"
+    assert Feedback.code(result.assigns.api_key_feedback) == "api_key_expiry_invalid"
+
+    assert Feedback.message(result.assigns.api_key_feedback) ==
+             "API Key 到期时间格式无效，请重新选择时间。"
   end
 
-  test "API key expiry range uses a distinct internal reason and the validation business code" do
-    # 超过 90 天与日期格式错误共用 validation_failed，但按内部原因显示不同提示。
-    feedback = Feedback.from_reason(:expiry_out_of_range)
+  test "API Key name and expiry failures map to distinct business codes" do
+    name_feedback = Feedback.from_reason(:api_key_name_invalid)
+    range_feedback = Feedback.from_reason(:api_key_expiry_out_of_range)
 
-    assert Feedback.code(feedback) == "validation_failed"
-    assert Feedback.message(feedback) == "到期时间必须晚于当前时间且不超过 90 天"
+    assert Feedback.code(name_feedback) == "api_key_name_invalid"
+    assert Feedback.message(name_feedback) == "API Key 名称必须为 1 到 128 个字符。"
+    assert Feedback.code(range_feedback) == "api_key_expiry_out_of_range"
+
+    assert Feedback.message(range_feedback) ==
+             "API Key 到期时间必须晚于当前时间且不超过 90 天。"
   end
 
   test "missing configuration uses a stable resource error code" do

@@ -69,6 +69,21 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       retryable: false,
       message_key: "request.validation_failed"
     },
+    "api_key_name_invalid" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.api_key_name_invalid"
+    },
+    "api_key_expiry_invalid" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.api_key_expiry_invalid"
+    },
+    "api_key_expiry_out_of_range" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.api_key_expiry_out_of_range"
+    },
     "service_unavailable" => %{status: 503, retryable: true, message_key: "service.unavailable"},
     "authorization_unavailable" => %{
       status: 503,

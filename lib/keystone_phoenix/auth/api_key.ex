@@ -471,24 +471,24 @@ defmodule KeystonePhoenix.Auth.ApiKey do
 
     if value != "" and String.length(value) <= 128,
       do: {:ok, value},
-      else: {:error, :validation_failed}
+      else: {:error, :api_key_name_invalid}
   end
 
-  defp normalize_name(_value), do: {:error, :validation_failed}
+  defp normalize_name(_value), do: {:error, :api_key_name_invalid}
 
   defp validate_expiry(nil), do: :ok
 
   defp validate_expiry(%DateTime{} = expires_at) do
     now = DateTime.utc_now()
 
-    # 超出时间范围使用独立内部原因，避免和 ISO 日期格式错误共用提示。
+    # 日期有效但期限不符合规则时，返回专属业务原因供接口和页面准确提示。
     if DateTime.compare(expires_at, now) in [:gt, :eq] and
          DateTime.compare(expires_at, DateTime.add(now, @max_expiry_seconds, :second)) != :gt,
        do: :ok,
-       else: {:error, :expiry_out_of_range}
+       else: {:error, :api_key_expiry_out_of_range}
   end
 
-  defp validate_expiry(_value), do: {:error, :validation_failed}
+  defp validate_expiry(_value), do: {:error, :api_key_expiry_invalid}
 
   defp validate_value(value) when is_binary(value) do
     if Regex.match?(~r/\Aks_live_[A-Za-z0-9_-]{8,24}_[A-Za-z0-9_-]{32,64}\z/, value),

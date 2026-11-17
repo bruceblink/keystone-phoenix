@@ -24,24 +24,35 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
   end
 
   @tag :integration
-  test "API Key expiry limit keeps the HTTP validation response contract", %{conn: conn} do
-    # 期限错误细化为内部原因后，HTTP 状态、业务码和消息保持原约定。
+  test "API Key issue validation returns distinct business codes and keeps HTTP 422" do
     user = create_user(["api-key:create"])
     token = step_up_token(user)
     expiry = DateTime.add(DateTime.utc_now(), 91 * 24 * 60 * 60, :second)
 
-    response =
-      conn
-      |> put_req_header("authorization", "Bearer #{token}")
-      |> post("/api/v1/api-keys", %{
-        "name" => "long-lived worker",
-        "scopes" => ["api-key:create"],
-        "expiresAt" => DateTime.to_iso8601(expiry)
-      })
+    invalid_requests = [
+      {%{"scopes" => ["api-key:create"]}, "api_key_name_invalid", "API Key 名称必须为 1 到 128 个字符。"},
+      {%{"name" => String.duplicate("a", 129), "scopes" => ["api-key:create"]},
+       "api_key_name_invalid", "API Key 名称必须为 1 到 128 个字符。"},
+      {%{"name" => "worker", "scopes" => ["api-key:create"], "expiresAt" => "invalid"},
+       "api_key_expiry_invalid", "API Key 到期时间格式无效，请重新选择时间。"},
+      {%{
+         "name" => "long-lived worker",
+         "scopes" => ["api-key:create"],
+         "expiresAt" => DateTime.to_iso8601(expiry)
+       }, "api_key_expiry_out_of_range", "API Key 到期时间必须晚于当前时间且不超过 90 天。"}
+    ]
 
-    assert response.status == 422
-    assert get_in(json_response(response, 422), ["error", "code"]) == "validation_failed"
-    assert json_response(response, 422)["message"] == "请求参数无效"
+    for {params, expected_code, expected_message} <- invalid_requests do
+      response =
+        build_conn()
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> post("/api/v1/api-keys", params)
+
+      body = json_response(response, 422)
+      assert response.status == 422
+      assert get_in(body, ["error", "code"]) == expected_code
+      assert body["message"] == expected_message
+    end
   end
 
   test "API Key authenticates an allowed business resource", %{conn: conn} do

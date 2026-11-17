@@ -39,8 +39,21 @@ defmodule KeystonePhoenix.Auth.ApiKeyTest do
     # 超期判断在访问用户和数据库前完成，因此使用有效 UUID 即可验证服务错误原因。
     expiry = DateTime.add(DateTime.utc_now(), 91 * 24 * 60 * 60, :second)
 
-    assert {:error, :expiry_out_of_range} =
+    assert {:error, :api_key_expiry_out_of_range} =
              ApiKey.issue(Identity.v7(), "long-lived worker", ["api-key:read"], expiry)
+  end
+
+  test "API Key issue reports specific name and expiry validation reasons" do
+    user_id = Identity.v7()
+
+    assert {:error, :api_key_name_invalid} =
+             ApiKey.issue(user_id, "  ", ["api-key:read"])
+
+    assert {:error, :api_key_name_invalid} =
+             ApiKey.issue(user_id, String.duplicate("a", 129), ["api-key:read"])
+
+    assert {:error, :api_key_expiry_invalid} =
+             ApiKey.issue(user_id, "worker", ["api-key:read"], "not a date")
   end
 
   test "multi-role scopes use the permission union and shrink after role revocation" do

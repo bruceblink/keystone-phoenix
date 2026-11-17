@@ -109,22 +109,32 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
     too_late = DateTime.add(DateTime.utc_now(), 91 * 24 * 60 * 60, :second)
 
     # LiveView 应显示到期规则和已有业务码，并保留签发弹窗供用户修正。
-    render_submit(view, "save-api-key", %{
-      "name" => "out of range",
-      "scopes" => "api-key:read",
-      "expiresAt" => DateTime.to_iso8601(too_late)
-    })
+    issue_failures = [
+      {" ", DateTime.to_iso8601(expires_at), "api_key_name_invalid",
+       "API Key 名称必须为 1 到 128 个字符。"},
+      {String.duplicate("a", 129), DateTime.to_iso8601(expires_at), "api_key_name_invalid",
+       "API Key 名称必须为 1 到 128 个字符。"},
+      {"invalid expiry", "invalid", "api_key_expiry_invalid", "API Key 到期时间格式无效，请重新选择时间。"},
+      {"out of range", DateTime.to_iso8601(too_late), "api_key_expiry_out_of_range",
+       "API Key 到期时间必须晚于当前时间且不超过 90 天。"}
+    ]
 
-    assert has_element?(
-             view,
-             "#api-key-modal #api-key-form-feedback[role='alert']",
-             "到期时间必须晚于当前时间且不超过 90 天"
-           )
+    for {name, expiry_value, expected_code, expected_message} <- issue_failures do
+      submit_api_key_issue(view, name, expiry_value, expires_at_local)
 
-    assert has_element?(view, "#api-key-form[aria-describedby='api-key-form-feedback']")
-    assert has_element?(view, "#api-key-form-feedback", "错误码：validation_failed")
-    refute has_element?(view, "#api-key-feedback")
-    assert LiveSupport.live_socket(view).assigns.issued_api_key == nil
+      assert has_element?(
+               view,
+               "#api-key-modal #api-key-form-feedback[role='alert']",
+               expected_message
+             )
+
+      assert has_element?(view, "#api-key-form[aria-describedby='api-key-form-feedback']")
+      assert has_element?(view, "#api-key-form-feedback", "错误码：#{expected_code}")
+      assert LiveSupport.live_socket(view).assigns.api_key_form["name"] == name
+      assert LiveSupport.live_socket(view).assigns.active_modal == "api-key"
+      refute has_element?(view, "#api-key-feedback")
+      assert LiveSupport.live_socket(view).assigns.issued_api_key == nil
+    end
 
     render_submit(view, "save-api-key", %{
       "name" => "inbox lifecycle",
@@ -208,5 +218,18 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
   defp login(view, user) do
     render_submit(view, "login", %{"username" => user.username, "password" => @password})
     refute has_element?(view, "#login-form")
+  end
+
+  defp submit_api_key_issue(view, name, expiry, local_expiry) do
+    params = %{
+      "name" => name,
+      "expiresAt" => expiry,
+      "expiresAtLocal" => local_expiry,
+      "scopes" => "api-key:read",
+      "scopeQuery" => ""
+    }
+
+    render_change(view, "filter-api-key-scopes", params)
+    render_submit(view, "save-api-key", Map.drop(params, ["scopeQuery"]))
   end
 end

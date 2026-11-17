@@ -87,8 +87,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Feedback do
 
   defp code_for_reason(:already_logged_in), do: :active_session_conflict
   defp code_for_reason(:scope_exceeds_permissions), do: :permission_denied
-  defp code_for_reason(:invalid_expiry), do: :validation_failed
-  defp code_for_reason(:expiry_out_of_range), do: :validation_failed
+  defp code_for_reason(:api_key_name_invalid), do: :api_key_name_invalid
+  defp code_for_reason(:api_key_expiry_invalid), do: :api_key_expiry_invalid
+  defp code_for_reason(:api_key_expiry_out_of_range), do: :api_key_expiry_out_of_range
 
   defp code_for_reason(reason)
        when reason in [
@@ -137,8 +138,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Feedback do
   defp message_for_reason(:already_logged_in), do: "该账号已经登录"
   defp message_for_reason(:login_limiter_unavailable), do: "登录限流服务暂不可用"
   defp message_for_reason(:scope_exceeds_permissions), do: "授权范围超过当前账号权限"
-  defp message_for_reason(:invalid_expiry), do: "到期时间格式无效"
-  defp message_for_reason(:expiry_out_of_range), do: "到期时间必须晚于当前时间且不超过 90 天"
+  defp message_for_reason(:api_key_name_invalid), do: "API Key 名称必须为 1 到 128 个字符。"
+  defp message_for_reason(:api_key_expiry_invalid), do: "API Key 到期时间格式无效，请重新选择时间。"
+
+  defp message_for_reason(:api_key_expiry_out_of_range),
+    do: "API Key 到期时间必须晚于当前时间且不超过 90 天。"
+
   defp message_for_reason(:role_codes_unsupported), do: "角色编码不受支持"
   defp message_for_reason(:mfa_not_enrolled), do: "MFA 状态不满足当前操作"
   defp message_for_reason(:mfa_enrollment_required), do: "MFA 状态不满足当前操作"

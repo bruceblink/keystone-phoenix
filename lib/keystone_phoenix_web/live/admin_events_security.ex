@@ -83,12 +83,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
               {:noreply, assign(socket, api_key_feedback: Support.form_error(error))}
           end
 
-        # 日期解析失败属于输入校验错误，反馈使用稳定错误码。
+        # 日期格式错误使用专属业务码，方便用户修正输入并定位问题。
         {:error, _reason} ->
           {:noreply,
            assign(
              socket,
-             api_key_feedback: Feedback.error(:validation_failed, "到期时间格式无效")
+             api_key_feedback:
+               Feedback.error(
+                 :api_key_expiry_invalid,
+                 "API Key 到期时间格式无效，请重新选择时间。"
+               )
            )}
       end
     else
@@ -215,7 +219,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
   defp parse_expiry(value) do
     case DateTime.from_iso8601(value) do
       {:ok, date_time, _offset} -> {:ok, date_time}
-      _ -> {:error, :invalid_expiry}
+      _ -> {:error, :api_key_expiry_invalid}
     end
   end
 
