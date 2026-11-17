@@ -14,6 +14,7 @@ defmodule KeystonePhoenix.Role do
   alias KeystonePhoenix.Role.Permissions
   alias KeystonePhoenix.Role.MemberIdentity
   alias KeystonePhoenix.Role.PermissionVersion
+  alias KeystonePhoenix.Role.UserCount
   alias KeystonePhoenix.Role.Authorization
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.RoleMembership
@@ -193,7 +194,7 @@ defmodule KeystonePhoenix.Role do
         role.role_key == "admin" ->
           {:error, :protected_role}
 
-        user_count(role.role_id) > 0 ->
+        UserCount.count(role.role_id) > 0 ->
           {:error, :has_users}
 
         true ->
@@ -243,7 +244,7 @@ defmodule KeystonePhoenix.Role do
           role.role_key == "admin" ->
             Repo.rollback(:protected_role)
 
-          user_count(role.role_id) > 0 ->
+          UserCount.count(role.role_id) > 0 ->
             Repo.rollback(:has_users)
 
           true ->
@@ -514,11 +515,6 @@ defmodule KeystonePhoenix.Role do
       "" -> query
       value -> where(query, [user], ilike(field(user, ^field), ^("%" <> value <> "%")))
     end
-  end
-
-  defp user_count(role_id) do
-    from(u in SysUser, where: u.role_id == ^role_id and u.deleted == false)
-    |> Repo.aggregate(:count, :user_id)
   end
 
   def role_to_map(role) do
