@@ -1010,4 +1010,4 @@ Native `953d164` 将任务日志和最近执行状态放在同一事务，并按
 
 三端将签发时的名称错误、日期格式错误和到期范围错误拆为 `api_key_name_invalid`、`api_key_expiry_invalid`、`api_key_expiry_out_of_range`，保持现有 HTTP 422。跨项目目录检查为 26 个共享服务端代码和 4 个前端本地代码。Codex 内置浏览器分别验证 Phoenix LiveView 和 admin-web 的名称及期限错误；admin-web 在选择权限后保留日期，有效本地时间写入数据库时转换为对应 UTC 时间。其余通用错误码仍需逐项拆分。
 
-API Key 名称长度存在未解决差异：Native 按 UTF-16 单元计数，Phoenix 按 Unicode 字素计数，数据库字段长度使用字符计数。需要统一输入规则、数据库限制和两端测试后再修改，当前仍保留既有行为。
+API Key 名称上限现按数据库使用的 Unicode 码点数计算。Native 原先按 UTF-16 单元计数，Phoenix 原先按字素簇计数；两端真实数据库 HTTP 测试覆盖表情和组合字符，验证 128 个码点可保存、129 个码点返回 `api_key_name_invalid`。两端对部分 Unicode 空白字符的处理仍需单独核对。

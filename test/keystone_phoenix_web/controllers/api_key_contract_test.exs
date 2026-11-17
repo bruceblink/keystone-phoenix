@@ -24,6 +24,31 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
   end
 
   @tag :integration
+  test "API Key name limit follows database Unicode code points" do
+    # 表情占一个码点，组合字符由两个码点组成；分别验证数据库边界和错误码。
+    user = create_user(["api-key:create"])
+    token = step_up_token(user)
+
+    for name <- [String.duplicate("😀", 128), String.duplicate("e\u0301", 64)] do
+      response =
+        build_conn()
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> post("/api/v1/api-keys", %{"name" => name, "scopes" => ["api-key:create"]})
+
+      assert get_in(json_response(response, 201), ["data", "name"]) == name
+    end
+
+    for name <- [String.duplicate("😀", 129), String.duplicate("e\u0301", 64) <> "e"] do
+      response =
+        build_conn()
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> post("/api/v1/api-keys", %{"name" => name, "scopes" => ["api-key:create"]})
+
+      assert get_in(json_response(response, 422), ["error", "code"]) == "api_key_name_invalid"
+    end
+  end
+
+  @tag :integration
   test "API Key issue validation returns distinct business codes and keeps HTTP 422" do
     user = create_user(["api-key:create"])
     token = step_up_token(user)

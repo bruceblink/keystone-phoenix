@@ -469,7 +469,8 @@ defmodule KeystonePhoenix.Auth.ApiKey do
   defp normalize_name(value) when is_binary(value) do
     value = String.trim(value)
 
-    if value != "" and String.length(value) <= 128,
+    # 数据库 varchar(128) 按 Unicode 码点计数，不能用字素簇数量判断上限。
+    if value != "" and length(String.codepoints(value)) <= 128,
       do: {:ok, value},
       else: {:error, :api_key_name_invalid}
   end
