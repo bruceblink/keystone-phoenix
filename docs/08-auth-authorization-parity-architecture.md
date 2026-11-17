@@ -129,6 +129,8 @@ TOTP 因子、短期 `LOGIN`/`STEP_UP`/`ENROLL`/`RECOVERY` 请求、一次性恢
 不得调用 MFA 管理和 step-up 路径。密钥主键和恢复码 pepper 必须从运行时配置读取，
 配置缺失时 enrollment 和恢复码生成失败关闭。
 
+REST step-up 创建和核验只要求有效的 Bearer 人类会话及已登记因子；目标业务接口仍独立检查业务权限。enrollment、恢复码轮换和 MFA 策略变更继续要求 `mfa:manage`。
+
 Phoenix 的 API Key 领域服务使用 `ks_live_<prefix>_<secret>` 格式，保存服务主体、密钥摘要、批准范围、过期和撤销状态。`/api/v1/api-keys` 由 Bearer 会话和 `api-key:*` 权限保护；API Key 认证入口单独建立服务主体 Principal，认证时再次计算当前权限与批准范围的交集。API Key 不能调用密码、MFA 或 API Key 管理路径。
 
 两个项目的管理资源统一使用 `/api/v1/{users,roles,departments,posts,menus,configs,dictionaries,notices,jobs,login-logs,operation-logs,profile}`，并共享 Principal、权限、范围、错误和审计语义；旧 `/system/*` 与 `/logs/*` 路径已删除。公告公开读取使用 `/api/v1/notices`，管理读取使用受保护的 `/api/v1/notices/manage`，发布使用 `/api/v1/notices/{id}/publish`。认证统一使用 `/api/v1/auth/*`；OIDC 入口为 `/api/v1/auth/oidc/{authorize,callback}`，两个项目的 WebAuthn 入口统一为 `/api/v1/auth/webauthn/{register,register/options,login,login/options}`。Native 的 `POST /api/v1/auth/change-initial-password` 也由 Phoenix 提供相同的初始密码标记、密码校验和会话撤销行为。JWK Set 保留标准路径 `/api/.well-known/jwks.json`。两项目均把公开 RSA key 登记到持久化 registry，使用 `ACTIVE/RETIRING` 保留窗口、过期清理和未知 `kid` 拒绝；私钥只由运行时密钥配置提供。

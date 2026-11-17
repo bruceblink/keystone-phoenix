@@ -13,19 +13,20 @@ defmodule KeystonePhoenixWeb.AuthController do
            begin_mfa_enrollment: "mfa:manage",
            verify_mfa_enrollment: "mfa:manage",
            rotate_mfa_recovery_codes: "mfa:manage",
-           set_mfa_policy: "mfa:manage",
-           begin_mfa_step_up: "mfa:manage",
-           verify_mfa_step_up: "mfa:manage"
+           set_mfa_policy: "mfa:manage"
          }
        ]
        when action in [
               :begin_mfa_enrollment,
               :verify_mfa_enrollment,
               :rotate_mfa_recovery_codes,
-              :set_mfa_policy,
-              :begin_mfa_step_up,
-              :verify_mfa_step_up
+              :set_mfa_policy
             ]
+
+  # Step-up 只验证当前人类会话；具体业务权限仍由目标业务接口检查。
+  plug KeystonePhoenixWeb.Plugs.Authenticate,
+       []
+       when action in [:begin_mfa_step_up, :verify_mfa_step_up]
 
   plug KeystonePhoenixWeb.Plugs.RequireMfaStepUp,
        [enforce: true]
