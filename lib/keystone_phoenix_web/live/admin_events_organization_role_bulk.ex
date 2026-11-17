@@ -7,6 +7,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk do
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleReload
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
+  # 只为有权限且已选中角色的用户打开确认框，不执行删除。
+  def open_confirmation(socket) do
+    if Support.permission_socket?(socket, "role:delete") and
+         socket.assigns.selected_role_ids != [] do
+      {:noreply, assign(socket, active_modal: "role-delete", role_feedback: nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def delete_roles(socket, role_ids) do
     if Support.permission_socket?(socket, "role:delete") do
       role_ids = Enum.filter(role_ids, &(String.trim(&1) != ""))

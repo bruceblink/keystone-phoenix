@@ -192,9 +192,14 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       <.list_toolbar label="角色列表操作">
         <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-role" phx-disable-with="处理中…">新增角色</button>
         <button :if={"role:export" in @permissions} type="button" class="button button-secondary button-sm" phx-click="export-roles" phx-disable-with="导出中…">导出 Excel</button>
-        <button :if={!@read_only} type="submit" form="role-delete-form" id="role-delete-toolbar-action" class="button button-danger button-sm" phx-disable-with="删除中…" disabled={@selected_role_ids == [] or @role_page_rows == []}>删除角色（<%= length(@selected_role_ids) %>）</button>
+        <button :if={!@read_only} type="button" id="role-delete-toolbar-action" class="button button-danger button-sm" phx-click="open-role-delete" disabled={@selected_role_ids == [] or @role_page_rows == []}>删除角色（<%= length(@selected_role_ids) %>）</button>
         <button type="button" class="button button-secondary button-sm" phx-click="refresh-roles" phx-disable-with="刷新中…">刷新列表</button>
       </.list_toolbar>
+      <.modal :if={@active_modal == "role-delete"} id="role-delete-modal" title="删除角色" description="请确认本次批量操作的范围。" size="sm">
+        <div class="delete-confirm-panel"><span class="delete-confirm-icon" aria-hidden="true">!</span><div><strong>将删除 <%= length(@selected_role_ids) %> 条角色记录</strong><p>删除后不可恢复。请确认已选择正确的记录。</p></div></div>
+        <p :if={@role_feedback} class={Feedback.class(@role_feedback)} role={Feedback.role(@role_feedback)} aria-live={Feedback.live(@role_feedback)}><%= Feedback.message(@role_feedback) %></p>
+        <:footer><button type="button" class="button button-ghost" phx-click="close-modal">取消</button><button type="submit" form="role-delete-form" class="button button-danger" phx-disable-with="删除中…">确认删除 <%= length(@selected_role_ids) %> 条</button></:footer>
+      </.modal>
       <%= if @active_modal == "role" do %>
         <.modal id="role-modal" title={if @role_form["roleId"] == "", do: "新建角色", else: "编辑角色"} description="维护角色权限和数据范围。">
     <form :if={!@read_only} aria-describedby="role-feedback" phx-submit="save-role">

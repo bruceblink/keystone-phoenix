@@ -410,6 +410,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
     end
   end
 
+  def handle_event("open-role-delete", _params, socket),
+    do: OrganizationRoleBulk.open_confirmation(socket)
+
   def handle_event("delete-role", %{"role-id" => role_id}, socket),
     do: OrganizationRoleBulk.delete_roles(socket, [role_id])
 

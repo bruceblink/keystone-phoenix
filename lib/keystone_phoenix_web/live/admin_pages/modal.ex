@@ -9,6 +9,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Modal do
   attr :size, :string, default: "lg"
 
   slot :inner_block, required: true
+  slot :footer
 
   def modal(assigns) do
     ~H"""
@@ -31,6 +32,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Modal do
           <button type="button" class="modal-close" aria-label="关闭" phx-click="close-modal">×</button>
         </div>
         <div class="modal-body"><%= render_slot(@inner_block) %></div>
+        <footer :if={@footer != []} class="modal-footer"><%= render_slot(@footer) %></footer>
       </section>
     </div>
     """

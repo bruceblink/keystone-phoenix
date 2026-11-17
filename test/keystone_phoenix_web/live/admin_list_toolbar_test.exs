@@ -70,7 +70,7 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
     assert role_html =~ ~s(phx-click="refresh-roles")
 
     assert role_html =~
-             ~s(id="role-delete-toolbar-action" class="button button-danger button-sm" phx-disable-with="删除中…" disabled)
+             ~s(id="role-delete-toolbar-action" class="button button-danger button-sm" phx-click="open-role-delete" disabled)
 
     assert_event_order(role_html, [
       ~s(phx-click="new-role"),
@@ -89,8 +89,8 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
     assert_event_order(menu_html, [~s(phx-click="new-menu"), ~s(phx-click="refresh-menus")])
   end
 
-  # 外置提交按钮仍指向包含角色复选框的原批量删除表单。
-  test "角色批量删除工具栏按钮提交角色选择表单" do
+  # 确认框内的提交按钮仍指向包含角色复选框的原批量删除表单。
+  test "角色批量删除确认按钮提交角色选择表单" do
     role = %{
       "roleId" => 7,
       "roleName" => "测试角色",
@@ -104,13 +104,13 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
       render_component(&Organization.roles/1, %{
         role_rows: [role],
         selected_role_ids: ["7"],
-        role_feedback: nil
+        role_feedback: nil,
+        active_modal: "role-delete"
       })
 
-    assert [delete_button] =
-             Regex.run(~r/<button\b(?=[^>]*id="role-delete-toolbar-action")[^>]*>/, html)
-
-    assert delete_button =~ ~s(form="role-delete-form")
+    assert html =~ ~s(phx-click="open-role-delete")
+    assert html =~ ~s(form="role-delete-form")
+    assert html =~ "确认删除 1 条"
     assert html =~ ~s(phx-disable-with="删除中…")
 
     assert html =~ ~s(<form id="role-delete-form" phx-submit="delete-role">)

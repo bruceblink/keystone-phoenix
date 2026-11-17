@@ -40,12 +40,24 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
   def guard_event(event, _params, socket) do
     with {:cont, socket} <- authenticate(socket) do
       if event in @aal2_events and not aal2?(socket) do
-        {:halt, require_step_up(socket, step_up_message(event))}
+        {:halt,
+         socket
+         |> close_role_delete_confirmation(event)
+         |> require_step_up(step_up_message(event))}
       else
         {:cont, assign(socket, mfa_step_up_notice: nil)}
       end
     end
   end
+
+  # 删除确认后的二次认证面板必须可见；认证完成后由用户重新确认删除。
+  defp close_role_delete_confirmation(
+         %{assigns: %{active_modal: "role-delete"}} = socket,
+         "delete-role"
+       ),
+       do: assign(socket, active_modal: nil)
+
+  defp close_role_delete_confirmation(socket, _event), do: socket
 
   def guard_info(_message, socket), do: authenticate(socket)
 
