@@ -1,6 +1,8 @@
 defmodule KeystonePhoenix.RoleDeletionMembershipIntegrationTest do
   use KeystonePhoenix.DataCase, async: false
 
+  import KeystonePhoenix.AdminScopeTestSupport, only: [all_scope_principal: 1]
+
   @moduletag :integration
 
   alias KeystonePhoenix.Repo
@@ -90,7 +92,10 @@ defmodule KeystonePhoenix.RoleDeletionMembershipIntegrationTest do
           "roleId" => role_id
         },
         authorization: %{
-          principal: %{permissions: ["user:create", "role:assign", "permission:manage"]},
+          principal:
+            all_scope_principal(%{
+              permissions: ["user:create", "role:assign", "permission:manage"]
+            }),
           permission: "user:create"
         }
       )
@@ -101,7 +106,7 @@ defmodule KeystonePhoenix.RoleDeletionMembershipIntegrationTest do
   defp admin_auth(permission),
     do: [
       authorization: %{
-        principal: %{permissions: [permission, "permission:manage"]},
+        principal: all_scope_principal(%{permissions: [permission, "permission:manage"]}),
         permission: permission
       }
     ]

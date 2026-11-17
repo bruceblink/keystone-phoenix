@@ -1,6 +1,8 @@
 defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
   use KeystonePhoenix.DataCase, async: false
 
+  import KeystonePhoenix.AdminScopeTestSupport, only: [all_scope_principal: 1]
+
   alias KeystonePhoenix.Config
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Identity
@@ -152,13 +154,22 @@ defmodule KeystonePhoenix.ConfigDictionaryAuditTest do
   end
 
   defp authorization(user_id, permissions),
-    do: %{principal: %{user_id: user_id, permissions: ["permission:manage" | permissions]}}
+    do: %{
+      principal:
+        all_scope_principal(%{user_id: user_id, permissions: ["permission:manage" | permissions]})
+    }
 
   defp admin_authorization do
     %{
-      principal: %{
-        permissions: ["permission:manage", "config:create", "config:update", "dictionary:create"]
-      }
+      principal:
+        all_scope_principal(%{
+          permissions: [
+            "permission:manage",
+            "config:create",
+            "config:update",
+            "dictionary:create"
+          ]
+        })
     }
   end
 

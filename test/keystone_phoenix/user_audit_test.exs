@@ -1,6 +1,8 @@
 defmodule KeystonePhoenix.UserAuditTest do
   use KeystonePhoenix.DataCase, async: false
 
+  import KeystonePhoenix.AdminScopeTestSupport, only: [all_scope_principal: 1]
+
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.User
@@ -68,7 +70,11 @@ defmodule KeystonePhoenix.UserAuditTest do
 
   defp auth(actor, permission),
     do: %{
-      principal: %{user_id: actor.user_id, permissions: ["permission:manage", permission]},
+      principal:
+        all_scope_principal(%{
+          user_id: actor.user_id,
+          permissions: ["permission:manage", permission]
+        }),
       permission: permission
     }
 end

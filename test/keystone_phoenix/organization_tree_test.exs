@@ -1,6 +1,8 @@
 defmodule KeystonePhoenix.OrganizationTreeTest do
   use KeystonePhoenix.DataCase, async: false
 
+  import KeystonePhoenix.AdminScopeTestSupport, only: [all_scope_principal: 1]
+
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Identity
@@ -231,7 +233,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
   end
 
   defp admin_principal do
-    %{
+    all_scope_principal(%{
       permissions: [
         "permission:manage",
         "department:create",
@@ -240,7 +242,7 @@ defmodule KeystonePhoenix.OrganizationTreeTest do
         "menu:delete",
         "menu:update"
       ]
-    }
+    })
   end
 
   defp unique(prefix), do: "#{prefix}_#{System.unique_integer([:positive])}"

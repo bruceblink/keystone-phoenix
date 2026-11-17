@@ -1,6 +1,8 @@
 defmodule KeystonePhoenix.OrganizationAuditTest do
   use KeystonePhoenix.DataCase, async: false
 
+  import KeystonePhoenix.AdminScopeTestSupport, only: [all_scope_principal: 1]
+
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Menu
@@ -123,7 +125,9 @@ defmodule KeystonePhoenix.OrganizationAuditTest do
       "role:update"
     ]
 
-    %{principal: %{user_id: actor.user_id, permissions: permissions}, permission: permission}
+    principal = all_scope_principal(%{user_id: actor.user_id, permissions: permissions})
+
+    %{principal: principal, permission: permission}
     |> Map.update!(:permission, &(&1 || "permission:manage"))
   end
 end

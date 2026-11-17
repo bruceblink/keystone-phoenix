@@ -1,6 +1,8 @@
 defmodule KeystonePhoenix.UserContractTest do
   use KeystonePhoenix.DataCase, async: false
 
+  import KeystonePhoenix.AdminScopeTestSupport, only: [all_scope_principal: 1]
+
   alias KeystonePhoenix.Department.SysDept
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Post.SysPost
@@ -73,7 +75,8 @@ defmodule KeystonePhoenix.UserContractTest do
                  "status" => "1"
                },
                authorization: %{
-                 principal: %{permissions: ["permission:manage", "user:create"]},
+                 principal:
+                   all_scope_principal(%{permissions: ["permission:manage", "user:create"]}),
                  permission: "user:create"
                }
              )

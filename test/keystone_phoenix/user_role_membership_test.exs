@@ -1,6 +1,8 @@
 defmodule KeystonePhoenix.UserRoleMembershipTest do
   use KeystonePhoenix.DataCase, async: false
 
+  import KeystonePhoenix.AdminScopeTestSupport, only: [all_scope_principal: 1]
+
   import Ecto.Query
 
   alias KeystonePhoenix.Identity
@@ -113,10 +115,11 @@ defmodule KeystonePhoenix.UserRoleMembershipTest do
     first_role = insert_role()
     second_role = insert_role()
 
-    principal = %{
-      user_id: Identity.v7(),
-      permissions: ["permission:manage", "user:create", "user:update", "role:assign"]
-    }
+    principal =
+      all_scope_principal(%{
+        user_id: Identity.v7(),
+        permissions: ["permission:manage", "user:create", "user:update", "role:assign"]
+      })
 
     assert {:ok, user} =
              User.create_user(
@@ -162,10 +165,11 @@ defmodule KeystonePhoenix.UserRoleMembershipTest do
     second_role = insert_role()
     third_role = insert_role()
 
-    principal = %{
-      user_id: Identity.v7(),
-      permissions: ["user:create", "user:update", "role:assign", "permission:manage"]
-    }
+    principal =
+      all_scope_principal(%{
+        user_id: Identity.v7(),
+        permissions: ["user:create", "user:update", "role:assign", "permission:manage"]
+      })
 
     authorization = [authorization: %{principal: principal, permission: "user:create"}]
 
@@ -209,10 +213,11 @@ defmodule KeystonePhoenix.UserRoleMembershipTest do
     source_role = insert_role()
     target_role = insert_role()
 
-    principal = %{
-      user_id: Identity.v7(),
-      permissions: ["user:create", "role:assign", "permission:manage"]
-    }
+    principal =
+      all_scope_principal(%{
+        user_id: Identity.v7(),
+        permissions: ["user:create", "role:assign", "permission:manage"]
+      })
 
     assert {:ok, user} =
              User.create_user(

@@ -1,6 +1,8 @@
 defmodule KeystonePhoenix.AuthTest do
   use KeystonePhoenix.DataCase, async: false
 
+  import KeystonePhoenix.AdminScopeTestSupport, only: [all_scope_principal: 1]
+
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Cache
   alias KeystonePhoenix.Config.SysConfig
@@ -105,10 +107,11 @@ defmodule KeystonePhoenix.AuthTest do
                user.user_id,
                %{"status" => 0},
                authorization: %{
-                 principal: %{
-                   user_id: user.user_id,
-                   permissions: ["permission:manage", "user:update"]
-                 },
+                 principal:
+                   all_scope_principal(%{
+                     user_id: user.user_id,
+                     permissions: ["permission:manage", "user:update"]
+                   }),
                  permission: "user:update"
                }
              )

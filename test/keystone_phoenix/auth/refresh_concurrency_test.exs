@@ -9,6 +9,8 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
   alias KeystonePhoenix.User
   alias KeystonePhoenix.User.SysUser
 
+  import KeystonePhoenix.AdminScopeTestSupport, only: [all_scope_principal: 1]
+
   test "allows at most one independent connection to rotate one refresh token" do
     fixture = create_fixture()
     lock_holder = hold_refresh_row(fixture.jti)
@@ -123,10 +125,11 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
           with_unboxed(fn ->
             User.reset_password(fixture.user_id, %{"password" => "Reset!456"},
               authorization: %{
-                principal: %{
-                  user_id: fixture.user_id,
-                  permissions: ["permission:manage", "user:reset-password"]
-                },
+                principal:
+                  all_scope_principal(%{
+                    user_id: fixture.user_id,
+                    permissions: ["permission:manage", "user:reset-password"]
+                  }),
                 permission: "user:reset-password"
               }
             )
@@ -194,10 +197,11 @@ defmodule KeystonePhoenix.Auth.RefreshConcurrencyTest do
           with_unboxed(fn ->
             User.reset_password(fixture.user_id, %{"password" => "Reset!456"},
               authorization: %{
-                principal: %{
-                  user_id: fixture.user_id,
-                  permissions: ["permission:manage", "user:reset-password"]
-                },
+                principal:
+                  all_scope_principal(%{
+                    user_id: fixture.user_id,
+                    permissions: ["permission:manage", "user:reset-password"]
+                  }),
                 permission: "user:reset-password"
               }
             )

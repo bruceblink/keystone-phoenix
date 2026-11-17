@@ -1,6 +1,8 @@
 defmodule KeystonePhoenix.UserMultiRoleWriteTest do
   use KeystonePhoenix.DataCase, async: false
 
+  import KeystonePhoenix.AdminScopeTestSupport, only: [all_scope_principal: 1]
+
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role
@@ -131,15 +133,16 @@ defmodule KeystonePhoenix.UserMultiRoleWriteTest do
 
   defp user_authorization(permission),
     do: %{
-      principal: %{
-        permissions: [
-          permission,
-          "user:create",
-          "user:update",
-          "role:assign",
-          "permission:manage"
-        ]
-      },
+      principal:
+        all_scope_principal(%{
+          permissions: [
+            permission,
+            "user:create",
+            "user:update",
+            "role:assign",
+            "permission:manage"
+          ]
+        }),
       permission: permission
     }
 

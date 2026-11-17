@@ -1,6 +1,8 @@
 defmodule KeystonePhoenix.RoleAssignmentTest do
   use KeystonePhoenix.DataCase, async: false
 
+  import KeystonePhoenix.AdminScopeTestSupport, only: [all_scope_principal: 1]
+
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Role
@@ -136,7 +138,10 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
   test "non-administrators cannot change role assignments" do
     target_role = create_role()
     user = create_user()
-    actor = %{permissions: [], role_id: target_role.role_id, user_id: user.user_id}
+
+    actor =
+      all_scope_principal(%{permissions: [], role_id: target_role.role_id, user_id: user.user_id})
+
     before = user_state(user)
 
     assert {:error, :forbidden} =
@@ -170,7 +175,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     user = create_user(preferred_role.role_id)
     Repo.insert!(%SysUserRole{user_id: user.user_id, role_id: target_role.role_id})
 
-    actor = %{permissions: ["permission:manage"]}
+    actor = all_scope_principal(%{permissions: ["permission:manage"]})
     allocated = Role.list_allocated_users(target_role.role_id, %{"pageSize" => 50}, actor)
     unallocated = Role.list_unallocated_users(target_role.role_id, %{"pageSize" => 50}, actor)
 
@@ -191,7 +196,10 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
                secondary_role.role_id,
                %{"permissions" => ["user:read"]},
                authorization: %{
-                 principal: %{permissions: ["permission:manage", "role:update", "role:manage"]},
+                 principal:
+                   all_scope_principal(%{
+                     permissions: ["permission:manage", "role:update", "role:manage"]
+                   }),
                  permission: "role:update"
                }
              )
@@ -216,7 +224,7 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
   defp admin_auth(permission \\ "role:assign"),
     do: [
       authorization: %{
-        principal: %{permissions: [permission, "permission:manage"]},
+        principal: all_scope_principal(%{permissions: [permission, "permission:manage"]}),
         permission: permission
       }
     ]
@@ -232,7 +240,10 @@ defmodule KeystonePhoenix.RoleAssignmentTest do
     {:ok, user} =
       User.create_user(attrs,
         authorization: %{
-          principal: %{permissions: ["user:create", "role:assign", "permission:manage"]},
+          principal:
+            all_scope_principal(%{
+              permissions: ["user:create", "role:assign", "permission:manage"]
+            }),
           permission: "user:create"
         }
       )
