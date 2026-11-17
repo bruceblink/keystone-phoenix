@@ -124,10 +124,18 @@ defmodule KeystonePhoenixWeb.AdminRoleDeleteConfirmationTest do
     open_role_delete_confirmation(view, role)
     render_submit(view, "delete-role", %{"role-ids" => [to_string(role.role_id)]})
 
-    assert has_element?(view, "#role-delete-modal [role='alert']", "记录仍被用户使用")
+    assert has_element?(view, "#role-delete-modal [role='alert']", "角色存在用户，不能删除")
+    assert has_element?(view, "#role-delete-error-code", "错误码：role_has_members")
+    refute has_element?(view, "#role-feedback")
     assert live_socket(view).assigns.active_modal == "role-delete"
     assert live_socket(view).assigns.selected_role_ids == [to_string(role.role_id)]
     refute Repo.get!(SysRole, role.role_id).deleted
+
+    render_click(view, "close-modal")
+
+    refute has_element?(view, "#role-delete-modal")
+    refute has_element?(view, "#role-feedback")
+    assert live_socket(view).assigns.role_feedback == nil
   end
 
   # 创建角色时使用具备真实角色权限的测试账号，走 Role 服务和数据库。

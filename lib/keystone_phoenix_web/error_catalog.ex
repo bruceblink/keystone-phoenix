@@ -45,6 +45,9 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
     "session_revoked" => %{status: 401, retryable: false, message_key: "auth.session_revoked"},
     "resource_not_found" => %{status: 404, retryable: false, message_key: "resource.not_found"},
     "resource_conflict" => %{status: 409, retryable: false, message_key: "resource.conflict"},
+    # 角色删除保持 422，并按成员关系与系统保护分别登记错误码。
+    "role_has_members" => %{status: 422, retryable: false, message_key: "role.has_members"},
+    "role_protected" => %{status: 422, retryable: false, message_key: "role.protected"},
     "rate_limited" => %{status: 429, retryable: true, message_key: "request.rate_limited"},
     "precondition_required" => %{
       status: 428,

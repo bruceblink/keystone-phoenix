@@ -337,12 +337,17 @@ defmodule KeystonePhoenixWeb.RoleController do
     |> json(ApiResponse.error(:resource_not_found, "找不到请求的角色"))
   end
 
-  defp render_error(conn, reason) when reason in [:protected_role, :has_users] do
-    message = if reason == :protected_role, do: "管理员角色不能删除", else: "角色存在用户，不能删除"
-
+  # 保留角色删除现有 422 状态，只将两个阻止条件映射到不同代码。
+  defp render_error(conn, :protected_role) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:resource_conflict, message))
+    |> json(ApiResponse.error(:role_protected, "管理员角色不能删除"))
+  end
+
+  defp render_error(conn, :has_users) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:role_has_members, "角色存在用户，不能删除"))
   end
 
   defp render_error(conn, :role_unavailable) do

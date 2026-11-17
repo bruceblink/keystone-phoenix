@@ -24,6 +24,8 @@ EXPECTED_STATUS = {
     "session_revoked": 401,
     "resource_not_found": 404,
     "resource_conflict": 409,
+    "role_has_members": 422,
+    "role_protected": 422,
     "rate_limited": 429,
     "precondition_required": 428,
     "payload_too_large": 413,
@@ -235,7 +237,10 @@ def main() -> int:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
 
-    print(f"OK: {len(EXPECTED_STATUS)} canonical server error codes; Phoenix, Native and admin-web are aligned")
+    print(
+        f"OK: {len(EXPECTED_STATUS)} canonical server error codes; "
+        "Phoenix, Native and admin-web are aligned"
+    )
     print(f"OK: {len(client_codes)} client-local error codes remain separate")
     return 0
 

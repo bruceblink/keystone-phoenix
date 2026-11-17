@@ -20,6 +20,13 @@ defmodule KeystonePhoenix.RoleDeletionMembershipIntegrationTest do
     refute Repo.get!(SysRole, role.role_id).deleted
   end
 
+  test "protected administrator role returns its own domain error even when it has users" do
+    role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+
+    assert {:error, :protected_role} = Role.delete_role(role.role_id, admin_auth("role:delete"))
+    refute Repo.get!(SysRole, role.role_id).deleted
+  end
+
   test "secondary role membership blocks deletion" do
     primary_role = create_role("role_delete_owner")
     secondary_role = create_role("role_delete_secondary")

@@ -29,6 +29,14 @@ defmodule KeystonePhoenixWeb.Live.FeedbackTest do
              "service_unavailable"
   end
 
+  test "role deletion errors distinguish members from protected roles" do
+    assert Feedback.code(Feedback.role_delete_error(:has_users)) == "role_has_members"
+    assert Feedback.code(Feedback.role_delete_error(:protected_role)) == "role_protected"
+
+    # 部门和其他页面仍通过通用映射使用 resource_conflict。
+    assert Feedback.code(Feedback.from_reason(:has_users)) == "resource_conflict"
+  end
+
   test "unknown reasons use a stable internal code and safe message" do
     feedback = AdminSupport.form_error({:error, :secret_internal_reason})
 

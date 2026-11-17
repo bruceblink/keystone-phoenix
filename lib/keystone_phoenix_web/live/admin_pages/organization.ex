@@ -181,7 +181,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
           <p class="page-description">查询角色状态、数据范围和用户数量。新增和编辑在模态框中完成。</p>
         </div>
       </div>
-      <%= if @role_feedback do %><p id="role-feedback" class={Feedback.class(@role_feedback)} role={Feedback.role(@role_feedback)} aria-live={Feedback.live(@role_feedback)}><%= Feedback.message(@role_feedback) %></p><% end %>
+      <%= if @role_feedback && @active_modal != "role-delete" do %><p id="role-feedback" class={Feedback.class(@role_feedback)} role={Feedback.role(@role_feedback)} aria-live={Feedback.live(@role_feedback)}><%= Feedback.message(@role_feedback) %></p><% end %>
       <section class="card roles-filter-card">
         <form class="roles-filter-form" phx-submit="refresh-roles">
           <label><span>角色名称或标识</span><input id="role-filter-keyword" name="roleKeyword" value={@role_filter["keyword"]} placeholder="按角色名称或编码筛选" autocomplete="off" /></label>
@@ -197,7 +197,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       </.list_toolbar>
       <.modal :if={@active_modal == "role-delete"} id="role-delete-modal" title="删除角色" description="请确认本次批量操作的范围。" size="sm">
         <div class="delete-confirm-panel"><span class="delete-confirm-icon" aria-hidden="true">!</span><div><strong>将删除 <%= length(@selected_role_ids) %> 条角色记录</strong><p>删除后不可恢复。请确认已选择正确的记录。</p></div></div>
-        <p :if={@role_feedback} class={Feedback.class(@role_feedback)} role={Feedback.role(@role_feedback)} aria-live={Feedback.live(@role_feedback)}><%= Feedback.message(@role_feedback) %></p>
+        <p :if={@role_feedback} class={Feedback.class(@role_feedback)} role={Feedback.role(@role_feedback)} aria-live={Feedback.live(@role_feedback)}><%= Feedback.message(@role_feedback) %><small :if={Feedback.code(@role_feedback)} id="role-delete-error-code">错误码：<%= Feedback.code(@role_feedback) %></small></p>
         <:footer><button type="button" class="button button-ghost" phx-click="close-modal">取消</button><button type="submit" form="role-delete-form" class="button button-danger" phx-disable-with="删除中…">确认删除 <%= length(@selected_role_ids) %> 条</button></:footer>
       </.modal>
       <%= if @active_modal == "role" do %>

@@ -1,6 +1,6 @@
 # 跨项目业务错误码目录
 
-更新日期：2026-11-16。
+更新日期：2026-11-17。
 
 本文是 `keystone-phoenix`、`keystone-native` 和 `keystone-admin-web` 共用的业务错误码目录。Phoenix 的 `KeystonePhoenixWeb.ErrorCatalog` 保存目录项；Native 的 `app.keystone.ErrorCode` 和 admin-web 的 `BUSINESS_ERROR_CATALOG` 必须保持相同的服务端代码集合和默认 HTTP 状态。
 
@@ -41,6 +41,8 @@
 | `session_revoked` | 401 | 当前会话已撤销或失效 | 清理会话并重新登录 |
 | `resource_not_found` | 404 | 请求的资源不存在或按安全策略不可见 | 检查资源标识，不重复提交相同请求 |
 | `resource_conflict` | 409 | 资源状态或唯一约束与本次操作冲突 | 刷新状态并修正请求 |
+| `role_has_members` | 422 | 角色仍分配给未删除用户，不能删除 | 移除用户的主角色或关联角色后重试 |
+| `role_protected` | 422 | 系统管理员角色受保护，不能删除 | 保留系统管理员角色 |
 | `rate_limited` | 429 | 请求频率超过当前限制 | 按 `Retry-After` 或退避时间重试 |
 | `precondition_required` | 428 | 缺少继续操作所需的前置条件 | 先完成前置条件 |
 | `payload_too_large` | 413 | 请求内容超过接口允许大小 | 缩小请求内容后重试 |
@@ -50,7 +52,7 @@
 | `authorization_unavailable` | 503 | 认证、授权或其依赖状态暂时不可用 | 按退避策略重试；见兼容范围 |
 | `internal_error` | 500 | 未分类的服务端处理失败 | 记录请求标识，避免盲目重复有副作用的请求 |
 
-目录当前包含 21 个代码。`https_required`、`mfa_state_conflict` 和 `mfa_invalid_code` 也是规范代码，不属于客户端本地代码。
+目录当前包含 23 个代码。角色删除使用 `role_has_members` 和 `role_protected` 区分两种不可删除条件；它们保持原有 `422` HTTP 状态。`resource_conflict` 仍用于其他资源冲突。`https_required`、`mfa_state_conflict` 和 `mfa_invalid_code` 也是规范代码，不属于客户端本地代码。
 
 ## `legacy` 兼容范围
 
@@ -81,7 +83,7 @@ admin-web 不执行授权判断，也不根据代码重写 HTTP 状态。页面�
 
 `keystone-phoenix/scripts/check_error_code_catalog.py` 只读取三个仓库的源码和本文表格。它不启动运行时，不连接数据库，也不调用接口。检查内容如下：
 
-- 目录表格仍为 21 个代码，并且每个代码只有一行和一个默认状态。
+- 目录表格仍为 23 个代码，并且每个代码只有一行和一个默认状态。
 - Phoenix、Native 和 admin-web 的服务端代码集合与目录完全相同，没有重复项或遗漏项。
 - Phoenix 和 Native 的状态值与目录一致。
 - admin-web 的 `BUSINESS_ERROR_CATALOG`、`SERVER_ERROR_CODES` 和安全可读提示覆盖全部规范代码。

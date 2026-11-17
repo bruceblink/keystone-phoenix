@@ -29,9 +29,22 @@ defmodule KeystonePhoenixWeb.RoleDeletionMembershipControllerIntegrationTest do
         %{"ids" => Enum.join([empty_role.role_id, secondary_role.role_id], ",")}
       )
 
-    assert get_in(json_response(response, 422), ["error", "code"]) == "resource_conflict"
+    assert get_in(json_response(response, 422), ["error", "code"]) == "role_has_members"
     refute Repo.get!(SysRole, empty_role.role_id).deleted
     refute Repo.get!(SysRole, secondary_role.role_id).deleted
+  end
+
+  test "protected administrator role returns a distinct 422 error code" do
+    actor_role = create_role("ALL")
+    grant_permission(actor_role.role_id, "role:delete")
+    actor = create_user(actor_role.role_id)
+    protected_role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+    token = step_up_token(actor)
+
+    response = delete(authorized(token), "/api/v1/roles/#{protected_role.role_id}")
+
+    assert get_in(json_response(response, 422), ["error", "code"]) == "role_protected"
+    refute Repo.get!(SysRole, protected_role.role_id).deleted
   end
 
   defp authorized(token), do: put_req_header(build_conn(), "authorization", "Bearer #{token}")

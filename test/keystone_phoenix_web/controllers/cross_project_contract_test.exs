@@ -1,6 +1,6 @@
 defmodule KeystonePhoenixWeb.CrossProjectContractTest do
   @moduledoc """
-  固定 Phoenix 与 Keystone Native 共用的接口字段、权限代码和错误分类。
+  固定 Phoenix、Keystone Native 和 admin-web 共用的接口字段、权限代码和错误分类。
 
   本测试只检查外部接口约定。它不复制业务实现，也不依赖数据库状态。
   """
@@ -44,6 +44,8 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     rate_limited
     resource_conflict
     resource_not_found
+    role_has_members
+    role_protected
     session_revoked
     service_unavailable
     validation_failed
@@ -100,8 +102,14 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
              PermissionCatalog.validate_catalog(["role:manage", "1001"])
   end
 
-  test "error categories and role permission route stay registered" do
+  test "shared error categories and role permission route stay registered" do
     assert Enum.sort(ApiResponse.error_codes()) == Enum.sort(@error_codes)
+
+    assert %{status: 422, retryable: false, message_key: "role.has_members"} =
+             ApiResponse.error_metadata(:role_has_members)
+
+    assert %{status: 422, retryable: false, message_key: "role.protected"} =
+             ApiResponse.error_metadata(:role_protected)
 
     assert Enum.any?(Router.__routes__(), fn route ->
              route.verb == :put and route.path == @role_permission_path

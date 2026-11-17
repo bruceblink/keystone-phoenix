@@ -120,6 +120,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
     end
   end
 
+  # 关闭角色删除确认框时清除本次错误，避免错误在页面顶部残留。
+  def handle_event("close-modal", _params, %{assigns: %{active_modal: "role-delete"}} = socket) do
+    {:noreply, assign(socket, active_modal: nil, role_feedback: nil)}
+  end
+
   def handle_event("close-modal", _params, socket) do
     {:noreply, assign(socket, active_modal: nil)}
   end

@@ -17,6 +17,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Feedback do
 
   def from_reason(reason), do: error(code_for_reason(reason), message_for_reason(reason))
 
+  # 角色删除需要区分成员阻止和系统管理员保护；其他页面继续使用通用映射。
+  def role_delete_error(:has_users),
+    do: error(:role_has_members, "角色存在用户，不能删除")
+
+  def role_delete_error(:protected_role),
+    do: error(:role_protected, "管理员角色不能删除")
+
   def import_error(:mfa_required), do: error(:mfa_state_conflict, "导入用户需要完成二次认证")
   def import_error(reason), do: error(:validation_failed, import_error_message(reason))
 

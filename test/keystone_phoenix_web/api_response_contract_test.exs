@@ -39,6 +39,9 @@ defmodule KeystonePhoenixWeb.ApiResponseContractTest do
 
     assert %{status: 429, retryable: true} = ApiResponse.error_metadata(:rate_limited)
 
+    assert %{status: 422, retryable: false} = ApiResponse.error_metadata(:role_has_members)
+    assert %{status: 422, retryable: false} = ApiResponse.error_metadata(:role_protected)
+
     assert %{code: "active_session_conflict", status: 409} =
              ApiResponse.error_lookup(" active_session_conflict ")
 

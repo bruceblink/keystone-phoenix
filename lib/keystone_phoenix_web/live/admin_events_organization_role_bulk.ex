@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk do
 
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleReload
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
   # 只为有权限且已选中角色的用户打开确认框，不执行删除。
@@ -39,7 +40,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk do
            )}
 
         error ->
-          {:noreply, assign(socket, role_feedback: Support.form_error(error))}
+          feedback =
+            case error do
+              {:error, reason} when reason in [:has_users, :protected_role] ->
+                Feedback.role_delete_error(reason)
+
+              _ ->
+                Support.form_error(error)
+            end
+
+          {:noreply, assign(socket, role_feedback: feedback)}
       end
     else
       {:noreply, socket}
