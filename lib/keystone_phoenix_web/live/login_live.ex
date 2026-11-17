@@ -6,6 +6,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   import KeystonePhoenixWeb.Live.AdminPages.Operations
   import KeystonePhoenixWeb.Live.AdminPages.Notifications
   import KeystonePhoenixWeb.Live.AdminPages.LoginConfirmation
+  import KeystonePhoenixWeb.Live.AdminPages.InitialPassword
   import KeystonePhoenixWeb.Live.AdminPages.Organization
   import KeystonePhoenixWeb.Live.AdminPages.System
   import KeystonePhoenixWeb.Live.AdminPages.Navigation, only: [nav_icon: 1]
@@ -72,6 +73,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   def handle_event("login", params, socket),
     do: LoginEvents.handle_login(params, socket, liveview_ip(socket))
+
+  def handle_event("change-initial-password", params, socket),
+    do: LoginEvents.handle_initial_password(params, socket, liveview_ip(socket))
+
+  def handle_event("cancel-initial-password", _params, socket),
+    do: LoginEvents.cancel_initial_password(socket)
 
   def handle_event("force-login", params, socket),
     do: LoginEvents.handle_force_login(params, socket)
@@ -381,7 +388,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
       </head>
       <body>
         <main class={if @current_user, do: "app-main dashboard-main", else: "app-main login-main"}>
-          <section class={if @current_user, do: "app-shell", else: "login-page"}>
+          <section class={if @current_user, do: "app-shell", else: if(@initial_password_required, do: "login-page login-page-initial-password", else: "login-page")}>
             <%= if @current_user do %>
               <aside class={"sidebar#{if @sidebar_open, do: " sidebar-open", else: ""}"}>
                 <div class="sidebar-head">
@@ -512,9 +519,12 @@ defmodule KeystonePhoenixWeb.LoginLive do
               <div class="card login-card">
                 <div class="login-card-header">
                   <div class="brand-mark brand-mark-small" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg></div>
-                  <div><p class="eyebrow">安全登录</p><h2>进入管理台</h2></div>
+                <div><p class="eyebrow">安全登录</p><h2><%= if @initial_password_required, do: "设置新密码", else: "进入管理台" %></h2></div>
                 </div>
-                <%= if @mfa_challenge do %>
+              <%= if @initial_password_required do %>
+                <.initial_password username={@username} error={@initial_password_error} />
+              <% else %>
+              <%= if @mfa_challenge do %>
                   <form id="mfa-login-form" class="login-form" phx-submit="verify-login-mfa">
                     <p class="form-status" role="status">账号密码已验证，请输入认证器中的一次性验证码。</p>
                     <label for="mfa-code">一次性验证码</label>
@@ -536,9 +546,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
                       <input id="captcha-code" name="captchaCode" value="" autocomplete="off" required />
                     </div>
                     <%= if @login_error do %><p class="error" role="alert"><%= @login_error %></p><% end %>
+                    <p :if={@login_notice} class="notice" role="status"><%= @login_notice %></p>
                     <button type="submit" class="login-submit" phx-disable-with="登录中…">登录 <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg></button>
                   </form>
                 <% end %>
+              <% end %>
                 <p class="login-footnote"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="3.5" /><path d="m10 13 9-9 2 2-2 2 2 2-3 3-2-2-4 4" /></svg>访问令牌只保存在当前页面内存，页面刷新后需要重新登录。</p>
               </div>
               <.modal open={@login_confirm_open} />

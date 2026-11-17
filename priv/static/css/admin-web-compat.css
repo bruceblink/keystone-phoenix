@@ -3,6 +3,14 @@
 .login-page .login-intro h1 { font-weight: 400; }
 .login-page .login-card::before { content: none; }
 .login-page .brand-mark { border: 0; box-shadow: none; }
+.login-page-initial-password { place-items: center; padding: 24px 16px; }
+.login-page-initial-password .login-layout { display: block; width: min(520px, 100%); }
+.login-page-initial-password .login-intro { display: none; }
+.login-page-initial-password .login-card { margin: 0; }
+.initial-password-panel { display: grid; gap: 0; }
+.initial-password-form .form-status { margin: 0 0 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.initial-password-form .login-footnote { margin: 2px 0 8px; }
+.initial-password-form .login-submit { margin-top: 6px; }
 .app-shell > .sidebar { min-width: 0; }
 .app-shell > .sidebar > .sidebar-brand { position: static; inset: auto; width: auto; transform: none; grid-column: auto; grid-row: auto; }
 .app-shell > .sidebar > .primary-nav { display: flex; position: static; top: auto; min-height: 0; flex-direction: column; flex-wrap: nowrap; gap: 0; margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
@@ -55,6 +63,14 @@
   .monitor-status-bar { align-items: flex-start; flex-direction: column; gap: 8px; padding: 11px 13px; }
   .status-meta { width: 100%; justify-content: space-between; }
   .status-source { display: none; }
+}
+@media (max-width: 650px) and (max-height: 780px) {
+  .login-page-initial-password { padding: 12px; }
+  .login-page-initial-password .login-card { margin-top: 8px; padding: 14px; }
+  .login-page-initial-password .login-card-header { margin-bottom: 12px; }
+  .initial-password-form label + .input-wrap { margin-bottom: 8px; }
+  .initial-password-form .form-status { margin-bottom: 6px; }
+  .initial-password-form .login-footnote { margin: 0 0 6px; }
 }
 
 /* 侧栏抽屉由原生 admin-web 壳控制，LiveView 只负责切换 sidebar-open。 */

@@ -10,7 +10,7 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.Live.LoginState
 
-  @public_events ~w(login force-login cancel-force-login verify-login-mfa cancel-login-mfa refresh-captcha logout)
+  @public_events ~w(login force-login cancel-force-login verify-login-mfa cancel-login-mfa refresh-captcha logout change-initial-password cancel-initial-password)
   @step_up_events ~w(begin-liveview-step-up verify-liveview-step-up cancel-liveview-step-up)
 
   # 这些事件会改变身份、授权结果、API Key 或在线会话，必须先取得 AAL2。

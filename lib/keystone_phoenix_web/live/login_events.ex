@@ -12,9 +12,11 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.Authentication
+  alias KeystonePhoenixWeb.Live.InitialPasswordEvents
 
   def handle_login(%{"username" => username, "password" => password} = params, socket, remote_ip) do
     username = String.trim(username)
+    socket = assign(socket, login_notice: nil, initial_password_error: nil)
 
     result =
       case LoginLimiter.check_liveview(username, remote_ip) do
@@ -36,6 +38,16 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
 
   def handle_login(_params, socket, _remote_ip),
     do: {:noreply, assign(socket, login_error: "请输入用户名和密码")}
+
+  # 密码只存在于本次事件参数中；表单不使用 phx-change，因此不会进入 assigns。
+  def handle_initial_password(
+        params,
+        socket,
+        remote_ip
+      ),
+      do: InitialPasswordEvents.change(params, socket, remote_ip)
+
+  def cancel_initial_password(socket), do: InitialPasswordEvents.cancel(socket)
 
   def handle_force_login(_params, socket) do
     case socket.assigns[:pending_login] do
@@ -88,6 +100,33 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
 
   defp handle_login_result({:ok, tokens}, username, _password, _force_login, socket),
     do: {:noreply, authenticated_socket(socket, username, tokens)}
+
+  defp handle_login_result(
+         {:error, :precondition_required},
+         username,
+         _password,
+         _force_login,
+         socket
+       ) do
+    Log.record_login_event(username, 0, "需要修改初始密码")
+
+    {:noreply,
+     assign(socket,
+       username: username,
+       password: "",
+       login_error: nil,
+       login_notice: nil,
+       initial_password_required: true,
+       initial_password_error: nil,
+       login_confirm_open: false,
+       pending_login: nil,
+       pending_mfa_login: false,
+       mfa_challenge: nil,
+       mfa_username: "",
+       mfa_code: "",
+       mfa_error: nil
+     )}
+  end
 
   defp handle_login_result(
          {:mfa_required, %{challenge: challenge, username: challenge_username}},
@@ -183,6 +222,9 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
        username: username,
        password: "",
        login_error: message,
+       login_notice: nil,
+       initial_password_required: false,
+       initial_password_error: nil,
        login_confirm_open: false,
        pending_login: nil,
        pending_mfa_login: false
@@ -337,6 +379,9 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       username: username,
       password: "",
       login_error: nil,
+      login_notice: nil,
+      initial_password_required: false,
+      initial_password_error: nil,
       login_confirm_open: false,
       pending_login: nil,
       pending_mfa_login: false,
