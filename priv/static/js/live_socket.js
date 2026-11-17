@@ -16,6 +16,36 @@ const Hooks = {
         : date.toLocaleString("zh-CN", { hour12: false });
     }
   },
+  LocalDateTimeInput: {
+    mounted() {
+      // datetime-local 没有时区；提交时按浏览器本地时间转换成 API 使用的 UTC ISO 时间。
+      this.syncUtc = () => {
+        const localInput = this.el.querySelector("#api-key-expires-local");
+        const hidden = this.el.querySelector("input[name='expiresAt']");
+        if (!hidden) return;
+        const localValue = localInput?.value || "";
+        const date = new Date(localValue);
+        hidden.value = !localValue
+          ? ""
+          : Number.isNaN(date.getTime())
+            ? localValue
+            : date.toISOString();
+      };
+      this.handleLocalInput = (event) => {
+        if (event.target?.id === "api-key-expires-local") this.syncUtc();
+      };
+      this.el.addEventListener("input", this.handleLocalInput, true);
+      this.el.addEventListener("change", this.handleLocalInput, true);
+      this.syncUtc();
+    },
+    updated() {
+      this.syncUtc();
+    },
+    destroyed() {
+      this.el.removeEventListener("input", this.handleLocalInput, true);
+      this.el.removeEventListener("change", this.handleLocalInput, true);
+    }
+  },
   DownloadFile: {
     mounted() {
       this.handleEvent("download-xlsx", (payload) => {

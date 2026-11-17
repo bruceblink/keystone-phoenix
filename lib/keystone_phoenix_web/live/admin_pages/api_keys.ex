@@ -51,10 +51,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
       <% end %>
       <%= if @active_modal == "api-key" do %>
         <.modal id="api-key-modal" title="签发 API Key" description="API Key 只返回一次明文。请在签发成功后立即保存。">
-          <form id="api-key-form" phx-change="filter-api-key-scopes" phx-submit="save-api-key" aria-describedby="api-key-feedback">
+          <form id="api-key-form" phx-change="filter-api-key-scopes" phx-submit="save-api-key" phx-hook="LocalDateTimeInput" aria-describedby="api-key-feedback">
             <div class="form-grid">
               <div><label for="api-key-name">密钥名称</label><input id="api-key-name" name="name" value={@api_key_form["name"]} required /></div>
-              <div><label for="api-key-expires">到期时间</label><input id="api-key-expires" type="datetime-local" name="expiresAt" value={@api_key_form["expiresAt"]} /></div>
+              <div><label for="api-key-expires-local">到期时间</label><input id="api-key-expires-local" type="datetime-local" name="expiresAtLocal" value={@api_key_form["expiresAtLocal"]} /></div>
+              <input id="api-key-expires-utc" type="hidden" name="expiresAt" value={@api_key_form["expiresAt"]} />
               <input type="hidden" name="scopes" value={@api_key_form["scopes"]} />
             </div>
             <fieldset class="api-key-scope-picker"><legend>授权范围 *</legend><div class="api-key-scope-toolbar"><label for="api-key-scope-query">搜索接口权限</label><input id="api-key-scope-query" name="scopeQuery" value={@api_key_scope_query} placeholder="例如 user:read" phx-debounce="200" autocomplete="off" /><span><%= selected_scope_count(@api_key_form["scopes"]) %> 项已选择</span></div><div class="api-key-scope-groups"><%= for {resource, entries} <- grouped_scope_entries(@scope_entries, @api_key_scope_query) do %><section class="api-key-scope-group"><h4><%= scope_resource_label(resource) %></h4><div><%= for entry <- entries do %><label class="checkbox-label"><input type="checkbox" phx-click="toggle-api-key-scope" phx-value-scope={entry["permission"]} phx-value-selected={if scope_selected?(@api_key_form["scopes"], entry["permission"]), do: "false", else: "true"} checked={scope_selected?(@api_key_form["scopes"], entry["permission"])} /><span><%= scope_action_label(entry["action"]) %></span><code><%= entry["permission"] %></code></label><% end %></div></section><% end %></div><p :if={@scope_entries == []} class="form-help" role="status">没有可配置的接口权限。</p><p class="form-help">权限目录来自当前系统；签发时还会检查签发账号当前权限。</p></fieldset>
@@ -125,7 +126,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
     """
   end
 
-  def empty_form, do: %{"name" => "", "scopes" => "", "expiresAt" => ""}
+  def empty_form,
+    do: %{"name" => "", "scopes" => "", "expiresAt" => "", "expiresAtLocal" => ""}
 
   def scope_entries(permissions) do
     allowed = MapSet.new(List.wrap(permissions))

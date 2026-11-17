@@ -69,14 +69,52 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
     render_click(view, "show-panel", %{"panel" => "api-keys"})
     render_click(view, "new-api-key")
 
+    assert has_element?(view, "#api-key-form[phx-hook='LocalDateTimeInput']")
+    assert has_element?(view, "#api-key-expires-local[name='expiresAtLocal']")
+
+    assert has_element?(view, "#api-key-expires-utc[name='expiresAt']")
+
+    expiry_minute =
+      DateTime.utc_now()
+      |> DateTime.add(30 * 24 * 60 * 60)
+      |> DateTime.to_naive()
+
+    expires_at =
+      expiry_minute
+      |> then(&%{&1 | second: 0, microsecond: {0, 0}})
+      |> DateTime.from_naive!("Etc/UTC")
+
+    expires_at_local =
+      expires_at |> DateTime.add(8 * 60 * 60) |> Calendar.strftime("%Y-%m-%dT%H:%M")
+
+    render_change(view, "filter-api-key-scopes", %{
+      "name" => "inbox lifecycle",
+      "expiresAt" => DateTime.to_iso8601(expires_at),
+      "expiresAtLocal" => expires_at_local,
+      "scopes" => "",
+      "scopeQuery" => "api-key"
+    })
+
+    render_click(view, "toggle-api-key-scope", %{
+      "scope" => "api-key:read",
+      "selected" => "true"
+    })
+
+    assert LiveSupport.live_socket(view).assigns.api_key_form["expiresAt"] ==
+             DateTime.to_iso8601(expires_at)
+
+    assert LiveSupport.live_socket(view).assigns.api_key_form["expiresAtLocal"] ==
+             expires_at_local
+
     render_submit(view, "save-api-key", %{
       "name" => "inbox lifecycle",
       "scopes" => "api-key:read",
-      "expiresAt" => ""
+      "expiresAt" => DateTime.to_iso8601(expires_at)
     })
 
     issued = LiveSupport.live_socket(view).assigns.issued_api_key
     assert is_binary(issued.api_key)
+    assert DateTime.compare(issued.expires_at, expires_at) == :eq
     assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 1
     assert has_element?(view, ".notification-count", "1")
 

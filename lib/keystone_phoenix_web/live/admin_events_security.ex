@@ -160,7 +160,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
 
   def handle_event("filter-api-key-scopes", %{"scopeQuery" => query} = params, socket) do
     form =
-      Map.merge(socket.assigns.api_key_form, Map.take(params, ["name", "expiresAt"]))
+      Map.merge(
+        socket.assigns.api_key_form,
+        Map.take(params, ["name", "expiresAt", "expiresAtLocal"])
+      )
 
     {:noreply, assign(socket, api_key_scope_query: query, api_key_form: form)}
   end
