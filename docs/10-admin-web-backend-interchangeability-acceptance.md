@@ -400,3 +400,13 @@ Native `2c4ff2d` 增加管理员初始化修复迁移 `V59`。隔离 MySQL/HTTP 
 角色成员查询的筛选和排序约定已完成代码及定向测试对齐：Phoenix `dcd206b` 修复空白 username/phoneNumber 不再缩小结果集；Native `c937cf6` 支持大小写不敏感包含筛选、首尾空白清理、同时应用两个筛选，并按 UUID 降序返回完整 ID 数组。Native 真实角色 HTTP 测试 `5 passed`，仓库测试 `3 passed`。
 
 尚未确认所有 Unicode 字符上的跨数据库一致性。MySQL 排序规则可能忽略重音，PostgreSQL `ILIKE` 可能返回不同结果，因此本轮不宣称 Unicode 匹配完全兼容。Native `c937cf6` 全量测试通过，共 92 个套件、241 项测试，失败和跳过均为 0；`quarkusBuild` 通过。
+
+### 2026-11-17 首次改密真实窗口验收
+
+Native `36007f4` 拒绝复用原密码作为新密码。Phoenix `888d10f` 在登录时强制初始改密，并使用事务更新密码和清除标记；`2e7c11f` 修复 refresh token 过期时间比较。Phoenix LiveView 页面由 `0c8a7e7` 实现，admin-web 页面由 `1017f2f` 实现。
+
+Codex 内置浏览器当前无法操作，以下均为 Chrome 真实窗口回退证据。admin-web 连接全新 Native `V1`–`V59` 数据库后，首次登录返回 `428 precondition_required`。页面完成确认密码不一致提示、错误当前密码提示、改密和使用新密码登录。视口 `320×568` 与 `1200×893` 均没有页面溢出。admin-web 连接隔离 Phoenix 后也完成首次改密和新密码登录。Phoenix LiveView 完成同一改密流程；确认值不一致时保留当前浏览器 DOM 中的输入，错误提示更新正常；服务端没有把这些密码写入 socket assigns。
+
+admin-web `pnpm test:run` 结果为 `27 files / 167 passed`；`pnpm typecheck` 和 `pnpm build` 通过。Phoenix 全量集成测试 `492 passed`，严格编译、格式、源码行数和差异检查通过。
+
+本轮不代表完整替换验收完成。Native 与 Phoenix 的密码策略仍需对齐；Unicode 筛选可能受到 MySQL 与 PostgreSQL 排序规则差异影响。其余页面写操作矩阵、生产环境和正式发布验收仍未完成。

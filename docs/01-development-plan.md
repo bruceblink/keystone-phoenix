@@ -920,3 +920,13 @@ Native `2c4ff2d` 增加 `V59` 管理员初始化修复，用于处理 `V46` 新�
 角色成员筛选已完成初步对齐：Phoenix `dcd206b` 修复 username 和 phoneNumber 的空白输入处理；Native `c937cf6` 增加不区分大小写的包含筛选、首尾空白处理、多个条件同时生效及完整 ID 数组，并将数组顺序改为 UUID 降序。Native 角色 HTTP 定向测试 `5 passed`，角色仓库定向测试 `3 passed`。
 
 Unicode 边界仍有限制：MySQL 排序规则可能忽略重音，和 PostgreSQL `ILIKE` 的结果可能不同。目前只确认了两端的筛选结构、空白处理和排序约定，不宣称所有 Unicode 字符匹配完全一致。Native `c937cf6` 全量测试通过，共 92 个套件、241 项测试，失败和跳过均为 0；`quarkusBuild` 通过。
+
+### 2026-11-17 首次改密页面闭环验收
+
+Native `36007f4` 拒绝把原密码再次设为新密码。Phoenix `888d10f` 强制账号先完成初始改密，并在事务内更新密码和清除标记；`2e7c11f` 修复过期时间比较。Phoenix `0c8a7e7` 增加 LiveView 首次改密页面。admin-web `1017f2f` 增加相同流程的登录页面。
+
+Chrome 真实窗口回退验收覆盖两种后端。admin-web 连接全新 Native `V1`–`V59` 数据库后，登录按预期返回 `428 precondition_required`；页面完成确认值检查、旧密码错误反馈、改密和新密码登录。视口 `320×568` 与 `1200×893` 均没有页面溢出。admin-web 连接隔离 Phoenix 后，也完成首次改密和新密码登录。Phoenix LiveView 同样完成改密；确认不一致后，页面保留浏览器 DOM 输入值，且不将密码写入 socket assigns。
+
+admin-web 全量测试为 `27 files / 167 passed`，类型检查和生产构建通过。Phoenix 全量集成测试 `492 passed`，严格编译、格式、源码行数和差异检查通过。
+
+仍需处理密码策略对齐和 Unicode 筛选差异。其他页面的写操作矩阵、生产环境及正式发布验收仍未完成。首次改密闭环的 Chrome 验收使用回退浏览器证据；Codex 内置浏览器恢复交互后，应优先用其复验。
