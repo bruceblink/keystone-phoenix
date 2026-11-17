@@ -324,6 +324,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     end
   end
 
+  def handle_event("change-profile-form", params, socket) do
+    ProfileEvents.change_form(params, socket)
+  end
+
+  def handle_event("refresh-profile", _params, socket) do
+    if Support.panel_allowed?(socket, "profile"),
+      do: {:noreply, Support.assign_profile(socket, true)},
+      else: {:noreply, socket}
+  end
+
   def handle_event("save-profile", params, socket) do
     ProfileEvents.handle_event(params, socket)
   end

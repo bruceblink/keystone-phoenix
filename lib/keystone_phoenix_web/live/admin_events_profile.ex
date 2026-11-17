@@ -7,6 +7,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Profile do
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
+  def change_form(params, socket) do
+    if Support.authenticated_socket?(socket) do
+      {:noreply, assign_profile_form(socket, normalize_profile_params(params), nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event(params, socket) do
     if Support.authenticated_socket?(socket) do
       user_id = socket.assigns.current_user["userId"]
@@ -22,17 +30,14 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Profile do
 
         {:error, :display_name_required} ->
           {:noreply,
-           assign(socket,
-             profile_form: Map.merge(socket.assigns.profile_form, profile_params),
-             profile_feedback: Feedback.error(:validation_failed, "展示名不能为空")
+           assign_profile_form(
+             socket,
+             profile_params,
+             Feedback.error(:validation_failed, "展示名不能为空")
            )}
 
         error ->
-          {:noreply,
-           assign(socket,
-             profile_form: Map.merge(socket.assigns.profile_form, profile_params),
-             profile_feedback: Support.form_error(error)
-           )}
+          {:noreply, assign_profile_form(socket, profile_params, Support.form_error(error))}
       end
     else
       {:noreply, socket}
@@ -49,6 +54,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Profile do
          assign(socket,
            current_user: profile_user,
            profile_form: profile_user,
+           profile_baseline_form: profile_user,
+           profile_dirty: false,
            profile_feedback: "个人资料已保存"
          )}
 
@@ -63,5 +70,27 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Profile do
       "" -> Map.put(params, "sex", "2")
       _ -> params
     end
+  end
+
+  # 变更事件在 socket 中保存草稿，并按服务端基线计算是否仍有未保存字段。
+  defp assign_profile_form(socket, params, feedback) do
+    profile_form = Map.merge(socket.assigns.profile_form, params)
+    baseline = socket.assigns[:profile_baseline_form] || %{}
+
+    assign(socket,
+      profile_form: profile_form,
+      profile_dirty: profile_values(profile_form) != profile_values(baseline),
+      profile_feedback: feedback
+    )
+  end
+
+  defp profile_values(profile) do
+    %{
+      "nickname" => profile["nickname"] || profile["displayName"] || "",
+      "email" => profile["email"] || "",
+      "phoneNumber" => profile["phoneNumber"] || "",
+      "avatar" => profile["avatar"] || "",
+      "sex" => to_string(profile["sex"] || "2")
+    }
   end
 end

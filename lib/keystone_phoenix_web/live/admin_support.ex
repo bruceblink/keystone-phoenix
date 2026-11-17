@@ -412,18 +412,26 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   def monitor_access?(socket), do: MonitorSupport.access?(socket)
 
-  def assign_profile(socket) do
+  def assign_profile(socket, refresh? \\ false) do
     case User.profile(socket.assigns.current_user["userId"]) do
       {:ok, profile} ->
         profile_user = profile["user"] || profile
+        dirty? = socket.assigns[:profile_dirty] == true
 
-        assign(socket,
-          active_panel: "profile",
-          profile_form: profile_user,
-          profile_loaded: true,
-          password_form: empty_password_form(),
-          profile_feedback: nil
-        )
+        socket =
+          assign(socket,
+            active_panel: "profile",
+            profile_baseline_form: profile_user,
+            profile_loaded: true,
+            password_form: empty_password_form(),
+            profile_feedback: profile_refresh_feedback(dirty?, refresh?)
+          )
+
+        if dirty? do
+          socket
+        else
+          assign(socket, profile_form: profile_user, profile_dirty: false)
+        end
 
       _ ->
         assign(socket, active_panel: "profile", profile_feedback: @profile_unavailable_feedback)
@@ -433,6 +441,12 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     _error ->
       assign(socket, active_panel: "profile", profile_feedback: @profile_unavailable_feedback)
   end
+
+  defp profile_refresh_feedback(true, _refresh?),
+    do: "资料已重新读取；未保存的修改仍保留。"
+
+  defp profile_refresh_feedback(false, true), do: "个人资料已刷新。"
+  defp profile_refresh_feedback(false, false), do: nil
 
   def normalize_options_param(params) do
     options =

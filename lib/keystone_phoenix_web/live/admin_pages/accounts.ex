@@ -180,13 +180,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <h1>个人资料</h1>
           <p class="page-description">维护当前账号资料和登录凭据。</p>
         </div>
-        <div class="heading-actions"><button type="button" class="button button-secondary refresh" phx-click="show-panel" phx-value-panel="profile" phx-disable-with="刷新中…">刷新资料</button></div>
+        <div class="heading-actions"><button type="button" class="button button-secondary refresh" phx-click="refresh-profile" phx-disable-with="刷新中…">刷新资料</button></div>
       </div>
       <p :if={@profile_feedback && !@profile_loaded} id="profile-feedback" class={Feedback.class(@profile_feedback)} role={Feedback.role(@profile_feedback)} aria-live={Feedback.live(@profile_feedback)}><%= Feedback.message(@profile_feedback) %><small :if={Feedback.code(@profile_feedback)}>错误码：<%= Feedback.code(@profile_feedback) %></small></p>
       <%= if @profile_loaded do %>
         <section class="card profile-card" aria-labelledby="profile-details-title">
           <div class="card-header"><div><h2 id="profile-details-title">基本资料</h2><p>这些字段会保存到当前账号。</p></div><span class="badge badge-info">系统 API</span></div>
-          <form id="profile-form" class="admin-form" aria-describedby={if @profile_feedback, do: "profile-feedback", else: nil} phx-submit="save-profile">
+          <form id="profile-form" class="admin-form" aria-describedby={if @profile_feedback, do: "profile-feedback", else: nil} phx-change="change-profile-form" phx-submit="save-profile">
             <p :if={@profile_feedback} id="profile-feedback" class={Feedback.class(@profile_feedback)} role={Feedback.role(@profile_feedback)} aria-live={Feedback.live(@profile_feedback)}><%= Feedback.message(@profile_feedback) %><small :if={Feedback.code(@profile_feedback)}>错误码：<%= Feedback.code(@profile_feedback) %></small></p>
             <label><span>用户名</span><input id="profile-username" value={@profile_form["username"] || ""} readonly /></label>
             <label><span>展示名 *</span><input id="profile-nickname" name="nickname" value={@profile_form["nickname"] || @profile_form["displayName"] || ""} aria-describedby={if @profile_feedback, do: "profile-feedback", else: nil} required /></label>

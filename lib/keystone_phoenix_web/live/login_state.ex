@@ -171,6 +171,8 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       user_form: Support.empty_user_form(),
       user_feedback: nil,
       profile_form: Support.empty_profile_form(),
+      profile_baseline_form: nil,
+      profile_dirty: false,
       password_form: Support.empty_password_form(),
       profile_loaded: false,
       profile_feedback: nil,

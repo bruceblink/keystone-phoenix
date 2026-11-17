@@ -143,6 +143,53 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     assert updated.email == "second@example.com"
   end
 
+  @tag :integration
+  test "refresh profile preserves unsaved edits and reloads server values after save", %{
+    conn: conn
+  } do
+    disable_captcha()
+    {:ok, user} = create_user(%{"nickname" => "原展示名", "email" => "before@example.com"})
+    {:ok, view, _html} = login_view(conn, user)
+    render_click(view, "show-panel", %{"panel" => "profile"})
+
+    draft = %{
+      "nickname" => "未保存展示名",
+      "email" => "before@example.com",
+      "phoneNumber" => "",
+      "avatar" => "",
+      "sex" => "2"
+    }
+
+    render_change(view, "change-profile-form", draft)
+    assert live_socket(view).assigns.profile_dirty
+
+    Repo.update!(Ecto.Changeset.change(user, email: "server@example.com"))
+    render_click(view, "refresh-profile")
+
+    assert live_socket(view).assigns.profile_form["nickname"] == "未保存展示名"
+    assert live_socket(view).assigns.profile_form["email"] == "before@example.com"
+    assert live_socket(view).assigns.profile_feedback == "资料已重新读取；未保存的修改仍保留。"
+    assert has_element?(view, "#profile-feedback[role='status']", "未保存的修改仍保留")
+    assert {:ok, persisted_before_save} = User.get_user(user.user_id)
+    assert persisted_before_save.nickname == "原展示名"
+    assert persisted_before_save.email == "server@example.com"
+
+    render_submit(view, "save-profile", draft)
+
+    assert live_socket(view).assigns.profile_dirty == false
+    assert live_socket(view).assigns.profile_feedback == "个人资料已保存"
+    assert {:ok, saved} = User.get_user(user.user_id)
+    assert saved.nickname == "未保存展示名"
+    assert saved.email == "before@example.com"
+
+    Repo.update!(Ecto.Changeset.change(saved, email: "after-save@example.com"))
+    render_click(view, "refresh-profile")
+
+    assert live_socket(view).assigns.profile_form["email"] == "after-save@example.com"
+    assert live_socket(view).assigns.profile_dirty == false
+    assert live_socket(view).assigns.profile_feedback == "个人资料已刷新。"
+  end
+
   test "a whitespace-only profile display name is rejected and kept in the form", %{conn: conn} do
     disable_captcha()
     {:ok, user} = create_user(%{"nickname" => "原展示名", "email" => "before@example.com"})
