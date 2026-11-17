@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
 
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.AuthSession
+  alias KeystonePhoenix.Auth.RefreshToken
   alias KeystonePhoenix.Auth.Session
   alias KeystonePhoenix.Auth.Token
   alias KeystonePhoenix.Config
@@ -164,7 +165,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     assert get_in(response, ["error", "code"]) == "resource_conflict"
   end
 
-  test "uses the shared token response schema for login and refresh", %{user: user} do
+  test "rotates a live refresh token when its future microsecond is less than now", %{user: user} do
     login =
       build_conn()
       |> post("/api/v1/auth/login", %{
@@ -183,6 +184,40 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
     refute Map.has_key?(data, "token")
     refute Map.has_key?(data, "currentUser")
     assert Session.valid?(data["sessionId"], user.user_id)
+
+    {:ok, claims} = Token.verify(data["refreshToken"], Token.refresh_type())
+    now = DateTime.utc_now()
+
+    now =
+      if elem(now.microsecond, 0) == 0 do
+        Process.sleep(1)
+        DateTime.utc_now()
+      else
+        now
+      end
+
+    # 构造实际晚于当前时间、但微秒字段更小的时间，确保按时刻而非结构体字段顺序判断。
+    future = DateTime.add(now, 60, :second)
+    future = %{future | microsecond: {elem(now.microsecond, 0) - 1, elem(now.microsecond, 1)}}
+    assert DateTime.compare(future, now) == :gt
+
+    session = Repo.get_by!(AuthSession, id: data["sessionId"])
+
+    session
+    |> Ecto.Changeset.change(
+      refresh_expires_at: future,
+      idle_expires_at: future,
+      expires_at: future
+    )
+    |> Repo.update!()
+
+    token_record = Repo.get!(RefreshToken, claims["jti"])
+
+    token_record
+    |> Ecto.Changeset.change(expires_at: future, idle_expires_at: future)
+    |> Repo.update!()
+
+    assert DateTime.compare(future, DateTime.utc_now()) == :gt
 
     refreshed =
       build_conn()

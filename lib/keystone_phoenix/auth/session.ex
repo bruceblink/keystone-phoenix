@@ -295,10 +295,10 @@ defmodule KeystonePhoenix.Auth.Session do
       not is_nil(token.revoked_at) or not is_nil(token.reused_at) ->
         reuse_result(session, jti, now)
 
-      token.expires_at <= now or token.idle_expires_at <= now ->
+      expired?(token.expires_at, now) or expired?(token.idle_expires_at, now) ->
         reuse_result(session, jti, now)
 
-      session.refresh_expires_at <= now or session.idle_expires_at <= now ->
+      expired?(session.refresh_expires_at, now) or expired?(session.idle_expires_at, now) ->
         reuse_result(session, jti, now)
 
       true ->
@@ -566,9 +566,10 @@ defmodule KeystonePhoenix.Auth.Session do
     :ok
   end
 
-  defp min_datetime(left, right),
-    do: if(DateTime.compare(left, right) == :lt, do: left, else: right)
+  defp min_datetime(l, r), do: if(DateTime.compare(l, r) == :lt, do: l, else: r)
 
+  # DateTime 结构体的项顺序不代表时间先后，过期判断统一比较实际时刻。
+  defp expired?(value, now), do: DateTime.compare(value, now) != :gt
   defp hash(value), do: :crypto.hash(:sha256, value) |> Base.encode16(case: :lower)
   defp normalize_client_id(value) when is_binary(value) and value != "", do: value
   defp normalize_client_id(_value), do: @default_client_id
@@ -580,7 +581,6 @@ defmodule KeystonePhoenix.Auth.Session do
 
   defp occupy_result({:error, _reason}), do: {:error, :unavailable}
   defp rotate_result({:ok, tokens}) when is_map(tokens), do: {:ok, tokens}
-
   defp rotate_result({:ok, {:error, reason}}), do: {:error, reason}
 
   defp rotate_result({:error, reason})
