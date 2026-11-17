@@ -10,6 +10,7 @@ defmodule KeystonePhoenix.Authz.Principal do
 
   @enforce_keys []
   defstruct subject_id: nil,
+            scope_subject_id: nil,
             subject_type: "USER",
             credential_type: "PASSWORD",
             credential_id: nil,
@@ -27,6 +28,7 @@ defmodule KeystonePhoenix.Authz.Principal do
 
   @type t :: %__MODULE__{
           subject_id: term(),
+          scope_subject_id: term(),
           subject_type: String.t() | nil,
           credential_type: String.t() | nil,
           credential_id: term(),
@@ -50,9 +52,15 @@ defmodule KeystonePhoenix.Authz.Principal do
   def from_user(user) when is_map(user) do
     credential_type = credential_type(user)
     session_id = value(user, :session_id, "sessionId")
+    user_id = value(user, :user_id, "userId")
+    subject_id = value(user, :subject_id, "subjectId") || user_id
+
+    scope_subject_id =
+      if credential_type == "API_KEY", do: user_id, else: user_id || subject_id
 
     %__MODULE__{
-      subject_id: value(user, :subject_id, "subjectId") || value(user, :user_id, "userId"),
+      subject_id: subject_id,
+      scope_subject_id: scope_subject_id,
       subject_type: value(user, :subject_type, "subjectType") || subject_type(credential_type),
       credential_type: credential_type,
       credential_id: credential_id(user, credential_type, session_id),
@@ -78,7 +86,9 @@ defmodule KeystonePhoenix.Authz.Principal do
 
   def to_user(%__MODULE__{} = principal) do
     %{
-      user_id: principal.subject_id,
+      user_id: scope_subject_id(principal),
+      subject_id: principal.subject_id,
+      scope_subject_id: scope_subject_id(principal),
       role_id: List.first(principal.roles),
       tenant_id: principal.tenant_id,
       dept_id: principal.department_id,
@@ -113,6 +123,19 @@ defmodule KeystonePhoenix.Authz.Principal do
   end
 
   def api_key?(_user), do: false
+
+  @doc "返回数据范围和业务 owner 使用的用户 UUID，API Key 使用其所属用户 ID。"
+  @spec scope_subject_id(map() | t() | term()) :: term()
+  def scope_subject_id(%__MODULE__{credential_type: "API_KEY", scope_subject_id: id}), do: id
+
+  def scope_subject_id(%__MODULE__{} = principal),
+    do: principal.scope_subject_id || principal.subject_id
+
+  def scope_subject_id(user) when is_map(user) do
+    from_user(user).scope_subject_id
+  end
+
+  def scope_subject_id(_user), do: nil
 
   @doc "Returns whether a principal has administrator status."
   # API Key scope 只授权具体接口，不授予全局管理员身份。

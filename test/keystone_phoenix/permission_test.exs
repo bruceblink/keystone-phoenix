@@ -192,6 +192,7 @@ defmodule KeystonePhoenix.PermissionTest do
 
   test "accepts comma separated menu IDs from LiveView forms" do
     role = insert_role(%{role_key: unique("form_role")})
+    manager_role = insert_role(%{data_scope: "ALL", role_key: unique("form_manager")})
 
     menu =
       %SysMenu{}
@@ -216,7 +217,11 @@ defmodule KeystonePhoenix.PermissionTest do
                  "menuIds" => menu.menu_id
                },
                authorization: %{
-                 principal: %{permissions: ["role:update", "permission:manage"]},
+                 principal: %{
+                   user_id: Identity.v7(),
+                   role_id: manager_role.role_id,
+                   permissions: ["role:update", "permission:manage"]
+                 },
                  permission: "role:update"
                }
              )

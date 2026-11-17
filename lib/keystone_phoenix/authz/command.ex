@@ -57,7 +57,7 @@ defmodule KeystonePhoenix.Authz.Command do
     end
   end
 
-  @doc "Returns an audit actor ID from options or the principal subject."
+  @doc "返回审计字段引用的用户 UUID；API Key 使用所属用户，服务凭据仍保留在 Principal 和安全事件中。"
   def actor_id(options) do
     authorization = Keyword.fetch!(options, :authorization)
     actor_id = Map.get(authorization, :actor_id, Map.get(authorization, "actor_id"))
@@ -66,6 +66,6 @@ defmodule KeystonePhoenix.Authz.Command do
       authorization
       |> Map.get(:principal, Map.get(authorization, "principal"))
       |> Authz.Principal.from_user()
-      |> Map.get(:subject_id)
+      |> Authz.Principal.scope_subject_id()
   end
 end

@@ -85,17 +85,15 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
 
   def scope_allowed?(principal, :self, target) do
     subject = Principal.from_user(principal)
+    user = Principal.to_user(subject)
 
-    # 数据范围判断需要使用带有 role_id 的原始主体，不能把 Principal 结构直接交给旧策略适配器。
-    if Permission.admin?(Principal.to_user(subject)) do
-      true
+    # 本人请求不依赖角色查询；访问其他主体时，只由 ALL/TENANT 数据范围放行。
+    with {:ok, subject_id} <- Params.parse_uuid(subject.subject_id),
+         {:ok, target_id} <- Params.parse_uuid(target) do
+      subject_id == target_id or
+        Enum.any?(Permission.active_data_scopes(user), &(&1 in ["ALL", "TENANT"]))
     else
-      with {:ok, subject_id} <- Params.parse_uuid(subject.subject_id),
-           {:ok, target_id} <- Params.parse_uuid(target) do
-        subject_id == target_id
-      else
-        _ -> false
-      end
+      _ -> false
     end
   end
 
@@ -105,13 +103,8 @@ defmodule KeystonePhoenix.Authz.PolicyStore do
     subject = Principal.from_user(principal)
     user = Principal.to_user(subject)
 
-    # 旧策略读取 role_id；先还原规范主体保存的原始用户字段，确保管理员范围正确放行。
-    if Permission.admin?(user) do
-      true
-    else
-      # 数据范围策略同样读取 role_id、dept_id 和 user_id，必须使用领域用户字段。
-      scope_allowed_without_admin?(user, kind, target)
-    end
+    # 权限管理能力不能扩大数据范围；旧策略按角色读取 role_id、dept_id 和 user_id。
+    scope_allowed_without_admin?(user, kind, target)
   end
 
   @doc "Checks whether a role write may change permission metadata."

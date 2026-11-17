@@ -10,7 +10,7 @@
 - 真实 PostgreSQL 定向集成测试覆盖了策略关闭时的 AAL1 写入、恢复码登录、OTP step-up、600 秒期限、刷新后的 AAL1、用户/会话/客户端/token ID 绑定、已撤销会话、因子停用、Passkey `webauthn` 拒绝，以及 token ID 冲突时会话字段整体回滚。LiveView 测试覆盖策略关闭时普通敏感事件放行和导入强制 step-up。启用策略的旧 LiveView 用例已显式设置 MFA 策略，并保留原操作断言。
 - Codex 内置浏览器在独立 PostgreSQL 18 测试库中完成实际窗口验收：MFA 策略关闭时，管理员创建角色并在列表中看到新角色；用户导入开始后显示需要二次认证。测试服务已停止，临时数据库已删除。未验证硬件 Passkey 仪式。
 - Native/Phoenix 仍有已确认的状态码差异：未登记 MFA 时创建 step-up 请求，Phoenix 返回 422，Native 返回 409。本轮保持现有 HTTP 状态，不统一错误映射；登录和 verify 的上下文差异也未在此处合并。step-up 认证请求会先被消费，再签发 token 和更新会话；后续失败时需重新创建认证请求，Native 当前采用相同顺序。Phoenix 在验证前检查会话有效，但最终替换 token 的行锁查询没有再次检查到期时间；Native 会在最终替换时检查。该到期边界本轮未扩展处理。
-- API Key 的 `permission:manage` + `SELF` 数据范围绕过已由 Phoenix `409f9de` 修复；真实 PostgreSQL HTTP 和授权定向测试 18 项通过。仍待验收：人类管理员角色范围与 Native 的差异，以及 API Key `ServiceSubject` ID 与 owner 用户 ID 在 `OWNER` 范围检查中的对应关系。
+- API Key 的 `permission:manage` + `SELF` 数据范围绕过已由 Phoenix `409f9de` 修复；本轮继续让人类用户按角色范围访问，并将 API Key 的 `ServiceSubject` ID 与所属用户的 `OWNER` 范围和数据库用户外键区分。真实 PostgreSQL 范围测试分别为 56 项和 43 项通过；同一账号的 API Key 与人类会话可交叉访问各自创建的任务和公告，其他账号被拒绝。认证主体与凭据 ID 仍保留在认证上下文，授权审计记录同时保存所属用户和服务主体标识。
 
 隔离 PostgreSQL 18 测试库中的全量集成回归在最后一次 Passkey 权限测试调整前为 `541 passed`。该测试调整后，MFA 定向集成回归为 `4 passed`。本地没有执行硬件 Passkey 仪式、多节点恢复、CSRF/Cookie 浏览器行为或生产代理链验收；这些检查仍需单独安排。
 

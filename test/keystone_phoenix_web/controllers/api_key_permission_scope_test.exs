@@ -71,16 +71,20 @@ defmodule KeystonePhoenixWeb.ApiKeyPermissionScopeTest do
       |> json_response(200)
 
     human_user_ids = Enum.map(human_users_response["data"]["items"], & &1["id"])
-    assert human_users_response["data"]["total"] >= 2
-    assert actor.user_id in human_user_ids
-    assert other.user_id in human_user_ids
+    # permission:manage 只管理权限元数据；SELF 角色仍只能查看本人数据。
+    assert human_users_response["data"]["total"] == 1
+    assert human_user_ids == [actor.user_id]
+    refute other.user_id in human_user_ids
 
     human_config_response =
       build_conn()
       |> Plug.Conn.put_req_header("authorization", "Bearer #{human_tokens.token}")
       |> get("/api/v1/configs")
 
-    assert human_config_response.status == 200
+    assert human_config_response.status == 403
+
+    assert get_in(json_response(human_config_response, 403), ["error", "code"]) ==
+             "data_scope_denied"
 
     # API Key 按所属角色的新范围恢复访问，不会因凭据类型被一律拒绝。
     Repo.update!(Ecto.Changeset.change(role, data_scope: "ALL"))

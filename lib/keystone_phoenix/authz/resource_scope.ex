@@ -9,7 +9,6 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
 
   alias KeystonePhoenix.Authz.DataScope
   alias KeystonePhoenix.Authz.Principal
-  alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Params
   alias KeystonePhoenix.Permission
 
@@ -46,7 +45,6 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
     resource_rule = rule(resource)
 
     cond do
-      admin?(subject) -> true
       resource_rule -> allowed_by_rule?(subject, resource_rule, context)
       true -> false
     end
@@ -62,9 +60,6 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
     resource_rule = rule(resource)
 
     cond do
-      admin?(subject) ->
-        {:ok, :all}
-
       is_nil(resource_rule) ->
         {:error, :data_scope_denied}
 
@@ -78,8 +73,8 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
           Enum.any?(scopes, &(&1 in @tenant_scopes)) ->
             {:ok, :all}
 
-          "OWNER" in scopes and canonical_id?(subject.subject_id) ->
-            {:ok, {:owner, subject.subject_id}}
+          "OWNER" in scopes and canonical_id?(Principal.scope_subject_id(subject)) ->
+            {:ok, {:owner, Principal.scope_subject_id(subject)}}
 
           true ->
             {:error, :data_scope_denied}
@@ -113,7 +108,7 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
   def registered?(resource), do: not is_nil(rule(resource))
 
   defp allowed_by_rule?(subject, %{kind: :self}, context) do
-    subject_id = subject.subject_id
+    subject_id = Principal.scope_subject_id(subject)
     target_id = Map.get(context, :target_id, Map.get(context, "target_id", subject_id))
 
     is_binary(subject_id) and is_binary(target_id) and canonical_id?(subject_id) and
@@ -121,7 +116,7 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
   end
 
   defp allowed_by_rule?(subject, %{kind: :relationship}, context) do
-    subject_id = subject.subject_id
+    subject_id = Principal.scope_subject_id(subject)
     owner_id = Map.get(context, :owner_id, Map.get(context, "owner_id"))
     member_ids = Map.get(context, :member_ids, Map.get(context, "member_ids", []))
 
@@ -145,7 +140,8 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
           true
         else
           owner_id = Map.get(context, :owner_id, Map.get(context, "owner_id"))
-          canonical_id?(subject.subject_id) and owner_id == subject.subject_id
+          scope_subject_id = Principal.scope_subject_id(subject)
+          canonical_id?(scope_subject_id) and owner_id == scope_subject_id
         end
 
       true ->
@@ -154,8 +150,6 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
   end
 
   defp allowed_by_rule?(_subject, _rule, _context), do: false
-
-  defp admin?(subject), do: Principal.admin?(subject) or Authz.admin?(subject)
 
   # 入口数据范围必须与用户查询使用相同的启用角色并集规则。
   defp role_scopes(%Principal{raw: raw} = subject) do

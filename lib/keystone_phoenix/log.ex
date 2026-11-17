@@ -183,7 +183,7 @@ defmodule KeystonePhoenix.Log do
       "status" => if(outcome == "allow", do: 1, else: 0)
     }
 
-    user = %{user_id: canonical_uuid(subject.subject_id), username: "authz"}
+    user = %{user_id: canonical_uuid(Principal.scope_subject_id(subject)), username: "authz"}
     _ = create_operation_log(attrs, user, "/authz/decision", "AUTHZ")
     :ok
   rescue

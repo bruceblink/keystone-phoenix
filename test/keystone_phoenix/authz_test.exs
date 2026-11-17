@@ -80,7 +80,7 @@ defmodule KeystonePhoenix.AuthzTest do
   test "self scope is limited to the principal subject" do
     assert Authz.scope_allowed?(%{user_id: @user_id}, :self, @user_id)
     refute Authz.scope_allowed?(%{user_id: @user_id}, :self, @role_id)
-    assert Authz.scope_allowed?(%{permissions: ["permission:manage"]}, :self, @role_id)
+    refute Authz.scope_allowed?(%{permissions: ["permission:manage"]}, :self, @role_id)
   end
 
   test "authorization decisions emit sanitized telemetry" do

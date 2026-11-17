@@ -107,7 +107,7 @@ defmodule KeystonePhoenix.Permission do
 
   @doc "Adds the current role's user data scope before counting or pagination."
   def scope_users(query, user) do
-    if admin?(user), do: query, else: scoped_users_query(query, user)
+    scoped_users_query(query, user)
   end
 
   @doc "返回主体全部启用角色的数据范围，供资源入口按并集执行访问判断。"
@@ -116,7 +116,7 @@ defmodule KeystonePhoenix.Permission do
 
   @doc "Adds the current role's data scope before returning departments."
   def scope_departments(query, user) do
-    if admin?(user), do: query, else: scoped_departments_query(query, user)
+    scoped_departments_query(query, user)
   end
 
   defp scoped_users_query(query, user) do

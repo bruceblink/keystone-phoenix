@@ -18,6 +18,7 @@ defmodule KeystonePhoenix.Authz.PrincipalTest do
       })
 
     assert principal.subject_id == "user-1"
+    assert principal.scope_subject_id == "user-1"
     assert principal.subject_type == "USER"
     assert principal.credential_type == "PASSWORD"
     assert principal.credential_id == "session-1"
@@ -43,11 +44,27 @@ defmodule KeystonePhoenix.Authz.PrincipalTest do
       })
 
     assert principal.subject_id == "service-1"
+    assert principal.scope_subject_id == "user-1"
     assert principal.subject_type == "SERVICE_SUBJECT"
     assert principal.credential_type == "API_KEY"
     assert principal.credential_id == "key-1"
     assert principal.roles == ["role-1"]
     assert principal.approved_scopes == ["user:read"]
     assert Principal.to_user(principal).subject_type == "SERVICE_SUBJECT"
+    assert Principal.to_user(%{principal | raw: %{}}).user_id == "user-1"
+    assert Principal.to_user(%{principal | raw: %{}}).subject_id == "service-1"
+  end
+
+  test "fails closed when an API Key has no owner user ID" do
+    principal =
+      Principal.from_user(%{
+        subject_id: "service-1",
+        credential_type: "API_KEY",
+        permissions: ["profile:read"]
+      })
+
+    assert principal.subject_id == "service-1"
+    assert is_nil(principal.scope_subject_id)
+    assert is_nil(Principal.scope_subject_id(principal))
   end
 end

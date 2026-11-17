@@ -1,7 +1,7 @@
 defmodule KeystonePhoenix.Authz.ResourceScopeTest do
   use ExUnit.Case, async: true
 
-  alias KeystonePhoenix.Authz.{DataScope, ResourceScope}
+  alias KeystonePhoenix.Authz.{DataScope, Principal, ResourceScope}
   alias KeystonePhoenix.Identity
 
   test "resource matrix registers self, relationship and global entry rules" do
@@ -85,10 +85,48 @@ defmodule KeystonePhoenix.Authz.ResourceScopeTest do
     assert {:error, :data_scope_denied} = ResourceScope.owner_scope(%{permissions: []}, :notice)
   end
 
-  test "permission:manage keeps the administrator path" do
-    principal = %{user_id: Identity.v7(), permissions: ["permission:manage"], data_scope: "SELF"}
+  test "API Key owner scopes use the owner user ID and preserve the service subject" do
+    user_id = Identity.v7()
+    service_subject_id = Identity.v7()
 
-    assert ResourceScope.allowed?(principal, :role)
-    assert ResourceScope.allowed?(principal, :session)
+    api_key = %{
+      credential_type: "API_KEY",
+      user_id: user_id,
+      subject_id: service_subject_id,
+      permissions: [],
+      data_scope: "OWNER"
+    }
+
+    principal = Principal.from_user(api_key)
+
+    assert principal.subject_id == service_subject_id
+    assert Principal.scope_subject_id(principal) == user_id
+    assert {:ok, {:owner, ^user_id}} = ResourceScope.owner_scope(principal, :notice)
+    assert ResourceScope.allowed?(api_key, :job, %{owner_id: user_id})
+    refute ResourceScope.allowed?(api_key, :job, %{owner_id: Identity.v7()})
+
+    self_scoped_key = Map.put(api_key, :data_scope, "SELF")
+    assert ResourceScope.allowed?(self_scoped_key, :profile, %{target_id: user_id})
+    refute ResourceScope.allowed?(Map.delete(self_scoped_key, :user_id), :profile)
+  end
+
+  test "permission:manage keeps metadata capability but follows role data scope" do
+    owner_id = Identity.v7()
+    owner_admin = %{user_id: owner_id, permissions: ["permission:manage"], data_scope: "OWNER"}
+
+    assert Principal.admin?(owner_admin)
+    refute ResourceScope.allowed?(owner_admin, :role)
+    assert {:ok, {:owner, ^owner_id}} = ResourceScope.owner_scope(owner_admin, :job)
+
+    self_admin = %{user_id: owner_id, permissions: ["permission:manage"], data_scope: "SELF"}
+    assert Principal.admin?(self_admin)
+    refute ResourceScope.allowed?(self_admin, :role)
+    assert {:error, :data_scope_denied} = ResourceScope.owner_scope(self_admin, :notice)
+
+    all_admin = %{user_id: owner_id, permissions: ["permission:manage"], data_scope: "ALL"}
+    assert Principal.admin?(all_admin)
+    assert ResourceScope.allowed?(all_admin, :role)
+    assert ResourceScope.allowed?(all_admin, :session)
+    assert {:ok, :all} = ResourceScope.owner_scope(all_admin, :notice)
   end
 end
