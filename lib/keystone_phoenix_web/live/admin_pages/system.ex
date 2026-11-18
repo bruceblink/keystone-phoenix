@@ -8,6 +8,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
   import KeystonePhoenixWeb.Live.AdminPages.Navigation, only: [nav_icon: 1]
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Status
+  alias KeystonePhoenixWeb.NativeObservabilityContract
   import KeystonePhoenixWeb.Live.AdminPages.ListToolbar, only: [list_toolbar: 1]
 
   def configs(assigns) do
@@ -299,6 +300,11 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
   def logs(assigns) do
     assigns =
       assigns
+      # LiveView 与 HTTP API 共用审计字段映射，保持动作、资源 ID 和详情含义一致。
+      |> assign(
+        :operation_log_rows,
+        Enum.map(assigns.operation_log_rows, &NativeObservabilityContract.operation_log/1)
+      )
       |> assign_new(:read_only, fn -> false end)
       |> assign_new(:login_page_num, fn -> 1 end)
       |> assign_new(:operation_page_num, fn -> 1 end)
@@ -379,7 +385,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         <% else %>
           <div class="audit-table-wrap" role="region" tabindex="0" aria-label="操作日志列表"><table class="audit-table"><caption class="sr-only">操作日志列表</caption><thead><tr><th scope="col">时间</th><th scope="col">操作用户</th><th scope="col">动作</th><th scope="col">资源</th><th scope="col">资源 ID</th><th scope="col">操作详情</th></tr></thead><tbody>
               <%= for log <- @operation_log_rows do %>
-              <tr><td class="audit-time"><%= log["operationTime"] || "—" %></td><td class="audit-actor"><%= log["username"] || "—" %></td><td><span class="badge badge-neutral"><%= log["requestMethod"] || "—" %></span></td><td class="audit-resource"><%= log["requestModule"] || "—" %></td><td class="audit-resource-id"><%= log["requestUrl"] || "—" %></td><td class="audit-detail"><%= if log["status"] == 1, do: "成功", else: "失败" %></td></tr>
+              <tr><td class="audit-time"><%= audit_value(log["createdAt"]) %></td><td class="audit-actor"><%= audit_value(log["actorUsername"]) %></td><td><span class="badge badge-neutral"><%= audit_value(log["action"]) %></span></td><td class="audit-resource"><%= audit_value(log["resource"]) %></td><td class="audit-resource-id"><%= audit_value(log["resourceId"]) %></td><td class="audit-detail"><%= audit_value(log["detail"]) %></td></tr>
             <% end %>
           </tbody></table></div>
           <.pagination panel="operation-logs" page_num={min(@operation_page_num, page_count(@operation_log_total, @page_size))} page_size={@page_size} total={@operation_log_total} />
@@ -389,4 +395,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
     </div>
     """
   end
+
+  # 审计 DTO 的空值和空字符串统一显示占位符，不隐藏缺失字段。
+  defp audit_value(value) when is_binary(value) do
+    if String.trim(value) == "", do: "—", else: value
+  end
+
+  defp audit_value(nil), do: "—"
+  defp audit_value(value), do: value
 end
