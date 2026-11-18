@@ -376,6 +376,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
 
     allowed_username = unique("import_allowed")
     denied_username = unique("import_denied")
+    invalid_format_username = "invalid-format-#{System.unique_integer([:positive])}"
     bad_password_username = unique("import_bad_password")
 
     {:ok, workbook} =
@@ -385,6 +386,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
           [ctx.child.dept_id, allowed_username, "Strong!123", 1, nil],
           [ctx.outside.dept_id, denied_username, "Strong!123", 1, nil],
           [ctx.parent.dept_id, ctx.actor.username, "Strong!123", 1, nil],
+          [ctx.parent.dept_id, invalid_format_username, "Strong!123", 1, nil],
           [ctx.parent.dept_id, bad_password_username, "test-only-disallowed", 1, nil]
         ],
         "users.xlsx"
@@ -452,7 +454,12 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert %{
              "data" => %{
                "success" => 1,
-               "failed" => [scope_failure, duplicate_failure, password_failure]
+               "failed" => [
+                 scope_failure,
+                 duplicate_failure,
+                 username_format_failure,
+                 password_failure
+               ]
              }
            } =
              json_response(response, 200)
@@ -465,9 +472,12 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     assert duplicate_failure["row"] == 4
     assert duplicate_failure["username"] == ctx.actor.username
     assert duplicate_failure["reason"] == "username already exists"
-    assert duplicate_failure["code"] == "validation_failed"
+    assert duplicate_failure["code"] == "username_already_exists"
     assert is_binary(duplicate_failure["reason"])
-    assert password_failure["row"] == 5
+    assert username_format_failure["row"] == 5
+    assert username_format_failure["username"] == invalid_format_username
+    assert username_format_failure["code"] == "username_invalid_format"
+    assert password_failure["row"] == 6
     assert password_failure["username"] == bad_password_username
     assert password_failure["code"] == "password_disallowed"
     assert is_binary(password_failure["reason"])

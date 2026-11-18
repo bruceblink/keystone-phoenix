@@ -48,6 +48,8 @@
 | `payload_too_large` | 413 | 请求内容超过接口允许大小 | 缩小请求内容后重试 |
 | `https_required` | 426 | 请求必须通过 HTTPS 传输 | 切换到 HTTPS 后重试 |
 | `validation_failed` | 422 | 参数、格式或业务规则校验失败 | 修正字段或业务输入 |
+| `username_already_exists` | 422 | 导入的用户名已存在 | 使用其他用户名后重试该行 |
+| `username_invalid_format` | 422 | 导入的用户名不符合 Phoenix 现有格式要求 | 修正用户名后重试该行 |
 | `password_same_as_current` | 422 | 新密码与已验证的当前密码相同 | 选择与当前密码不同的新密码 |
 | `password_required` | 422 | 必填密码入口的密码缺失、为 null、空字符串或只包含 Java 空白字符 | 输入非空白密码 |
 | `password_too_short` | 422 | 密码的 Unicode code point 数量小于配置的最小长度 | 增加密码长度 |

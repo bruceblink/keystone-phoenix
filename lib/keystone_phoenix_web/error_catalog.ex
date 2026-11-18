@@ -69,6 +69,17 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       retryable: false,
       message_key: "request.validation_failed"
     },
+    # 用户名重复和格式错误仅作为导入失败行的细分代码，不改变导入接口状态。
+    "username_already_exists" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.username_already_exists"
+    },
+    "username_invalid_format" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.username_invalid_format"
+    },
     "api_key_name_invalid" => %{
       status: 422,
       retryable: false,

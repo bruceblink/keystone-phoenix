@@ -64,6 +64,8 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     role_protected
     session_revoked
     service_unavailable
+    username_already_exists
+    username_invalid_format
     validation_failed
   )
 

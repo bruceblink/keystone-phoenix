@@ -42,6 +42,12 @@ defmodule KeystonePhoenixWeb.ApiResponseContractTest do
     assert %{status: 422, retryable: false} = ApiResponse.error_metadata(:role_has_members)
     assert %{status: 422, retryable: false} = ApiResponse.error_metadata(:role_protected)
 
+    assert %{status: 422, retryable: false, message_key: "error.username_already_exists"} =
+             ApiResponse.error_metadata(:username_already_exists)
+
+    assert %{status: 422, retryable: false, message_key: "error.username_invalid_format"} =
+             ApiResponse.error_metadata(:username_invalid_format)
+
     assert %{status: 422, retryable: false, message_key: "error.password_same_as_current"} =
              ApiResponse.error_metadata(:password_same_as_current)
 

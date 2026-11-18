@@ -1,6 +1,8 @@
 defmodule KeystonePhoenixWeb.UserController do
   use KeystonePhoenixWeb, :controller
 
+  alias KeystonePhoenixWeb.UserImportFailure
+
   plug KeystonePhoenixWeb.Plugs.RejectApiKey
        when action in [:create, :import, :delete, :delete_single, :reset_password]
 
@@ -367,12 +369,15 @@ defmodule KeystonePhoenixWeb.UserController do
                      permission: "user:import"
                    }
                  ) do
-              {:ok, _user} -> {success + 1, failed}
-              {:error, reason} -> {success, [import_failure(row_number, record, reason) | failed]}
+              {:ok, _user} ->
+                {success + 1, failed}
+
+              {:error, reason} ->
+                {success, [UserImportFailure.to_map(row_number, record, reason) | failed]}
             end
 
           {:error, reason} ->
-            {success, [import_failure(row_number, record, reason) | failed]}
+            {success, [UserImportFailure.to_map(row_number, record, reason) | failed]}
         end
       end)
 
@@ -413,79 +418,6 @@ defmodule KeystonePhoenixWeb.UserController do
   end
 
   defp integer_value(value), do: value
-
-  defp import_failure(row_number, record, reason) do
-    %{
-      "row" => row_number,
-      "username" => Map.get(record, "username", ""),
-      "reason" => failure_reason(reason),
-      "code" => failure_code(reason)
-    }
-  end
-
-  defp failure_code(%Ecto.Changeset{} = changeset) do
-    case PasswordPolicy.error_code(changeset) do
-      nil -> "validation_failed"
-      code -> Atom.to_string(code)
-    end
-  end
-
-  defp failure_code(:data_scope_denied), do: "data_scope_denied"
-  defp failure_code(:role_assignment_forbidden), do: "permission_denied"
-  defp failure_code(:not_found), do: "resource_not_found"
-  defp failure_code(:unavailable), do: "service_unavailable"
-  defp failure_code(_reason), do: "validation_failed"
-
-  defp failure_reason(%Ecto.Changeset{} = changeset) do
-    if username_already_exists?(changeset) do
-      "username already exists"
-    else
-      changeset
-      |> Ecto.Changeset.traverse_errors(&format_import_validation_message/1)
-      |> Enum.flat_map(fn {field, messages} ->
-        Enum.map(List.wrap(messages), &"#{import_error_field(field)}：#{&1}")
-      end)
-      |> Enum.join("；")
-      |> case do
-        "" -> "用户数据无效"
-        message -> message
-      end
-    end
-  end
-
-  defp failure_reason(:data_scope_denied), do: "没有数据权限"
-  defp failure_reason(:role_assignment_forbidden), do: "没有角色分配权限"
-  defp failure_reason(reason), do: to_string(reason)
-
-  # 管理端约定每条失败原因都是字符串；重复用户名沿用 Native 的公开原因。
-  defp username_already_exists?(%Ecto.Changeset{errors: errors}) do
-    Enum.any?(errors, fn
-      {:username, {"has already been taken", _opts}} -> true
-      _error -> false
-    end)
-  end
-
-  # 保留 Changeset 的字段约束说明，并把长度等动态参数展开为可读文本。
-  defp format_import_validation_message({message, opts}) do
-    Regex.replace(~r"%{(\w+)}", message, fn _, key ->
-      case Enum.find(opts, fn {option, _value} -> Atom.to_string(option) == key end) do
-        {_option, value} -> to_string(value)
-        nil -> "%{#{key}}"
-      end
-    end)
-  end
-
-  # 用中文字段名给导入失败明细提供定位信息。
-  defp import_error_field(:username), do: "用户名"
-  defp import_error_field(:nickname), do: "昵称"
-  defp import_error_field(:password), do: "密码"
-  defp import_error_field(:email), do: "邮箱"
-  defp import_error_field(:phone_number), do: "联系电话"
-  defp import_error_field(:sex), do: "性别"
-  defp import_error_field(:status), do: "状态"
-  defp import_error_field(:avatar), do: "头像"
-  defp import_error_field(:remark), do: "备注"
-  defp import_error_field(field), do: Atom.to_string(field)
 
   defp ids(rows, key), do: rows |> Enum.map(&Map.get(&1, key)) |> Enum.reject(&is_nil/1)
 

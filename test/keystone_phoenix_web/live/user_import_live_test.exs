@@ -50,14 +50,16 @@ defmodule KeystonePhoenixWeb.UserImportLiveTest do
     duplicate_username = admin.username
     unsafe_username = "<script>alert(1)</script>"
     imported_username = "import_success_#{System.unique_integer([:positive])}"
+    invalid_nickname_username = "import_nickname_#{System.unique_integer([:positive])}"
 
     {:ok, workbook} =
       Excel.export(
-        ["部门ID", "用户名", "密码", "状态", "角色ID"],
+        ["部门ID", "用户名", "密码", "状态", "角色ID", "昵称"],
         [
-          [admin.dept_id, duplicate_username, @password, 1, nil],
-          [admin.dept_id, unsafe_username, @password, 1, nil],
-          [admin.dept_id, imported_username, @password, 1, nil]
+          [admin.dept_id, duplicate_username, @password, 1, nil, "重复用户"],
+          [admin.dept_id, unsafe_username, @password, 1, nil, "格式错误用户"],
+          [admin.dept_id, imported_username, @password, 1, nil, "导入成功"],
+          [admin.dept_id, invalid_nickname_username, @password, 1, nil, String.duplicate("x", 33)]
         ],
         "users.xlsx"
       )
@@ -80,19 +82,25 @@ defmodule KeystonePhoenixWeb.UserImportLiveTest do
     render_submit(view, "import-users", %{})
 
     assert live_socket(view).assigns.user_import_result == %{
-             "total" => 3,
+             "total" => 4,
              "success" => 1,
              "failed" => [
                %{
                  "row" => 2,
                  "username" => duplicate_username,
                  "reason" => "username already exists",
-                 "code" => "validation_failed"
+                 "code" => "username_already_exists"
                },
                %{
                  "row" => 3,
                  "username" => unsafe_username,
                  "reason" => "用户名：用户名只允许字母、数字和下划线，且首字符不能为数字",
+                 "code" => "username_invalid_format"
+               },
+               %{
+                 "row" => 5,
+                 "username" => invalid_nickname_username,
+                 "reason" => "昵称：should be at most 32 character(s)",
                  "code" => "validation_failed"
                }
              ]
