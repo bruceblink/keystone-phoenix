@@ -1038,6 +1038,8 @@ Phoenix `1f727b1` 在切换任务详情读取失败时清除旧任务日志，�
 
 本轮只读数据库比较确认，当前 Native MySQL 的排序规则让 `Jose` 匹配 `José`，Phoenix PostgreSQL 的 `ILIKE` 不匹配。该结果尚未通过两端真实 HTTP 和页面查询验证，也未统一重音、Unicode 归一化及通配符语义；不能将用户筛选判定为完全兼容。
 
+后续在专用 PostgreSQL 18.6 数据库实测 ICU `und-u-ks-level1` 非确定性排序规则，并与 MySQL 8.4.13 的 `utf8mb4_0900_ai_ci` 比较。样本中的大小写、重音、NFC/NFD、全角字符及 `%`、`_` 和反斜线转义结果一致；但 ICU 会让 `STRASSE` 匹配 `Straße`、`AEgir` 匹配 `Ægir`、`OEuvre` 匹配 `Œuvre`，MySQL `LIKE` 在这三项中不匹配。因此不能直接采用该排序规则并宣称两端行为一致。测试库已删除；以上是数据库表达式比较，不是 HTTP 或完整 Unicode 验收。
+
 ### 2026-11-18 资料校验和公告刷新恢复
 
 Native `d7b441d`、Phoenix `c23cde9` 和 admin-web `466a26e` 为个人资料展示名缺失或空白增加 `profile_display_name_required`，保留原 HTTP 422。隔离 MySQL 真实 HTTP 测试覆盖字段缺失、`null`、空白和原资料不变；Native 定向测试共 4 项通过。隔离 PostgreSQL 接口、目录和 LiveView 定向测试 30 项通过；内置浏览器确认 LiveView 显示新错误码。三端目录静态检查为 27 个服务端代码和 4 个前端本地代码；其他通用错误仍需继续拆分。
