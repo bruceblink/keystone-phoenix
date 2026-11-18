@@ -408,7 +408,10 @@ defmodule KeystonePhoenix.User do
   def update_avatar(_id, _avatar, _options), do: {:error, :authorization_required}
 
   defp do_update_avatar(id, avatar, actor_id) when is_binary(avatar) do
-    do_update_user(id, %{"avatar" => avatar}, actor_id)
+    # 单独更新头像要求地址非空，避免空输入覆盖当前头像。
+    if String.trim(avatar) == "",
+      do: {:error, :profile_avatar_required},
+      else: do_update_user(id, %{"avatar" => avatar}, actor_id)
   end
 
   defp maybe_put(target, source, target_key, source_keys) do

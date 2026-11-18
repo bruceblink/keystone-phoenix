@@ -31,6 +31,7 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     api_key_expiry_out_of_range
     api_key_name_invalid
     profile_display_name_required
+    profile_avatar_required
     authentication_required
     authorization_unavailable
     data_scope_denied

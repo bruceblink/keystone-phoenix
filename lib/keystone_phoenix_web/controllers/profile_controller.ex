@@ -124,7 +124,8 @@ defmodule KeystonePhoenixWeb.ProfileController do
     end
   end
 
-  def update_avatar(conn, _params), do: render_error(conn, :invalid_avatar)
+  def update_avatar(conn, %{"avatarfile" => _invalid}), do: render_error(conn, :invalid_upload)
+  def update_avatar(conn, _params), do: render_error(conn, :profile_avatar_required)
 
   defp render_error(conn, :not_found) do
     conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "找不到当前用户"))
@@ -148,10 +149,10 @@ defmodule KeystonePhoenixWeb.ProfileController do
     |> json(ApiResponse.error(:authorization_unavailable, "认证会话暂不可用"))
   end
 
-  defp render_error(conn, :invalid_avatar) do
+  defp render_error(conn, :profile_avatar_required) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "头像地址无效"))
+    |> json(ApiResponse.error(:profile_avatar_required, "avatar is required"))
   end
 
   defp render_error(conn, reason)

@@ -79,6 +79,11 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       retryable: false,
       message_key: "error.profile_display_name_required"
     },
+    "profile_avatar_required" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.profile_avatar_required"
+    },
     "api_key_expiry_invalid" => %{
       status: 422,
       retryable: false,

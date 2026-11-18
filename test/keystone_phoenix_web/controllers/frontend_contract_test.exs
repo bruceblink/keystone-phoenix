@@ -142,6 +142,22 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     assert Repo.get!(SysUser, fixtures.user.user_id).nickname == original.nickname
   end
 
+  @tag :integration
+  test "avatar update rejects missing and blank addresses without changing the saved avatar" do
+    fixtures = fixtures()
+    auth = fn -> put_req_header(build_conn(), "authorization", "Bearer #{fixtures.token}") end
+    avatar = "/profile/avatar/profile-avatar-check.png"
+
+    assert auth.() |> put("/api/v1/profile/avatar", %{"avatar" => avatar}) |> json_response(200)
+
+    # 空地址不能覆盖或清除已经保存的头像。
+    for params <- [%{}, %{"avatar" => ""}, %{"avatar" => " \t "}] do
+      response = auth.() |> put("/api/v1/profile/avatar", params)
+      assert get_in(json_response(response, 422), ["error", "code"]) == "profile_avatar_required"
+      assert Repo.get!(SysUser, fixtures.user.user_id).avatar == avatar
+    end
+  end
+
   defp fixtures do
     department =
       %SysDept{dept_id: Identity.v7()}

@@ -93,6 +93,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Feedback do
   defp code_for_reason(:already_logged_in), do: :active_session_conflict
   defp code_for_reason(:scope_exceeds_permissions), do: :permission_denied
   defp code_for_reason(:api_key_name_invalid), do: :api_key_name_invalid
+  defp code_for_reason(:profile_avatar_required), do: :profile_avatar_required
   defp code_for_reason(:api_key_expiry_invalid), do: :api_key_expiry_invalid
   defp code_for_reason(:api_key_expiry_out_of_range), do: :api_key_expiry_out_of_range
 
@@ -144,6 +145,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Feedback do
   defp message_for_reason(:login_limiter_unavailable), do: "登录限流服务暂不可用"
   defp message_for_reason(:scope_exceeds_permissions), do: "授权范围超过当前账号权限"
   defp message_for_reason(:api_key_name_invalid), do: "API Key 名称必须为 1 到 128 个字符。"
+  defp message_for_reason(:profile_avatar_required), do: "请输入头像地址。"
   defp message_for_reason(:api_key_expiry_invalid), do: "API Key 到期时间格式无效，请重新选择时间。"
 
   defp message_for_reason(:api_key_expiry_out_of_range),

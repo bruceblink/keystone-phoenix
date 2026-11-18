@@ -50,6 +50,7 @@
 | `validation_failed` | 422 | 参数、格式或业务规则校验失败 | 修正字段或业务输入 |
 | `api_key_name_invalid` | 422 | API Key 名称缺失、空白或超过 128 个字符 | 输入 1 到 128 个字符的名称 |
 | `profile_display_name_required` | 422 | 个人资料展示名缺失或为空白 | 输入展示名后重试 |
+| `profile_avatar_required` | 422 | 单独更新头像时地址缺失或为空白 | 输入头像地址后重试 |
 | `api_key_expiry_invalid` | 422 | API Key 到期时间格式无法解析 | 重新选择有效的到期时间 |
 | `api_key_expiry_out_of_range` | 422 | API Key 到期时间不晚于当前时间或超过 90 天 | 选择当前时间之后、90 天以内的时间 |
 | `service_unavailable` | 503 | 服务暂时不能处理请求，但不属于特定授权状态 | 按退避策略重试 |
