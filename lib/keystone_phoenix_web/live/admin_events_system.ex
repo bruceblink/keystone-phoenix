@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   import Phoenix.Component, only: [assign: 2]
   alias KeystonePhoenix.Dictionary
+  alias KeystonePhoenixWeb.Live.AdminEvents.Audit, as: AuditEvents
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminEvents.Notices
   alias KeystonePhoenixWeb.Live.AdminReadSupport
@@ -423,15 +424,17 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("refresh-login-logs", _params, socket) do
     if Support.panel_allowed?(socket, "login-logs") do
-      case Support.load_logs_for_socket_result(socket, %{
-             "login" => reset_log_page(Map.get(socket.assigns, :login_log_filter, %{}))
-           }) do
-        {:ok, logs} ->
+      filter = Map.get(socket.assigns, :login_log_filter, %{})
+      requested_page = get_in(socket.assigns, [:page_nums, "login-logs"]) || 1
+      query = filter |> AuditEvents.login_query() |> Map.put("pageNum", requested_page)
+
+      case AdminReadSupport.login_logs_page(socket, query) do
+        {:ok, result_page} ->
           {:noreply,
            assign(socket,
-             login_log_rows: logs.login_log_rows,
-             login_log_total: logs.login_log_total,
-             page_nums: Map.put(socket.assigns.page_nums, "login-logs", 1),
+             login_log_rows: result_page.rows,
+             login_log_total: result_page.total,
+             page_nums: Map.put(socket.assigns.page_nums, "login-logs", requested_page),
              log_feedback: nil
            )}
 
@@ -448,15 +451,19 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.System do
 
   def handle_event("refresh-operation-logs", _params, socket) do
     if Support.panel_allowed?(socket, "operation-logs") do
-      case Support.load_logs_for_socket_result(socket, %{
-             "operation" => reset_log_page(Map.get(socket.assigns, :operation_log_filter, %{}))
-           }) do
-        {:ok, logs} ->
+      filter = Map.get(socket.assigns, :operation_log_filter, %{})
+      requested_page = get_in(socket.assigns, [:page_nums, "operation-logs"]) || 1
+
+      case AdminReadSupport.operation_logs_page(
+             socket,
+             Map.put(filter, "pageNum", requested_page)
+           ) do
+        {:ok, result_page} ->
           {:noreply,
            assign(socket,
-             operation_log_rows: logs.operation_log_rows,
-             operation_log_total: logs.operation_log_total,
-             page_nums: Map.put(socket.assigns.page_nums, "operation-logs", 1),
+             operation_log_rows: result_page.rows,
+             operation_log_total: result_page.total,
+             page_nums: Map.put(socket.assigns.page_nums, "operation-logs", requested_page),
              log_feedback: nil
            )}
 

@@ -41,14 +41,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
       }
 
       result =
-        case Support.load_logs_for_socket_result(socket, %{
-               "login" => Map.put(login_query(filter), "pageNum", 1)
-             }) do
-          {:ok, logs} ->
+        case AdminReadSupport.login_logs_page(socket, Map.put(login_query(filter), "pageNum", 1)) do
+          {:ok, page} ->
             assign(socket,
               login_log_filter: filter,
-              login_log_rows: logs.login_log_rows,
-              login_log_total: logs.login_log_total,
+              login_log_rows: page.rows,
+              login_log_total: page.total,
               page_nums: Map.put(socket.assigns.page_nums, "login-logs", 1),
               log_feedback: nil
             )
@@ -81,14 +79,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
       }
 
       result =
-        case Support.load_logs_for_socket_result(socket, %{
-               "operation" => Map.put(operation_query(filter), "pageNum", 1)
-             }) do
-          {:ok, logs} ->
+        case AdminReadSupport.operation_logs_page(
+               socket,
+               Map.put(operation_query(filter), "pageNum", 1)
+             ) do
+          {:ok, page} ->
             assign(socket,
               operation_log_filter: filter,
-              operation_log_rows: logs.operation_log_rows,
-              operation_log_total: logs.operation_log_total,
+              operation_log_rows: page.rows,
+              operation_log_total: page.total,
               page_nums: Map.put(socket.assigns.page_nums, "operation-logs", 1),
               log_feedback: nil
             )
@@ -289,12 +288,19 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
       row["operationTime"]
     ]
 
-  defp login_query(%{"username" => username, "status" => status}) do
+  @doc "将登录日志的页面筛选值转换为查询参数。"
+  def login_query(%{"username" => username, "status" => status}) do
     %{"username" => username, "status" => normalize_login_status(status)}
   end
 
   defp operation_query(%{"actor" => actor, "action" => action, "resource" => resource}),
     do: %{"username" => actor, "action" => action, "requestModule" => resource}
+
+  defp load_log_page(socket, "login", params),
+    do: AdminReadSupport.login_logs_page(socket, params)
+
+  defp load_log_page(socket, "operation", params),
+    do: AdminReadSupport.operation_logs_page(socket, params)
 
   defp paginate_logs(socket, kind, page) do
     panel = if kind == "login", do: "login-logs", else: "operation-logs"
@@ -306,20 +312,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Audit do
             do: login_query(socket.assigns.login_log_filter),
             else: operation_query(socket.assigns.operation_log_filter)
 
-        filters = %{kind => Map.put(query, "pageNum", page_number)}
-
-        case Support.load_logs_for_socket_result(socket, filters) do
-          {:ok, logs} ->
-            rows = if kind == "login", do: logs.login_log_rows, else: logs.operation_log_rows
-            total = if kind == "login", do: logs.login_log_total, else: logs.operation_log_total
+        case load_log_page(socket, kind, Map.put(query, "pageNum", page_number)) do
+          {:ok, page} ->
             row_key = if kind == "login", do: :login_log_rows, else: :operation_log_rows
             total_key = if kind == "login", do: :login_log_total, else: :operation_log_total
 
             {:noreply,
              socket
              |> assign([
-               {row_key, rows},
-               {total_key, total},
+               {row_key, page.rows},
+               {total_key, page.total},
                page_nums: Map.put(socket.assigns.page_nums, panel, page_number),
                log_feedback: nil
              ])

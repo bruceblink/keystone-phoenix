@@ -12,6 +12,8 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.Live.AdminEvents.OperationsDeepLinks
   alias KeystonePhoenixWeb.Live.AdminEvents.AccountsDeepLinks
+  alias KeystonePhoenixWeb.Live.AdminEvents.AuditDeepLinks
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationDeepLinks
   alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
   alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.AdminSupport
@@ -30,7 +32,8 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
     panel = Navigation.panel_for_path(uri)
 
     cond do
-      panel in ["jobs", "users"] and AdminSupport.panel_allowed?(socket, panel) ->
+      panel in ["jobs", "users", "menus", "depts", "login-logs", "operation-logs"] and
+          AdminSupport.panel_allowed?(socket, panel) ->
         socket =
           socket
           |> assign(active_panel: panel)
@@ -51,6 +54,18 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
 
   defp restore_panel_deep_link(socket, "users"),
     do: AccountsDeepLinks.restore_users_from_deep_link(socket)
+
+  defp restore_panel_deep_link(socket, "menus"),
+    do: OrganizationDeepLinks.restore_menus_from_deep_link(socket)
+
+  defp restore_panel_deep_link(socket, "depts"),
+    do: OrganizationDeepLinks.restore_departments_from_deep_link(socket)
+
+  defp restore_panel_deep_link(socket, "login-logs"),
+    do: AuditDeepLinks.restore_login_logs_from_deep_link(socket)
+
+  defp restore_panel_deep_link(socket, "operation-logs"),
+    do: AuditDeepLinks.restore_operation_logs_from_deep_link(socket)
 
   defp restore_monitor_route(socket, uri) do
     socket = assign(socket, active_panel: "monitor")

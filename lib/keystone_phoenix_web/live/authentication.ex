@@ -144,10 +144,13 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
   end
 
   def expire(socket, message) do
+    # 保留当前深链接，便于用户重新登录后返回原页面。
+    current_uri = socket.assigns[:current_uri] || "/"
+
     socket
     |> LoginState.reset()
     |> refresh_captcha()
-    |> assign(login_error: message)
+    |> assign(current_uri: current_uri, login_error: message)
   end
 
   defp authenticate(%{assigns: %{current_user: nil}} = socket), do: {:halt, socket}

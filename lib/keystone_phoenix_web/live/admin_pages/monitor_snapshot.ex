@@ -5,6 +5,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
   模块只负责查询和聚合监控快照，不负责修改 LiveView socket。
   """
 
+  require Logger
+
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenix.Security
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
@@ -111,6 +113,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.MonitorSnapshot do
     else
       {%{}, %{}, [], 0, nil}
     end
+  rescue
+    _error ->
+      Logger.warning("monitor security snapshot query failed")
+      {%{}, %{}, [], 0, "安全运营数据暂不可用"}
   end
 
   defp error_feedback(nil), do: nil

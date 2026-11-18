@@ -263,32 +263,39 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
     _error -> {:error, :service_unavailable}
   end
 
+  @doc "读取当前页登录日志，并保留授权或数据库失败结果。"
+  def login_logs_page(socket, params \\ %{}) do
+    read_log_page(
+      socket,
+      "login-log:read",
+      &Log.list_login_logs/1,
+      &Log.list_login_logs/2,
+      params,
+      "login-logs"
+    )
+  end
+
+  @doc "读取当前页操作审计，并保留授权或数据库失败结果。"
+  def operation_logs_page(socket, params \\ %{}) do
+    read_log_page(
+      socket,
+      "operation-log:read",
+      &Log.list_operation_logs/1,
+      &Log.list_operation_logs/2,
+      params,
+      "operation-logs"
+    )
+  end
+
   @doc "读取登录日志和操作审计，并保留任一查询失败结果。"
   def logs(socket, filters \\ %{}) do
-    options = Support.authorization_options(socket)
     login_filter = Map.get(filters, "login", %{})
     operation_filter = Map.get(filters, "operation", %{})
 
     with {:ok, login_page} <-
-           log_page(
-             socket,
-             options,
-             "login-log:read",
-             &Log.list_login_logs/1,
-             &Log.list_login_logs/2,
-             login_filter,
-             "login-logs"
-           ),
+           login_logs_page(socket, login_filter),
          {:ok, operation_page} <-
-           log_page(
-             socket,
-             options,
-             "operation-log:read",
-             &Log.list_operation_logs/1,
-             &Log.list_operation_logs/2,
-             operation_filter,
-             "operation-logs"
-           ) do
+           operation_logs_page(socket, operation_filter) do
       {:ok,
        %{
          login_log_rows: login_page.rows,
@@ -297,6 +304,20 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
          operation_log_total: operation_page.total
        }}
     end
+  end
+
+  defp read_log_page(socket, permission, admin_fetcher, authorized_fetcher, params, panel) do
+    log_page(
+      socket,
+      Support.authorization_options(socket),
+      permission,
+      admin_fetcher,
+      authorized_fetcher,
+      params,
+      panel
+    )
+  rescue
+    _error -> {:error, :service_unavailable}
   end
 
   defp dictionary_types(socket, options, params) do

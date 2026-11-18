@@ -1,5 +1,7 @@
 defmodule KeystonePhoenixWeb.Live.AdminSupport do
   @moduledoc "Shared dashboard loading, form defaults, and authorization helpers."
+  require Logger
+
   import Phoenix.Component, only: [assign: 2]
   alias KeystonePhoenix.Auth.ApiKey
   alias KeystonePhoenix.Authz
@@ -285,14 +287,20 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
     %{
       login_log_rows:
-        if(options == [],
-          do: load_all(&Log.list_login_logs/1, login_filter),
-          else: load_authorized(&Log.list_login_logs/2, options, login_filter)
+        load_log_rows(
+          options,
+          &Log.list_login_logs/1,
+          &Log.list_login_logs/2,
+          login_filter,
+          "login-logs"
         ),
       operation_log_rows:
-        if(options == [],
-          do: load_all(&Log.list_operation_logs/1, operation_filter),
-          else: load_authorized(&Log.list_operation_logs/2, options, operation_filter)
+        load_log_rows(
+          options,
+          &Log.list_operation_logs/1,
+          &Log.list_operation_logs/2,
+          operation_filter,
+          "operation-logs"
         )
     }
   end
@@ -332,6 +340,22 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
 
   defp empty_dictionary, do: %{types: [], selected: "", data: []}
   defp load_all(fetcher, params \\ %{}), do: Excel.all_rows(fetcher, params)
+
+  # 登录时预加载隐藏的审计列表；当前页面会再执行带错误反馈的单表读取。
+  defp load_log_rows([], admin_fetcher, _authorized_fetcher, params, panel) do
+    load_all(admin_fetcher, params)
+  rescue
+    _error ->
+      Logger.warning(
+        "admin dashboard audit preload failed; panel read will report its own result",
+        panel: panel
+      )
+
+      []
+  end
+
+  defp load_log_rows(options, _admin_fetcher, authorized_fetcher, params, _panel),
+    do: load_authorized(authorized_fetcher, options, params)
 
   defp load_authorized(fetcher, options, params \\ %{}) do
     case Excel.all_rows_result(fn page -> fetcher.(page, options) end, params) do
