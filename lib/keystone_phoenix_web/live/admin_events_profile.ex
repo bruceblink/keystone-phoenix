@@ -33,7 +33,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Profile do
            assign_profile_form(
              socket,
              profile_params,
-             Feedback.error(:validation_failed, "展示名不能为空")
+             Feedback.error(:profile_display_name_required, "展示名不能为空")
            )}
 
         error ->

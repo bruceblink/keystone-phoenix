@@ -74,6 +74,11 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       retryable: false,
       message_key: "error.api_key_name_invalid"
     },
+    "profile_display_name_required" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.profile_display_name_required"
+    },
     "api_key_expiry_invalid" => %{
       status: 422,
       retryable: false,

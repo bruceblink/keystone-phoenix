@@ -134,7 +134,9 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
 
       assert response.status == 422
       assert json_response(response, 422)["message"] == "displayName is required"
-      assert get_in(json_response(response, 422), ["error", "code"]) == "validation_failed"
+
+      assert get_in(json_response(response, 422), ["error", "code"]) ==
+               "profile_display_name_required"
     end
 
     assert Repo.get!(SysUser, fixtures.user.user_id).nickname == original.nickname

@@ -208,7 +208,7 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
              "展示名不能为空"
            )
 
-    assert has_element?(view, "#profile-feedback", "错误码：validation_failed")
+    assert has_element?(view, "#profile-feedback", "错误码：profile_display_name_required")
     assert live_socket(view).assigns.profile_form["nickname"] == " \t "
     assert {:ok, persisted} = User.get_user(user.user_id)
     assert persisted.nickname == "原展示名"

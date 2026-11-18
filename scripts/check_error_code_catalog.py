@@ -32,6 +32,7 @@ EXPECTED_STATUS = {
     "https_required": 426,
     "validation_failed": 422,
     "api_key_name_invalid": 422,
+    "profile_display_name_required": 422,
     "api_key_expiry_invalid": 422,
     "api_key_expiry_out_of_range": 422,
     "service_unavailable": 503,
