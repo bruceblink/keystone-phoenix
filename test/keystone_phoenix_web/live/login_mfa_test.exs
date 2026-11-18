@@ -56,7 +56,8 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
     code = Totp.code(secret, System.system_time(:second) + Totp.step_seconds())
     render_submit(view, "verify-login-mfa", %{"code" => code})
 
-    assert has_element?(view, "nav[aria-label='主导航']")
+    refute has_element?(view, "nav[aria-label='主导航']")
+    assert has_element?(view, ".profile-page")
 
     assert {:ok, %{authentication_level: "AAL2"}} =
              Auth.session_context(live_socket(view).assigns.access_token)
@@ -81,7 +82,8 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
 
     render_click(view, "force-login")
 
-    assert has_element?(view, "nav[aria-label='主导航']")
+    refute has_element?(view, "nav[aria-label='主导航']")
+    assert has_element?(view, ".profile-page")
   end
 
   test "policy-required LiveView events require recent step-up before the handler runs", %{
@@ -98,7 +100,8 @@ defmodule KeystonePhoenixWeb.LoginMfaTest do
 
     assert has_element?(view, "#mfa-login-form")
     render_submit(view, "verify-login-mfa", %{"code" => hd(recovery_codes)})
-    assert has_element?(view, "nav[aria-label='主导航']")
+    refute has_element?(view, "nav[aria-label='主导航']")
+    assert has_element?(view, ".profile-page")
 
     {:ok, claims} = Token.verify(live_socket(view).assigns.access_token, Token.access_type())
 

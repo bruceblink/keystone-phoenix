@@ -34,6 +34,22 @@ defmodule KeystonePhoenixWeb.AdminUserDeepLinkTest do
     assert length(socket.assigns.user_rows) == 1
     assert socket.assigns.user_rows |> List.first() |> Map.fetch!("username") =~ username_prefix
 
+    # 同一面板切换筛选条件再返回时，页面必须按新地址重新读取数据。
+    forward_url = "/users?" <> URI.encode_query(%{"users_username" => admin.username})
+    render_patch(view, forward_url)
+
+    forward_socket = live_socket(view)
+    assert forward_socket.assigns.user_query == admin.username
+    assert forward_socket.assigns.user_total == 1
+    assert Enum.any?(forward_socket.assigns.user_rows, &(&1["username"] == admin.username))
+
+    render_patch(view, url)
+    returned_socket = live_socket(view)
+    assert returned_socket.assigns.user_query == username_prefix
+    assert returned_socket.assigns.user_display_name_query == display_name
+    assert returned_socket.assigns.page_nums["users"] == 2
+    assert returned_socket.assigns.user_total == 21
+
     original_uri = socket.assigns.current_uri
     previous_socket = %{socket | assigns: Map.put(socket.assigns, :current_user, nil)}
     Repo.query!("ALTER TABLE sys_user RENAME TO sys_user_unavailable")

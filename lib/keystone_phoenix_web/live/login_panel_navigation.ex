@@ -11,6 +11,7 @@ defmodule KeystonePhoenixWeb.Live.LoginPanelNavigation do
   alias KeystonePhoenixWeb.Live.AdminEvents.Security, as: SecurityEvents
   alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
   alias KeystonePhoenixWeb.Live.AdminPages.Navigation
+  alias KeystonePhoenixWeb.Live.AdminPages.Pagination
   alias KeystonePhoenixWeb.Live.AdminSupport
 
   # 已登录的 URL 只能选择当前会话可访问的面板；拒绝时清除原查询条件。
@@ -20,10 +21,11 @@ defmodule KeystonePhoenixWeb.Live.LoginPanelNavigation do
     socket = assign(socket, current_uri: uri)
 
     if panel == requested_panel do
-      activate_panel(socket, panel, params)
+      if socket.assigns.active_panel == panel and route_state_matches?(socket, panel, params),
+        do: {:noreply, socket},
+        else: activate_panel(socket, panel, params)
     else
-      socket = assign(socket, active_panel: panel)
-      {:noreply, Phoenix.LiveView.push_patch(socket, to: Navigation.panel_path(panel))}
+      activate_and_redirect(socket, panel, uri)
     end
   end
 
@@ -38,9 +40,50 @@ defmodule KeystonePhoenixWeb.Live.LoginPanelNavigation do
       |> assign(current_uri: uri)
       |> activate_panel(panel, params)
     else
-      socket = assign(socket, active_panel: panel)
-      {:noreply, Phoenix.LiveView.push_patch(socket, to: Navigation.panel_path(panel))}
+      activate_and_redirect(socket, panel, uri)
     end
+  end
+
+  # 常规面板操作已完成读取；匹配 URL 状态时只同步地址，避免重读覆盖反馈。
+  defp route_state_matches?(socket, panel, params) do
+    route_assigns = FilterNavigation.assigns(panel, params)
+
+    candidate =
+      socket
+      |> assign(route_assigns)
+      |> FilterNavigation.apply_page(panel, params)
+
+    Enum.all?(route_assigns, fn {key, value} -> socket.assigns[key] == value end) and
+      candidate.assigns.page_nums == socket.assigns.page_nums and
+      route_page_valid?(socket, panel)
+  end
+
+  # 分页事件也需保护越界页；越界地址仍由完整恢复路径校正到有效页。
+  defp route_page_valid?(socket, "users"),
+    do: page_valid?(socket, "users", :user_total)
+
+  defp route_page_valid?(socket, "login-logs"),
+    do: page_valid?(socket, "login-logs", :login_log_total)
+
+  defp route_page_valid?(socket, "operation-logs"),
+    do: page_valid?(socket, "operation-logs", :operation_log_total)
+
+  defp route_page_valid?(_socket, _panel), do: true
+
+  defp page_valid?(socket, panel, total_key) do
+    page = get_in(socket.assigns, [:page_nums, panel]) || 1
+    size = get_in(socket.assigns, [:page_sizes, panel]) || 20
+    page <= Pagination.page_count(Map.get(socket.assigns, total_key, 0), size)
+  end
+
+  # 拒绝深链接时先读取默认授权页面，再清理 URL，确保资料页等回退页面完整显示。
+  defp activate_and_redirect(socket, panel, uri) do
+    {:noreply, socket} =
+      socket
+      |> assign(current_uri: uri)
+      |> activate_panel(panel, %{})
+
+    {:noreply, Phoenix.LiveView.push_patch(socket, to: Navigation.panel_path(panel))}
   end
 
   # 已授权的深链接加载必要状态；其他页面使用登录时按权限读取的数据。

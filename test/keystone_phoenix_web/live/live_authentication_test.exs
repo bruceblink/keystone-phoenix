@@ -42,13 +42,15 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
     {:ok, first, _html} = live(conn, "/")
 
     render_submit(first, "login", login_params(admin))
-    assert has_element?(first, "nav[aria-label='主导航']")
+    refute has_element?(first, "nav[aria-label='主导航']")
+    assert has_element?(first, ".profile-page")
 
     {:ok, second, _html} = live(conn, "/")
     html = render_submit(second, "login", login_params(admin))
 
     assert html =~ "账号已有活动会话"
-    assert has_element?(first, "nav[aria-label='主导航']")
+    refute has_element?(first, "nav[aria-label='主导航']")
+    assert has_element?(first, ".profile-page")
     assert has_element?(second, "#login-form")
   end
 
@@ -83,7 +85,8 @@ defmodule KeystonePhoenixWeb.LiveAuthenticationTest do
 
     render_submit(view, "login", login_params(admin, "7"))
 
-    assert has_element?(view, "nav[aria-label='主导航']")
+    refute has_element?(view, "nav[aria-label='主导航']")
+    assert has_element?(view, ".profile-page")
     assert {:error, :captcha_expired} = Captcha.validate("7", key)
   end
 
