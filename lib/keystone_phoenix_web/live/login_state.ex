@@ -193,6 +193,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       online_user_rows: [],
       online_user_total: 0,
       network_status: %{},
+      monitor_overall_status: nil,
       monitor_help_open: false,
       security_access: false,
       security_metrics: %{},
@@ -200,6 +201,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       security_event_rows: [],
       security_event_total: 0,
       monitor_loaded: false,
+      monitor_resource_states: %{},
       monitor_feedback: nil,
       monitor_loading: false,
       monitor_initial_error: nil

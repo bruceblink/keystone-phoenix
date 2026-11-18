@@ -55,6 +55,15 @@
 .monitor-help-panel > div { flex: 1; }
 .monitor-help-panel strong { display: block; color: var(--text); font-size: 12px; }
 .monitor-help-panel p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+/* 监控资源分别反馈权限和读取失败，避免故障状态伪装成空数据。 */
+.monitor-resource-feedback { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 18px 14px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; font-size: 11px; }
+.monitor-resource-feedback > div { min-width: 0; }
+.monitor-resource-feedback strong { display: block; color: var(--text); font-size: 11px; }
+.monitor-resource-feedback p { margin: 4px 0 0; color: var(--muted); line-height: 1.5; }
+.monitor-resource-blocked { justify-content: flex-start; color: var(--muted); background: rgba(148,163,184,.06); }
+.monitor-resource-error { border-color: rgba(251,124,142,.25); background: rgba(251,124,142,.05); }
+.monitor-resource-error strong { color: #ffabb7; }
+@media (max-width: 40rem) { .monitor-resource-feedback { align-items: flex-start; flex-direction: column; margin-inline: 12px; } }
 .modal { width: min(720px, 100%); max-height: min(820px, calc(100vh - 48px)); overflow: auto; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); box-shadow: 0 28px 80px rgba(0,0,0,.46); }
 .modal-md { width: min(560px, 100%); }.modal-lg { width: min(720px, 100%); }
 .modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 20px 22px 16px; border-bottom: 1px solid var(--line); }

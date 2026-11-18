@@ -89,4 +89,52 @@ defmodule KeystonePhoenixWeb.MonitorComponentTest do
     assert html =~ ~s(phx-click="retry-monitor")
     refute html =~ ~s(class="monitor-grid")
   end
+
+  test "resource failures do not hide other data or render a false empty state" do
+    html =
+      render_component(&Operations.monitor/1, %{
+        monitor_server_info: %{},
+        monitor_cache_info: %{},
+        online_user_rows: [],
+        online_user_total: 0,
+        network_status: %{"status" => "DEGRADED"},
+        monitor_overall_status: "DEGRADED",
+        monitor_feedback: nil,
+        monitor_resource_states: %{
+          server: %{status: :unavailable, message: "主机信息暂不可用，请重试。"},
+          network: %{status: :available},
+          cache: %{status: :unavailable, message: "缓存统计暂不可用，请重试。"},
+          online_users: %{status: :unavailable, message: "在线会话暂不可用，请重试。"}
+        }
+      })
+
+    assert html =~ ~s(class="monitor-grid")
+    assert html =~ "PARTIAL"
+    assert html =~ "无法读取缓存统计"
+    assert html =~ "无法读取主机信息"
+    assert html =~ "在线会话数据暂不可用"
+    assert html =~ ~s(phx-value-resource="cache")
+    assert html =~ ~s(phx-value-resource="server")
+    assert html =~ ~s(phx-value-resource="online_users")
+    refute html =~ "暂无采样数据"
+    refute html =~ "暂无在线会话"
+    refute html =~ "0 个活跃会话"
+  end
+
+  test "permission state is explicit and does not offer a data retry" do
+    html =
+      render_component(&Operations.monitor/1, %{
+        monitor_server_info: %{},
+        monitor_cache_info: %{},
+        online_user_rows: [],
+        online_user_total: 0,
+        network_status: %{},
+        monitor_feedback: nil,
+        monitor_resource_states: %{online_users: %{status: :forbidden}}
+      })
+
+    assert html =~ "当前账号没有读取在线会话的权限。"
+    refute html =~ ~s(phx-value-resource="online_users")
+    refute html =~ "暂无在线会话"
+  end
 end

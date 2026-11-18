@@ -195,6 +195,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       |> assign_new(:online_user_page_size, fn -> 50 end)
       |> assign_new(:online_user_total, fn -> length(assigns[:online_user_rows] || []) end)
       |> assign_new(:security_access, fn -> false end)
+      |> assign_new(:monitor_resource_states, fn -> %{} end)
+      |> assign_new(:monitor_overall_status, fn -> nil end)
+      |> assign_new(:monitor_display_status, fn ->
+        raw_status = assigns[:network_status] || %{}
+        status = assigns[:monitor_overall_status] || raw_status["status"]
+        if is_binary(status), do: Map.put(raw_status, "status", status), else: raw_status
+      end)
       |> assign_new(:monitor_feedback, fn -> nil end)
       |> assign_new(:monitor_loading, fn -> false end)
       |> assign_new(:monitor_initial_error, fn -> nil end)
@@ -219,21 +226,27 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
 
       <div :if={@monitor_help_open} class="monitor-help-panel" role="note">
         <span aria-hidden="true">?</span>
-        <div><strong>如何阅读监控</strong><p>状态和趋势来自系统 API。显示“—”表示当前后端没有提供该指标；PARTIAL 表示部分节点数据可用。</p></div>
+          <div><strong>如何阅读监控</strong><p>状态和统计来自独立系统 API。显示“—”表示当前后端没有提供该指标；PARTIAL 表示部分资源数据可用。</p></div>
         <button type="button" class="button button-ghost button-sm" aria-label="关闭监控帮助" phx-click="toggle-monitor-help">关闭</button>
       </div>
 
       <div class="monitor-status-bar">
         <div class="status-leading">
-          <span class={"status-pulse #{monitor_badge_tone(@network_status)}"} aria-hidden="true"></span>
-          <span class={"badge badge-#{monitor_badge_tone(@network_status)}"} role="status"><%= monitor_state_short_label(@network_status) %></span>
-          <span><%= monitor_state_detail(@network_status) %></span>
+          <span class={"status-pulse #{monitor_badge_tone(@monitor_display_status)}"} aria-hidden="true"></span>
+          <span class={"badge badge-#{monitor_badge_tone(@monitor_display_status)}"} role="status"><%= monitor_state_short_label(@monitor_display_status) %></span>
+          <span><%= monitor_state_detail(@monitor_display_status) %></span>
         </div>
         <div class="status-meta">
           <span><%= @network_status["checkedAt"] || "等待快照" %></span>
           <span class="status-source">来源：系统 API</span>
         </div>
       </div>
+
+      <.monitor_resource_state
+        state={Map.get(@monitor_resource_states, :network, %{status: :available})}
+        title="网络状态"
+        resource="network"
+      />
 
       <%= if @monitor_feedback do %>
         <p id="monitor-feedback" class={Feedback.class(@monitor_feedback)} role={Feedback.role(@monitor_feedback)} aria-live={Feedback.live(@monitor_feedback)}><%= Feedback.message(@monitor_feedback) %></p>
@@ -254,11 +267,17 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
           <section class="card trend-card">
             <header class="card-header">
               <div><h2>主机资源趋势</h2><p>最近 30 分钟 · 采样百分比</p></div>
-              <span class="node-chip"><span aria-hidden="true">●</span><%= monitor_node_name(@monitor_server_info) %></span>
+              <span class="node-chip"><span aria-hidden="true">●</span><%= monitor_node_label(@monitor_server_info, Map.get(@monitor_resource_states, :server, %{status: :available})) %></span>
             </header>
-            <%= if monitor_trend_empty?(@monitor_trend) do %>
-              <div class="trend-chart trend-chart-empty" role="status" aria-live="polite"><strong>暂无采样数据</strong><span>系统 API 尚未返回 CPU 或内存趋势。</span></div>
-            <% else %>
+            <.monitor_resource_state
+              state={Map.get(@monitor_resource_states, :server, %{status: :available})}
+              title="主机信息"
+              resource="server"
+            />
+            <%= if monitor_resource_has_snapshot?(Map.get(@monitor_resource_states, :server, %{status: :available})) do %>
+              <%= if monitor_trend_empty?(@monitor_trend) do %>
+                <div class="trend-chart trend-chart-empty" role="status" aria-live="polite"><strong>暂无采样数据</strong><span>系统 API 尚未返回 CPU 或内存趋势。</span></div>
+              <% else %>
               <div class="trend-chart" role="img" aria-label={monitor_chart_label(@monitor_trend)}>
                 <svg viewBox="0 0 720 232" preserveAspectRatio="none" aria-hidden="true">
                   <g class="trend-chart-grid">
@@ -277,6 +296,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
                   <text class="trend-chart-time" x="704" y="230" text-anchor="end"><%= monitor_trend_time(List.last(@monitor_trend)) %></text>
                 </svg>
               </div>
+              <% end %>
             <% end %>
             <div class="trend-summary">
               <div><span class="line-key line-key-cyan"></span>CPU <strong><%= monitor_value_label(monitor_percent(get_in(@monitor_server_info, ["cpuInfo", "used"]))) %></strong></div>
@@ -308,10 +328,15 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
 
           <section class="card sessions-card">
             <header class="card-header">
-              <div><h2>在线会话</h2><p><%= @online_user_total %> 个活跃会话 · 仅展示当前节点</p></div>
-              <span class="badge badge-success"><span class="tiny-dot"></span>在线</span>
+              <div><h2>在线会话</h2><p><%= monitor_online_summary(@online_user_total, Map.get(@monitor_resource_states, :online_users, %{status: :available})) %></p></div>
+              <span :if={monitor_resource_has_snapshot?(Map.get(@monitor_resource_states, :online_users, %{status: :available}))} class="badge badge-success"><span class="tiny-dot"></span>在线</span>
             </header>
-            <div :if={@online_user_rows == []} class="table-empty sessions-empty" role="status"><strong>暂无在线会话</strong><span>当前节点没有活跃会话。</span></div>
+            <.monitor_resource_state
+              state={Map.get(@monitor_resource_states, :online_users, %{status: :available})}
+              title="在线会话"
+              resource="online_users"
+            />
+            <div :if={@online_user_rows == [] && Map.get(@monitor_resource_states, :online_users, %{status: :available}).status == :available} class="table-empty sessions-empty" role="status"><strong>暂无在线会话</strong><span>当前节点没有活跃会话。</span></div>
             <div :if={@online_user_rows != []} class="session-list table-scroll">
               <table class="monitor-session-table"><caption class="sr-only">在线会话列表</caption><thead><tr><th scope="col">用户</th><th scope="col">部门</th><th scope="col">来源地址</th><th scope="col">登录时间</th><th scope="col">操作</th></tr></thead><tbody>
                 <%= for user <- @online_user_rows do %>
@@ -319,7 +344,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
                 <% end %>
               </tbody></table>
             </div>
-            <.pagination panel="online-users" page_num={@online_user_page_num} page_size={@online_user_page_size} total={@online_user_total} />
+            <.pagination :if={monitor_resource_has_snapshot?(Map.get(@monitor_resource_states, :online_users, %{status: :available}))} panel="online-users" page_num={@online_user_page_num} page_size={@online_user_page_size} total={@online_user_total} />
           </section>
         </section>
 
@@ -330,7 +355,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
               <div class="info-row"><span class="info-icon" aria-hidden="true">◆</span><div><span>节点</span><strong><%= monitor_node_name(@monitor_server_info) %></strong></div></div>
               <div class="info-row"><span class="info-icon" aria-hidden="true">↕</span><div><span>网络入口</span><strong>—</strong><small>系统 API 未提供流量采样</small></div></div>
               <div class="info-row"><span class="info-icon" aria-hidden="true"><.nav_icon name="activity" /></span><div><span>处理器</span><strong><%= get_in(@monitor_server_info, ["cpuInfo", "cpuNum"]) || "—" %></strong><small>逻辑处理器数量</small></div></div>
-              <div class="info-row"><span class="info-icon" aria-hidden="true">◇</span><div><span>活动会话</span><strong><%= @online_user_total %></strong><small>系统 API 当前活动会话</small></div></div>
+              <div class="info-row"><span class="info-icon" aria-hidden="true">◇</span><div><span>活动会话</span><strong><%= monitor_cache_value(@monitor_cache_info, "activeSessions") %></strong><small><%= monitor_cache_helper(@monitor_cache_info) %></small></div></div>
+              <.monitor_resource_state
+                state={Map.get(@monitor_resource_states, :cache, %{status: :available})}
+                title="缓存统计"
+                resource="cache"
+              />
             </div>
           </section>
           <section class="card beam-card">
@@ -344,6 +374,47 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
     </div>
     """
   end
+
+  # 每项资源单独显示无权限、初次失败或保留旧数据的状态。
+  defp monitor_resource_state(assigns) do
+    ~H"""
+    <div :if={@state.status == :forbidden} class="monitor-resource-feedback monitor-resource-blocked" role="status">
+      当前账号没有读取<%= @title %>的权限。
+    </div>
+    <div :if={@state.status in [:unavailable, :stale]} class="monitor-resource-feedback monitor-resource-error" role="alert">
+      <div>
+        <strong><%= if @state.status == :stale, do: "最新读取失败，保留旧数据", else: "无法读取#{@title}" %></strong>
+        <p><%= @state.message %></p>
+      </div>
+      <button type="button" class="button button-secondary button-sm" phx-click="retry-monitor" phx-value-resource={@resource} phx-disable-with="重试中…">重试</button>
+    </div>
+    """
+  end
+
+  defp monitor_cache_value(cache_info, key), do: Map.get(cache_info || %{}, key, "—")
+
+  defp monitor_cache_helper(cache_info) do
+    if is_map(cache_info) and map_size(cache_info) > 0,
+      do: "登录日志 #{monitor_cache_value(cache_info, "loginLogEntries")} 条",
+      else: "缓存统计暂不可用"
+  end
+
+  defp monitor_resource_has_snapshot?(%{status: status}), do: status in [:available, :stale]
+
+  defp monitor_node_label(server_info, state) do
+    if monitor_resource_has_snapshot?(state), do: monitor_node_name(server_info), else: "—"
+  end
+
+  defp monitor_online_summary(total, %{status: :available}),
+    do: "#{total} 个活跃会话 · 仅展示当前节点"
+
+  defp monitor_online_summary(total, %{status: :stale}),
+    do: "#{total} 个会话 · 数据来自上一次成功读取"
+
+  defp monitor_online_summary(_total, %{status: :forbidden}),
+    do: "当前账号没有读取在线会话的权限"
+
+  defp monitor_online_summary(_total, _state), do: "在线会话数据暂不可用"
 
   # 现有 Phoenix API 只返回当前快照。保留一个真实采样点，未来可直接替换为历史列表。
   defp monitor_trend(server_info, network_status) do
@@ -359,18 +430,24 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
 
   # 将后端快照转换为 admin-web 使用的状态标签，缺失值保持中性显示。
   defp monitor_badge_tone(%{"status" => "ONLINE"}), do: "success"
+  defp monitor_badge_tone(%{"status" => "PARTIAL"}), do: "warning"
   defp monitor_badge_tone(%{"status" => "DEGRADED"}), do: "warning"
+  defp monitor_badge_tone(%{"status" => "STALE"}), do: "warning"
   defp monitor_badge_tone(%{"status" => "OFFLINE"}), do: "danger"
   defp monitor_badge_tone(_status), do: "neutral"
 
   defp monitor_state_short_label(%{"status" => "ONLINE"}), do: "LIVE"
+  defp monitor_state_short_label(%{"status" => "PARTIAL"}), do: "PARTIAL"
   defp monitor_state_short_label(%{"status" => "DEGRADED"}), do: "PARTIAL"
+  defp monitor_state_short_label(%{"status" => "STALE"}), do: "STALE"
   defp monitor_state_short_label(%{"status" => "OFFLINE"}), do: "OFFLINE"
   defp monitor_state_short_label(_status), do: "STALE"
 
   defp monitor_state_detail(%{"status" => "ONLINE"}), do: "系统 API 正常响应"
+  defp monitor_state_detail(%{"status" => "PARTIAL"}), do: "部分监控资源数据可用"
   defp monitor_state_detail(%{"status" => "DEGRADED"}), do: "部分指标暂不可用"
-  defp monitor_state_detail(%{"status" => "OFFLINE"}), do: "无法读取最新快照"
+  defp monitor_state_detail(%{"status" => "OFFLINE"}), do: "暂时无法读取监控资源"
+  defp monitor_state_detail(%{"status" => "STALE"}), do: "最新读取失败，保留上一次成功数据"
   defp monitor_state_detail(_status), do: "等待系统 API 快照"
 
   defp monitor_node_name(server_info) do

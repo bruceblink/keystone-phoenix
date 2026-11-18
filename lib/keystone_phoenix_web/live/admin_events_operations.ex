@@ -344,6 +344,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
     end
   end
 
+  def handle_event("retry-monitor", %{"resource" => resource}, socket) do
+    case resource do
+      "server" -> {:noreply, Support.assign_monitor_resource(socket, :server)}
+      "network" -> {:noreply, Support.assign_monitor_resource(socket, :network)}
+      "cache" -> {:noreply, Support.assign_monitor_resource(socket, :cache)}
+      "online_users" -> {:noreply, Support.assign_monitor_resource(socket, :online_users)}
+      _other -> {:noreply, socket}
+    end
+  end
+
   def handle_event("retry-monitor", params, socket),
     do: handle_event("refresh-monitor", params, socket)
 

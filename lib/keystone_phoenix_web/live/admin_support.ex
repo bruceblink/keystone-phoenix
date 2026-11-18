@@ -444,6 +444,9 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     MonitorSupport.assign_monitor(socket, feedback)
   end
 
+  def assign_monitor_resource(socket, resource),
+    do: MonitorSupport.assign_monitor_resource(socket, resource)
+
   def monitor_access?(socket), do: MonitorSupport.access?(socket)
 
   def assign_profile(socket, refresh? \\ false) do

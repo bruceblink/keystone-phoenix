@@ -68,22 +68,6 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     assert refreshed.assigns.profile_feedback
   end
 
-  test "monitor page forwards the initial read error to its component", %{conn: conn} do
-    user = create_monitor_user("server:read")
-    {:ok, view, _html} = login_view(conn, user)
-
-    assigns =
-      live_socket(view).assigns
-      |> Map.put(:active_panel, "monitor")
-      |> Map.put(:monitor_loading, false)
-      |> Map.put(:monitor_initial_error, {:error, "service_unavailable", "监控暂不可用"})
-
-    html = render_component(&KeystonePhoenixWeb.LoginLive.render/1, assigns)
-    assert html =~ ~s(id="monitor-initial-error")
-    assert html =~ ~s(phx-click="retry-monitor")
-    refute html =~ ~s(class="monitor-grid")
-  end
-
   test "a read-only user refreshes users and remains data scoped", %{conn: conn} do
     parent = insert_dept("父部门")
     outside = insert_dept("外部部门")
@@ -286,7 +270,10 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     server = live_socket(server_view).assigns
     assert server.monitor_server_info != %{}
     assert server.network_status != %{}
-    assert server.monitor_cache_info == %{}
+
+    assert {server.monitor_cache_info, server.monitor_resource_states.cache.status} ==
+             {%{}, :forbidden}
+
     assert server.online_user_rows == []
 
     {:ok, cache_view, _html} = login_view(conn, cache_user)
@@ -295,7 +282,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     assert cache.monitor_cache_info != %{}
     assert cache.monitor_server_info == %{}
     assert cache.online_user_rows == []
-    assert cache.network_status == %{}
+    assert {cache.network_status, cache.monitor_overall_status} == {%{}, "PARTIAL"}
 
     {:ok, online_view, _html} = login_view(conn, online_user)
     render_click(online_view, "show-panel", %{"panel" => "monitor"})
@@ -303,7 +290,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     assert online.online_user_rows != []
     assert online.monitor_server_info == %{}
     assert online.monitor_cache_info == %{}
-    assert online.network_status == %{}
+    assert {online.network_status, online.monitor_overall_status} == {%{}, "PARTIAL"}
   end
 
   test "audit readers see the redacted security report in the monitor panel", %{conn: conn} do
