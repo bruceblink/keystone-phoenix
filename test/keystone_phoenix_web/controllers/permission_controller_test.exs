@@ -2,6 +2,8 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
   alias KeystonePhoenix.Auth
+  alias KeystonePhoenix.Auth.ApiKey
+  alias KeystonePhoenix.Auth.Token
   alias KeystonePhoenix.Authz.{PolicyCache, SysMenuPermission, SysPermission, SysRolePermission}
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.Post.SysPost
@@ -102,24 +104,47 @@ defmodule KeystonePhoenixWeb.PermissionControllerTest do
   end
 
   @tag :integration
-  test "logout requires the session revoke permission", %{conn: conn} do
+  test "a user can log out their own session without permission to revoke other sessions", %{
+    conn: conn
+  } do
     role = insert_role()
     insert_menu(role.role_id, "post:read")
     user = insert_user(role.role_id)
+    other_user = insert_user(role.role_id)
     {:ok, tokens} = Auth.login_plaintext(user.username, "Strong!123")
-    authorization = put_req_header(conn, "authorization", "Bearer #{tokens.token}")
+    {:ok, other_tokens} = Auth.login_plaintext(other_user.username, "Strong!123")
+    {:ok, issued_key} = ApiKey.issue(user.user_id, "logout boundary", ["post:read"])
 
-    denied = post(authorization, "/api/v1/auth/logout", %{})
-    assert get_in(json_response(denied, 403), ["error", "code"]) == "permission_denied"
-    assert {:ok, _} = Auth.authenticate_access_token(tokens.token)
-    assert :ok = Auth.logout(tokens.refresh_token)
+    # 无撤销权限的角色仍不能通过监控接口下线其他账号的会话。
+    {:ok, other_claims} = Token.verify(other_tokens.token, Token.access_type())
 
-    insert_menu(role.role_id, "session:revoke")
-    {:ok, refreshed} = Auth.login_plaintext(user.username, "Strong!123")
-    authorized = put_req_header(build_conn(), "authorization", "Bearer #{refreshed.token}")
+    revoke_other =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{tokens.token}")
+      |> delete("/api/v1/monitor/onlineUser/#{other_claims["sid"]}")
 
-    assert %{"success" => true} = json_response(post(authorized, "/api/v1/auth/logout", %{}), 200)
-    assert {:error, :invalid_token} = Auth.authenticate_access_token(refreshed.token)
+    assert revoke_other.status == 403
+    assert get_in(json_response(revoke_other, 403), ["error", "code"]) == "permission_denied"
+    assert {:ok, _} = Auth.authenticate_access_token(other_tokens.token)
+
+    # API Key 不能调用仅供人类会话使用的退出接口。
+    api_key_logout =
+      build_conn()
+      |> put_req_header("authorization", "ApiKey #{issued_key.api_key}")
+      |> post("/api/v1/auth/logout", %{})
+
+    assert api_key_logout.status == 403
+    assert get_in(json_response(api_key_logout, 403), ["error", "code"]) == "permission_denied"
+
+    self_logout =
+      conn
+      |> put_req_header("authorization", "Bearer #{tokens.token}")
+      |> post("/api/v1/auth/logout", %{})
+
+    assert %{"success" => true} = json_response(self_logout, 200)
+    assert {:error, :invalid_token} = Auth.authenticate_access_token(tokens.token)
+    assert {:error, :invalid_refresh_token} = Auth.refresh(tokens.refresh_token)
+    assert {:ok, _} = Auth.authenticate_access_token(other_tokens.token)
   end
 
   @tag :integration

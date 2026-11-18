@@ -3,8 +3,9 @@ defmodule KeystonePhoenixWeb.AuthController do
 
   plug KeystonePhoenixWeb.Plugs.RejectApiKey
 
+  # 退出只撤销当前 Bearer 会话；撤销其他账号的会话仍由独立权限保护。
   plug KeystonePhoenixWeb.Plugs.Authenticate,
-       [permissions: %{logout: "session:revoke"}]
+       []
        when action in [:logout]
 
   plug KeystonePhoenixWeb.Plugs.Authenticate,
