@@ -18,14 +18,23 @@ defmodule KeystonePhoenix.Notification do
   }
 
   @doc "读取当前用户最近 50 条通知，并统计该用户全部未读通知。"
-  def list_for_user(user_id) do
+  def list_for_user(user_id), do: list_for_user_page(user_id, 1, false)
+
+  @doc "读取当前用户指定页的通知，使用 has_more 指示是否存在下一页。"
+  def list_for_user(user_id, page) when is_integer(page) and page in 1..1_000_000,
+    do: list_for_user_page(user_id, page, true)
+
+  def list_for_user(_user_id, _page), do: {:error, :invalid_page}
+
+  defp list_for_user_page(user_id, page, paged?) do
     with {:ok, user_id} <- Params.parse_uuid(user_id) do
       items =
         Repo.all(
           from notification in SysNotification,
             where: notification.user_id == ^user_id,
             order_by: [desc: notification.created_at, desc: notification.id],
-            limit: ^@inbox_limit
+            offset: ^((page - 1) * @inbox_limit),
+            limit: ^(@inbox_limit + if(paged?, do: 1, else: 0))
         )
 
       unread_count =
@@ -37,7 +46,15 @@ defmodule KeystonePhoenix.Notification do
           :id
         )
 
-      {:ok, %{items: Enum.map(items, &to_map/1), unread_count: unread_count}}
+      inbox = %{
+        items: items |> Enum.take(@inbox_limit) |> Enum.map(&to_map/1),
+        unread_count: unread_count
+      }
+
+      # 未传 page 的旧接口保留原有响应字段；显式分页多读一条判断下一页。
+      if paged?,
+        do: {:ok, Map.merge(inbox, %{page: page, has_more: length(items) > @inbox_limit})},
+        else: {:ok, inbox}
     else
       :error -> {:error, :not_found}
     end

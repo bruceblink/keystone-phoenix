@@ -9,16 +9,32 @@ defmodule KeystonePhoenixWeb.NotificationController do
   alias KeystonePhoenixWeb.ApiResponse
 
   @doc "返回当前人类用户的通知列表和完整未读数。"
-  def index(conn, _params) do
-    case Notification.list_for_user(current_user_id(conn)) do
+  def index(conn, params) do
+    result =
+      case Map.fetch(params, "page") do
+        :error ->
+          Notification.list_for_user(current_user_id(conn))
+
+        {:ok, value} ->
+          page =
+            case Params.parse_positive_integer(value) do
+              {:ok, page} when page <= 1_000_000 -> page
+              _ -> 1
+            end
+
+          Notification.list_for_user(current_user_id(conn), page)
+      end
+
+    case result do
       {:ok, inbox} ->
-        json(
-          conn,
-          ApiResponse.ok(%{
-            "items" => inbox.items,
-            "unreadCount" => inbox.unread_count
-          })
-        )
+        data = %{"items" => inbox.items, "unreadCount" => inbox.unread_count}
+
+        data =
+          if Map.has_key?(inbox, :page),
+            do: Map.merge(data, %{"page" => inbox.page, "hasMore" => inbox.has_more}),
+            else: data
+
+        json(conn, ApiResponse.ok(data))
 
       {:error, :service_unavailable} ->
         unavailable(conn)

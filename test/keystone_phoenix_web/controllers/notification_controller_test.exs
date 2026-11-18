@@ -31,6 +31,7 @@ defmodule KeystonePhoenixWeb.NotificationControllerTest do
       |> Map.fetch!("data")
 
     assert inbox["unreadCount"] == 1
+    assert MapSet.new(Map.keys(inbox)) == MapSet.new(["items", "unreadCount"])
     assert [item] = inbox["items"]
     assert item["id"] == own_notification.id
     assert item["readAt"] == nil
@@ -127,6 +128,7 @@ defmodule KeystonePhoenixWeb.NotificationControllerTest do
   @tag :integration
   test "inbox caps the page while counting every unread record" do
     user = create_user("notification_page", [])
+    other = create_user("notification_page_other", [])
     base_time = DateTime.utc_now() |> DateTime.add(-60, :second)
 
     notifications =
@@ -135,12 +137,52 @@ defmodule KeystonePhoenixWeb.NotificationControllerTest do
         insert_notification(user.user_id, index, DateTime.add(base_time, index, :second), read_at)
       end)
 
+    foreign = insert_notification(other.user_id, 56, base_time, nil)
+
     assert {:ok, %{items: items, unread_count: 53}} = Notification.list_for_user(user.user_id)
 
     assert length(items) == 50
 
     assert Enum.map(items, & &1["id"]) ==
              notifications |> Enum.drop(5) |> Enum.reverse() |> Enum.map(& &1.id)
+
+    token = login(user)
+
+    first =
+      build_conn() |> bearer(token) |> get("/api/v1/notifications?page=1") |> json_response(200)
+
+    second =
+      build_conn() |> bearer(token) |> get("/api/v1/notifications?page=2") |> json_response(200)
+
+    assert %{"items" => first_items, "page" => 1, "hasMore" => true, "unreadCount" => 53} =
+             first["data"]
+
+    assert %{"items" => second_items, "page" => 2, "hasMore" => false, "unreadCount" => 53} =
+             second["data"]
+
+    assert length(first_items) == 50
+    refute Enum.any?(first_items ++ second_items, &(&1["id"] == foreign.id))
+
+    assert Enum.map(second_items, & &1["id"]) ==
+             notifications |> Enum.take(5) |> Enum.reverse() |> Enum.map(& &1.id)
+
+    # 较早的未读通知仍能查看详情并标记已读。
+    old_unread = Enum.find(second_items, &is_nil(&1["readAt"]))
+
+    assert build_conn()
+           |> bearer(token)
+           |> get("/api/v1/notifications/#{old_unread["id"]}")
+           |> json_response(200)
+
+    assert build_conn()
+           |> bearer(token)
+           |> post("/api/v1/notifications/#{old_unread["id"]}/read")
+           |> json_response(200)
+
+    for page <- ["0", "-1", "abc", "1000001"] do
+      response = build_conn() |> bearer(token) |> get("/api/v1/notifications?page=#{page}")
+      assert get_in(json_response(response, 200), ["data", "page"]) == 1
+    end
   end
 
   @tag :integration
