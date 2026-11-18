@@ -5,6 +5,8 @@ defmodule KeystonePhoenixWeb.AdminJobDeepLinkTest do
   import KeystonePhoenixWeb.LiveAuthenticationTestSupport, only: [live_socket: 1]
 
   alias KeystonePhoenix.Job
+  alias KeystonePhoenix.Job.SysJob
+  alias KeystonePhoenix.Job.SysJobLog
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
@@ -68,5 +70,128 @@ defmodule KeystonePhoenixWeb.AdminJobDeepLinkTest do
     render_click(view, "reset-job-filter")
     assert URI.parse(live_socket(view).assigns.current_uri).path == "/jobs"
     refute (URI.parse(live_socket(view).assigns.current_uri).query || "") =~ "jobs_selectedJobId"
+  end
+
+  @tag :integration
+  test "首次深链接读取失败时显示重试入口，任务出现后可以重新读取", %{
+    conn: conn,
+    admin: admin
+  } do
+    {:ok, view, _html} = live(conn, "/")
+    login(view, admin)
+    job_id = KeystonePhoenix.Identity.v7()
+
+    html = render_patch(view, "/jobs?jobs_selectedJobId=#{job_id}")
+
+    assert html =~ "无法读取所选任务或执行日志，请重试"
+    assert html =~ "重试读取任务详情"
+    assert live_socket(view).assigns.selected_job_id == job_id
+    assert is_nil(live_socket(view).assigns.selected_job)
+    refute has_element?(view, "#selected-job-logs-title")
+
+    job = insert_job(job_id, "深链接重试任务")
+    html = render_click(view, "select-job", %{"job-id" => job_id})
+
+    assert html =~ "#{job.job_name} · 执行日志"
+    refute html =~ "无法读取所选任务或执行日志，请重试"
+  end
+
+  @tag :integration
+  test "切换任务读取失败会清除旧详情，创建目标后重试显示新任务", %{
+    conn: conn,
+    admin: admin
+  } do
+    job_a = insert_job(KeystonePhoenix.Identity.v7(), "任务 A")
+    insert_job_log(job_a, "任务 A 的验收日志")
+    job_b_id = KeystonePhoenix.Identity.v7()
+    {:ok, view, _html} = live(conn, "/")
+    login(view, admin)
+    render_click(view, "show-panel", %{"panel" => "jobs"})
+    render_click(view, "select-job", %{"job-id" => to_string(job_a.job_id)})
+
+    assert has_element?(view, "#selected-job-logs-title", "任务 A · 执行日志")
+    assert render(view) =~ "任务 A 的验收日志"
+
+    html = render_click(view, "select-job", %{"job-id" => job_b_id})
+
+    assert html =~ "无法读取所选任务或执行日志，请重试"
+    assert has_element?(view, "#job-log-feedback")
+    assert has_element?(view, "button[phx-click='select-job'][phx-value-job-id='#{job_b_id}']")
+    assert is_nil(live_socket(view).assigns.selected_job)
+    assert live_socket(view).assigns.job_log_rows == []
+    refute has_element?(view, "#selected-job-logs-title", "任务 A · 执行日志")
+    refute render(view) =~ "任务 A 的验收日志"
+    assert URI.parse(live_socket(view).assigns.current_uri).query =~ job_b_id
+
+    job_b = insert_job(job_b_id, "任务 B")
+    html = render_click(view, "select-job", %{"job-id" => job_b_id})
+
+    assert html =~ "#{job_b.job_name} · 执行日志"
+    refute html =~ "无法读取所选任务或执行日志，请重试"
+    assert live_socket(view).assigns.selected_job["jobName"] == job_b.job_name
+  end
+
+  @tag :integration
+  test "同一任务刷新失败时保留旧日志并明确标记", %{conn: conn, admin: admin} do
+    job = insert_job(KeystonePhoenix.Identity.v7(), "刷新失败任务")
+    insert_job_log(job, "保留的旧日志")
+    {:ok, view, _html} = live(conn, "/")
+    login(view, admin)
+    render_click(view, "show-panel", %{"panel" => "jobs"})
+    render_click(view, "select-job", %{"job-id" => to_string(job.job_id)})
+
+    assert render(view) =~ "保留的旧日志"
+    Repo.query!("ALTER TABLE sys_job_log RENAME TO sys_job_log_unavailable")
+
+    try do
+      html = render_click(view, "refresh-job-logs")
+
+      assert html =~ "任务日志刷新失败，当前仍显示上一次成功读取的数据。请重试。"
+      assert html =~ "保留的旧日志"
+      assert has_element?(view, "#job-log-feedback")
+      assert has_element?(view, "#selected-job-logs-title", "刷新失败任务 · 执行日志")
+    after
+      Repo.query!("ALTER TABLE sys_job_log_unavailable RENAME TO sys_job_log")
+    end
+  end
+
+  defp login(view, admin) do
+    render_submit(view, "login", %{
+      "username" => admin.username,
+      "password" => "Strong!123"
+    })
+  end
+
+  defp insert_job(job_id, name) do
+    %SysJob{job_id: job_id}
+    |> SysJob.changeset(%{
+      job_name: name,
+      job_group: "DEFAULT",
+      invoke_target: "demoJobTask.printHeartbeat()",
+      cron_expression: "0 * * * * *",
+      concurrent: 0,
+      status: 1
+    })
+    |> Repo.insert!()
+  end
+
+  defp insert_job_log(job, message) do
+    now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+
+    %SysJobLog{}
+    |> SysJobLog.changeset(%{
+      job_id: job.job_id,
+      job_name: job.job_name,
+      job_group: job.job_group,
+      invoke_target: job.invoke_target,
+      cron_expression: job.cron_expression,
+      trigger_type: 2,
+      status: 1,
+      job_message: message,
+      start_time: now,
+      end_time: now,
+      duration_ms: 1
+    })
+    |> Repo.insert!()
   end
 end

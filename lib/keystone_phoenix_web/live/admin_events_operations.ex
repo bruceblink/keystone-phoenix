@@ -304,7 +304,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
         {:error, reason} ->
           {:noreply,
            assign(socket,
-             job_log_feedback: Support.read_error_feedback(reason, "任务日志刷新失败，请重试")
+             job_log_feedback:
+               Support.read_error_feedback(
+                 reason,
+                 "任务日志刷新失败，当前仍显示上一次成功读取的数据。请重试。"
+               )
            )}
       end
     else
@@ -375,6 +379,17 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   defp select_job(socket, job_id, push?) do
     if Support.panel_allowed?(socket, "jobs") do
+      # 切换详情时先清除旧任务数据，读取失败也不能把旧任务显示成当前任务。
+      socket =
+        assign(socket,
+          selected_job_id: job_id,
+          selected_job: nil,
+          job_log_rows: [],
+          job_log_total: 0,
+          page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
+          job_log_feedback: nil
+        )
+
       with {:ok, job} <- Job.get_job(job_id, Support.authorization_options(socket, "job:read")),
            {:ok, page} <-
              ReadSupport.job_logs_page(socket, job_log_page_params(socket, job_id, 1)) do
@@ -392,11 +407,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
         {:noreply, socket}
       else
         {:error, reason} ->
-          {:noreply,
-           assign(socket,
-             selected_job_id: job_id,
-             job_log_feedback: Support.read_error_feedback(reason, "任务日志读取失败，请重试")
-           )}
+          socket =
+            assign(socket,
+              job_log_feedback: Support.read_error_feedback(reason, "无法读取所选任务或执行日志，请重试")
+            )
+
+          socket = if push?, do: push_jobs_path(socket, job_id), else: socket
+          {:noreply, socket}
       end
     else
       {:noreply, socket}
@@ -483,7 +500,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
       {:error, reason} ->
         {:noreply,
          assign(socket,
-           job_log_feedback: Support.read_error_feedback(reason, "任务日志分页读取失败，请重试")
+           job_log_feedback:
+             Support.read_error_feedback(
+               reason,
+               "任务日志分页读取失败，当前仍显示上一次成功读取的数据。请重试。"
+             )
          )}
 
       _ ->

@@ -26,6 +26,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       |> assign_new(:job_log_total, fn -> length(Map.get(assigns, :job_log_rows, [])) end)
       |> assign_new(:job_log_page_num, fn -> 1 end)
       |> assign_new(:job_log_page_size, fn -> 50 end)
+      |> assign_new(:job_log_feedback, fn -> nil end)
 
     ~H"""
     <div class="jobs-page operations-page">
@@ -83,6 +84,13 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
         <% end %>
         <.pagination panel="jobs" page_num={min(@page_num, page_count(@job_total, @page_size))} page_size={@page_size} total={@job_total} />
       </section>
+      <section :if={@selected_job_id && @job_log_feedback} class="card job-log-feedback-card" aria-labelledby="job-log-feedback-title">
+        <div>
+          <h2 id="job-log-feedback-title">任务详情读取反馈</h2>
+          <p id="job-log-feedback" class={Feedback.class(@job_log_feedback)} role={Feedback.role(@job_log_feedback)} aria-live={Feedback.live(@job_log_feedback)}><%= Feedback.message(@job_log_feedback) %></p>
+        </div>
+        <button type="button" class="button button-secondary button-sm" phx-click="select-job" phx-value-job-id={@selected_job_id} phx-disable-with="读取中…">重试读取任务详情</button>
+      </section>
       <%= if @selected_job_id do %>
         <% selected_job = @selected_job || Enum.find(@job_rows, &(to_string(&1["jobId"]) == to_string(@selected_job_id))) %>
         <% selected_logs = @job_log_rows %>
@@ -94,6 +102,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
             <div><h2 id="selected-job-logs-title"><%= selected_job["jobName"] %> · 执行日志</h2><p>共 <%= @job_log_total %> 条记录</p></div>
             <span class="badge badge-info">只读</span>
           </header>
+          <%= if @job_log_feedback && selected_logs == [] do %>
+            <div class="jobs-empty" role="status"><strong>当前无法读取执行日志</strong><p>请使用上方重试入口重新读取任务详情。</p></div>
+          <% else %>
           <%= if selected_logs == [] do %>
             <div class="jobs-empty" role="status"><span class="jobs-empty-icon" aria-hidden="true"><.nav_icon name="clipboard-list" /></span><strong>暂无执行日志</strong><p>任务运行后，日志会显示在这里。</p></div>
           <% else %>
@@ -102,6 +113,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
                 <tr><td class="jobs-time"><%= job_log_time(log) %></td><td><%= job_log_trigger(log) %></td><td><span class={"badge #{job_log_badge(log["status"])}"}><%= job_log_status(log["status"]) %></span></td><td><%= job_log_duration(log) %></td><td class="audit-detail"><%= log["jobMessage"] || log["exceptionInfo"] || "—" %></td></tr>
               <% end %>
             </tbody></table></div>
+          <% end %>
           <% end %>
           <.pagination panel="job-logs" page_num={min(@job_log_page_num, page_count(@job_log_total, @job_log_page_size))} page_size={@job_log_page_size} total={@job_log_total} />
         </section>
