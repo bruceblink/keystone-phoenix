@@ -15,6 +15,11 @@ defmodule KeystonePhoenixWeb.ApiDocsControllerTest do
     assert Map.has_key?(body["paths"], "/api/v1/users")
     assert body["servers"] == [%{"url" => "/"}]
 
+    # Swagger 需要公开通知分页参数及旧调用的兼容说明。
+    inbox = get_in(body, ["paths", "/api/v1/notifications", "get"])
+    assert inbox["description"] =~ "不传 page"
+    assert [%{"name" => "page", "in" => "query", "required" => false}] = inbox["parameters"]
+
     api_openapi = get(build_conn(), "/api/openapi")
     assert json_response(api_openapi, 200)["openapi"] == "3.0.3"
   end
