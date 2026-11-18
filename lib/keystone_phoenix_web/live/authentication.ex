@@ -158,10 +158,12 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
 
   defp authenticate(socket) do
     with {:ok, user} <- Auth.authenticate_access_token(socket.assigns.access_token),
-         current <- Auth.current_login_user(user),
+         current <- Auth.current_login_authorization(user),
          true <-
            context(current["userInfo"], current["permissions"]) == socket.assigns.auth_context do
-      {:cont, assign(socket, current_user: current["userInfo"])}
+      # 同步用户表中的最新基础字段，保留关联显示名称以避免认证依赖展示表查询。
+      current_user = Map.merge(socket.assigns.current_user, current["userInfo"])
+      {:cont, assign(socket, current_user: current_user)}
     else
       _ ->
         Logger.info(

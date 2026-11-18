@@ -56,30 +56,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
 
   def handle_event("refresh-users", _params, socket) do
     if Support.panel_allowed?(socket, "users") do
-      case Support.load_users_for_socket_result(socket, AccountsPagination.page_params(socket, 1)) do
-        {:ok, page} ->
-          socket =
-            assign(socket,
-              user_rows: page.rows,
-              user_total: page.total,
-              users_server_paged: true,
-              page_nums: Map.put(socket.assigns.page_nums, "users", page.page),
-              user_query: "",
-              user_display_name_query: "",
-              selected_user_ids: [],
-              user_form: Support.empty_user_form(),
-              user_feedback: nil,
-              active_modal: nil
-            )
-
-          {:noreply, Phoenix.LiveView.push_patch(socket, to: "/users")}
-
-        {:error, reason} ->
-          {:noreply,
-           assign(socket,
-             user_feedback: Support.read_error_feedback(reason, "用户列表刷新失败，请重试")
-           )}
-      end
+      # 刷新只重读当前查询，不清空筛选、页码和选择，失败时由分页支持保留旧列表。
+      {:noreply, AccountsPagination.assign_reloaded(socket, %{user_feedback: nil})}
     else
       {:noreply, socket}
     end

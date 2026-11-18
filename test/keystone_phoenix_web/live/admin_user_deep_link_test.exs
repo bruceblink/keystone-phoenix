@@ -4,7 +4,11 @@ defmodule KeystonePhoenixWeb.AdminUserDeepLinkTest do
   import Phoenix.LiveViewTest
   import KeystonePhoenixWeb.LiveAuthenticationTestSupport, only: [live_socket: 1]
 
+  alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Repo
+  alias KeystonePhoenix.Identity
+  alias KeystonePhoenix.Department.SysDept
+  alias KeystonePhoenix.Post.SysPost
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
   alias KeystonePhoenixWeb.Live.LoginEvents
@@ -68,6 +72,170 @@ defmodule KeystonePhoenixWeb.AdminUserDeepLinkTest do
   end
 
   @tag :integration
+  test "刷新用户列表保留当前筛选和页码，并在失败后保留旧数据直到恢复", %{conn: conn} do
+    role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+    admin = create_user(role, "user_refresh_admin")
+    suffix = System.unique_integer([:positive])
+    username_prefix = "user_refresh_match_#{suffix}_"
+    display_name = "刷新用户 #{suffix}"
+    matching_users = insert_matching_users(role, username_prefix, display_name)
+    post = create_post("user_refresh_#{suffix}")
+
+    # 登录账号也绑定岗位，覆盖 LiveView 事件认证时重新读取用户关联名称的路径。
+    admin = admin |> Ecto.Changeset.change(post_id: post.post_id) |> Repo.update!()
+    matching_users |> hd() |> Ecto.Changeset.change(post_id: post.post_id) |> Repo.update!()
+
+    url = users_url(username_prefix, display_name, 2)
+    {:ok, view, _html} = live(conn, url)
+    render_submit(view, "login", %{"username" => admin.username, "password" => @password})
+
+    initial = live_socket(view)
+    assert initial.assigns.page_nums["users"] == 2
+    assert initial.assigns.user_total == 21
+    original_uri = initial.assigns.current_uri
+    selected_id = initial.assigns.user_rows |> hd() |> Map.fetch!("userId")
+    render_click(view, "toggle-user-selection", %{"user-id" => selected_id, "selected" => "true"})
+    previous_rows = live_socket(view).assigns.user_rows
+
+    Repo.query!("ALTER TABLE sys_post RENAME TO sys_post_unavailable")
+
+    try do
+      failed_html = render_click(view, "refresh-users")
+      failed = live_socket(view)
+
+      assert failed.assigns.user_rows == previous_rows
+      assert failed.assigns.user_total == 21
+      assert failed.assigns.user_query == username_prefix
+      assert failed.assigns.user_display_name_query == display_name
+      assert failed.assigns.page_nums["users"] == 2
+      assert failed.assigns.selected_user_ids == [selected_id]
+      assert failed.assigns.current_uri == original_uri
+      assert failed.assigns.user_feedback
+      assert failed_html =~ "用户列表刷新失败，请重试"
+      refute failed_html =~ "暂无用户"
+    after
+      Repo.query!("ALTER TABLE sys_post_unavailable RENAME TO sys_post")
+    end
+
+    create_user(role, "#{username_prefix}22", display_name)
+    recovered_html = render_click(view, "refresh-users")
+    recovered = live_socket(view)
+
+    assert recovered.assigns.user_query == username_prefix
+    assert recovered.assigns.user_display_name_query == display_name
+    assert recovered.assigns.page_nums["users"] == 2
+    assert recovered.assigns.user_total == 22
+    assert length(recovered.assigns.user_rows) == 2
+
+    assert Enum.all?(
+             recovered.assigns.user_rows,
+             &String.starts_with?(&1["username"], username_prefix)
+           )
+
+    assert recovered.assigns.selected_user_ids == [selected_id]
+    assert recovered.assigns.current_uri == original_uri
+    assert recovered.assigns.user_feedback == nil
+    refute recovered_html =~ "用户列表刷新失败"
+  end
+
+  @tag :integration
+  test "岗位查询失败时仍拒绝权限版本、数据范围、停用和已撤销会话", _context do
+    role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+    post = create_post("user_refresh_auth_#{System.unique_integer([:positive])}")
+
+    [permission_user, scope_user, disabled_user, revoked_user] =
+      Enum.map(~w(permission scope disabled revoked), fn suffix ->
+        user = create_user(role, "user_refresh_auth_#{suffix}")
+        user |> Ecto.Changeset.change(post_id: post.post_id) |> Repo.update!()
+      end)
+
+    views = %{
+      permission: authenticated_users_view(permission_user),
+      scope: authenticated_users_view(scope_user),
+      disabled: authenticated_users_view(disabled_user),
+      revoked: authenticated_users_view(revoked_user)
+    }
+
+    Repo.query!("ALTER TABLE sys_post RENAME TO sys_post_unavailable")
+
+    try do
+      permission_user
+      |> Ecto.Changeset.change(permission_version: permission_user.permission_version + 1)
+      |> Repo.update!()
+
+      permission_html = render_click(views.permission, "refresh-users")
+      assert is_nil(live_socket(views.permission).assigns.current_user)
+      assert permission_html =~ "登录状态已失效，请重新登录"
+
+      scope_role = Repo.get!(SysRole, role.role_id)
+      scope_role |> Ecto.Changeset.change(data_scope: "SELF") |> Repo.update!()
+
+      scope_html = render_click(views.scope, "refresh-users")
+      assert is_nil(live_socket(views.scope).assigns.current_user)
+      assert scope_html =~ "登录状态已失效，请重新登录"
+
+      disabled_user |> Ecto.Changeset.change(status: 0) |> Repo.update!()
+      disabled_html = render_click(views.disabled, "refresh-users")
+      assert is_nil(live_socket(views.disabled).assigns.current_user)
+      assert disabled_html =~ "登录状态已失效，请重新登录"
+
+      Auth.logout(live_socket(views.revoked).assigns.refresh_token)
+      revoked_html = render_click(views.revoked, "refresh-users")
+      assert is_nil(live_socket(views.revoked).assigns.current_user)
+      assert revoked_html =~ "登录状态已失效，请重新登录"
+    after
+      Repo.query!("ALTER TABLE sys_post_unavailable RENAME TO sys_post")
+    end
+  end
+
+  @tag :integration
+  test "刷新事件同步外部修改的基础资料并保留关联显示名称", %{conn: conn} do
+    role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+    suffix = System.unique_integer([:positive])
+    post = create_post("user_profile_sync_#{suffix}")
+    dept = create_dept("资料同步部门 #{suffix}")
+
+    user =
+      create_user(role, "user_profile_sync_#{suffix}", "登录时名称")
+      |> Ecto.Changeset.change(
+        post_id: post.post_id,
+        dept_id: dept.dept_id,
+        avatar: "/profile/avatar/old-#{suffix}.png",
+        email: "old-#{suffix}@example.com"
+      )
+      |> Repo.update!()
+
+    {:ok, view, _html} = live(conn, "/users")
+    render_submit(view, "login", %{"username" => user.username, "password" => @password})
+
+    initial_user = live_socket(view).assigns.current_user
+    assert initial_user["nickname"] == "登录时名称"
+    assert initial_user["postName"] == post.post_name
+    assert initial_user["deptName"] == dept.dept_name
+    assert initial_user["roleName"] != ""
+
+    user
+    |> Ecto.Changeset.change(
+      nickname: "外部更新名称",
+      avatar: "/profile/avatar/new-#{suffix}.png",
+      email: "new-#{suffix}@example.com",
+      phone_number: "13800000000"
+    )
+    |> Repo.update!()
+
+    render_click(view, "refresh-users")
+    refreshed_user = live_socket(view).assigns.current_user
+
+    assert refreshed_user["nickname"] == "外部更新名称"
+    assert refreshed_user["avatar"] == "/profile/avatar/new-#{suffix}.png"
+    assert refreshed_user["email"] == "new-#{suffix}@example.com"
+    assert refreshed_user["phoneNumber"] == "13800000000"
+    assert refreshed_user["postName"] == initial_user["postName"]
+    assert refreshed_user["deptName"] == initial_user["deptName"]
+    assert refreshed_user["roleName"] == initial_user["roleName"]
+  end
+
+  @tag :integration
   test "没有用户列表权限时登录回到个人资料页", %{conn: conn} do
     user = create_user(nil, "user_deep_link_common")
     {:ok, view, _html} = live(conn, "/users?users_username=private_query")
@@ -112,9 +280,25 @@ defmodule KeystonePhoenixWeb.AdminUserDeepLinkTest do
   end
 
   defp insert_matching_users(role, username_prefix, display_name) do
-    for index <- 1..21 do
-      create_user(role, "#{username_prefix}#{index}", display_name)
-    end
+    Enum.map(1..21, &create_user(role, "#{username_prefix}#{&1}", display_name))
+  end
+
+  defp create_post(code) do
+    %SysPost{post_id: Identity.v7()}
+    |> SysPost.changeset(%{
+      post_code: code,
+      post_name: "岗位 #{code}",
+      post_sort: 1,
+      status: 1
+    })
+    |> Repo.insert!()
+  end
+
+  # 创建可供资料同步测试读取显示名称的部门记录。
+  defp create_dept(name) do
+    %SysDept{dept_id: Identity.v7()}
+    |> SysDept.changeset(%{dept_name: name, ancestors: "", status: 1})
+    |> Repo.insert!()
   end
 
   defp create_user(role, suffix, display_name \\ "深链接管理员") do
@@ -138,5 +322,17 @@ defmodule KeystonePhoenixWeb.AdminUserDeepLinkTest do
       })
 
     "/users?#{query}"
+  end
+
+  # 通过真实登录表单创建带岗位关联的 LiveView 会话，覆盖认证钩子读取身份的路径。
+  defp authenticated_users_view(user) do
+    {:ok, view, _html} = Phoenix.LiveViewTest.live(Phoenix.ConnTest.build_conn(), "/users")
+
+    Phoenix.LiveViewTest.render_submit(view, "login", %{
+      "username" => user.username,
+      "password" => @password
+    })
+
+    view
   end
 end
