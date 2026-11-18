@@ -4,6 +4,8 @@ defmodule KeystonePhoenixWeb.AdminJobDeepLinkTest do
   import Phoenix.LiveViewTest
   import KeystonePhoenixWeb.LiveAuthenticationTestSupport, only: [live_socket: 1]
 
+  alias KeystonePhoenixWeb.LiveAuthenticationTestSupport, as: LiveSupport
+
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Job.SysJob
   alias KeystonePhoenix.Job.SysJobLog
@@ -155,6 +157,97 @@ defmodule KeystonePhoenixWeb.AdminJobDeepLinkTest do
 
     assert html =~ "#{job.job_name} · 执行日志"
     refute html =~ "无法读取所选任务或执行日志，请重试"
+  end
+
+  @tag :integration
+  test "任务日志深链接恢复页码并将过期页码校正到末页", %{conn: conn, admin: admin} do
+    job = insert_job(KeystonePhoenix.Identity.v7(), "日志分页深链接任务")
+    for index <- 1..21, do: insert_job_log(job, "深链接分页日志 #{index}")
+
+    {:ok, view, _html} = live(conn, "/")
+    login(view, admin)
+
+    html =
+      render_patch(
+        view,
+        "/jobs?jobs_selectedJobId=#{job.job_id}&jobs_logPage=2"
+      )
+
+    assert html =~ "第 2 / 2 页"
+
+    assert Enum.map(live_socket(view).assigns.job_log_rows, & &1["jobMessage"]) == [
+             "深链接分页日志 1"
+           ]
+
+    html =
+      render_patch(
+        view,
+        "/jobs?jobs_selectedJobId=#{job.job_id}&jobs_logPage=99"
+      )
+
+    assert html =~ "第 2 / 2 页"
+    assert live_socket(view).assigns.page_nums["job-logs"] == 2
+    assert URI.parse(live_socket(view).assigns.current_uri).query =~ "jobs_logPage=2"
+  end
+
+  @tag :integration
+  test "从任务日志深链接登录后恢复选中任务和日志页码", %{conn: conn, admin: admin} do
+    keyword = "login-route-target"
+
+    jobs =
+      for index <- 1..21, do: insert_job(KeystonePhoenix.Identity.v7(), "#{keyword} #{index}")
+
+    insert_job(KeystonePhoenix.Identity.v7(), "login-route-unmatched")
+    page_two = Job.list_jobs(%{"keyword" => keyword, "pageNum" => 2, "pageSize" => 20})
+    assert page_two.total == 21
+    assert length(page_two.rows) == 1
+
+    job = Enum.find(jobs, &(to_string(&1.job_id) == to_string(hd(page_two.rows)["jobId"])))
+
+    for index <- 1..21, do: insert_job_log(job, "登录深链接日志 #{index}")
+
+    path =
+      "/jobs?jobs_keyword=#{keyword}&jobs_jobPage=2&jobs_selectedJobId=#{job.job_id}&jobs_logPage=2"
+
+    {:ok, view, html} = live(conn, path)
+    assert html =~ "进入管理台"
+
+    html = login(view, admin)
+
+    assert html =~ "#{job.job_name} · 执行日志"
+    assert html =~ "第 2 / 2 页"
+    assert live_socket(view).assigns.active_panel == "jobs"
+    assert live_socket(view).assigns.selected_job_id == job.job_id
+    assert live_socket(view).assigns.job_log_loaded_page == 2
+    assert live_socket(view).assigns.job_filter["keyword"] == keyword
+    assert live_socket(view).assigns.job_total == 21
+    assert live_socket(view).assigns.page_nums["jobs"] == 2
+    assert Enum.map(live_socket(view).assigns.job_rows, & &1["jobName"]) == [job.job_name]
+
+    assert Enum.map(live_socket(view).assigns.job_log_rows, & &1["jobMessage"]) == [
+             "登录深链接日志 1"
+           ]
+  end
+
+  @tag :integration
+  test "没有 job:read 权限时从任务深链接登录不会打开任务详情", %{conn: conn} do
+    {user, _role} = LiveSupport.create_scoped_user()
+    job = insert_job(KeystonePhoenix.Identity.v7(), "受限任务不得显示")
+    insert_job_log(job, "受限日志不得显示")
+    path = "/jobs?jobs_selectedJobId=#{job.job_id}&jobs_logPage=2"
+
+    {:ok, view, _html} = live(conn, path)
+    html = login(view, user)
+
+    assert html =~ "运行监控"
+    assert live_socket(view).assigns.active_panel == "monitor"
+    assert live_socket(view).assigns.panel_access["jobs"] == false
+    assert is_nil(live_socket(view).assigns.selected_job_id)
+    assert is_nil(live_socket(view).assigns.selected_job)
+    assert live_socket(view).assigns.job_log_rows == []
+    refute html =~ job.job_name
+    refute html =~ "受限日志不得显示"
+    assert URI.parse(live_socket(view).assigns.current_uri).path == "/monitor"
   end
 
   @tag :integration

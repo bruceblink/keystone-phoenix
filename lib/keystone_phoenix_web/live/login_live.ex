@@ -71,8 +71,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
     end
   end
 
-  def handle_event("login", params, socket),
-    do: LoginEvents.handle_login(params, socket, liveview_ip(socket))
+  def handle_event("login", params, socket) do
+    result = LoginEvents.handle_login(params, socket, liveview_ip(socket))
+    LoginEvents.restore_route_after_login(result, socket)
+  end
 
   def handle_event("change-initial-password", params, socket),
     do: LoginEvents.handle_initial_password(params, socket, liveview_ip(socket))
@@ -80,8 +82,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_event("cancel-initial-password", _params, socket),
     do: LoginEvents.cancel_initial_password(socket)
 
-  def handle_event("force-login", params, socket),
-    do: LoginEvents.handle_force_login(params, socket)
+  def handle_event("force-login", params, socket) do
+    result = LoginEvents.handle_force_login(params, socket)
+    LoginEvents.restore_route_after_login(result, socket)
+  end
 
   def handle_event("cancel-force-login", _params, socket),
     do:
@@ -92,8 +96,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
          pending_mfa_login: false
        )}
 
-  def handle_event("verify-login-mfa", params, socket),
-    do: LoginEvents.handle_event("verify-login-mfa", params, socket)
+  def handle_event("verify-login-mfa", params, socket) do
+    result = LoginEvents.handle_event("verify-login-mfa", params, socket)
+    LoginEvents.restore_route_after_login(result, socket)
+  end
 
   def handle_event("cancel-login-mfa", params, socket),
     do: LoginEvents.handle_event("cancel-login-mfa", params, socket)

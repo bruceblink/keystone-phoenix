@@ -96,6 +96,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       job_log_rows: [],
       job_log_total: 0,
       job_log_feedback: nil,
+      job_log_loaded_page: nil,
       page_nums: %{
         "users" => 1,
         "posts" => 1,

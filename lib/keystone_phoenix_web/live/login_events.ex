@@ -10,10 +10,48 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Log
+  alias KeystonePhoenixWeb.Live.AdminEvents.OperationsDeepLinks
+  alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
+  alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.InitialPasswordEvents
   alias KeystonePhoenixWeb.LoginNotifications
+
+  # 登录事件不会触发 handle_params；本轮仅恢复有完整列表查询闭环的任务页。
+  def restore_route_after_login(
+        {:noreply, %{assigns: %{current_user: user}} = socket},
+        %{assigns: %{current_user: nil}}
+      )
+      when is_map(user) do
+    uri = socket.assigns[:current_uri] || "/"
+    params = URI.parse(uri).query |> then(&URI.decode_query(&1 || ""))
+    panel = Navigation.panel_for_path(uri)
+
+    if panel == "jobs" and AdminSupport.panel_allowed?(socket, panel) do
+      socket =
+        socket
+        |> assign(active_panel: panel)
+        |> assign(FilterNavigation.assigns(panel, params))
+        |> FilterNavigation.apply_page(panel, params)
+
+      OperationsDeepLinks.restore_jobs_from_deep_link(socket)
+    else
+      restore_monitor_route(socket, uri)
+    end
+  end
+
+  def restore_route_after_login(result, _previous_socket), do: result
+
+  defp restore_monitor_route(socket, uri) do
+    socket = assign(socket, active_panel: "monitor")
+
+    if URI.parse(uri).path in ["/", "/monitor", "/dashboard"] do
+      {:noreply, socket}
+    else
+      {:noreply, Phoenix.LiveView.push_patch(socket, to: "/monitor")}
+    end
+  end
 
   def handle_login(%{"username" => username, "password" => password} = params, socket, remote_ip) do
     username = String.trim(username)

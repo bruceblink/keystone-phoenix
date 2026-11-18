@@ -20,6 +20,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
              selected_job_ids: [],
              selected_job_id: nil,
              selected_job: nil,
+             job_log_loaded_page: nil,
              page_nums: Map.put(socket.assigns.page_nums, "jobs", 1),
              job_form: Support.empty_job_form(),
              job_feedback: nil,
@@ -47,7 +48,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
           job_filter: filter,
           selected_job_ids: [],
           selected_job_id: nil,
-          selected_job: nil
+          selected_job: nil,
+          job_log_loaded_page: nil
         )
 
       {:noreply, refresh_job_page(socket, 1)}
@@ -92,7 +94,16 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   end
 
   def handle_event("select-job", %{"job-id" => job_id}, socket),
-    do: select_job(socket, job_id, true)
+    do:
+      select_job(
+        socket,
+        job_id,
+        true,
+        if(job_id == socket.assigns.selected_job_id and is_nil(socket.assigns.selected_job),
+          do: get_in(socket.assigns, [:page_nums, "job-logs"]) || 1,
+          else: 1
+        )
+      )
 
   def handle_event("delete-jobs", %{"job-ids" => job_ids}, socket) do
     if Support.permission_socket?(socket, "job:delete") do
@@ -104,6 +115,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
            assign(socket,
              selected_job_ids: [],
              selected_job: nil,
+             job_log_loaded_page: nil,
              job_form: Support.empty_job_form(),
              active_modal: nil,
              job_feedback: "已删除 #{length(ids)} 个任务"
@@ -297,6 +309,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
              job_log_rows: page.rows,
              job_log_total: page.total,
              page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
+             job_log_loaded_page: 1,
              job_log_feedback: nil
            )
            |> push_jobs_path(socket.assigns.selected_job_id)}
@@ -368,7 +381,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
     case socket.assigns[:selected_job_id] do
       job_id when is_binary(job_id) and job_id != "" ->
-        if is_nil(selected_job), do: select_job(socket, job_id, false), else: {:noreply, socket}
+        log_page = get_in(socket.assigns, [:page_nums, "job-logs"]) || 1
+        loaded_job_id = if is_map(selected_job), do: selected_job["jobId"], else: nil
+
+        if is_nil(selected_job) or to_string(loaded_job_id || "") != job_id or
+             socket.assigns[:job_log_loaded_page] != log_page do
+          select_job(socket, job_id, false, log_page)
+        else
+          {:noreply, socket}
+        end
 
       _ ->
         {:noreply, socket}
@@ -377,7 +398,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
   def restore_selected_job_if_needed(socket, _panel), do: {:noreply, socket}
 
-  defp select_job(socket, job_id, push?) do
+  defp select_job(socket, job_id, push?, requested_log_page) do
     if Support.panel_allowed?(socket, "jobs") do
       # 切换详情时先清除旧任务数据，读取失败也不能把旧任务显示成当前任务。
       socket =
@@ -386,24 +407,30 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
           selected_job: nil,
           job_log_rows: [],
           job_log_total: 0,
-          page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
+          job_log_loaded_page: nil,
+          page_nums: Map.put(socket.assigns.page_nums, "job-logs", requested_log_page),
           job_log_feedback: nil
         )
 
       with {:ok, job} <- Job.get_job(job_id, Support.authorization_options(socket, "job:read")),
-           {:ok, page} <-
-             ReadSupport.job_logs_page(socket, job_log_page_params(socket, job_id, 1)) do
+           {:ok, page, page_number} <-
+             load_selected_job_log_page(socket, job_id, requested_log_page) do
         socket =
           assign(socket,
             selected_job_id: job_id,
             selected_job: Job.job_to_map(job),
             job_log_rows: page.rows,
             job_log_total: page.total,
-            page_nums: Map.put(socket.assigns.page_nums, "job-logs", 1),
+            job_log_loaded_page: page_number,
+            page_nums: Map.put(socket.assigns.page_nums, "job-logs", page_number),
             job_log_feedback: nil
           )
 
-        socket = if push?, do: push_jobs_path(socket, job_id), else: socket
+        socket =
+          if push? or page_number != requested_log_page,
+            do: push_jobs_path(socket, job_id),
+            else: socket
+
         {:noreply, socket}
       else
         {:error, reason} ->
@@ -419,6 +446,34 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
       {:noreply, socket}
     end
   end
+
+  defp load_selected_job_log_page(socket, job_id, requested_page) do
+    with {:ok, requested_result} <-
+           ReadSupport.job_logs_page(
+             socket,
+             job_log_page_params(socket, job_id, requested_page)
+           ) do
+      last_page =
+        max(
+          div(requested_result.total + job_log_page_size(socket) - 1, job_log_page_size(socket)),
+          1
+        )
+
+      page = min(requested_page, last_page)
+
+      if page == requested_page do
+        {:ok, requested_result, page}
+      else
+        with {:ok, last_result} <-
+               ReadSupport.job_logs_page(socket, job_log_page_params(socket, job_id, page)) do
+          {:ok, last_result, page}
+        end
+      end
+    end
+  end
+
+  defp job_log_page_size(socket),
+    do: get_in(socket.assigns, [:page_sizes, "job-logs"]) || 50
 
   defp authorization(socket, permission) do
     principal =
@@ -497,6 +552,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
        assign(socket,
          job_log_rows: result.rows,
          job_log_total: result.total,
+         job_log_loaded_page: page_number,
          page_nums: Map.put(socket.assigns.page_nums, "job-logs", page_number),
          job_log_feedback: nil
        )
