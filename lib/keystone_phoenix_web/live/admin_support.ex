@@ -125,8 +125,11 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     dictionary = if access["dicts"], do: load_dictionary("", options), else: empty_dictionary()
     logs = logs_for_permissions(permissions, options, %{})
 
+    role_scope_allowed =
+      Authz.resource_scope_allowed?(Map.put(user, :permissions, permissions), :role)
+
     role_directory =
-      if "role:read" in permissions,
+      if role_scope_allowed and "role:read" in permissions,
         do: RoleDirectory.load(options),
         else: RoleDirectory.empty()
 
@@ -135,6 +138,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     |> Map.put(:post_rows, if(access["posts"], do: load_posts(options), else: []))
     |> Map.put(:role_rows, role_directory.rows)
     |> Map.put(:role_directory_feedback, role_directory.feedback)
+    |> Map.put(:role_scope_allowed, role_scope_allowed)
     |> Map.put(:menu_rows, if(access["menus"], do: load_menus(options), else: []))
     |> Map.put(:user_rows, if(access["users"], do: load_users_for_user(user), else: []))
     |> Map.put(:config_rows, if(access["configs"], do: load_configs(options), else: []))

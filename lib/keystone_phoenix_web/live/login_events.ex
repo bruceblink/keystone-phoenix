@@ -386,6 +386,15 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
         do: AdminSupport.load_dashboard(),
         else: AdminSupport.load_dashboard_for_permissions(current_user, permissions)
 
+    role_scope_allowed =
+      case Map.fetch(dashboard, :role_scope_allowed) do
+        {:ok, allowed?} ->
+          allowed?
+
+        :error ->
+          Authz.resource_scope_allowed?(Map.put(current_user, :permissions, permissions), :role)
+      end
+
     panel_access = AdminSupport.panel_access(permissions, current_user)
 
     socket
@@ -412,6 +421,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       mfa_step_up_notice: nil,
       current_user: current_user,
       permissions: permissions,
+      role_scope_allowed: role_scope_allowed,
       auth_context: Authentication.context(current_user, permissions),
       panel_access: panel_access,
       read_only: not admin?,

@@ -120,6 +120,39 @@ defmodule KeystonePhoenixWeb.AdminUserPermissionEditTest do
   end
 
   @tag :integration
+  test "role permissions without role data scope create an unassigned account", %{conn: conn} do
+    {actor_dept, _target_dept} = insert_test_departments()
+    role = create_role(["user:read", "user:create", "role:read", "role:assign"], "DEPARTMENT")
+
+    {:ok, creator} =
+      create_user(%{"role_id" => role.role_id, "dept_id" => actor_dept.dept_id})
+
+    {:ok, view, _html} = login_view(conn, creator)
+    render_click(view, "show-panel", %{"panel" => "users"})
+    render_click(view, "new-user")
+
+    assert live_socket(view).assigns.role_scope_allowed == false
+    assert has_element?(view, "#user-role-preserved", "当前账号没有角色数据范围")
+    assert has_element?(view, "#user-role-preserved", "新用户将以未分配角色状态创建")
+    refute has_element?(view, "input[name='roleCodes[]']")
+
+    username = unique("out_of_scope_unassigned_user")
+
+    render_submit(view, "save-user", %{
+      "userId" => "",
+      "username" => username,
+      "nickname" => "无角色范围创建",
+      "password" => "Created!123",
+      "deptId" => to_string(actor_dept.dept_id),
+      "enabled" => "true"
+    })
+
+    created = Repo.get_by!(SysUser, username: username)
+    assert is_nil(created.role_id)
+    assert RoleMembership.list_role_ids_for_user(created.user_id) == []
+  end
+
+  @tag :integration
   test "a failed role-directory query hides role fields and reports preservation", %{
     conn: conn,
     target: target,
@@ -130,9 +163,9 @@ defmodule KeystonePhoenixWeb.AdminUserPermissionEditTest do
     {:ok, reader} = create_user(%{"role_id" => role.role_id})
     {:ok, view, _html} = login_view(conn, reader)
     socket = live_socket(view)
-    unavailable_table = "sys_role_read_failure"
+    unavailable_table = "sys_role_permission_read_failure"
 
-    Repo.query!("ALTER TABLE sys_role RENAME TO #{unavailable_table}")
+    Repo.query!("ALTER TABLE sys_role_permission RENAME TO #{unavailable_table}")
 
     role_directory_feedback =
       try do
@@ -140,6 +173,7 @@ defmodule KeystonePhoenixWeb.AdminUserPermissionEditTest do
           AdminSupport.load_dashboard_for_permissions(socket.assigns.current_user, permissions)
 
         assert dashboard.role_rows == []
+        assert dashboard.role_scope_allowed
         assert dashboard.role_directory_feedback
 
         target_row =
@@ -165,6 +199,7 @@ defmodule KeystonePhoenixWeb.AdminUserPermissionEditTest do
             post_rows: [],
             role_rows: dashboard.role_rows,
             role_directory_feedback: dashboard.role_directory_feedback,
+            role_scope_allowed: true,
             page_num: 1,
             page_size: 20,
             permissions: permissions
@@ -191,6 +226,7 @@ defmodule KeystonePhoenixWeb.AdminUserPermissionEditTest do
             post_rows: [],
             role_rows: dashboard.role_rows,
             role_directory_feedback: dashboard.role_directory_feedback,
+            role_scope_allowed: true,
             page_num: 1,
             page_size: 1,
             permissions: permissions
@@ -201,7 +237,7 @@ defmodule KeystonePhoenixWeb.AdminUserPermissionEditTest do
 
         dashboard.role_directory_feedback
       after
-        Repo.query!("ALTER TABLE #{unavailable_table} RENAME TO sys_role")
+        Repo.query!("ALTER TABLE #{unavailable_table} RENAME TO sys_role_permission")
       end
 
     failed_directory_socket = %{
@@ -288,14 +324,14 @@ defmodule KeystonePhoenixWeb.AdminUserPermissionEditTest do
     refute html =~ ~s(phx-click="edit-user")
   end
 
-  defp create_role(permissions) do
+  defp create_role(permissions, data_scope \\ "ALL") do
     role =
       %SysRole{}
       |> SysRole.changeset(%{
         role_name: unique("user_edit_role"),
         role_key: unique("user_edit_role_key"),
         role_sort: 1,
-        data_scope: "ALL",
+        data_scope: data_scope,
         dept_id_set: "",
         status: 1
       })

@@ -252,6 +252,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       post_rows: [],
       role_rows: [],
       permissions: ["user:create", "role:read", "role:assign"],
+      role_scope_allowed: true,
       profile_form: %{
         "nickname" => "",
         "email" => "",

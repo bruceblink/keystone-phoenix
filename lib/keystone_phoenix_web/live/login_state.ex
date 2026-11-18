@@ -32,6 +32,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       mfa_step_up_notice: nil,
       current_user: nil,
       permissions: [],
+      role_scope_allowed: false,
       auth_context: nil,
       panel_access: %{},
       read_only: true,

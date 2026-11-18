@@ -22,6 +22,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       |> assign_new(:user_display_name_query, fn -> "" end)
       |> assign_new(:role_rows, fn -> [] end)
       |> assign_new(:role_directory_feedback, fn -> nil end)
+      |> assign_new(:role_scope_allowed, fn -> false end)
       |> assign_new(:permissions, fn -> [] end)
       |> assign_new(:user_import_upload, fn -> nil end)
       |> assign_new(:user_import_result, fn -> nil end)
@@ -62,19 +63,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <div><label for="user-post">岗位 UUID</label><input id="user-post" name="postId" value={@user_form["postId"] || ""} placeholder="可选" /></div>
           <div><label for="user-email">邮箱</label><input id="user-email" type="email" name="email" value={@user_form["email"] || ""} /></div>
           <div><label for="user-phone">联系电话</label><input id="user-phone" name="phoneNumber" value={@user_form["phoneNumber"] || ""} /></div>
-          <%= if user_role_assignment_allowed?(@permissions) do %>
+          <%= if user_role_assignment_allowed?(@permissions, @role_scope_allowed) do %>
             <%= if @role_directory_feedback do %>
               <p id="user-role-feedback" class={Feedback.class(@role_directory_feedback)} role={Feedback.role(@role_directory_feedback)} aria-live={Feedback.live(@role_directory_feedback)}><%= Feedback.message(@role_directory_feedback) %><%= if @user_form["userId"] in [nil, ""], do: "暂不能创建用户。", else: "保存资料时会保留原角色。" %></p>
             <% else %>
               <fieldset class="wide user-role-picker"><legend>角色</legend><input type="hidden" name="roleCodes[]" value="" /><div class="user-role-options"><%= for role <- enabled_roles(@role_rows) do %><% role_code = role_code(role) %><label class="checkbox-label"><input type="checkbox" name="roleCodes[]" value={role_code} checked={role_code_selected?(@user_form["roleCodes"], role_code)} /><span><%= role["roleName"] || role["name"] || role_code %></span><code><%= role_code %></code></label><% end %></div><p :if={enabled_roles(@role_rows) == []} class="form-help" role="status">没有可选择的启用角色。</p><small>角色来自当前账号可配置的启用角色；未选择角色会清空用户角色。</small></fieldset>
             <% end %>
           <% else %>
-            <p id="user-role-preserved" class="form-help" role="status">当前账号没有同时具备角色读取和分配权限；<%= if @user_form["userId"] in [nil, ""], do: "新用户将以未分配角色状态创建。", else: "保存资料时会保留原角色。" %></p>
+            <p id="user-role-preserved" class="form-help" role="status"><%= if @role_scope_allowed, do: "当前账号没有同时具备角色读取和分配权限；", else: "当前账号没有角色数据范围；" %><%= if @user_form["userId"] in [nil, ""], do: "新用户将以未分配角色状态创建。", else: "保存资料时会保留原角色。" %></p>
           <% end %>
           <div class="wide"><label for="user-remark">备注</label><textarea id="user-remark" name="remark"><%= @user_form["remark"] || "" %></textarea></div>
         </div>
         <div class="form-options"><label><input type="hidden" name="enabled" value="false" /><input type="checkbox" name="enabled" value="true" checked={@user_form["enabled"] in [true, 1, "1", "on"]} />账号启用</label><label :if={@user_form["userId"] != ""}><input type="checkbox" name="clearDept" checked={@user_form["clearDept"] in [true, 1, "1", "on"]} />清除部门归属</label></div>
-        <div class="form-actions"><button type="submit" disabled={user_creation_blocked?(@user_form, @permissions, @role_directory_feedback)} phx-disable-with="保存中…">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="user" phx-disable-with="处理中…">取消编辑</button></div>
+          <div class="form-actions"><button type="submit" disabled={user_creation_blocked?(@user_form, @permissions, @role_scope_allowed, @role_directory_feedback)} phx-disable-with="保存中…">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="user" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
         </.modal>
       <% end %>
@@ -174,12 +175,15 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
     permission in List.wrap(permissions)
   end
 
-  defp user_role_assignment_allowed?(permissions),
-    do: "role:read" in List.wrap(permissions) and "role:assign" in List.wrap(permissions)
-
-  defp user_creation_blocked?(form, permissions, role_directory_feedback),
+  defp user_role_assignment_allowed?(permissions, role_scope_allowed),
     do:
-      form["userId"] in [nil, ""] and user_role_assignment_allowed?(permissions) and
+      role_scope_allowed and "role:read" in List.wrap(permissions) and
+        "role:assign" in List.wrap(permissions)
+
+  defp user_creation_blocked?(form, permissions, role_scope_allowed, role_directory_feedback),
+    do:
+      form["userId"] in [nil, ""] and
+        user_role_assignment_allowed?(permissions, role_scope_allowed) and
         not is_nil(role_directory_feedback)
 
   defp role_code_selected?(value, code) do
