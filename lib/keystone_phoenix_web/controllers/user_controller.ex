@@ -60,6 +60,7 @@ defmodule KeystonePhoenixWeb.UserController do
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Role
   alias KeystonePhoenix.User
+  alias KeystonePhoenix.User.PasswordPolicy
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.ExcelResponse
   alias KeystonePhoenixWeb.NativeContract
@@ -107,27 +108,20 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Creates a local user."
   def create(conn, params) do
-    case native_user_params(params) do
-      {:ok, attrs} ->
-        if Authz.role_assignment_allowed?(conn.assigns.current_user, role_id_param(attrs)) do
-          case User.create_user(attrs,
-                 authorization: %{
-                   principal: conn.assigns.current_user,
-                   permission: "user:create"
-                 }
-               ) do
-            {:ok, user} ->
-              conn |> put_status(:created) |> json(ApiResponse.ok(native_user(user)))
-
-            {:error, changeset} ->
-              render_error(conn, changeset)
-          end
-        else
-          render_error(conn, :role_assignment_forbidden)
-        end
-
-      {:error, reason} ->
-        render_error(conn, reason)
+    with {:ok, attrs} <- native_user_params(params),
+         true <- Authz.role_assignment_allowed?(conn.assigns.current_user, role_id_param(attrs)),
+         :ok <- validate_create_identity(params),
+         {:ok, user} <-
+           User.create_user(attrs,
+             authorization: %{
+               principal: conn.assigns.current_user,
+               permission: "user:create"
+             }
+           ) do
+      conn |> put_status(:created) |> json(ApiResponse.ok(native_user(user)))
+    else
+      false -> render_error(conn, :role_assignment_forbidden)
+      {:error, reason} -> render_error(conn, reason)
     end
   end
 
@@ -237,7 +231,7 @@ defmodule KeystonePhoenixWeb.UserController do
     NativeContract.user(legacy)
   end
 
-  defp native_user_params(params), do: native_user_params(params, :standard)
+  defp native_user_params(params), do: native_user_params(params, :create)
 
   defp native_user_params(params, :update) do
     with :ok <- NativeContract.validate_user_update_params(params) do
@@ -245,10 +239,28 @@ defmodule KeystonePhoenixWeb.UserController do
     end
   end
 
-  defp native_user_params(params, _mode) do
+  defp native_user_params(params, :create) do
     with :ok <- NativeContract.validate_user_params(params) do
       {:ok, NativeContract.user_params(params)}
     end
+  end
+
+  # Native 创建用户时先拒绝空白用户名和展示名，再运行密码策略。
+  defp validate_create_identity(params) do
+    username = Map.get(params, "username", Map.get(params, :username))
+
+    display_name =
+      case Map.fetch(params, "displayName") do
+        {:ok, value} ->
+          value
+
+        :error ->
+          Map.get(params, "nickname", Map.get(params, "nickName", Map.get(params, :nickname)))
+      end
+
+    if PasswordPolicy.blank?(username) or PasswordPolicy.blank?(display_name),
+      do: {:error, :invalid_user_identity},
+      else: :ok
   end
 
   @doc "Exports all users matching the current filters."
@@ -406,9 +418,23 @@ defmodule KeystonePhoenixWeb.UserController do
     %{
       "row" => row_number,
       "username" => Map.get(record, "username", ""),
-      "reason" => failure_reason(reason)
+      "reason" => failure_reason(reason),
+      "code" => failure_code(reason)
     }
   end
+
+  defp failure_code(%Ecto.Changeset{} = changeset) do
+    case PasswordPolicy.error_code(changeset) do
+      nil -> "validation_failed"
+      code -> Atom.to_string(code)
+    end
+  end
+
+  defp failure_code(:data_scope_denied), do: "data_scope_denied"
+  defp failure_code(:role_assignment_forbidden), do: "permission_denied"
+  defp failure_code(:not_found), do: "resource_not_found"
+  defp failure_code(:unavailable), do: "service_unavailable"
+  defp failure_code(_reason), do: "validation_failed"
 
   defp failure_reason(%Ecto.Changeset{} = changeset) do
     if username_already_exists?(changeset) do
@@ -506,6 +532,12 @@ defmodule KeystonePhoenixWeb.UserController do
     |> json(ApiResponse.error(:validation_failed, "用户状态无效"))
   end
 
+  defp render_error(conn, :invalid_user_identity) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "用户名和展示名不能为空"))
+  end
+
   defp render_error(conn, :role_assignment_forbidden) do
     conn
     |> put_status(:forbidden)
@@ -539,11 +571,19 @@ defmodule KeystonePhoenixWeb.UserController do
   end
 
   defp render_error(conn, changeset) do
-    errors =
-      Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
+    case PasswordPolicy.error_code(changeset) do
+      nil ->
+        errors =
+          Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
 
-    conn
-    |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
+
+      code ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(ApiResponse.error(code, "密码不符合安全策略"))
+    end
   end
 end

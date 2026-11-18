@@ -231,7 +231,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       })
       |> json_response(422)
 
-    assert get_in(rejected_policy, ["error", "code"]) == "validation_failed"
+    assert get_in(rejected_policy, ["error", "code"]) == "password_disallowed"
 
     unchanged = Repo.get!(SysUser, user.user_id)
     assert unchanged.password == password_hash

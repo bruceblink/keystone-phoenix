@@ -90,6 +90,46 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       retryable: false,
       message_key: "error.password_same_as_current"
     },
+    "password_required" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.password_required"
+    },
+    "password_too_short" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.password_too_short"
+    },
+    "password_disallowed" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.password_disallowed"
+    },
+    "password_contains_username" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.password_contains_username"
+    },
+    "password_missing_uppercase" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.password_missing_uppercase"
+    },
+    "password_missing_lowercase" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.password_missing_lowercase"
+    },
+    "password_missing_digit" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.password_missing_digit"
+    },
+    "password_missing_special" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.password_missing_special"
+    },
     "api_key_expiry_invalid" => %{
       status: 422,
       retryable: false,

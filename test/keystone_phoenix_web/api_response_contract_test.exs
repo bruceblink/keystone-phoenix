@@ -45,6 +45,21 @@ defmodule KeystonePhoenixWeb.ApiResponseContractTest do
     assert %{status: 422, retryable: false, message_key: "error.password_same_as_current"} =
              ApiResponse.error_metadata(:password_same_as_current)
 
+    for code <- ~w(
+          password_required
+          password_too_short
+          password_disallowed
+          password_contains_username
+          password_missing_uppercase
+          password_missing_lowercase
+          password_missing_digit
+          password_missing_special
+        ) do
+      metadata = ApiResponse.error_metadata(code)
+      assert %{status: 422, retryable: false} = metadata
+      assert metadata.message_key == "error." <> code
+    end
+
     assert %{code: "password_same_as_current", status: 422} =
              ApiResponse.error_lookup("password_same_as_current")
 

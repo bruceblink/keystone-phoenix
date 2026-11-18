@@ -17,6 +17,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
 
   alias KeystonePhoenix.Upload
   alias KeystonePhoenix.User
+  alias KeystonePhoenix.User.PasswordPolicy
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.NativeObservabilityContract
 
@@ -170,11 +171,19 @@ defmodule KeystonePhoenixWeb.ProfileController do
   end
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
-    errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
+    case PasswordPolicy.error_code(changeset) do
+      nil ->
+        errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
 
-    conn
-    |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
+
+      code ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(ApiResponse.error(code, "密码不符合安全策略"))
+    end
   end
 
   defp delete_previous_avatar(previous, current)

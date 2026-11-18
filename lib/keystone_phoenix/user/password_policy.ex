@@ -36,7 +36,7 @@ defmodule KeystonePhoenix.User.PasswordPolicy do
       {:ok, password} when is_binary(password) ->
         case validate(get_field(changeset, :username), password) do
           :ok -> changeset
-          {:error, :invalid_password} -> add_error(changeset, :password, "密码不符合安全策略")
+          {:error, code} -> add_policy_error(changeset, code)
         end
 
       {:ok, _password} ->
@@ -47,11 +47,39 @@ defmodule KeystonePhoenix.User.PasswordPolicy do
     end
   end
 
+  @doc "可选密码仅在非空白输入时执行策略，供用户资料更新沿用 Native 行为。"
+  def validate_optional_changeset(changeset) do
+    case Map.fetch(changeset.changes, :password) do
+      {:ok, password} when is_binary(password) ->
+        if blank?(password), do: changeset, else: validate_changeset(changeset)
+
+      _ ->
+        changeset
+    end
+  end
+
+  @doc "返回当前变更集中的专用密码策略代码；其他字段错误返回 nil。"
+  def error_code(%Ecto.Changeset{errors: errors}) do
+    case Keyword.get(errors, :password) do
+      {_message, options} -> Keyword.get(options, :password_policy_code)
+      _ -> nil
+    end
+  end
+
+  def error_code(_changeset), do: nil
+
+  @doc "按 Java String.isBlank 规则判断缺失或空白密码。"
+  def blank?(value) when is_binary(value), do: java_blank?(value)
+  def blank?(_value), do: true
+
   @doc "按指定规则检查用户名与密码；调用方可以传入生产或测试配置。"
   def validate(username, password, config \\ nil) do
     config = normalize_config!(config || current_config())
 
-    if valid_password?(username, password, config), do: :ok, else: {:error, :invalid_password}
+    case policy_error(username, password, config) do
+      nil -> :ok
+      code -> {:error, code}
+    end
   end
 
   @doc "校验配置类型和 Native 约定的最小长度边界。"
@@ -83,22 +111,55 @@ defmodule KeystonePhoenix.User.PasswordPolicy do
     if Keyword.has_key?(changeset.errors, :password) do
       changeset
     else
-      add_error(changeset, :password, "不能为空", validation: :required)
+      add_error(changeset, :password, "不能为空",
+        validation: :required,
+        password_policy_code: :password_required
+      )
     end
   end
 
-  defp valid_password?(username, password, config) when is_binary(password) do
+  defp add_policy_error(changeset, :password_required), do: add_required_error(changeset)
+
+  defp add_policy_error(changeset, code) do
+    add_error(changeset, :password, "密码不符合安全策略", password_policy_code: code)
+  end
+
+  # 按 Native 的短路顺序返回首个失败条件，保持同一密码只对应一个业务码。
+  defp policy_error(username, password, config) when is_binary(password) do
     codepoints = String.to_charlist(password)
     lower_password = String.downcase(password)
 
-    not java_blank?(codepoints) and
-      length(codepoints) >= config.min_length and
-      not disallowed?(lower_password, config.disallowed) and
-      not contains_username?(username, lower_password) and
-      has_required_categories?(codepoints, config)
+    cond do
+      java_blank?(codepoints) ->
+        :password_required
+
+      length(codepoints) < config.min_length ->
+        :password_too_short
+
+      disallowed?(lower_password, config.disallowed) ->
+        :password_disallowed
+
+      contains_username?(username, lower_password) ->
+        :password_contains_username
+
+      not category_required?(codepoints, @uppercase, config.require_uppercase) ->
+        :password_missing_uppercase
+
+      not category_required?(codepoints, @lowercase, config.require_lowercase) ->
+        :password_missing_lowercase
+
+      not category_required?(codepoints, @digit, config.require_digit) ->
+        :password_missing_digit
+
+      not special_character_required?(codepoints, config.require_special) ->
+        :password_missing_special
+
+      true ->
+        nil
+    end
   end
 
-  defp valid_password?(_username, _password, _config), do: false
+  defp policy_error(_username, _password, _config), do: :password_required
 
   defp disallowed?(lower_password, configured_values) do
     configured_values
@@ -122,13 +183,6 @@ defmodule KeystonePhoenix.User.PasswordPolicy do
   end
 
   defp contains_username?(_username, _lower_password), do: false
-
-  defp has_required_categories?(codepoints, config) do
-    category_required?(codepoints, @uppercase, config.require_uppercase) and
-      category_required?(codepoints, @lowercase, config.require_lowercase) and
-      category_required?(codepoints, @digit, config.require_digit) and
-      special_character_required?(codepoints, config.require_special)
-  end
 
   defp category_required?(_codepoints, _pattern, false), do: true
 

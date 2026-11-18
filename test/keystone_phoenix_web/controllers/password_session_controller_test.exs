@@ -119,7 +119,7 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
       |> authorized(token)
       |> put("/api/v1/users/#{user.user_id}/password", %{"password" => "test-only-disallowed"})
 
-    assert get_in(json_response(reset, 422), ["error", "code"]) == "validation_failed"
+    assert get_in(json_response(reset, 422), ["error", "code"]) == "password_disallowed"
     assert Repo.get!(SysUser, user.user_id).password == original_hash
     assert Auth.Session.active?(user.user_id, session_id(token))
 
@@ -128,7 +128,7 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
       |> authorized(token)
       |> put("/api/v1/profile/password", %{"password" => "test-only-disallowed"})
 
-    assert get_in(json_response(profile, 422), ["error", "code"]) == "validation_failed"
+    assert get_in(json_response(profile, 422), ["error", "code"]) == "password_disallowed"
     assert Repo.get!(SysUser, user.user_id).password == original_hash
     assert Auth.Session.active?(user.user_id, session_id(token))
   end

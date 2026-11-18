@@ -77,8 +77,11 @@ defmodule KeystonePhoenix.User.SysUser do
   def update_changeset(user, attrs) do
     user
     |> cast(attrs, @user_fields)
+    |> cast_optional_password(attrs)
     |> validate_required([:username])
     |> validate_user_fields()
+    |> KeystonePhoenix.User.PasswordPolicy.validate_optional_changeset()
+    |> update_change(:password, &Bcrypt.hash_pwd_salt/1)
     |> unique_constraint(:username, name: :sys_user_username_unique_index)
   end
 
@@ -109,6 +112,18 @@ defmodule KeystonePhoenix.User.SysUser do
 
   defp validate_password(changeset) do
     KeystonePhoenix.User.PasswordPolicy.validate_changeset(changeset)
+  end
+
+  # Native 忽略用户资料更新中缺失、null 或纯空白密码；非空密码才进入策略校验。
+  defp cast_optional_password(changeset, attrs) do
+    password = Map.get(attrs, "password", Map.get(attrs, :password))
+
+    if is_nil(password) or
+         (is_binary(password) and KeystonePhoenix.User.PasswordPolicy.blank?(password)) do
+      changeset
+    else
+      cast(changeset, attrs, [:password], empty_values: [])
+    end
   end
 
   defp validate_avatar(changeset) do

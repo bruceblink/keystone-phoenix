@@ -45,7 +45,15 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     mfa_state_conflict
     permission_denied
     payload_too_large
+    password_contains_username
+    password_disallowed
+    password_missing_digit
+    password_missing_lowercase
+    password_missing_special
+    password_missing_uppercase
+    password_required
     password_same_as_current
+    password_too_short
     precondition_required
     rate_limited
     resource_conflict

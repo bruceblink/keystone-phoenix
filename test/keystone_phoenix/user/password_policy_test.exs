@@ -44,7 +44,7 @@ defmodule KeystonePhoenix.User.PasswordPolicyTest do
     short = "A1!a" <> String.duplicate("e\u0301", 3) <> "x"
     assert length(String.to_charlist(short)) == 11
 
-    assert {:error, :invalid_password} =
+    assert {:error, :password_too_short} =
              PasswordPolicy.validate(nil, short, PasswordPolicy.production_defaults())
 
     # U+216B has the Unicode Uppercase property; Native Character.isUpperCase accepts it.
@@ -67,15 +67,15 @@ defmodule KeystonePhoenix.User.PasswordPolicyTest do
   test "rejects missing categories, weak values, and passwords containing the username" do
     strict = PasswordPolicy.production_defaults()
 
-    assert {:error, :invalid_password} =
+    assert {:error, :password_contains_username} =
              PasswordPolicy.validate("alice", "Alice!23456789", strict)
 
     disallowed_password = Map.put(@test_policy, :disallowed, "Password")
 
-    assert {:error, :invalid_password} =
+    assert {:error, :password_disallowed} =
              PasswordPolicy.validate(nil, "password", disallowed_password)
 
-    assert {:error, :invalid_password} =
+    assert {:error, :password_disallowed} =
              PasswordPolicy.validate(nil, "test-only-disallowed", @test_policy)
 
     assert :ok = PasswordPolicy.validate(nil, "a sufficiently long test", @test_policy)
@@ -87,16 +87,16 @@ defmodule KeystonePhoenix.User.PasswordPolicyTest do
 
     # Java Character.isWhitespace excludes non-breaking spaces but includes EM SPACE.
     assert :ok = PasswordPolicy.validate(nil, nbsp, @test_policy)
-    assert {:error, :invalid_password} = PasswordPolicy.validate(nil, em_spaces, @test_policy)
+    assert {:error, :password_required} = PasswordPolicy.validate(nil, em_spaces, @test_policy)
 
     # Java String.trim does not remove NBSP, while it removes tabs at both ends.
     assert :ok = PasswordPolicy.validate("\u00A0alice\u00A0", "alice123", @test_policy)
 
-    assert {:error, :invalid_password} =
+    assert {:error, :password_contains_username} =
              PasswordPolicy.validate("\tAlice\t", "alice123", @test_policy)
 
     # Two supplementary code points occupy four Java UTF-16 code units.
-    assert {:error, :invalid_password} =
+    assert {:error, :password_contains_username} =
              PasswordPolicy.validate("😀😀", "x😀😀12345", @test_policy)
 
     assert :ok =
@@ -122,7 +122,9 @@ defmodule KeystonePhoenix.User.PasswordPolicyTest do
       SysUser.create_changeset(%SysUser{}, %{username: "em_policy_user", password: em_spaces})
 
     refute em_space_changeset.valid?
-    assert {"密码不符合安全策略", _metadata} = em_space_changeset.errors[:password]
+    assert {"不能为空", metadata} = em_space_changeset.errors[:password]
+    assert Keyword.get(metadata, :validation) == :required
+    assert PasswordPolicy.error_code(em_space_changeset) == :password_required
 
     edge_space_changeset =
       SysUser.create_changeset(%SysUser{}, %{username: "edge_policy_user", password: edge_spaces})
@@ -138,6 +140,42 @@ defmodule KeystonePhoenix.User.PasswordPolicyTest do
     reset_changeset = SysUser.password_changeset(existing_user, %{password: nbsp})
     assert reset_changeset.valid?
     assert Bcrypt.verify_pass(nbsp, get_change(reset_changeset, :password))
+  end
+
+  # 变更集保留 Native 的八类密码错误和资料更新中的空白密码语义。
+  test "returns dedicated codes in Native validation order" do
+    strict = Map.put(PasswordPolicy.production_defaults(), :disallowed, "forbidden123!")
+
+    cases = [
+      {nil, :password_required},
+      {"\t\u2003", :password_required},
+      {"Short!1", :password_too_short},
+      {"forbidden123!", :password_disallowed},
+      {"PolicyUser42!A", :password_contains_username},
+      {"lowercase123!", :password_missing_uppercase},
+      {"UPPERCASE123!", :password_missing_lowercase},
+      {"NoDigitsHere!!", :password_missing_digit},
+      {"NoSpecial1234", :password_missing_special}
+    ]
+
+    Enum.each(cases, fn {password, expected} ->
+      assert {:error, ^expected} = PasswordPolicy.validate("PolicyUser42", password, strict)
+    end)
+  end
+
+  test "optional profile updates ignore missing, null and Java-blank passwords" do
+    user = %SysUser{username: "optional_password_user", password: Bcrypt.hash_pwd_salt("old")}
+
+    for attrs <- [%{}, %{password: nil}, %{password: ""}, %{password: "\t\u2003"}] do
+      changeset = SysUser.update_changeset(user, attrs)
+      assert changeset.valid?
+      assert PasswordPolicy.error_code(changeset) == nil
+      refute Map.has_key?(changeset.changes, :password)
+    end
+
+    invalid = SysUser.update_changeset(user, %{password: "test-only-disallowed"})
+    refute invalid.valid?
+    assert PasswordPolicy.error_code(invalid) == :password_disallowed
   end
 
   test "validates configured minimum boundaries and flag types" do

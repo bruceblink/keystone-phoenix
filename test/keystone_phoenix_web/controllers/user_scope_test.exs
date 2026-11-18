@@ -211,6 +211,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
       post(authorized(token), "/api/v1/users", %{
         "username" => allowed_name,
         "password" => "Strong!123",
+        "displayName" => "允许创建用户",
         "deptId" => ctx.child.dept_id
       })
 
@@ -228,6 +229,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
       post(authorized(tokens.token), "/api/v1/users", %{
         "username" => username,
         "password" => "Strong!123",
+        "displayName" => "策略允许创建用户",
         "deptId" => ctx.child.dept_id
       })
 
@@ -240,10 +242,11 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
       post(authorized(tokens.token), "/api/v1/users", %{
         "username" => rejected_username,
         "password" => "test-only-disallowed",
+        "displayName" => "策略拒绝用户",
         "deptId" => ctx.child.dept_id
       })
 
-    assert get_in(json_response(rejected, 422), ["error", "code"]) == "validation_failed"
+    assert get_in(json_response(rejected, 422), ["error", "code"]) == "password_disallowed"
     assert {:error, :not_found} = User.get_user_by_username(rejected_username)
 
     on_exit(fn ->
@@ -373,6 +376,7 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
 
     allowed_username = unique("import_allowed")
     denied_username = unique("import_denied")
+    bad_password_username = unique("import_bad_password")
 
     {:ok, workbook} =
       Excel.export(
@@ -380,7 +384,8 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         [
           [ctx.child.dept_id, allowed_username, "Strong!123", 1, nil],
           [ctx.outside.dept_id, denied_username, "Strong!123", 1, nil],
-          [ctx.parent.dept_id, ctx.actor.username, "Strong!123", 1, nil]
+          [ctx.parent.dept_id, ctx.actor.username, "Strong!123", 1, nil],
+          [ctx.parent.dept_id, bad_password_username, "test-only-disallowed", 1, nil]
         ],
         "users.xlsx"
       )
@@ -444,20 +449,32 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
         "file" => upload
       })
 
-    assert %{"data" => %{"success" => 1, "failed" => [scope_failure, duplicate_failure]}} =
+    assert %{
+             "data" => %{
+               "success" => 1,
+               "failed" => [scope_failure, duplicate_failure, password_failure]
+             }
+           } =
              json_response(response, 200)
 
     assert scope_failure["row"] == 3
     assert scope_failure["username"] == denied_username
     assert scope_failure["reason"] == "没有数据权限"
+    assert scope_failure["code"] == "data_scope_denied"
     assert is_binary(scope_failure["reason"])
     assert duplicate_failure["row"] == 4
     assert duplicate_failure["username"] == ctx.actor.username
     assert duplicate_failure["reason"] == "username already exists"
+    assert duplicate_failure["code"] == "validation_failed"
     assert is_binary(duplicate_failure["reason"])
+    assert password_failure["row"] == 5
+    assert password_failure["username"] == bad_password_username
+    assert password_failure["code"] == "password_disallowed"
+    assert is_binary(password_failure["reason"])
     assert {:ok, imported} = User.get_user_by_username(allowed_username)
     assert imported.dept_id == ctx.child.dept_id
     assert {:error, :not_found} = User.get_user_by_username(denied_username)
+    assert {:error, :not_found} = User.get_user_by_username(bad_password_username)
   end
 
   defp authorized(token), do: put_req_header(build_conn(), "authorization", "Bearer #{token}")

@@ -44,6 +44,7 @@ defmodule KeystonePhoenixWeb.AuthController do
   alias KeystonePhoenix.Auth.LoginLimiter
   alias KeystonePhoenix.Auth.Mfa
   alias KeystonePhoenix.Auth.Token
+  alias KeystonePhoenix.User.PasswordPolicy
   alias KeystonePhoenix.Log
   alias KeystonePhoenixWeb.ApiResponse
   alias KeystonePhoenixWeb.AuthTokenResponse
@@ -139,13 +140,32 @@ defmodule KeystonePhoenixWeb.AuthController do
   @doc "Changes a flagged initial password without creating an authenticated session."
   def change_initial_password(
         conn,
-        %{
-          "username" => username,
-          "currentPassword" => current_password,
-          "newPassword" => new_password
-        }
+        %{"username" => username, "currentPassword" => current_password} = params
       )
-      when is_binary(username) and is_binary(current_password) and is_binary(new_password) do
+      when is_binary(username) and is_binary(current_password) do
+    case Map.fetch(params, "newPassword") do
+      {:ok, new_password} when is_binary(new_password) ->
+        if PasswordPolicy.blank?(new_password) do
+          render_error(conn, :password_required)
+        else
+          check_initial_password_limit(conn, username, current_password, new_password)
+        end
+
+      :error ->
+        render_error(conn, :password_required)
+
+      {:ok, nil} ->
+        render_error(conn, :password_required)
+
+      {:ok, _invalid_password} ->
+        render_error(conn, :validation_failed)
+    end
+  end
+
+  def change_initial_password(conn, _params),
+    do: render_error(conn, :validation_failed)
+
+  defp check_initial_password_limit(conn, username, current_password, new_password) do
     case LoginLimiter.check_http(username, conn.remote_ip) do
       :allow ->
         change_initial_password_result(conn, username, current_password, new_password)
@@ -162,9 +182,6 @@ defmodule KeystonePhoenixWeb.AuthController do
         render_error(conn, :rate_limited_unavailable)
     end
   end
-
-  def change_initial_password(conn, _params),
-    do: render_error(conn, :validation_failed)
 
   # 密码验证结果和操作日志只包含稳定错误信息，不写入当前密码或新密码。
   defp change_initial_password_result(conn, username, current_password, new_password) do
@@ -188,11 +205,19 @@ defmodule KeystonePhoenixWeb.AuthController do
         |> json(ApiResponse.error(:password_same_as_current, "新密码不能与当前密码相同"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
+        case PasswordPolicy.error_code(changeset) do
+          nil ->
+            errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
 
-        conn
-        |> put_status(:unprocessable_entity)
-        |> json(ApiResponse.error(:validation_failed, "密码格式无效", errors))
+            conn
+            |> put_status(:unprocessable_entity)
+            |> json(ApiResponse.error(:validation_failed, "密码格式无效", errors))
+
+          code ->
+            conn
+            |> put_status(:unprocessable_entity)
+            |> json(ApiResponse.error(code, "密码不符合安全策略"))
+        end
 
       {:error, _reason} ->
         render_error(conn, :unavailable)
@@ -499,6 +524,12 @@ defmodule KeystonePhoenixWeb.AuthController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "请求参数无效"))
+  end
+
+  defp render_error(conn, :password_required) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:password_required, "密码缺失或为空白"))
   end
 
   defp render_error(conn, :invalid_refresh_token) do
