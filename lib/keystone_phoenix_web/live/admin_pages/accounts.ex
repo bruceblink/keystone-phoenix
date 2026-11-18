@@ -67,7 +67,43 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
             <%= if @role_directory_feedback do %>
               <p id="user-role-feedback" class={Feedback.class(@role_directory_feedback)} role={Feedback.role(@role_directory_feedback)} aria-live={Feedback.live(@role_directory_feedback)}><%= Feedback.message(@role_directory_feedback) %><%= if @user_form["userId"] in [nil, ""], do: "暂不能创建用户。", else: "保存资料时会保留原角色。" %></p>
             <% else %>
-              <fieldset class="wide user-role-picker"><legend>角色</legend><input type="hidden" name="roleCodes[]" value="" /><div class="user-role-options"><%= for role <- enabled_roles(@role_rows) do %><% role_code = role_code(role) %><label class="checkbox-label"><input type="checkbox" name="roleCodes[]" value={role_code} checked={role_code_selected?(@user_form["roleCodes"], role_code)} /><span><%= role["roleName"] || role["name"] || role_code %></span><code><%= role_code %></code></label><% end %></div><p :if={enabled_roles(@role_rows) == []} class="form-help" role="status">没有可选择的启用角色。</p><small>角色来自当前账号可配置的启用角色；未选择角色会清空用户角色。</small></fieldset>
+              <% selected_role_codes = selected_role_codes(@user_form["roleCodes"]) %>
+              <% selected_disabled_role = has_selected_disabled_role?(@role_rows, selected_role_codes) %>
+              <fieldset class="wide user-role-picker">
+                <legend>角色</legend>
+                <%= if @user_form["roleCodesDirty"] == true do %>
+                  <%= if selected_role_codes == [] do %>
+                    <input type="hidden" name="roleCodes[]" value="" />
+                  <% else %>
+                    <%= for selected_code <- selected_role_codes do %>
+                      <input type="hidden" name="roleCodes[]" value={selected_code} />
+                    <% end %>
+                  <% end %>
+                <% end %>
+                <div class="user-role-options">
+                  <%= for role <- List.wrap(@role_rows) do %>
+                    <% code = role_code(role) %>
+                    <% assigned = code in selected_role_codes %>
+                    <% enabled = role_enabled?(role) %>
+                    <label class="checkbox-label">
+                      <input
+                        type="checkbox"
+                        value={code}
+                        checked={assigned}
+                        disabled={if enabled, do: selected_disabled_role, else: not assigned}
+                        phx-click="toggle-user-role"
+                        phx-value-role-code={code}
+                        phx-value-selected={if assigned, do: "false", else: "true"}
+                      />
+                      <span><%= role["roleName"] || role["name"] || code %><%= if enabled, do: "", else: "（停用）" %></span>
+                      <code><%= code %></code>
+                    </label>
+                  <% end %>
+                </div>
+                <p :if={@role_rows == []} class="form-help" role="status">没有可选择的角色。</p>
+                <p :if={Enum.any?(List.wrap(@role_rows), &(not role_enabled?(&1)))} class="form-help">停用角色不能新增分配；已绑定的停用角色可以取消。取消全部停用角色后，才能选择其他角色。</p>
+                <small>角色来自当前账号可配置的角色；不修改角色时会保留原有绑定。主动取消全部角色会清空绑定。</small>
+              </fieldset>
             <% end %>
           <% else %>
             <p id="user-role-preserved" class="form-help" role="status"><%= if @role_scope_allowed, do: "当前账号没有同时具备角色读取和分配权限；", else: "当前账号没有角色数据范围；" %><%= if @user_form["userId"] in [nil, ""], do: "新用户将以未分配角色状态创建。", else: "保存资料时会保留原角色。" %></p>
@@ -160,14 +196,31 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
     """
   end
 
-  defp enabled_roles(roles),
-    do:
-      Enum.filter(
-        List.wrap(roles),
-        &(&1["status"] in [1, "1", true] or &1["enabled"] in [1, "1", true])
-      )
-
   defp role_code(role), do: to_string(role["roleKey"] || role["code"] || "")
+
+  defp role_enabled?(role),
+    do: role["status"] in [1, "1", true] or role["enabled"] in [1, "1", true]
+
+  defp selected_role_codes(codes) when is_list(codes),
+    do:
+      codes
+      |> Enum.map(&to_string/1)
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.uniq()
+
+  defp selected_role_codes(codes) when is_binary(codes),
+    do:
+      codes
+      |> String.split(",", trim: true)
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.uniq()
+
+  defp selected_role_codes(_codes), do: []
+
+  defp has_selected_disabled_role?(roles, selected_codes),
+    do: Enum.any?(List.wrap(roles), &(not role_enabled?(&1) and role_code(&1) in selected_codes))
 
   # 角色相关字段只在表单类型和当前权限都匹配时提交。
   defp user_form_allowed?(form, permissions) do
@@ -185,14 +238,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       form["userId"] in [nil, ""] and
         user_role_assignment_allowed?(permissions, role_scope_allowed) and
         not is_nil(role_directory_feedback)
-
-  defp role_code_selected?(value, code) do
-    value
-    |> to_string()
-    |> String.split(",", trim: true)
-    |> Enum.map(&String.trim/1)
-    |> Enum.member?(code)
-  end
 
   def profile(assigns) do
     assigns = assign_new(assigns, :profile_loaded, fn -> true end)

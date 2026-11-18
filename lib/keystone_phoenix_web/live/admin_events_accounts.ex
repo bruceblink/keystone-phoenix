@@ -8,6 +8,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminEventsAccountsParams, as: AccountParams
   alias KeystonePhoenixWeb.Live.AdminEvents.Profile, as: ProfileEvents
+  alias KeystonePhoenixWeb.Live.AdminEvents.AccountsRoles
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
@@ -153,6 +154,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     end
   end
 
+  def handle_event("toggle-user-role", params, socket),
+    do: AccountsRoles.handle_event(params, socket)
+
   def handle_event("edit-user", %{"user-id" => user_id}, socket) do
     if Support.permission_socket?(socket, "user:update") do
       case Enum.find(socket.assigns.user_rows, &(to_string(&1["userId"]) == user_id)) do
@@ -169,6 +173,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
               "roleCodes",
               Enum.join(user["roles"] || user["roleCodes"] || List.wrap(user["roleKey"]), ",")
             )
+            |> Map.put("roleCodesDirty", false)
 
           {:noreply,
            assign(socket,

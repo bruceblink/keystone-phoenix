@@ -91,6 +91,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Forms do
       "email" => "",
       "phoneNumber" => "",
       "roleCodes" => "",
+      "roleCodesDirty" => false,
       "enabled" => true,
       "clearDept" => false,
       "status" => 1,
