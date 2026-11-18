@@ -270,7 +270,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
           <p class="page-description">查询菜单层级、路由和权限标识。新增和编辑在模态框中完成，删除操作需要确认。</p>
         </div>
       </div>
-      <%= if @menu_feedback do %><p id="menu-feedback" class={Feedback.class(@menu_feedback)} role={Feedback.role(@menu_feedback)} aria-live={Feedback.live(@menu_feedback)}><%= Feedback.message(@menu_feedback) %></p><% end %>
+      <%= if @menu_feedback && @active_modal != "menu" do %><p id="menu-feedback" class={Feedback.class(@menu_feedback)} role={Feedback.role(@menu_feedback)} aria-live={Feedback.live(@menu_feedback)}><%= Feedback.message(@menu_feedback) %><small :if={Feedback.code(@menu_feedback)}>错误码：<%= Feedback.code(@menu_feedback) %></small></p><% end %>
       <section class="card menus-filter-card">
         <form class="menus-filter-form" phx-submit="refresh-menus">
           <label><span>菜单名称、编码或权限</span><input id="menu-filter-keyword" name="menuKeyword" value={@menu_filter} placeholder="按名称、编码或权限筛选" autocomplete="off" /></label>
@@ -279,6 +279,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       </section>
       <%= if @active_modal == "menu" do %>
         <.modal id="menu-modal" title={if @menu_form["menuId"] == "", do: "新增菜单", else: "编辑菜单"} description="菜单权限会由系统 API 按当前主体权限再次校验。">
+    <p :if={@menu_feedback} id="menu-feedback" class={Feedback.class(@menu_feedback)} role={Feedback.role(@menu_feedback)} aria-live={Feedback.live(@menu_feedback)}><%= Feedback.message(@menu_feedback) %><small :if={Feedback.code(@menu_feedback)}>错误码：<%= Feedback.code(@menu_feedback) %></small></p>
     <form :if={!@read_only} aria-describedby="menu-feedback" phx-submit="save-menu">
         <input type="hidden" name="menuId" value={@menu_form["menuId"]} />
         <div class="form-grid">

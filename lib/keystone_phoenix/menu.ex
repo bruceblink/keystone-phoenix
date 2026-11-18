@@ -296,8 +296,23 @@ defmodule KeystonePhoenix.Menu do
 
     attrs
     |> normalize_menu_type()
+    |> normalize_permission()
     |> normalize_status()
     |> normalize_meta()
+  end
+
+  # 菜单权限标识可选；表单发送的空白字符串应与 Native 的 null 表示一致。
+  defp normalize_permission(attrs) do
+    case Map.get(attrs, :permission) do
+      permission when is_binary(permission) ->
+        case String.trim(permission) do
+          "" -> Map.put(attrs, :permission, nil)
+          value -> Map.put(attrs, :permission, value)
+        end
+
+      _ ->
+        attrs
+    end
   end
 
   defp normalize_menu_type(attrs) do

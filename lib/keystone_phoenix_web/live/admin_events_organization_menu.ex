@@ -84,11 +84,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenu do
          )}
 
       {:error, reason} ->
+        # 菜单本体已保存；保留其 ID 和字段，让用户修正角色后更新同一条菜单。
         {:noreply,
          assign(socket,
+           menu_form: menu |> Menu.menu_to_map() |> menu_form(),
            menu_role_codes: role_codes,
            active_modal: "menu",
-           menu_feedback: Support.form_error({:error, reason})
+           menu_feedback: role_assignment_error(reason)
          )}
     end
   end
@@ -107,7 +109,15 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenu do
     end
   end
 
+  # 角色可能在表单打开后停用或删除，提示用户重新选择仍可用的角色。
+  defp role_assignment_error(:role_not_found),
+    do: Feedback.error(:resource_not_found, "所选角色不存在或已停用，请重新选择后重试")
+
+  defp role_assignment_error(reason), do: Support.form_error({:error, reason})
+
   defp menu_form(menu) do
+    enabled = Map.get(menu, "enabled", menu["status"] in [1, "1", true])
+
     Support.empty_menu_form()
     |> Map.merge(menu)
     |> Map.put("id", menu["id"] || menu["menuId"])
@@ -115,7 +125,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenu do
     |> Map.put("name", menu["name"] || menu["menuName"])
     |> Map.put("component", menu["component"] || menu["routerName"] || "")
     |> Map.put("sortOrder", menu["sortOrder"] || menu["rank"] || 0)
-    |> Map.put("enabled", menu["enabled"] in [true, 1, "true", "1"])
+    |> Map.put("enabled", enabled in [true, 1, "true", "1"])
     |> Map.put("metaInfo", Jason.encode!(menu["meta"] || %{}))
     |> Map.put("isButton", if(menu["isButton"], do: "true", else: "false"))
   end
