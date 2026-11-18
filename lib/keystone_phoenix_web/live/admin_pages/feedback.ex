@@ -78,7 +78,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Feedback do
        do: :data_scope_denied
 
   defp code_for_reason(reason)
-       when reason in [:unavailable, :storage_error, :login_limiter_unavailable],
+       when reason in [
+              :unavailable,
+              :service_unavailable,
+              :storage_error,
+              :login_limiter_unavailable
+            ],
        do: :service_unavailable
 
   defp code_for_reason(reason)

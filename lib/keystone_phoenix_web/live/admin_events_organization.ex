@@ -9,6 +9,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   alias KeystonePhoenix.Role.Permissions
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationExport
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationPosts
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenu
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenuParams
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk
@@ -213,12 +214,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       case result do
         {:ok, _post} ->
           {:noreply,
-           after_write(
+           after_post_write(
              socket,
-             :posts,
              if(post_id == "", do: "岗位已创建", else: "岗位已更新"),
-             "岗位已保存，但列表刷新失败，请重试",
-             page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
              post_form: Support.empty_post_form(),
              active_modal: nil
            )}
@@ -239,10 +237,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
              authorization(socket, "post:update")
            ) do
         {:ok, _post} ->
-          {:noreply,
-           after_write(socket, :posts, "岗位状态已更新", "岗位状态已更新，但列表刷新失败，请重试",
-             page_nums: Map.put(socket.assigns.page_nums, "posts", 1)
-           )}
+          {:noreply, after_post_write(socket, "岗位状态已更新")}
 
         error ->
           {:noreply, assign(socket, post_feedback: Support.form_error(error))}
@@ -257,8 +252,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
       case Post.delete_posts([post_id], authorization(socket, "post:delete")) do
         :ok ->
           {:noreply,
-           after_write(socket, :posts, "岗位已删除", "岗位已删除，但列表刷新失败，请重试",
-             page_nums: Map.put(socket.assigns.page_nums, "posts", 1),
+           after_post_write(socket, "岗位已删除",
              post_form: Support.empty_post_form(),
              active_modal: nil
            )}
@@ -557,28 +551,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   end
 
   defp refresh_posts_page(socket, page) do
-    filter = Map.get(socket.assigns, :post_filter, %{"keyword" => "", "status" => "all"})
-
-    params =
-      filter
-      |> Map.put("pageNum", page)
-      |> Map.put("pageSize", get_in(socket.assigns, [:page_sizes, "posts"]) || 20)
-
-    case AdminReadSupport.posts_page(socket, params) do
-      {:ok, result} ->
-        assign(socket,
-          post_rows: result.rows,
-          post_total: result.total,
-          page_nums: Map.put(socket.assigns.page_nums, "posts", page),
-          post_feedback: nil
-        )
-
-      {:error, reason} ->
-        assign(socket,
-          post_feedback: Support.read_error_feedback(reason, "岗位列表刷新失败，请重试")
-        )
-    end
+    OrganizationPosts.refresh(socket, page)
   end
+
+  defp after_post_write(socket, success, extra \\ []),
+    do: OrganizationPosts.after_success(socket, success, extra)
 
   defp after_write(socket, resource, success, message, extra \\ []) do
     if resource == :roles do
