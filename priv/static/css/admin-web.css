@@ -60,12 +60,13 @@ a { color: inherit; text-decoration: none; }
 
 .users-page { min-width: 0; }
 .users-filter-card { padding: 18px 20px; margin-bottom: 15px; }
-.users-filter-form { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto; align-items: end; gap: 14px; }
+.users-filter-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: 14px; }
 .users-filter-form label { display: grid; gap: 7px; color: var(--muted-strong); font-size: 11px; font-weight: 650; }
 .users-filter-form input { width: 100%; min-height: 40px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 8px; outline: 0; color: var(--text); background: rgba(8,17,31,.55); font-size: 12px; }
 .users-filter-form input::placeholder { color: #60738d; }
 .users-filter-form input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(85,214,232,.1); }
-.users-filter-actions { display: flex; gap: 7px; }
+.users-filter-actions { display: flex; align-items: center; align-self: end; gap: 7px; min-width: 0; }
+.users-filter-actions > .button { width: auto; height: 40px; min-width: max-content; min-height: 40px; flex: 0 0 auto; padding: 0 14px; line-height: 1.2; white-space: nowrap; }
 .users-table-card { overflow: hidden; }
 .users-table-wrap { overflow-x: auto; padding: 12px 10px 0; }
 .users-table { width: 100%; border-collapse: collapse; min-width: 760px; }
@@ -88,7 +89,7 @@ a { color: inherit; text-decoration: none; }
 .users-pagination > div { display: flex; gap: 6px; }
 .users-error { margin-bottom: 15px; }
 .users-loading { min-height: 260px; }
-@media (max-width: 700px) { .users-filter-form { grid-template-columns: 1fr; gap: 11px; }.users-filter-actions { justify-content: flex-end; }.users-filter-card { padding: 15px; }.users-pagination { align-items: flex-start; flex-direction: column; padding-inline: 16px; }.users-pagination > div { width: 100%; }.users-pagination .button { flex: 1; } }
+@media (max-width: 700px) { .users-filter-form { grid-template-columns: minmax(0, 1fr); gap: 11px; }.users-filter-actions { justify-content: flex-end; }.users-filter-card { padding: 15px; }.users-pagination { align-items: flex-start; flex-direction: column; padding-inline: 16px; }.users-pagination > div { width: 100%; }.users-pagination .button { flex: 1; } }
 
 .audit-page { min-width: 0; }
 .audit-filter-card { padding: 18px 20px; margin-bottom: 15px; }
