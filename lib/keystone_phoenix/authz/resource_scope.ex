@@ -107,12 +107,16 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
   @doc "检查资源是否登记，避免入口使用未定义的资源名称。"
   def registered?(resource), do: not is_nil(rule(resource))
 
-  defp allowed_by_rule?(subject, %{kind: :self}, context) do
+  # 本人资料和本人 API Key 只允许 SELF 或全局角色范围，且目标必须是当前用户。
+  defp allowed_by_rule?(subject, %{kind: :self, scopes: allowed_scopes}, context) do
     subject_id = Principal.scope_subject_id(subject)
     target_id = Map.get(context, :target_id, Map.get(context, "target_id", subject_id))
+    role_scopes = role_scopes(subject)
 
-    is_binary(subject_id) and is_binary(target_id) and canonical_id?(subject_id) and
-      canonical_id?(target_id) and subject_id == target_id
+    scope_allowed? = Enum.any?(role_scopes, &(&1 in allowed_scopes or &1 in @tenant_scopes))
+
+    scope_allowed? and is_binary(subject_id) and is_binary(target_id) and
+      canonical_id?(subject_id) and canonical_id?(target_id) and subject_id == target_id
   end
 
   defp allowed_by_rule?(subject, %{kind: :relationship}, context) do

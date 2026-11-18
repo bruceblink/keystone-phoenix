@@ -37,6 +37,25 @@ defmodule KeystonePhoenix.Authz.ResourceScopeTest do
     refute ResourceScope.allowed?(%{permissions: [], data_scope: "SELF"}, :profile)
   end
 
+  # 本人资源必须同时满足主体匹配和 SELF 或全局数据范围。
+  test "self resources accept SELF and global scopes but reject OWNER and empty scopes" do
+    user_id = Identity.v7()
+
+    for scope <- ["SELF", "ALL", "TENANT"] do
+      assert ResourceScope.allowed?(%{user_id: user_id, data_scope: scope}, :profile)
+      assert ResourceScope.allowed?(%{user_id: user_id, data_scope: scope}, :api_key)
+    end
+
+    for scope <- ["OWNER", "MEMBER", "DEPARTMENT", ""] do
+      refute ResourceScope.allowed?(%{user_id: user_id, data_scope: scope}, :profile)
+      refute ResourceScope.allowed?(%{user_id: user_id, data_scope: scope}, :api_key)
+    end
+
+    refute ResourceScope.allowed?(%{user_id: user_id, data_scope: "SELF"}, :profile, %{
+             target_id: Identity.v7()
+           })
+  end
+
   test "owned resources use OWNER or MEMBER relationships" do
     user_id = Identity.v7()
     owner_id = Identity.v7()
