@@ -4,6 +4,8 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
   import Phoenix.LiveViewTest
 
   alias KeystonePhoenix.Identity
+  alias KeystonePhoenix.Auth.ApiKey
+  alias KeystonePhoenix.Auth.ApiKey.Key
   alias KeystonePhoenix.Notification
   alias KeystonePhoenix.Notification.SysNotification
   alias KeystonePhoenix.Notice.SysNotice
@@ -13,6 +15,34 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
   alias KeystonePhoenixWeb.LiveAuthenticationTestSupport, as: LiveSupport
 
   @password "Strong!123"
+
+  @tag :integration
+  test "expired API Key displays its actual state and cannot be rotated", %{conn: conn} do
+    # 使用真实存储和 LiveView 验证过期状态与后端筛选一致。
+    role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+    owner = create_user(role, "expired_key_owner")
+    assert {:ok, issued} = ApiKey.issue(owner.user_id, "expired live key", ["api-key:read"])
+
+    issued.id
+    |> then(&Repo.get!(Key, &1))
+    |> Ecto.Changeset.change(expires_at: DateTime.add(DateTime.utc_now(), -60, :second))
+    |> Repo.update!()
+
+    {:ok, view, _html} = live(conn, "/")
+    login(view, owner)
+    render_click(view, "show-panel", %{"panel" => "api-keys"})
+
+    assert has_element?(view, "tr", "已过期")
+
+    assert has_element?(
+             view,
+             "button[phx-click='rotate-api-key'][phx-value-id='#{issued.id}'][disabled]"
+           )
+
+    assert has_element?(view, "button[phx-click='revoke-api-key'][phx-value-id='#{issued.id}']")
+    render_click(view, "filter-api-keys", %{"query" => "expired live key", "status" => "active"})
+    assert LiveSupport.live_socket(view).assigns.api_key_total == 0
+  end
 
   @tag :integration
   test "bell shows only the active user's inbox and marks a selected item read", %{conn: conn} do

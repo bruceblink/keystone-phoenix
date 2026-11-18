@@ -172,6 +172,9 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
         :already_revoked ->
           {:conflict, :resource_conflict, "API Key 已撤销"}
 
+        :api_key_expired ->
+          {:conflict, :api_key_expired, "API Key 已过期，请新建密钥。"}
+
         :not_found ->
           {:not_found, :resource_not_found, "API Key 不存在"}
 

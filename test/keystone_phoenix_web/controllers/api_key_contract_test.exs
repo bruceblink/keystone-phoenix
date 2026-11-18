@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
   import Ecto.Query
 
   alias KeystonePhoenix.Auth.ApiKey
+  alias KeystonePhoenix.Auth.ApiKey.Key
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Repo
@@ -212,6 +213,34 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
       |> get_in(["data"])
 
     assert Enum.any?(final_metadata, &(&1["id"] == replacement_id and is_binary(&1["revokedAt"])))
+  end
+
+  @tag :integration
+  test "expired API Key is excluded from active results and cannot be rotated", %{conn: conn} do
+    # 先通过接口签发，再将本条记录设为过期，验证筛选及拒绝轮换后的持久状态。
+    user = create_user(["api-key:create", "api-key:read", "api-key:rotate"])
+    token = step_up_token(user)
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{token}")
+    assert {:ok, issued} = ApiKey.issue(user.user_id, "expired worker", ["api-key:read"])
+
+    Repo.update_all(from(key in Key, where: key.id == ^issued.id),
+      set: [expires_at: DateTime.add(DateTime.utc_now(), -60, :second)]
+    )
+
+    active =
+      authorized_conn
+      |> get("/api/v1/api-keys?page=1&size=20&status=active")
+      |> json_response(200)
+
+    assert active["data"]["total"] == 0
+
+    all = authorized_conn |> get("/api/v1/api-keys?page=1&size=20") |> json_response(200)
+    assert Enum.any?(all["data"]["items"], &(&1["id"] == issued.id))
+
+    response = post(authorized_conn, "/api/v1/api-keys/#{issued.id}/rotate", %{})
+    assert get_in(json_response(response, 409), ["error", "code"]) == "api_key_expired"
+    assert Repo.get!(Key, issued.id).revoked_at == nil
+    assert Repo.aggregate(from(key in Key, where: key.user_id == ^user.user_id), :count, :id) == 1
   end
 
   defp create_user(permissions) do

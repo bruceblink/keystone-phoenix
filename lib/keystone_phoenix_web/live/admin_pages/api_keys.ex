@@ -91,6 +91,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
             <table class="api-keys-table"><caption class="sr-only">API Key 列表</caption><thead><tr><th scope="col">名称</th><th scope="col">密钥前缀</th><th scope="col">授权范围</th><th scope="col">创建时间</th><th scope="col">最近使用</th><th scope="col">到期时间</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody>
               <%= for key <- @api_key_rows do %>
                 <% revoked = not is_nil(key.revoked_at) %>
+                <%!-- 已过期凭据仍可撤销，但不能签发立即失效的替代密钥。 --%>
+                <% expired = key.expires_at && DateTime.compare(key.expires_at, DateTime.utc_now()) != :gt %>
                 <tr>
                   <td><div class="api-key-cell"><strong><%= key.name %></strong><small><%= key.id %></small></div></td>
                   <td><code>ks_live_<%= key.prefix %>_••••</code></td>
@@ -107,9 +109,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
                     <time :if={key.expires_at} id={"api-key-expires-at-#{key.id}"} phx-hook="LocalDateTime" data-utc-time={format_datetime(key.expires_at)}><%= format_datetime(key.expires_at) %></time>
                     <span :if={!key.expires_at}>永不过期</span>
                   </td>
-                  <td><span class={if revoked, do: "status-badge status-badge--failure", else: "status-badge status-badge--success"}><%= if revoked, do: "已撤销", else: "有效" %></span></td>
+                  <td><span class={if revoked, do: "status-badge status-badge--failure", else: if(expired, do: "status-badge status-badge--paused", else: "status-badge status-badge--success")}><%= if revoked, do: "已撤销", else: if(expired, do: "已过期", else: "有效") %></span></td>
                   <td class="table-actions">
-                    <button :if={!revoked and "api-key:rotate" in @permissions} type="button" class="button button-ghost refresh" phx-click="rotate-api-key" phx-value-id={key.id} phx-disable-with="轮换中…">轮换</button>
+                    <button :if={!revoked and "api-key:rotate" in @permissions} type="button" class="button button-ghost refresh" phx-click="rotate-api-key" phx-value-id={key.id} phx-disable-with="轮换中…" disabled={expired} title={if expired, do: "已过期，不能轮换"}>轮换</button>
                     <button :if={!revoked and "api-key:revoke" in @permissions} type="button" class="button button-danger refresh danger-action" phx-confirm="确认撤销此 API Key 吗？" phx-click="revoke-api-key" phx-value-id={key.id} phx-disable-with="撤销中…">撤销</button>
                   </td>
                 </tr>

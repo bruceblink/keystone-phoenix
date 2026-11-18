@@ -29,6 +29,7 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     active_session_conflict
     api_key_expiry_invalid
     api_key_expiry_out_of_range
+    api_key_expired
     api_key_name_invalid
     profile_display_name_required
     profile_avatar_required

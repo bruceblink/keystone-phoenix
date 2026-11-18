@@ -45,6 +45,7 @@ EXPECTED_STATUS = {
     "profile_avatar_required": 422,
     "api_key_expiry_invalid": 422,
     "api_key_expiry_out_of_range": 422,
+    "api_key_expired": 409,
     "service_unavailable": 503,
     "authorization_unavailable": 503,
     "internal_error": 500,

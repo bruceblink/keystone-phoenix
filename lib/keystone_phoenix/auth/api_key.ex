@@ -170,6 +170,10 @@ defmodule KeystonePhoenix.Auth.ApiKey do
         current = lock_key!(user_id, key_id)
         if current.revoked_at, do: Repo.rollback(:already_revoked)
 
+        # 到期凭据不能轮换，否则新凭据会继承已经失效的期限。
+        if current.expires_at && DateTime.compare(current.expires_at, DateTime.utc_now()) != :gt,
+          do: Repo.rollback(:api_key_expired)
+
         permissions = Menu.permissions_for_user(user)
         scopes = current.scopes |> split_scopes() |> intersect_permissions(permissions)
         if scopes == [], do: Repo.rollback(:scope_exceeds_permissions)
@@ -409,10 +413,23 @@ defmodule KeystonePhoenix.Auth.ApiKey do
 
   defp filter_page_status(query, status) do
     case status |> to_string() |> String.trim() |> String.downcase() do
-      value when value in ["", "all"] -> query
-      "active" -> where(query, [key], is_nil(key.revoked_at))
-      "revoked" -> where(query, [key], not is_nil(key.revoked_at))
-      _ -> query
+      value when value in ["", "all"] ->
+        query
+
+      "active" ->
+        now = DateTime.utc_now()
+
+        where(
+          query,
+          [key],
+          is_nil(key.revoked_at) and (is_nil(key.expires_at) or key.expires_at > ^now)
+        )
+
+      "revoked" ->
+        where(query, [key], not is_nil(key.revoked_at))
+
+      _ ->
+        query
     end
   end
 
