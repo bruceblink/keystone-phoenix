@@ -239,15 +239,16 @@ defmodule KeystonePhoenixWeb.AdminJobDeepLinkTest do
     {:ok, view, _html} = live(conn, path)
     html = login(view, user)
 
-    assert html =~ "运行监控"
-    assert live_socket(view).assigns.active_panel == "monitor"
+    assert html =~ "个人资料"
+    assert live_socket(view).assigns.active_panel == "profile"
     assert live_socket(view).assigns.panel_access["jobs"] == false
     assert is_nil(live_socket(view).assigns.selected_job_id)
     assert is_nil(live_socket(view).assigns.selected_job)
     assert live_socket(view).assigns.job_log_rows == []
     refute html =~ job.job_name
     refute html =~ "受限日志不得显示"
-    assert URI.parse(live_socket(view).assigns.current_uri).path == "/monitor"
+    assert URI.parse(live_socket(view).assigns.current_uri).path == "/profile"
+    refute html =~ "运行监控"
   end
 
   @tag :integration

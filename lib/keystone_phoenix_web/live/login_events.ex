@@ -10,15 +10,10 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
   alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Job
   alias KeystonePhoenix.Log
-  alias KeystonePhoenixWeb.Live.AdminEvents.OperationsDeepLinks
-  alias KeystonePhoenixWeb.Live.AdminEvents.AccountsDeepLinks
-  alias KeystonePhoenixWeb.Live.AdminEvents.AuditDeepLinks
-  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationDeepLinks
-  alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
-  alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.InitialPasswordEvents
+  alias KeystonePhoenixWeb.Live.LoginPanelNavigation
   alias KeystonePhoenixWeb.LoginNotifications
 
   # 登录事件不会触发 handle_params；只恢复已完成服务端读取闭环的页面。
@@ -28,54 +23,10 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       )
       when is_map(user) do
     uri = socket.assigns[:current_uri] || "/"
-    params = URI.parse(uri).query |> then(&URI.decode_query(&1 || ""))
-    panel = Navigation.panel_for_path(uri)
-
-    cond do
-      panel in ["jobs", "users", "menus", "depts", "login-logs", "operation-logs"] and
-          AdminSupport.panel_allowed?(socket, panel) ->
-        socket =
-          socket
-          |> assign(active_panel: panel)
-          |> assign(FilterNavigation.assigns(panel, params))
-          |> FilterNavigation.apply_page(panel, params)
-
-        restore_panel_deep_link(socket, panel)
-
-      true ->
-        restore_monitor_route(socket, uri)
-    end
+    LoginPanelNavigation.restore_after_login(socket, uri)
   end
 
   def restore_route_after_login(result, _previous_socket), do: result
-
-  defp restore_panel_deep_link(socket, "jobs"),
-    do: OperationsDeepLinks.restore_jobs_from_deep_link(socket)
-
-  defp restore_panel_deep_link(socket, "users"),
-    do: AccountsDeepLinks.restore_users_from_deep_link(socket)
-
-  defp restore_panel_deep_link(socket, "menus"),
-    do: OrganizationDeepLinks.restore_menus_from_deep_link(socket)
-
-  defp restore_panel_deep_link(socket, "depts"),
-    do: OrganizationDeepLinks.restore_departments_from_deep_link(socket)
-
-  defp restore_panel_deep_link(socket, "login-logs"),
-    do: AuditDeepLinks.restore_login_logs_from_deep_link(socket)
-
-  defp restore_panel_deep_link(socket, "operation-logs"),
-    do: AuditDeepLinks.restore_operation_logs_from_deep_link(socket)
-
-  defp restore_monitor_route(socket, uri) do
-    socket = assign(socket, active_panel: "monitor")
-
-    if URI.parse(uri).path in ["/", "/monitor", "/dashboard"] do
-      {:noreply, socket}
-    else
-      {:noreply, Phoenix.LiveView.push_patch(socket, to: "/monitor")}
-    end
-  end
 
   def handle_login(%{"username" => username, "password" => password} = params, socket, remote_ip) do
     username = String.trim(username)

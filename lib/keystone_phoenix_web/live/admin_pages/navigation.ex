@@ -7,6 +7,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Navigation do
   页面标识由 LiveView 路由使用，标题由本模块统一维护。
   """
 
+  @panel_order ~w(monitor users roles depts posts menus api-keys login-logs operation-logs jobs configs dicts notices)
+
   # 将内部面板标识转换为面向管理员的正式页面标题。
   def panel_title("overview"), do: "运行监控"
   def panel_title("dashboard"), do: "运行监控"
@@ -55,6 +57,46 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Navigation do
   def normalize_panel("logs"), do: "operation-logs"
   def normalize_panel("job-logs"), do: "jobs"
   def normalize_panel(panel), do: panel
+
+  @doc "保留有权限的面板请求，否则返回第一个可访问管理面板或个人资料。"
+  def authorized_panel(panel_access, requested_panel) when is_map(panel_access) do
+    if Map.get(panel_access, requested_panel) == true,
+      do: requested_panel,
+      else: default_panel(panel_access)
+  end
+
+  @doc "按侧栏顺序选择登录落点；没有管理页权限时进入个人资料。"
+  def default_panel(panel_access) when is_map(panel_access) do
+    Enum.find_value(@panel_order, fn panel ->
+      if Map.get(panel_access, panel) == true, do: panel
+    end) || if(Map.get(panel_access, "profile") == true, do: "profile")
+  end
+
+  # 个人资料和 overview 永远可见，但它们不代表账号有管理页面权限。
+  def management_panel_available?(panel_access) when is_map(panel_access) do
+    Enum.any?(@panel_order, &(Map.get(panel_access, &1) == true))
+  end
+
+  @doc "返回面板的规范 URL，拒绝深链接时用它清除原页面查询条件。"
+  def panel_path(panel) do
+    case normalize_panel(panel) do
+      "monitor" -> "/monitor"
+      "users" -> "/users"
+      "roles" -> "/roles"
+      "depts" -> "/departments"
+      "posts" -> "/posts"
+      "menus" -> "/menus"
+      "api-keys" -> "/api-keys"
+      "login-logs" -> "/audit/login"
+      "operation-logs" -> "/audit/operations"
+      "jobs" -> "/jobs"
+      "configs" -> "/configs"
+      "dicts" -> "/dictionaries"
+      "notices" -> "/notices"
+      "profile" -> "/profile"
+      _ -> "/profile"
+    end
+  end
 
   @doc "渲染与 admin-web 对齐的 Lucide 风格侧栏图标。"
   attr :name, :string, required: true

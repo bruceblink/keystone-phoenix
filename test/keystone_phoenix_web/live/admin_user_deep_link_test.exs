@@ -52,17 +52,18 @@ defmodule KeystonePhoenixWeb.AdminUserDeepLinkTest do
   end
 
   @tag :integration
-  test "没有用户列表权限时登录回到监控页", %{conn: conn} do
+  test "没有用户列表权限时登录回到个人资料页", %{conn: conn} do
     user = create_user(nil, "user_deep_link_common")
     {:ok, view, _html} = live(conn, "/users?users_username=private_query")
 
     render_submit(view, "login", %{"username" => user.username, "password" => @password})
 
     socket = live_socket(view)
-    assert socket.assigns.active_panel == "monitor"
-    assert URI.parse(socket.assigns.current_uri).path == "/monitor"
+    assert socket.assigns.active_panel == "profile"
+    assert URI.parse(socket.assigns.current_uri).path == "/profile"
     assert socket.assigns.user_rows == []
     assert socket.assigns.user_query == ""
+    refute has_element?(view, ".monitor-page")
   end
 
   @tag :integration

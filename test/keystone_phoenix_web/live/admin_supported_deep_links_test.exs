@@ -204,16 +204,17 @@ defmodule KeystonePhoenixWeb.AdminSupportedDeepLinksTest do
   end
 
   @tag :integration
-  test "login with no audit permission returns to monitor without audit rows", %{conn: conn} do
+  test "login with no audit permission returns to profile without audit rows", %{conn: conn} do
     user = create_user(nil, "deep_link_no_audit_access")
     {:ok, view, _html} = live(conn, "/audit/operations?operations_audit_actor=private_actor")
     login(view, user)
 
     socket = LiveSupport.live_socket(view)
-    assert socket.assigns.active_panel == "monitor"
-    assert URI.parse(socket.assigns.current_uri).path == "/monitor"
+    assert socket.assigns.active_panel == "profile"
+    assert URI.parse(socket.assigns.current_uri).path == "/profile"
     assert socket.assigns.operation_log_rows == []
     assert socket.assigns.operation_log_total == 0
+    refute has_element?(view, ".monitor-page")
   end
 
   @tag :integration

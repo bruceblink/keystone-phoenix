@@ -12,6 +12,67 @@ defmodule KeystonePhoenixWeb.AdminRoleAuthorizationTest do
   alias KeystonePhoenix.User.{SysUser, SysUserRole}
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
 
+  @tag :integration
+  test "role-only login opens roles and sends an unauthorized monitor URL back to roles", %{
+    conn: conn
+  } do
+    {actor, _role} = create_actor(["role:read", "role:manage"])
+    {:ok, view} = login(conn, actor)
+
+    socket = live_socket(view)
+    assert socket.assigns.active_panel == "roles"
+    assert socket.assigns.panel_access["roles"]
+    refute socket.assigns.panel_access["monitor"]
+    assert has_element?(view, ".roles-page")
+    refute has_element?(view, ".monitor-page")
+
+    render_patch(view, "/monitor")
+
+    assert live_socket(view).assigns.active_panel == "roles"
+    assert URI.parse(live_socket(view).assigns.current_uri).path == "/roles"
+    refute has_element?(view, ".monitor-page")
+  end
+
+  @tag :integration
+  test "role-only login preserves an authorized roles deep link", %{conn: conn} do
+    {actor, _role} = create_actor(["role:read", "role:manage"])
+    {:ok, view, _html} = live(conn, "/roles")
+
+    render_submit(view, "login", %{"username" => actor.username, "password" => "Strong!123"})
+
+    assert live_socket(view).assigns.active_panel == "roles"
+    assert URI.parse(live_socket(view).assigns.current_uri).path == "/roles"
+    assert has_element?(view, ".roles-page")
+    refute has_element?(view, ".monitor-page")
+  end
+
+  @tag :integration
+  test "monitor readers keep the monitor default and users without management access use profile",
+       %{
+         conn: conn
+       } do
+    {monitor_actor, _monitor_role} = create_actor(["server:read"])
+    {:ok, monitor_view} = login(conn, monitor_actor)
+    assert live_socket(monitor_view).assigns.active_panel == "monitor"
+    assert has_element?(monitor_view, ".monitor-page")
+
+    {profile_actor, _profile_role} = create_actor([])
+    {:ok, profile_view} = login(conn, profile_actor)
+    assert live_socket(profile_view).assigns.active_panel == "profile"
+
+    refute KeystonePhoenixWeb.Live.AdminPages.Navigation.management_panel_available?(
+             live_socket(profile_view).assigns.panel_access
+           )
+
+    assert has_element?(profile_view, ".profile-page")
+    refute has_element?(profile_view, ".monitor-page")
+
+    render_patch(profile_view, "/profile")
+    assert live_socket(profile_view).assigns.active_panel == "profile"
+    assert URI.parse(live_socket(profile_view).assigns.current_uri).path == "/profile"
+    assert has_element?(profile_view, ".profile-page")
+  end
+
   # 无 role:manage 时验证元数据不会进入页面表单，也不会被伪造参数覆盖。
   test "role update can change basic fields without submitting or replacing metadata", %{
     conn: conn

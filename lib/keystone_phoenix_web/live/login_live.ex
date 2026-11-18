@@ -16,7 +16,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Navigation
-  alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.LoginState
   alias KeystonePhoenixWeb.LoginNotifications
@@ -28,6 +27,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenixWeb.Live.AdminEvents.Audit, as: AuditEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.Security, as: SecurityEvents
   alias KeystonePhoenixWeb.Live.LoginEvents
+  alias KeystonePhoenixWeb.Live.LoginPanelNavigation
 
   @impl true
   def mount(_params, _session, socket) do
@@ -59,15 +59,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
   @impl true
   def handle_params(params, uri, socket) do
     requested_panel = Navigation.panel_for_path(uri)
-    socket = assign(socket, current_uri: uri)
 
     if AdminSupport.authenticated_socket?(socket) do
-      socket = assign(socket, active_panel: requested_panel)
-      socket = assign(socket, FilterNavigation.assigns(requested_panel, params))
-      socket = FilterNavigation.apply_page(socket, requested_panel, params)
-      OperationsEvents.restore_selected_job_if_needed(socket, requested_panel)
+      LoginPanelNavigation.handle_params(params, uri, socket)
     else
-      {:noreply, assign(socket, requested_panel: requested_panel)}
+      {:noreply, assign(socket, current_uri: uri, requested_panel: requested_panel)}
     end
   end
 
@@ -422,7 +418,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                   <div><strong>KEYSTONE</strong><span>Admin Console</span></div>
                   <button type="button" class="mobile-close" phx-click="close-sidebar" aria-label="关闭导航"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
                 </div>
-                <%= if Enum.any?(Map.values(@panel_access)) do %>
+                <%= if Navigation.management_panel_available?(@panel_access) do %>
                   <nav class={"primary-nav#{if @sidebar_open, do: " sidebar-open", else: ""}"} aria-label="主导航">
                     <button :if={@panel_access["monitor"]} type="button" class={if @active_panel == "monitor", do: "nav-item nav-item-active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "monitor", do: "page"} phx-value-panel="monitor"><span class="nav-icon" aria-hidden="true"><.nav_icon name="activity" /></span><span>运行监控</span></button>
                     <button :if={@panel_access["users"]} type="button" class={if @active_panel == "users", do: "nav-item nav-item-active", else: "nav-item"} phx-click="show-panel" aria-current={if @active_panel == "users", do: "page"} phx-value-panel="users"><span class="nav-icon" aria-hidden="true"><.nav_icon name="users" /></span><span>用户与权限</span></button>
@@ -482,7 +478,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                       <button type="button" class="secondary" phx-click="cancel-liveview-step-up">取消</button>
                     <% end %>
                   </div>
-                  <%= if Enum.any?(Map.values(@panel_access)) do %>
+                  <%= if Navigation.management_panel_available?(@panel_access) do %>
                   <%= case @active_panel do %>
                     <% "depts" -> %>
                       <.departments dept_rows={@dept_rows} dept_form={@dept_form} dept_feedback={@dept_feedback} dept_filter={@dept_filter} active_modal={@active_modal} read_only={@read_only} permissions={@permissions} />

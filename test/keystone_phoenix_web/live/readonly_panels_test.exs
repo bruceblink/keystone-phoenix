@@ -130,7 +130,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     refute live_socket(view).assigns.panel_access["roles"]
 
     render_click(view, "show-panel", %{"panel" => "roles"})
-    assert live_socket(view).assigns.active_panel == "monitor"
+    assert live_socket(view).assigns.active_panel == "profile"
   end
 
   test "an ordinary user without list permission cannot select or refresh panels", %{conn: conn} do
@@ -138,7 +138,7 @@ defmodule KeystonePhoenixWeb.ReadonlyPanelsTest do
     {:ok, view, _html} = login_view(conn, user)
 
     render_click(view, "show-panel", %{"panel" => "users"})
-    assert live_socket(view).assigns.active_panel == "monitor"
+    assert live_socket(view).assigns.active_panel == "profile"
     assert live_socket(view).assigns.user_rows == []
 
     render_click(view, "refresh-users")
