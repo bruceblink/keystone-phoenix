@@ -2,9 +2,9 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
   @moduledoc """
   统一资源入口的数据范围规则。
 
-  查询型 `user` 和 `department` 仍由现有列表过滤器处理。本模块只处理入口级资源：
-  具有当前用户关系的资源使用 `SELF`、`OWNER`、`MEMBER`，没有稳定关系的管理资源
-  只接受 `ALL` 或 `TENANT`。缺少角色、范围或关系时默认拒绝。
+  查询型 `user` 和 `department` 由列表过滤器执行范围检查；能力接口只报告这类列表入口可用。
+  具有当前用户关系的资源使用 `SELF`、`OWNER`、`MEMBER`，没有稳定关系的管理资源只接受
+  `ALL` 或 `TENANT`。缺少角色、范围或关系时默认拒绝。
   """
 
   alias KeystonePhoenix.Authz.DataScope
@@ -15,6 +15,8 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
   @tenant_scopes ~w(ALL TENANT)
 
   @resource_kinds %{
+    user: :query_filtered,
+    department: :query_filtered,
     profile: :self,
     api_key: :self,
     owned: :relationship,
@@ -107,15 +109,26 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
   @doc "检查资源是否登记，避免入口使用未定义的资源名称。"
   def registered?(resource), do: not is_nil(rule(resource))
 
+  @doc "按一次读取的多角色范围计算列表能力；查询过滤型资源由列表查询继续限制结果。"
+  def allowed_for_scopes?(resource, data_scopes) when is_list(data_scopes) do
+    case rule(resource) do
+      nil ->
+        false
+
+      resource_rule ->
+        scope_allowed_by_rule?(resource_rule, Enum.map(data_scopes, &DataScope.normalize/1))
+    end
+  end
+
+  def allowed_for_scopes?(_resource, _data_scopes), do: false
+
   # 本人资料和本人 API Key 只允许 SELF 或全局角色范围，且目标必须是当前用户。
-  defp allowed_by_rule?(subject, %{kind: :self, scopes: allowed_scopes}, context) do
+  defp allowed_by_rule?(subject, %{kind: :self} = resource_rule, context) do
     subject_id = Principal.scope_subject_id(subject)
     target_id = Map.get(context, :target_id, Map.get(context, "target_id", subject_id))
-    role_scopes = role_scopes(subject)
 
-    scope_allowed? = Enum.any?(role_scopes, &(&1 in allowed_scopes or &1 in @tenant_scopes))
-
-    scope_allowed? and is_binary(subject_id) and is_binary(target_id) and
+    scope_allowed_by_rule?(resource_rule, role_scopes(subject)) and
+      is_binary(subject_id) and is_binary(target_id) and
       canonical_id?(subject_id) and canonical_id?(target_id) and subject_id == target_id
   end
 
@@ -128,18 +141,17 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
       ((is_binary(owner_id) and owner_id == subject_id) or subject_id in List.wrap(member_ids))
   end
 
-  defp allowed_by_rule?(subject, %{kind: :global, scopes: allowed_scopes}, _context) do
-    Enum.any?(role_scopes(subject), &(&1 in allowed_scopes and &1 in @tenant_scopes))
-  end
+  defp allowed_by_rule?(subject, %{kind: :global} = resource_rule, _context),
+    do: scope_allowed_by_rule?(resource_rule, role_scopes(subject))
 
-  defp allowed_by_rule?(subject, %{kind: :owner_or_global}, context) do
+  defp allowed_by_rule?(subject, %{kind: :owner_or_global} = resource_rule, context) do
     scopes = role_scopes(subject)
 
     cond do
-      Enum.any?(scopes, &(&1 in @tenant_scopes)) ->
+      scope_allowed_by_rule?(resource_rule, scopes) and Enum.any?(scopes, &(&1 in @tenant_scopes)) ->
         true
 
-      "OWNER" in scopes ->
+      scope_allowed_by_rule?(resource_rule, scopes) and "OWNER" in scopes ->
         if Map.get(context, :defer_owner, Map.get(context, "defer_owner", false)) do
           true
         else
@@ -153,7 +165,25 @@ defmodule KeystonePhoenix.Authz.ResourceScope do
     end
   end
 
+  # 通用入口不把查询过滤型资源当成全量授权；只有列表查询能力显式使用此规则。
+  defp allowed_by_rule?(_subject, %{kind: :query_filtered}, _context), do: false
+
   defp allowed_by_rule?(_subject, _rule, _context), do: false
+
+  defp scope_allowed_by_rule?(%{kind: :query_filtered}, _scopes), do: true
+
+  defp scope_allowed_by_rule?(%{kind: :self, scopes: allowed_scopes}, scopes),
+    do: Enum.any?(scopes, &(&1 in allowed_scopes or &1 in @tenant_scopes))
+
+  defp scope_allowed_by_rule?(%{kind: :global, scopes: allowed_scopes}, scopes),
+    do: Enum.any?(scopes, &(&1 in allowed_scopes and &1 in @tenant_scopes))
+
+  defp scope_allowed_by_rule?(%{kind: :owner_or_global, scopes: allowed_scopes}, scopes),
+    do:
+      Enum.any?(scopes, &(&1 in @tenant_scopes)) or
+        ("OWNER" in allowed_scopes and "OWNER" in scopes)
+
+  defp scope_allowed_by_rule?(_rule, _scopes), do: false
 
   # 入口数据范围必须与用户查询使用相同的启用角色并集规则。
   defp role_scopes(%Principal{raw: raw} = subject) do

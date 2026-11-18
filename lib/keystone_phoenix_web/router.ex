@@ -19,6 +19,7 @@ defmodule KeystonePhoenixWeb.Router do
   pipeline :api do
     # JSON 请求和 XLSX 下载共用认证、审计和权限管线。
     plug :accepts, ["json", "xlsx"]
+    plug :capabilities_no_store
 
     # 业务接口支持 Bearer 和 API Key；敏感的人类会话入口由 RejectApiKey 拒绝。
     plug KeystonePhoenixWeb.Plugs.ApiKeyAuthenticate
@@ -141,6 +142,7 @@ defmodule KeystonePhoenixWeb.Router do
     delete "/jobs/:job_id", JobController, :delete_single
     delete "/jobs", JobController, :delete
     get "/auth/rsa-public-key", AuthController, :public_key
+    get "/auth/me/capabilities", AuthCapabilitiesController, :show
     post "/auth/login", AuthController, :login
     post "/auth/refresh", AuthController, :refresh
     post "/auth/logout", AuthController, :logout
@@ -231,5 +233,14 @@ defmodule KeystonePhoenixWeb.Router do
     pipe_through :api
 
     get "/.well-known/jwks.json", JwkController, :show
+  end
+
+  # 在 API Key 认证或人类会话认证可能提前结束请求前设置禁止缓存头。
+  defp capabilities_no_store(conn, _opts) do
+    if conn.request_path == "/api/v1/auth/me/capabilities" do
+      Plug.Conn.put_resp_header(conn, "cache-control", "no-store")
+    else
+      conn
+    end
   end
 end

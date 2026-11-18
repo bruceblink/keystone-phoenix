@@ -26,6 +26,19 @@ defmodule KeystonePhoenix.Authz.ResourceScopeTest do
     refute DataScope.supported?(:role, "DEPARTMENT")
   end
 
+  # 查询过滤型列表可进入，但通用入口不得把它解释为具体目标授权。
+  test "query-filtered resources report list capability without broadening generic gates" do
+    principal = %{user_id: Identity.v7(), permissions: [], data_scope: "ALL"}
+
+    assert ResourceScope.rule(:user).kind == :query_filtered
+    assert ResourceScope.rule(:department).kind == :query_filtered
+    assert ResourceScope.allowed_for_scopes?(:user, [])
+    assert ResourceScope.allowed_for_scopes?(:department, ["SELF"])
+    refute ResourceScope.allowed?(principal, :user)
+    refute ResourceScope.allowed?(principal, :department)
+    refute ResourceScope.allowed_for_scopes?(:unknown, ["ALL"])
+  end
+
   test "self resources require the authenticated subject" do
     user_id = Identity.v7()
     principal = %{user_id: user_id, permissions: [], data_scope: "SELF"}
