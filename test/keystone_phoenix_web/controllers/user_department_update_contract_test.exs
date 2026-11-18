@@ -12,6 +12,25 @@ defmodule KeystonePhoenixWeb.UserDepartmentUpdateContractTest do
   @password "Strong!123"
 
   @tag :integration
+  test "a null display name keeps the existing user name", %{conn: conn} do
+    dept = insert_department()
+    role = insert_role_with_user_permissions()
+    user = insert_user(role.role_id, dept.dept_id)
+    {:ok, tokens} = Auth.login_plaintext(user.username, @password)
+
+    # 用户管理接口将 null 当作未修改，其他字段仍可以同时更新。
+    response =
+      put(authorized(conn, tokens.token), "/api/v1/users/#{user.user_id}", %{
+        "displayName" => nil,
+        "remark" => "其他字段已更新"
+      })
+
+    assert json_response(response, 200)["data"]["displayName"] == "部门更新用户"
+    assert Repo.get!(SysUser, user.user_id).nickname == "部门更新用户"
+    assert Repo.get!(SysUser, user.user_id).remark == "其他字段已更新"
+  end
+
+  @tag :integration
   test "department updates follow Native clearDept precedence", %{conn: conn} do
     dept = insert_department()
     role = insert_role_with_user_permissions()

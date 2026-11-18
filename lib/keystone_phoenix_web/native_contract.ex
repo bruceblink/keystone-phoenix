@@ -33,9 +33,15 @@ defmodule KeystonePhoenixWeb.NativeContract do
     |> maybe_boolean_status()
   end
 
-  @doc "将 Native 用户更新中的部门字段按 clearDept 规则转换为 Phoenix 字段。"
+  @doc "按 Native 用户更新规则转换部门字段，并在展示名为 null 时保留原值。"
   def user_update_params(params) when is_map(params) do
-    attrs = user_params(params)
+    # Native 将显式 null 展示名视为未修改，避免写入数据库非空字段。
+    attrs =
+      case Map.fetch(params, "displayName") do
+        {:ok, nil} -> params |> user_params() |> Map.delete("nickname")
+        _ -> user_params(params)
+      end
+
     clear_dept? = Map.get(params, "clearDept") == true
 
     case Map.fetch(params, "deptId") do
