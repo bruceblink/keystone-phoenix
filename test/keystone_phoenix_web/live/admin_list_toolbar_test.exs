@@ -13,7 +13,7 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
       render_component(&Accounts.users/1, %{
         user_rows: [],
         user_feedback: {:error, "读取用户失败"},
-        permissions: ["user:import", "user:export", "user:delete"]
+        permissions: ["user:create", "user:import", "user:export", "user:delete"]
       })
 
     assert_toolbar_in_card(user_html, "users-filter-card", "users-table-card")
@@ -65,18 +65,13 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
       })
 
     assert_toolbar_in_card(role_html, "roles-filter-card", "roles-table-card")
-    assert role_html =~ ~s(phx-click="new-role")
+    refute role_html =~ ~s(phx-click="new-role")
     assert role_html =~ ~s(phx-click="export-roles")
-    assert role_html =~ ~s(id="role-delete-toolbar-action")
+    refute role_html =~ ~s(id="role-delete-toolbar-action")
     assert role_html =~ ~s(phx-click="refresh-roles")
 
-    assert role_html =~
-             ~s(id="role-delete-toolbar-action" class="button button-danger button-sm" phx-click="open-role-delete" disabled)
-
     assert_event_order(role_html, [
-      ~s(phx-click="new-role"),
       ~s(phx-click="export-roles"),
-      ~s(id="role-delete-toolbar-action"),
       ~s(phx-click="refresh-roles")
     ])
 
@@ -106,7 +101,8 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
         role_rows: [role],
         selected_role_ids: ["7"],
         role_feedback: nil,
-        active_modal: "role-delete"
+        active_modal: "role-delete",
+        permissions: ["role:read", "role:delete"]
       })
 
     assert html =~ ~s(phx-click="open-role-delete")

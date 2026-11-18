@@ -145,6 +145,13 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       role_feedback: nil,
       role_form: Support.empty_role_form(),
       role_permission_query: "",
+      role_permissions_feedback: nil,
+      role_permissions_form: %{
+        "roleId" => "",
+        "roleName" => "",
+        "permissions" => "",
+        "loaded" => false
+      },
       menu_rows: [],
       menu_feedback: nil,
       menu_form: Support.empty_menu_form(),

@@ -1,17 +1,15 @@
 defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   @moduledoc "LiveView event handlers for the organization domain."
   import Phoenix.Component, only: [assign: 2]
-  alias KeystonePhoenix.Authz
   alias KeystonePhoenix.Department
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Post
   alias KeystonePhoenix.Role
-  alias KeystonePhoenix.Role.Permissions
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationExport
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationPosts
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenu
-  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationMenuParams
+  alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleEditor
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleBulk
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRolePagination
   alias KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleReload
@@ -286,100 +284,17 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
   def handle_event("export-roles", params, socket),
     do: OrganizationExport.handle_event("export-roles", params, socket)
 
-  def handle_event("new-role", _params, socket) do
-    if Support.permission_socket?(socket, "role:create") do
-      {:noreply,
-       assign(socket,
-         role_form: Support.empty_role_form(),
-         role_permission_query: "",
-         role_feedback: nil,
-         active_modal: "role"
-       )}
-    else
-      {:noreply, socket}
-    end
-  end
+  def handle_event(event, params, socket) when event in ["new-role", "edit-role", "save-role"],
+    do: OrganizationRoleEditor.handle_event(event, params, socket)
 
-  def handle_event("edit-role", %{"role-id" => role_id}, socket) do
-    if Support.permission_socket?(socket, "role:update") do
-      case Enum.find(socket.assigns.role_rows, &(to_string(&1["roleId"]) == role_id)) do
-        nil ->
-          {:noreply,
-           assign(socket, role_feedback: Feedback.error(:resource_not_found, "找不到指定角色"))}
-
-        role ->
-          authorization = Support.authorization_options(socket, "role:read")
-
-          with {:ok, menu_ids} <- Role.menu_ids_for_role(role_id, authorization),
-               {:ok, permissions} <- Permissions.list_for_role(role_id, authorization) do
-            form =
-              Support.empty_role_form()
-              |> Map.merge(role)
-              |> Map.put("menuIds", Enum.join(menu_ids, ","))
-              |> Map.put("permissions", Enum.join(permissions, ","))
-
-            {:noreply,
-             assign(socket,
-               role_form: form,
-               role_permission_query: "",
-               role_feedback: nil,
-               active_modal: "role"
-             )}
-          else
-            {:error, _reason} ->
-              {:noreply,
-               assign(socket,
-                 role_feedback: Feedback.error(:resource_not_found, "找不到指定角色")
-               )}
-          end
-      end
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("filter-role-permissions", params, socket),
-    do: OrganizationRolePermissions.handle_event("filter-role-permissions", params, socket)
-
-  def handle_event("toggle-role-permission", params, socket),
-    do: OrganizationRolePermissions.handle_event("toggle-role-permission", params, socket)
-
-  def handle_event("save-role", params, socket) do
-    params = OrganizationMenuParams.normalize_role_menu_ids(params)
-
-    if (Support.permission_socket?(socket, "role:create") or
-          Support.permission_socket?(socket, "role:update")) and
-         Authz.role_metadata_allowed?(socket.assigns.current_user, params) do
-      role_id = String.trim(params["roleId"] || "")
-
-      params = Map.update(params, "permissions", "", &String.trim/1)
-
-      result =
-        if role_id == "",
-          do: Role.create_role(params, authorization(socket, "role:create")),
-          else: Role.update_role(role_id, params, authorization(socket, "role:update"))
-
-      case result do
-        {:ok, _role} ->
-          socket =
-            after_write(
-              socket,
-              :roles,
-              if(role_id == "", do: "角色已创建", else: "角色已更新"),
-              "角色已保存，但列表刷新失败，请重试",
-              role_form: Support.empty_role_form(),
-              active_modal: nil
-            )
-
-          {:noreply, OrganizationRoleSelection.clear_role_selection(socket)}
-
-        error ->
-          {:noreply, assign(socket, role_feedback: Support.form_error(error))}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
+  def handle_event(event, params, socket)
+      when event in [
+             "filter-role-permissions",
+             "toggle-role-permission",
+             "open-role-permissions",
+             "save-role-permissions"
+           ],
+      do: OrganizationRolePermissions.handle_event(event, params, socket)
 
   def handle_event("toggle-role-selection", params, socket),
     do: OrganizationRoleSelection.handle_event("toggle-role-selection", params, socket)

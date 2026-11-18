@@ -25,6 +25,7 @@ defmodule KeystonePhoenixWeb.Live.Authentication do
     delete-user
     reset-user-password
     save-role
+    save-role-permissions
     toggle-role-status
     delete-role
     assign-role-user

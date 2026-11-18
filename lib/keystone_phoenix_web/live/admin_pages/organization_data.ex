@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
   alias KeystonePhoenix.Excel
   alias KeystonePhoenix.Menu
   alias KeystonePhoenix.Role
+  alias KeystonePhoenix.Role.Permissions
 
   # 加载部门列表并补充页面需要的层级信息。
   def load_depts(actor \\ nil) do
@@ -22,7 +23,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
     _error -> {:error, :service_unavailable}
   end
 
-  # 加载角色列表并补充数据范围、状态和用户数量。
+  # 加载角色列表并补充数据范围、状态、用户数量和有效权限数量。
   def load_roles(options) when is_list(options) do
     case load_roles_result(options) do
       {:ok, rows} -> rows
@@ -61,6 +62,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
 
   def enrich_roles(roles) when is_list(roles) do
     user_counts = Role.user_counts(Enum.map(roles, & &1["roleId"]))
+    permission_counts = Permissions.counts(Enum.map(roles, & &1["roleId"]))
 
     roles
     |> Enum.map(fn role ->
@@ -68,6 +70,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.OrganizationData do
       |> Map.put("dataScopeStr", data_scope_label(role["dataScope"]))
       |> Map.put("statusStr", if(role["status"] == 1, do: "正常", else: "停用"))
       |> Map.put("userCount", Map.get(user_counts, role["roleId"], 0))
+      |> Map.put("permissionCount", Map.get(permission_counts, role["roleId"], 0))
     end)
   end
 

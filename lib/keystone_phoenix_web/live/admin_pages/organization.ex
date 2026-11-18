@@ -171,6 +171,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       |> assign_new(:unallocated_page_num, fn -> 1 end)
       |> assign_new(:role_user_page_size, fn -> 50 end)
       |> assign_new(:role_permission_query, fn -> "" end)
+      |> assign_new(:role_permissions_feedback, fn -> nil end)
+      |> assign_new(:role_permissions_form, fn ->
+        %{"roleId" => "", "roleName" => "", "permissions" => "", "loaded" => false}
+      end)
 
     ~H"""
     <div class="roles-page">
@@ -196,20 +200,47 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       </.modal>
       <%= if @active_modal == "role" do %>
         <.modal id="role-modal" title={if @role_form["roleId"] == "", do: "新建角色", else: "编辑角色"} description="维护角色权限和数据范围。">
-    <form :if={!@read_only} aria-describedby="role-feedback" phx-submit="save-role">
-        <input type="hidden" name="roleId" value={@role_form["roleId"]} />
-        <div class="form-grid">
-          <div><label for="role-name">角色名称</label><input id="role-name" name="roleName" value={@role_form["roleName"]} required /></div><div><label for="role-key">角色标识</label><input id="role-key" name="roleKey" value={@role_form["roleKey"]} required /></div><div><label for="role-sort">排序</label><input id="role-sort" type="number" name="roleSort" value={@role_form["roleSort"]} /></div><div><label for="role-scope">数据范围</label><select id="role-scope" name="dataScope"><%= for {value, label} <- [{"ALL", "全部数据"}, {"TENANT", "当前租户数据"}, {"CUSTOM", "自定义数据"}, {"DEPARTMENT", "本部门数据"}, {"DEPARTMENT_AND_CHILDREN", "本部门及以下"}, {"SELF", "仅本人数据"}, {"OWNER", "本人拥有"}, {"MEMBER", "成员关系"}] do %><option value={value} selected={@role_form["dataScope"] in [value, to_string(value)]}><%= label %></option><% end %></select></div><div><label for="role-status">状态</label><select id="role-status" name="status"><option value="1" selected={@role_form["status"] in [1, "1"]}>正常</option><option value="0" selected={@role_form["status"] in [0, "0"]}>停用</option></select></div><div><label for="role-depts">自定义部门 ID</label><input id="role-depts" name="deptIdSet" value={@role_form["deptIdSet"] || ""} /></div><div class="wide"><label for="role-permission-query">权限标识</label><input id="role-permission-query" name="permissionQuery" value={@role_permission_query} placeholder="搜索权限，例如 user:read" phx-change="filter-role-permissions" phx-debounce="200" autocomplete="off" /><input type="hidden" id="role-permissions" name="permissions" value={@role_form["permissions"] || ""} /><div class="api-key-scope-groups role-permission-picker"><%= for {resource, entries} <- grouped_role_permission_entries(role_permission_entries(@permissions), @role_permission_query) do %><section class="api-key-scope-group"><h4><%= role_permission_resource_label(resource) %></h4><div><%= for entry <- entries do %><label class="checkbox-label"><input type="checkbox" phx-click="toggle-role-permission" phx-value-permission={entry.permission} phx-value-selected={if role_permission_selected?(@role_form["permissions"], entry.permission), do: "false", else: "true"} checked={role_permission_selected?(@role_form["permissions"], entry.permission)} /><span><%= role_permission_action_label(entry.action) %></span><code><%= entry.permission %></code></label><% end %></div></section><% end %></div><p :if={role_permission_entries(@permissions) == []} class="form-help" role="status">没有可配置的权限。</p><small>权限目录来自当前账号可授予的权限；保存后会同步角色权限。</small></div><div class="wide"><label for="role-menu-ids">菜单权限</label><select id="role-menu-ids" name="menuIds[]" multiple size="8"><%= for menu <- @menu_rows do %><% menu_id = menu["menuId"] || menu["id"] %><option value={menu_id} selected={to_string(menu_id) in String.split(to_string(@role_form["menuIds"] || ""), ",", trim: true)}><%= String.duplicate("　", menu["depth"] || 0) %><%= menu["name"] || menu["menuName"] %>（<%= menu["permission"] || menu["code"] || menu["menuCode"] || "无标识" %>）</option><% end %></select><small>按住 Ctrl 或 Command 可选择多个菜单。保存后会同步角色菜单绑定。</small></div><div class="wide"><label for="role-remark">备注</label><textarea id="role-remark" name="remark"><%= @role_form["remark"] || "" %></textarea></div>
-        </div>
-        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存角色</button><button :if={@role_form["roleId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="role" phx-disable-with="处理中…">取消编辑</button></div>
-      </form>
+          <form :if={role_form_allowed?(@role_form, @permissions)} aria-describedby="role-feedback" phx-submit="save-role">
+            <input type="hidden" name="roleId" value={@role_form["roleId"]} />
+            <div class="form-grid">
+              <div><label for="role-name">角色名称</label><input id="role-name" name="roleName" value={@role_form["roleName"]} required /></div>
+              <div><label for="role-key">角色标识</label><input id="role-key" name="roleKey" value={@role_form["roleKey"]} required /></div>
+              <div><label for="role-sort">排序</label><input id="role-sort" type="number" name="roleSort" value={@role_form["roleSort"]} /></div>
+              <div><label for="role-status">状态</label><select id="role-status" name="status"><option value="1" selected={@role_form["status"] in [1, "1"]}>正常</option><option value="0" selected={@role_form["status"] in [0, "0"]}>停用</option></select></div>
+              <%= if "role:manage" in @permissions do %>
+                <div><label for="role-scope">数据范围</label><select id="role-scope" name="dataScope"><%= for {value, label} <- [{"ALL", "全部数据"}, {"TENANT", "当前租户数据"}, {"CUSTOM", "自定义数据"}, {"DEPARTMENT", "本部门数据"}, {"DEPARTMENT_AND_CHILDREN", "本部门及以下"}, {"SELF", "仅本人数据"}, {"OWNER", "本人拥有"}, {"MEMBER", "成员关系"}] do %><option value={value} selected={@role_form["dataScope"] in [value, to_string(value)]}><%= label %></option><% end %></select></div>
+                <div><label for="role-depts">自定义部门 ID</label><input id="role-depts" name="deptIdSet" value={@role_form["deptIdSet"] || ""} /></div>
+                <div class="wide"><label for="role-permission-query">权限标识</label><input id="role-permission-query" name="permissionQuery" value={@role_permission_query} placeholder="搜索权限，例如 user:read" phx-change="filter-role-permissions" phx-debounce="200" autocomplete="off" /><input type="hidden" id="role-permissions" name="permissions" value={@role_form["permissions"] || ""} /><.role_permission_picker permissions={@permissions} selected={@role_form["permissions"]} query={@role_permission_query} /></div>
+                <div class="wide"><label for="role-menu-ids">菜单权限</label><select id="role-menu-ids" name="menuIds[]" multiple size="8"><%= for menu <- @menu_rows do %><% menu_id = menu["menuId"] || menu["id"] %><option value={menu_id} selected={to_string(menu_id) in String.split(to_string(@role_form["menuIds"] || ""), ",", trim: true)}><%= String.duplicate("　", menu["depth"] || 0) %><%= menu["name"] || menu["menuName"] %>（<%= menu["permission"] || menu["code"] || menu["menuCode"] || "无标识" %>）</option><% end %></select><small>按住 Ctrl 或 Command 可选择多个菜单。保存后会同步角色菜单绑定。</small></div>
+              <% else %>
+                <div class="wide"><p id="role-metadata-preserved" class="form-help" role="status">当前账号没有 role:manage 权限。本次只保存角色基础资料，现有数据范围、菜单和权限绑定都会保留。</p><p>数据范围：<strong><%= @role_form["dataScope"] || "—" %></strong>；自定义部门：<strong><%= @role_form["deptIdSet"] || "—" %></strong></p></div>
+              <% end %>
+              <div class="wide"><label for="role-remark">备注</label><textarea id="role-remark" name="remark"><%= @role_form["remark"] || "" %></textarea></div>
+            </div>
+            <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存角色</button><button :if={@role_form["roleId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="role" phx-disable-with="处理中…">取消编辑</button></div>
+          </form>
         </.modal>
       <% end %>
+      <.modal :if={@active_modal == "role-permissions"} id="role-permissions-modal" title={"配置角色权限：#{@role_permissions_form["roleName"]}"} description="独立维护权限绑定，不修改角色基础资料、数据范围或菜单绑定。">
+        <%= if @role_permissions_feedback do %><p id="role-permissions-feedback" class={Feedback.class(@role_permissions_feedback)} role={Feedback.role(@role_permissions_feedback)} aria-live={Feedback.live(@role_permissions_feedback)}><%= Feedback.message(@role_permissions_feedback) %><small :if={Feedback.code(@role_permissions_feedback)}>错误码：<%= Feedback.code(@role_permissions_feedback) %></small></p><% end %>
+        <%= if @role_permissions_form["loaded"] do %>
+          <form phx-submit="save-role-permissions">
+            <input type="hidden" name="roleId" value={@role_permissions_form["roleId"]} />
+            <input type="hidden" id="managed-role-permissions" name="permissions" value={@role_permissions_form["permissions"]} />
+            <label for="managed-role-permission-query">权限标识</label><input id="managed-role-permission-query" name="permissionQuery" value={@role_permission_query} placeholder="搜索权限，例如 user:read" phx-change="filter-role-permissions" phx-debounce="200" autocomplete="off" />
+            <.role_permission_picker permissions={@permissions} selected={@role_permissions_form["permissions"]} query={@role_permission_query} />
+            <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存权限</button><button type="button" class="secondary" phx-click="close-modal" phx-value-modal="role-permissions">取消</button></div>
+          </form>
+        <% else %>
+          <p role="status">角色权限读取失败。请关闭窗口后刷新角色列表，再重试。</p>
+          <div class="form-actions"><button type="button" class="secondary" phx-click="close-modal" phx-value-modal="role-permissions">关闭</button></div>
+        <% end %>
+      </.modal>
       <section class="card table-card roles-table-card" aria-labelledby="roles-table-title">
         <.list_toolbar label="角色列表操作">
-          <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-role" phx-disable-with="处理中…"><.nav_icon name="plus" />新增角色</button>
+          <button :if={"role:create" in @permissions} type="button" class="button button-primary button-sm" phx-click="new-role" phx-disable-with="处理中…"><.nav_icon name="plus" />新增角色</button>
           <button :if={"role:export" in @permissions} type="button" class="button button-secondary button-sm" phx-click="export-roles" phx-disable-with="导出中…"><.nav_icon name="download" />导出 Excel</button>
-          <button :if={!@read_only} type="button" id="role-delete-toolbar-action" class="button button-danger button-sm" phx-click="open-role-delete" disabled={@selected_role_ids == [] or @role_page_rows == []}>删除角色（<%= length(@selected_role_ids) %>）</button>
+          <button :if={"role:delete" in @permissions} type="button" id="role-delete-toolbar-action" class="button button-danger button-sm" phx-click="open-role-delete" disabled={@selected_role_ids == [] or @role_page_rows == []}>删除角色（<%= length(@selected_role_ids) %>）</button>
           <button type="button" class="button button-secondary button-sm" phx-click="refresh-roles" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新列表</button>
         </.list_toolbar>
         <div class="card-header">
@@ -225,7 +256,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
         <% else %>
         <% filtered_role_rows = OrganizationFilters.filtered_roles(@role_page_rows, @role_filter) %>
         <% all_roles_selected = filtered_role_rows != [] and Enum.all?(filtered_role_rows, &(to_string(&1["roleId"]) in @selected_role_ids)) %>
-        <div class="roles-table-wrap"><table class="roles-table"><caption class="sr-only">角色列表</caption><thead><tr><th scope="col"><input :if={!@read_only} type="checkbox" aria-label="选择当前角色" checked={all_roles_selected} phx-click="toggle-all-role-selection" phx-value-selected={if all_roles_selected, do: "false", else: "true"} /></th><th scope="col">角色</th><th scope="col">数据范围</th><th scope="col">组织范围</th><th scope="col">权限数</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody><%= for role <- filtered_role_rows do %><tr><td><input :if={!@read_only} type="checkbox" name="role-ids[]" value={role["roleId"]} aria-label={"选择角色 #{role["roleName"]}"} checked={to_string(role["roleId"]) in @selected_role_ids} phx-click="toggle-role-selection" phx-value-role-id={role["roleId"]} phx-value-selected={if to_string(role["roleId"]) in @selected_role_ids, do: "false", else: "true"} /></td><td><div class="role-cell"><span class="role-cell-icon" aria-hidden="true"><.nav_icon name="user-cog" /></span><div><strong><%= role["roleName"] %></strong><small><%= role["roleKey"] %></small></div></div></td><td><span class="badge badge-neutral"><%= role["dataScopeStr"] %></span></td><td><%= role["deptScope"] || "—" %></td><td><%= role["permissionCount"] || role["userCount"] || "—" %></td><td><span class={"status-badge #{Status.normal_paused(role["status"])}"}><%= if role["status"] == 1, do: "启用", else: "停用" %></span></td><td class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="select-role" phx-value-role-id={role["roleId"]} phx-disable-with="加载中…">成员</button><button :if={!@read_only} type="button" class="button button-ghost button-sm" phx-click="edit-role" phx-value-role-id={role["roleId"]} phx-disable-with="加载中…">编辑</button></td></tr><% end %></tbody></table></div>
+        <div class="roles-table-wrap"><table class="roles-table"><caption class="sr-only">角色列表</caption><thead><tr><th scope="col"><input :if={"role:delete" in @permissions} type="checkbox" aria-label="选择当前角色" checked={all_roles_selected} phx-click="toggle-all-role-selection" phx-value-selected={if all_roles_selected, do: "false", else: "true"} /></th><th scope="col">角色</th><th scope="col">数据范围</th><th scope="col">组织范围</th><th scope="col">权限数</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody><%= for role <- filtered_role_rows do %><tr><td><input :if={"role:delete" in @permissions} type="checkbox" name="role-ids[]" value={role["roleId"]} aria-label={"选择角色 #{role["roleName"]}"} checked={to_string(role["roleId"]) in @selected_role_ids} phx-click="toggle-role-selection" phx-value-role-id={role["roleId"]} phx-value-selected={if to_string(role["roleId"]) in @selected_role_ids, do: "false", else: "true"} /></td><td><div class="role-cell"><span class="role-cell-icon" aria-hidden="true"><.nav_icon name="user-cog" /></span><div><strong><%= role["roleName"] %></strong><small><%= role["roleKey"] %></small></div></div></td><td><span class="badge badge-neutral"><%= role["dataScopeStr"] %></span></td><td><%= role["deptScope"] || "—" %></td><td><%= role["permissionCount"] || "—" %></td><td><span class={"status-badge #{Status.normal_paused(role["status"])}"}><%= if role["status"] == 1, do: "启用", else: "停用" %></span></td><td class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="select-role" phx-value-role-id={role["roleId"]} phx-disable-with="加载中…">成员</button><button :if={"role:update" in @permissions} type="button" class="button button-ghost button-sm" phx-click="edit-role" phx-value-role-id={role["roleId"]} phx-disable-with="加载中…">编辑</button><button :if={"role:manage" in @permissions} type="button" class="button button-ghost button-sm" phx-click="open-role-permissions" phx-value-role-id={role["roleId"]} phx-disable-with="加载中…">配置权限</button></td></tr><% end %></tbody></table></div>
         <.pagination panel="roles" page_num={min(@page_num, page_count(@role_total, @page_size))} page_size={@page_size} total={@role_total} />
         <% end %>
         </form>
@@ -242,8 +273,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
           </div>
           <%= if @role_user_feedback do %><p id="role-user-feedback" class={Feedback.class(@role_user_feedback)} role={Feedback.role(@role_user_feedback)} aria-live={Feedback.live(@role_user_feedback)}><%= Feedback.message(@role_user_feedback) %></p><% end %>
           <div class="monitor-grid details">
-            <div><h3>已分配用户（<%= length(@allocated_role_user_rows) %>）</h3><div class="table-wrap"><div class="table-scroll" role="region" tabindex="0" aria-label="已分配用户列表"><table><caption class="sr-only">已分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- page_rows(@allocated_role_user_rows, @allocated_page_num, @role_user_page_size) do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={!@read_only} type="button" class="button button-danger refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="unassign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">取消分配</button></td></tr><% end %></tbody></table></div></div><.pagination panel="role-users-allocated" page_num={min(@allocated_page_num, page_count(length(@allocated_role_user_rows), @role_user_page_size))} page_size={@role_user_page_size} total={length(@allocated_role_user_rows)} /></div>
-            <div><h3>可分配用户（<%= length(@unallocated_role_user_rows) %>）</h3><div class="table-wrap"><div class="table-scroll" role="region" tabindex="0" aria-label="可分配用户列表"><table><caption class="sr-only">可分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- page_rows(@unallocated_role_user_rows, @unallocated_page_num, @role_user_page_size) do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={!@read_only} type="button" class="button button-ghost refresh" phx-click="assign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">分配</button></td></tr><% end %></tbody></table></div></div><.pagination panel="role-users-unallocated" page_num={min(@unallocated_page_num, page_count(length(@unallocated_role_user_rows), @role_user_page_size))} page_size={@role_user_page_size} total={length(@unallocated_role_user_rows)} /></div>
+            <div><h3>已分配用户（<%= length(@allocated_role_user_rows) %>）</h3><div class="table-wrap"><div class="table-scroll" role="region" tabindex="0" aria-label="已分配用户列表"><table><caption class="sr-only">已分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- page_rows(@allocated_role_user_rows, @allocated_page_num, @role_user_page_size) do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={"role:assign" in @permissions} type="button" class="button button-danger refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="unassign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">取消分配</button></td></tr><% end %></tbody></table></div></div><.pagination panel="role-users-allocated" page_num={min(@allocated_page_num, page_count(length(@allocated_role_user_rows), @role_user_page_size))} page_size={@role_user_page_size} total={length(@allocated_role_user_rows)} /></div>
+            <div><h3>可分配用户（<%= length(@unallocated_role_user_rows) %>）</h3><div class="table-wrap"><div class="table-scroll" role="region" tabindex="0" aria-label="可分配用户列表"><table><caption class="sr-only">可分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- page_rows(@unallocated_role_user_rows, @unallocated_page_num, @role_user_page_size) do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={"role:assign" in @permissions} type="button" class="button button-ghost refresh" phx-click="assign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">分配</button></td></tr><% end %></tbody></table></div></div><.pagination panel="role-users-unallocated" page_num={min(@unallocated_page_num, page_count(length(@unallocated_role_user_rows), @role_user_page_size))} page_size={@role_user_page_size} total={length(@unallocated_role_user_rows)} /></div>
           </div>
         </section>
       <% end %>
@@ -335,6 +366,39 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
     |> Enum.filter(fn entry ->
       entry.registered? and MapSet.member?(allowed, entry.permission)
     end)
+  end
+
+  # 新建和编辑按钮按各自权限显示，避免用管理员身份替代业务权限判断。
+  def role_form_allowed?(form, permissions) do
+    permission =
+      if String.trim(to_string(form["roleId"] || "")) == "",
+        do: "role:create",
+        else: "role:update"
+
+    permission in List.wrap(permissions)
+  end
+
+  # 两种角色编辑入口共享权限清单，但事件会分别更新对应的服务端表单状态。
+  defp role_permission_picker(assigns) do
+    ~H"""
+    <div class="api-key-scope-groups role-permission-picker">
+      <%= for {resource, entries} <- grouped_role_permission_entries(role_permission_entries(@permissions), @query) do %>
+        <section class="api-key-scope-group">
+          <h4><%= role_permission_resource_label(resource) %></h4>
+          <div>
+            <%= for entry <- entries do %>
+              <label class="checkbox-label">
+                <input type="checkbox" phx-click="toggle-role-permission" phx-value-permission={entry.permission} phx-value-selected={if role_permission_selected?(@selected, entry.permission), do: "false", else: "true"} checked={role_permission_selected?(@selected, entry.permission)} />
+                <span><%= role_permission_action_label(entry.action) %></span><code><%= entry.permission %></code>
+              </label>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
+      <p :if={role_permission_entries(@permissions) == []} class="form-help" role="status">没有可配置的权限。</p>
+      <small>权限目录来自当前账号可授予的权限。</small>
+    </div>
+    """
   end
 
   @doc "按资源分组并筛选角色权限目录。"

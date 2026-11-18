@@ -28,6 +28,25 @@ defmodule KeystonePhoenix.Role.Permissions do
     end
   end
 
+  # 批量统计角色当前有效权限，筛选规则与详情读取保持一致。
+  def counts(role_ids) when is_list(role_ids) do
+    if role_ids == [] do
+      %{}
+    else
+      from(binding in SysRolePermission,
+        join: permission in SysPermission,
+        on: permission.permission_id == binding.permission_id,
+        where:
+          binding.role_id in ^role_ids and permission.status == 1 and
+            permission.deprecated == false,
+        group_by: binding.role_id,
+        select: {binding.role_id, count(binding.permission_id)}
+      )
+      |> Repo.all()
+      |> Map.new()
+    end
+  end
+
   @doc "替换角色权限。输入可以是权限标识或权限目录 UUID。"
   def replace(role_id, permissions) when is_list(permissions) do
     with {:ok, permission_ids} <- resolve(permissions) do

@@ -35,6 +35,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
         "status" => 1
       },
       role_feedback: nil,
+      permissions: ["role:read", "role:create", "role:update", "role:assign", "role:manage"],
       menu_rows: [],
       menu_form: %{
         "menuId" => "",
@@ -63,7 +64,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
     assert render_component(
              &Organization.roles/1,
              Map.put(
-               Map.take(assigns, [:role_rows, :role_form, :role_feedback]),
+               Map.take(assigns, [:role_rows, :role_form, :role_feedback, :permissions]),
                :active_modal,
                "role"
              )
@@ -96,6 +97,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
                :role_rows,
                :role_form,
                :role_feedback,
+               :permissions,
                :selected_role_id,
                :selected_role_name,
                :allocated_role_user_rows,
@@ -111,6 +113,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
           :role_rows,
           :role_form,
           :role_feedback,
+          :permissions,
           :selected_role_id,
           :selected_role_name,
           :allocated_role_user_rows,
