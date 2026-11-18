@@ -2,6 +2,13 @@
 
 鉴权与授权统一架构见 [`08-auth-authorization-parity-architecture.md`](08-auth-authorization-parity-architecture.md)。本文件同时记录 Phoenix 本地执行顺序和与 Keystone Native 的跨项目验收要求。
 
+## 2026-11-18 站内通知分页验收
+
+- Phoenix `034a1d9` 和 Native `67afa57` 的通知接口按每页 50 条返回数据；显式页码响应包含 `page`、`hasMore` 和全部未读数。未传页码时保留原有响应字段。两端仍按当前用户隔离通知。
+- Phoenix LiveView `b3db95e` 和 admin-web `767afec` 支持翻页、通知详情、已读和返回当前页。admin-web 在下一页加载期间保留当前账号最近一次读取的未读数，避免铃铛红点短暂消失。
+- 隔离 PostgreSQL 18 中，Phoenix 通知控制器和 LiveView 定向集成测试共 12 项通过；admin-web 30 个测试文件、226 项测试及生产构建通过。Codex 内置浏览器分别验证 Phoenix LiveView、admin-web 接 Phoenix、admin-web 接 Native：超过 50 条通知时可打开第 2 页，查看旧通知后未读数减少，返回列表时保留第 2 页。Native 中文通知在测试数据按 UTF-8 正确写入后正常显示。
+- 本次测试曾误用已有的 Native 浏览器测试数据库，在其 `keystone` 库执行 Flyway V60–V62 并写入 60 条测试通知；该数据库的迁移未回滚。后续测试改用新建的独立 MySQL 8.4 测试库。此前的完整页面写操作矩阵、OIDC、硬件 Passkey、多节点和生产代理链验收仍未完成。
+
 ## 2026-11-18 私有站内通知
 
 - Phoenix 和 Native 均提供当前用户通知列表、详情和幂等已读接口，拒绝 API Key 读取。API Key 签发、轮换和首次撤销会在业务事务内生成通知；通知和公告分别存储，通知不包含密钥明文或摘要。
