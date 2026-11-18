@@ -48,6 +48,7 @@
 | `payload_too_large` | 413 | 请求内容超过接口允许大小 | 缩小请求内容后重试 |
 | `https_required` | 426 | 请求必须通过 HTTPS 传输 | 切换到 HTTPS 后重试 |
 | `validation_failed` | 422 | 参数、格式或业务规则校验失败 | 修正字段或业务输入 |
+| `password_same_as_current` | 422 | 新密码与已验证的当前密码相同 | 选择与当前密码不同的新密码 |
 | `api_key_name_invalid` | 422 | API Key 名称缺失、空白或超过 128 个字符 | 输入 1 到 128 个字符的名称 |
 | `profile_display_name_required` | 422 | 个人资料展示名缺失或为空白 | 输入展示名后重试 |
 | `profile_avatar_required` | 422 | 单独更新头像时地址缺失或为空白 | 输入头像地址后重试 |

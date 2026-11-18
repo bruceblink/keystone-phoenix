@@ -84,6 +84,12 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       retryable: false,
       message_key: "error.profile_avatar_required"
     },
+    # 旧密码验证成功但新密码相同时，要求用户选择其他密码。
+    "password_same_as_current" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.password_same_as_current"
+    },
     "api_key_expiry_invalid" => %{
       status: 422,
       retryable: false,

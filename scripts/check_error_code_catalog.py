@@ -31,6 +31,7 @@ EXPECTED_STATUS = {
     "payload_too_large": 413,
     "https_required": 426,
     "validation_failed": 422,
+    "password_same_as_current": 422,
     "api_key_name_invalid": 422,
     "profile_display_name_required": 422,
     "profile_avatar_required": 422,

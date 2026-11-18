@@ -220,7 +220,7 @@ defmodule KeystonePhoenixWeb.AuthControllerTest do
       })
       |> json_response(422)
 
-    assert get_in(same_password, ["error", "code"]) == "validation_failed"
+    assert get_in(same_password, ["error", "code"]) == "password_same_as_current"
 
     rejected_policy =
       build_conn()

@@ -140,7 +140,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
   defp render_error(conn, :same_password) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "新密码不能与旧密码相同"))
+    |> json(ApiResponse.error(:password_same_as_current, "新密码不能与当前密码相同"))
   end
 
   defp render_error(conn, :unavailable) do

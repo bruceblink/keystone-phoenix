@@ -82,6 +82,30 @@ defmodule KeystonePhoenixWeb.PasswordSessionControllerTest do
   end
 
   @tag :integration
+  test "returns the dedicated code when the verified current password is reused", %{
+    conn: conn,
+    user: user,
+    token: token
+  } do
+    original_hash = Repo.get!(SysUser, user.user_id).password
+
+    # 旧密码校验通过后，新旧密码相同应返回专用业务码且保留当前会话。
+    response =
+      conn
+      |> authorized(token)
+      |> put("/api/v1/profile/password", %{
+        "oldPassword" => "Strong!123",
+        "newPassword" => "Strong!123"
+      })
+
+    assert get_in(json_response(response, 422), ["error", "code"]) ==
+             "password_same_as_current"
+
+    assert Repo.get!(SysUser, user.user_id).password == original_hash
+    assert Auth.Session.active?(user.user_id, session_id(token))
+  end
+
+  @tag :integration
   test "password policy rejects administrator reset and profile changes without revoking the session",
        %{
          conn: conn,

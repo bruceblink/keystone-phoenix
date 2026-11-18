@@ -185,7 +185,7 @@ defmodule KeystonePhoenixWeb.AuthController do
       {:error, :same_password} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> json(ApiResponse.error(:validation_failed, "新密码不能与当前密码相同"))
+        |> json(ApiResponse.error(:password_same_as_current, "新密码不能与当前密码相同"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)

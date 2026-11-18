@@ -42,6 +42,12 @@ defmodule KeystonePhoenixWeb.ApiResponseContractTest do
     assert %{status: 422, retryable: false} = ApiResponse.error_metadata(:role_has_members)
     assert %{status: 422, retryable: false} = ApiResponse.error_metadata(:role_protected)
 
+    assert %{status: 422, retryable: false, message_key: "error.password_same_as_current"} =
+             ApiResponse.error_metadata(:password_same_as_current)
+
+    assert %{code: "password_same_as_current", status: 422} =
+             ApiResponse.error_lookup("password_same_as_current")
+
     assert %{code: "active_session_conflict", status: 409} =
              ApiResponse.error_lookup(" active_session_conflict ")
 
