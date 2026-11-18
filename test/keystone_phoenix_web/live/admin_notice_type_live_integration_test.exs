@@ -137,4 +137,93 @@ defmodule KeystonePhoenixWeb.AdminNoticeTypeLiveIntegrationTest do
 
     assert saved["noticeType"] == notice_type
   end
+
+  @tag :integration
+  test "公告已创建但列表刷新失败时关闭表单并保留可刷新的旧列表", %{
+    conn: conn,
+    admin: admin
+  } do
+    suffix = System.unique_integer([:positive])
+    old_title = "刷新前公告 #{suffix}"
+    new_title = "刷新失败后公告 #{suffix}"
+    {:ok, view, _html} = live(conn, "/")
+
+    render_submit(view, "login", %{
+      "username" => admin.username,
+      "password" => "Strong!123"
+    })
+
+    render_click(view, "show-panel", %{"panel" => "notices"})
+    render_click(view, "new-notice")
+    render_submit(view, "save-notice", notice_params(old_title))
+
+    assert render(view) =~ old_title
+
+    install_notice_rename_trigger()
+
+    try do
+      render_click(view, "new-notice")
+      html = render_submit(view, "save-notice", notice_params(new_title))
+
+      assert html =~ "公告已创建，但列表刷新失败；旧列表仍保留，请点击“刷新公告”重试。"
+      refute has_element?(view, "#notice-modal")
+      assert html =~ old_title
+      refute html =~ new_title
+
+      assert Repo.query!(
+               "SELECT COUNT(*) FROM sys_notice_unavailable WHERE notice_title = $1",
+               [new_title]
+             ).rows == [[1]]
+    after
+      restore_notice_table()
+    end
+
+    html = render_click(view, "refresh-notices")
+    assert html =~ old_title
+    assert html =~ new_title
+    refute html =~ "列表刷新失败"
+  end
+
+  defp notice_params(title) do
+    %{
+      "noticeId" => "",
+      "noticeTitle" => title,
+      "noticeType" => "announcement",
+      "noticeContent" => "公告写入结果验收",
+      "status" => "1",
+      "remark" => ""
+    }
+  end
+
+  # 仅在隔离测试数据库中让写入触发重命名，随后列表查询会真实遇到缺失表。
+  defp install_notice_rename_trigger do
+    Repo.query!("""
+    CREATE FUNCTION test_rename_sys_notice_after_insert() RETURNS trigger
+    LANGUAGE plpgsql AS $$
+    BEGIN
+      EXECUTE 'ALTER TABLE sys_notice RENAME TO sys_notice_unavailable';
+      RETURN NEW;
+    END;
+    $$
+    """)
+
+    Repo.query!("""
+    CREATE TRIGGER test_rename_sys_notice_after_insert
+    AFTER INSERT ON sys_notice
+    FOR EACH ROW EXECUTE FUNCTION test_rename_sys_notice_after_insert()
+    """)
+  end
+
+  # 恢复关系名后，测试事务结束时会一起回滚临时触发器和数据库对象。
+  defp restore_notice_table do
+    case Repo.query!("SELECT to_regclass('public.sys_notice_unavailable')").rows do
+      [[nil]] ->
+        :ok
+
+      [[_relation]] ->
+        Repo.query!("DROP TRIGGER test_rename_sys_notice_after_insert ON sys_notice_unavailable")
+        Repo.query!("ALTER TABLE sys_notice_unavailable RENAME TO sys_notice")
+        Repo.query!("DROP FUNCTION test_rename_sys_notice_after_insert()")
+    end
+  end
 end

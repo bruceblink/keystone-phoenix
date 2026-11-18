@@ -156,6 +156,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       issued_api_key: nil,
       notice_rows: [],
       notice_total: 0,
+      notice_retry_page: nil,
       selected_notice_ids: [],
       notice_feedback: nil,
       notice_filter: %{"title" => "", "published" => "all"},

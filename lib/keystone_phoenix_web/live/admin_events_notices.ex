@@ -11,7 +11,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Notices do
   def handle_event("refresh-notices", _params, socket) do
     if Support.panel_allowed?(socket, "notices"),
       do:
-        reload_notice_page(socket, current_page(socket), nil,
+        reload_notice_page(
+          socket,
+          Map.get(socket.assigns, :notice_retry_page) || current_page(socket),
+          nil,
           selected_notice_ids: [],
           active_modal: nil
         ),
@@ -224,6 +227,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Notices do
           notice_rows: result.items,
           notice_total: result.total,
           notice_feedback: success,
+          notice_retry_page: nil,
           page_nums: Map.put(socket.assigns.page_nums, "notices", result.page),
           page_sizes: Map.put(socket.assigns.page_sizes, "notices", result.size)
         ]
@@ -231,8 +235,24 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Notices do
         {:noreply, assign(socket, Keyword.merge(attrs, extra))}
 
       {:error, reason} ->
-        message = if success, do: "#{success}，但列表刷新失败，请重试", else: "公告列表刷新失败，请重试"
-        {:noreply, assign(socket, notice_feedback: Support.read_error_feedback(reason, message))}
+        message =
+          if success do
+            "#{success}，但列表刷新失败；旧列表仍保留，请点击“刷新公告”重试。"
+          else
+            "公告列表刷新失败，旧列表仍保留。请点击“刷新公告”重试。"
+          end
+
+        {:noreply,
+         assign(
+           socket,
+           Keyword.merge(
+             [
+               notice_feedback: Support.read_error_feedback(reason, message),
+               notice_retry_page: page
+             ],
+             extra
+           )
+         )}
     end
   end
 
