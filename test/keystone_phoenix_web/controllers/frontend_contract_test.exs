@@ -194,7 +194,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
       %SysNotice{notice_id: Identity.v7()}
       |> SysNotice.changeset(%{
         notice_title: "契约公告",
-        notice_type: 1,
+        notice_type: "notification",
         notice_content: "契约内容",
         status: 1
       })

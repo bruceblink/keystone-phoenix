@@ -11,7 +11,7 @@ defmodule KeystonePhoenix.NoticeConfigDictionaryUuidTest do
     notice =
       SysNotice.changeset(%SysNotice{}, %{
         notice_title: "UUID 公告",
-        notice_type: 1,
+        notice_type: "notification",
         notice_content: "内容"
       })
 

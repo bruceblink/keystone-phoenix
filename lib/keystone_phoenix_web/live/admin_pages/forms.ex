@@ -10,7 +10,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Forms do
     %{
       "noticeId" => "",
       "noticeTitle" => "",
-      "noticeType" => 2,
+      "noticeType" => "announcement",
       "noticeContent" => "",
       "status" => 1,
       "remark" => ""

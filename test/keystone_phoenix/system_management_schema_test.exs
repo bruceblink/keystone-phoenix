@@ -51,18 +51,75 @@ defmodule KeystonePhoenix.SystemManagementSchemaTest do
     assert Keyword.has_key?(changeset.errors, :status)
   end
 
-  test "notice changeset validates notice type and status" do
+  test "notice changeset accepts free-form types up to the database limit" do
     changeset =
       SysNotice.changeset(%SysNotice{}, %{
         notice_title: "维护",
-        notice_type: 9,
+        notice_type: String.duplicate("x", 32),
         notice_content: "内容",
-        status: 2
+        status: 1
       })
 
-    refute changeset.valid?
-    assert Keyword.has_key?(changeset.errors, :notice_type)
-    assert Keyword.has_key?(changeset.errors, :status)
+    assert changeset.valid?
+
+    too_long =
+      SysNotice.changeset(%SysNotice{}, %{
+        notice_title: "维护",
+        notice_type: String.duplicate("x", 33),
+        notice_content: "内容",
+        status: 1
+      })
+
+    refute too_long.valid?
+    assert Keyword.has_key?(too_long.errors, :notice_type)
+
+    unicode_boundary =
+      SysNotice.changeset(%SysNotice{}, %{
+        notice_title: "维护",
+        notice_type: String.duplicate("e\u0301", 16),
+        notice_content: "内容",
+        status: 1
+      })
+
+    assert unicode_boundary.valid?
+
+    unicode_overflow =
+      SysNotice.changeset(%SysNotice{}, %{
+        notice_title: "维护",
+        notice_type: "x" <> String.duplicate("e\u0301", 16),
+        notice_content: "内容",
+        status: 1
+      })
+
+    refute unicode_overflow.valid?
+    assert Keyword.has_key?(unicode_overflow.errors, :notice_type)
+  end
+
+  test "notice changeset keeps the Native default when type is omitted" do
+    changeset =
+      SysNotice.changeset(%SysNotice{}, %{
+        notice_title: "维护",
+        notice_content: "内容",
+        status: 1
+      })
+
+    assert changeset.valid?
+    assert Ecto.Changeset.get_field(changeset, :notice_type) == "NOTICE"
+  end
+
+  test "notice changeset preserves empty and whitespace-only custom types" do
+    for notice_type <- ["", "  "] do
+      changeset =
+        SysNotice.changeset(%SysNotice{}, %{
+          notice_title: "维护",
+          notice_type: notice_type,
+          notice_content: "内容",
+          status: 1
+        })
+
+      assert changeset.valid?
+      assert Ecto.Changeset.get_field(changeset, :notice_type) == notice_type
+    end
   end
 
   test "log maps omit database-only deletion fields" do

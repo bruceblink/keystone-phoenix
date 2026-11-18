@@ -206,7 +206,7 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
     %SysNotice{}
     |> SysNotice.changeset(%{
       notice_title: "公开公告-不进入个人收件箱",
-      notice_type: 2,
+      notice_type: "announcement",
       notice_content: "公告和个人站内通知使用不同数据源。",
       status: 1
     })

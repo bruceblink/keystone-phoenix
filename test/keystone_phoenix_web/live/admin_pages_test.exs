@@ -152,7 +152,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
             "noticeId" => "notice-1",
             "noticeTitle" => "维护公告",
             "noticeContent" => "系统维护窗口",
-            "noticeType" => 2,
+            "noticeType" => "announcement",
             "status" => 1,
             "published" => false,
             "remark" => "",
@@ -179,7 +179,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
             "noticeId" => "notice-type-filter",
             "noticeTitle" => "维护",
             "noticeContent" => "窗口",
-            "noticeType" => 2,
+            "noticeType" => "announcement",
             "status" => 1,
             "published" => false,
             "remark" => "",
@@ -188,7 +188,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
         ],
         notice_form: %{"noticeId" => ""},
         notice_feedback: nil,
-        notice_filter: %{"title" => "公告", "published" => "all"},
+        notice_filter: %{"title" => "announcement", "published" => "all"},
         read_only: true
       })
 
@@ -367,7 +367,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       notice_form: %{
         "noticeId" => "",
         "noticeTitle" => "",
-        "noticeType" => 2,
+        "noticeType" => "announcement",
         "noticeContent" => "",
         "status" => 1
       },

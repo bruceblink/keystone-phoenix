@@ -30,10 +30,10 @@ defmodule KeystonePhoenix.Notice do
         order_by: [desc: n.notice_id]
       )
 
-    query = filter_keyword(query, params["noticeTitle"] || params[:notice_title])
+    query = filter_contains(query, :notice_title, params["noticeTitle"] || params[:notice_title])
     query = filter_contains(query, :notice_content, params["content"] || params[:content])
     query = filter_keyword(query, params["keyword"] || params[:keyword])
-    query = filter_integer(query, :notice_type, params["noticeType"] || params[:notice_type])
+    query = filter_contains(query, :notice_type, params["noticeType"] || params[:notice_type])
     query = filter_integer(query, :status, params["status"] || params[:status])
     query = filter_published(query, params["published"] || params[:published])
     paged = Pagination.page_rows(query, params, :notice_id)
@@ -144,7 +144,15 @@ defmodule KeystonePhoenix.Notice do
   def create_notice(_attrs, _options), do: {:error, :authorization_required}
 
   defp do_create_notice(attrs, actor_id) when is_map(attrs) do
-    changeset = SysNotice.changeset(%SysNotice{}, normalize_attrs(attrs))
+    normalized_attrs =
+      attrs
+      |> normalize_attrs()
+      |> Map.update(:notice_type, "NOTICE", fn
+        nil -> "NOTICE"
+        value -> value
+      end)
+
+    changeset = SysNotice.changeset(%SysNotice{}, normalized_attrs)
     changeset = Audit.put_actor(changeset, :creator_id, actor_id)
     Repo.insert(Ecto.Changeset.put_change(changeset, :owner_id, actor_id))
   end
@@ -212,10 +220,10 @@ defmodule KeystonePhoenix.Notice do
       )
 
     query = owner_filter(query, scope)
-    query = filter_keyword(query, params["noticeTitle"] || params[:notice_title])
+    query = filter_contains(query, :notice_title, params["noticeTitle"] || params[:notice_title])
     query = filter_contains(query, :notice_content, params["content"] || params[:content])
     query = filter_keyword(query, params["keyword"] || params[:keyword])
-    query = filter_integer(query, :notice_type, params["noticeType"] || params[:notice_type])
+    query = filter_contains(query, :notice_type, params["noticeType"] || params[:notice_type])
     query = filter_integer(query, :status, params["status"] || params[:status])
     query = filter_published(query, params["published"] || params[:published])
     paged = Pagination.page_rows(query, params, :notice_id)
@@ -229,7 +237,7 @@ defmodule KeystonePhoenix.Notice do
     |> filter_contains(:notice_title, params["title"] || params[:title] || params["noticeTitle"])
     |> filter_contains(:notice_content, params["content"] || params[:content])
     |> filter_keyword(params["keyword"] || params[:keyword])
-    |> filter_integer(
+    |> filter_contains(
       :notice_type,
       params["noticeType"] || params[:notice_type] || params["type"]
     )
@@ -315,7 +323,7 @@ defmodule KeystonePhoenix.Notice do
       "id" => notice.notice_id,
       "title" => notice.notice_title,
       "content" => notice.notice_content,
-      "noticeType" => native_notice_type(notice.notice_type),
+      "noticeType" => notice.notice_type,
       "published" => notice.published,
       "enabled" => notice.status == 1,
       "publishAt" => format_native_datetime(notice.publish_at),
@@ -328,10 +336,10 @@ defmodule KeystonePhoenix.Notice do
     Enum.reduce(@attrs, %{}, fn {json_key, atom_key}, normalized ->
       cond do
         Map.has_key?(attrs, json_key) ->
-          Map.put(normalized, atom_key, normalize_attr(atom_key, Map.get(attrs, json_key)))
+          put_normalized_attr(normalized, atom_key, Map.get(attrs, json_key))
 
         Map.has_key?(attrs, atom_key) ->
-          Map.put(normalized, atom_key, normalize_attr(atom_key, Map.get(attrs, atom_key)))
+          put_normalized_attr(normalized, atom_key, Map.get(attrs, atom_key))
 
         true ->
           normalized
@@ -339,27 +347,14 @@ defmodule KeystonePhoenix.Notice do
     end)
   end
 
-  defp normalize_attr(:notice_type, value) when is_binary(value) do
-    case String.downcase(String.trim(value)) do
-      "notification" ->
-        1
+  # 更新请求中的 null 表示保留现有类型；创建时再补齐 Native 默认值。
+  defp put_normalized_attr(normalized, :notice_type, nil), do: normalized
 
-      "notice" ->
-        1
+  defp put_normalized_attr(normalized, :notice_type, value) when is_integer(value),
+    do: Map.put(normalized, :notice_type, Integer.to_string(value))
 
-      "announcement" ->
-        2
-
-      "bulletin" ->
-        2
-
-      value ->
-        case Integer.parse(value) do
-          {number, ""} -> number
-          _ -> value
-        end
-    end
-  end
+  defp put_normalized_attr(normalized, key, value),
+    do: Map.put(normalized, key, normalize_attr(key, value))
 
   defp normalize_attr(:status, value) when is_boolean(value), do: if(value, do: 1, else: 0)
   defp normalize_attr(_key, value), do: value
@@ -368,10 +363,6 @@ defmodule KeystonePhoenix.Notice do
     names = creator_names(notices)
     Enum.map(notices, &native_notice_to_map(&1, names))
   end
-
-  defp native_notice_type(1), do: "notification"
-  defp native_notice_type(2), do: "announcement"
-  defp native_notice_type(type), do: to_string(type)
 
   defp creator_names(notices) do
     notices
@@ -401,7 +392,7 @@ defmodule KeystonePhoenix.Notice do
       [notice],
       ilike(notice.notice_title, ^pattern) or
         ilike(notice.notice_content, ^pattern) or
-        ilike(fragment("?::text", notice.notice_type), ^pattern)
+        ilike(notice.notice_type, ^pattern)
     )
   end
 

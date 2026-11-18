@@ -228,6 +228,124 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
   end
 
   @tag :integration
+  test "公告类型按 Native 字符串语义创建、更新、筛选和回读" do
+    suffix = System.unique_integer([:positive])
+    title = "HTTP 类型公告 #{suffix}"
+    custom_type = "custom.notice.#{suffix}"
+    max_type = String.duplicate("x", 32)
+
+    default_response =
+      post(authorized(build_conn(), admin_token()), "/api/v1/notices", %{
+        "title" => "#{title} 默认",
+        "content" => "默认类型",
+        "noticeType" => nil
+      })
+
+    assert default_response.status == 201
+    assert json_response(default_response, 201)["data"]["noticeType"] == "NOTICE"
+
+    empty_response =
+      post(authorized(build_conn(), admin_token()), "/api/v1/notices", %{
+        "title" => "#{title} 空类型",
+        "content" => "空字符串",
+        "noticeType" => ""
+      })
+
+    assert empty_response.status == 201
+    assert json_response(empty_response, 201)["data"]["noticeType"] == ""
+
+    whitespace_response =
+      post(authorized(build_conn(), admin_token()), "/api/v1/notices", %{
+        "title" => "#{title} 空白类型",
+        "content" => "空白字符串",
+        "noticeType" => "  "
+      })
+
+    assert whitespace_response.status == 201
+    assert json_response(whitespace_response, 201)["data"]["noticeType"] == "  "
+
+    token = admin_token()
+
+    create_response =
+      post(authorized(build_conn(), token), "/api/v1/notices", %{
+        "title" => title,
+        "content" => "自由类型内容",
+        "noticeType" => custom_type
+      })
+
+    assert create_response.status == 201
+    created = json_response(create_response, 201)["data"]
+    assert created["noticeType"] == custom_type
+
+    assert put(authorized(build_conn(), token), "/api/v1/notices/#{created["id"]}", %{
+             "noticeType" => nil
+           }).status == 200
+
+    assert %{"success" => true, "data" => %{"items" => [filtered]}} =
+             json_response(
+               get(authorized(build_conn(), token), "/api/v1/notices/manage", %{
+                 "page" => "1",
+                 "size" => "20",
+                 "noticeType" => "notice.#{suffix}"
+               }),
+               200
+             )
+
+    assert filtered["id"] == created["id"]
+    assert filtered["noticeType"] == custom_type
+
+    assert %{"success" => true, "data" => %{"items" => [], "total" => 0}} =
+             json_response(
+               get(authorized(build_conn(), token), "/api/v1/notices/manage", %{
+                 "page" => "1",
+                 "size" => "20",
+                 "title" => "notice.#{suffix}"
+               }),
+               200
+             )
+
+    assert %{"success" => true, "data" => %{"items" => [keyword_match], "total" => 1}} =
+             json_response(
+               get(authorized(build_conn(), token), "/api/v1/notices/manage", %{
+                 "page" => "1",
+                 "size" => "20",
+                 "keyword" => "notice.#{suffix}"
+               }),
+               200
+             )
+
+    assert keyword_match["id"] == created["id"]
+
+    update_response =
+      put(authorized(build_conn(), token), "/api/v1/notices/#{created["id"]}", %{
+        "noticeType" => max_type
+      })
+
+    assert update_response.status == 200
+    assert json_response(update_response, 200)["data"]["noticeType"] == max_type
+
+    unicode_max = String.duplicate("e\u0301", 16)
+
+    unicode_response =
+      put(authorized(build_conn(), token), "/api/v1/notices/#{created["id"]}", %{
+        "noticeType" => unicode_max
+      })
+
+    assert unicode_response.status == 200
+    assert json_response(unicode_response, 200)["data"]["noticeType"] == unicode_max
+
+    too_long_response =
+      post(authorized(build_conn(), admin_token()), "/api/v1/notices", %{
+        "title" => "#{title} 超长类型",
+        "content" => "超出数据库列限制",
+        "noticeType" => "x" <> String.duplicate("e\u0301", 16)
+      })
+
+    assert too_long_response.status == 422
+    assert get_in(json_response(too_long_response, 422), ["error", "code"]) == "validation_failed"
+  end
+
+  @tag :integration
   test "管理资源新增保留 admin-web 传入的停用状态" do
     token = admin_token()
     suffix = System.unique_integer([:positive])

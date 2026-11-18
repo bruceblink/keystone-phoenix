@@ -10,7 +10,7 @@ defmodule KeystonePhoenix.NoticeTest do
     notice = %SysNotice{
       notice_id: notice_id,
       notice_title: "维护通知",
-      notice_type: 1,
+      notice_type: "custom.maintenance",
       notice_content: "服务将在周末维护。",
       status: 1,
       published: false,
@@ -23,7 +23,7 @@ defmodule KeystonePhoenix.NoticeTest do
     assert Notice.notice_to_map(notice) == %{
              "noticeId" => notice_id,
              "noticeTitle" => "维护通知",
-             "noticeType" => 1,
+             "noticeType" => "custom.maintenance",
              "noticeContent" => "服务将在周末维护。",
              "status" => 1,
              "published" => false,
@@ -34,6 +34,7 @@ defmodule KeystonePhoenix.NoticeTest do
            }
 
     assert Notice.notice_to_map(notice, %{notice_id => "admin"})["creatorName"] == "admin"
+    assert Notice.native_notice_to_map(notice)["noticeType"] == "custom.maintenance"
   end
 
   test "rejects non-map create and update inputs at the domain boundary" do

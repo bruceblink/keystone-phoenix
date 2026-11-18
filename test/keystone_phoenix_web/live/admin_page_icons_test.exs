@@ -88,7 +88,7 @@ defmodule KeystonePhoenixWeb.AdminPageIconsTest do
             "noticeId" => "notice-1",
             "noticeTitle" => "维护通知",
             "noticeContent" => "系统维护窗口",
-            "noticeType" => 1,
+            "noticeType" => "notification",
             "published" => true
           }
         ],

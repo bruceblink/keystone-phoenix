@@ -454,7 +454,7 @@ notice_entries = [
   %{
     notice_id: notice_dev_id,
     notice_title: "Keystone Phoenix 开发环境",
-    notice_type: 2,
+    notice_type: "announcement",
     notice_content: "这是本地开发环境公告。",
     status: 1,
     remark: "管理员",
@@ -465,7 +465,7 @@ notice_entries = [
   %{
     notice_id: notice_maintenance_id,
     notice_title: "系统维护通知",
-    notice_type: 1,
+    notice_type: "notification",
     notice_content: "请在维护窗口前保存工作。",
     status: 1,
     remark: "管理员",

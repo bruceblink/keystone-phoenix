@@ -240,7 +240,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Notices do
     filter = socket.assigns.notice_filter
 
     params = %{
-      "title" => filter["title"] || "",
+      "keyword" => filter["title"] || "",
       "published" => filter["published"] || "all",
       "pageNum" => page,
       "pageSize" => get_in(socket.assigns, [:page_sizes, "notices"]) || 20
