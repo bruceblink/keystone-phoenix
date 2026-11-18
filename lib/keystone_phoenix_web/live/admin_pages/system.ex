@@ -12,9 +12,18 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
   import KeystonePhoenixWeb.Live.AdminPages.ListToolbar, only: [list_toolbar: 1]
 
   def configs(assigns) do
+    # 配置写操作按各自权限显示，不使用覆盖多个资源的全局只读标志。
+    permissions = List.wrap(assigns[:permissions])
+    config_id = get_in(assigns, [:config_form, "configId"]) || ""
+    can_create_config = "config:create" in permissions
+    can_update_config = "config:update" in permissions
+    can_save_config = if config_id == "", do: can_create_config, else: can_update_config
+
     assigns =
       assigns
-      |> assign_new(:read_only, fn -> false end)
+      |> assign(:can_create_config, can_create_config)
+      |> assign(:can_update_config, can_update_config)
+      |> assign(:can_save_config, can_save_config)
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:config_filter, fn -> %{"keyword" => ""} end)
       |> assign_new(:config_page_num, fn -> 1 end)
@@ -39,7 +48,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
       </section>
       <%= if @active_modal == "config" do %>
         <.modal id="config-modal" title={if @config_form["configId"] == "", do: "新建配置", else: "编辑配置"} description="维护系统配置和值域。">
-    <form :if={!@read_only} aria-describedby="config-feedback" phx-submit="save-config">
+    <form :if={@can_save_config} aria-describedby="config-feedback" phx-submit="save-config">
         <input type="hidden" name="configId" value={@config_form["configId"]} />
         <div class="form-grid">
           <div><label for="config-name">配置名称</label><input id="config-name" name="configName" value={@config_form["configName"] || ""} required /></div>
@@ -51,11 +60,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
         </div>
         <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存配置</button><button type="button" class="secondary" phx-click="close-modal" phx-value-modal="config" phx-disable-with="处理中…">取消</button></div>
       </form>
+          <p :if={!@can_save_config} class="form-help" role="alert">当前账号已失去此项配置写权限，请关闭窗口后重试。</p>
         </.modal>
       <% end %>
       <section class="card configs-table-card table-card" aria-labelledby="configs-table-title">
         <.list_toolbar label="系统配置列表操作">
-          <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-config" phx-disable-with="处理中…"><.nav_icon name="plus" />新增配置</button>
+          <button :if={@can_create_config} type="button" class="button button-primary button-sm" phx-click="new-config" phx-disable-with="处理中…"><.nav_icon name="plus" />新增配置</button>
           <button type="button" class="button button-secondary button-sm" phx-click="refresh-config" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新配置</button>
         </.list_toolbar>
         <header class="card-header table-card-heading">
@@ -63,9 +73,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.System do
           <span class="badge badge-info">系统 API</span>
         </header>
         <p :if={@config_rows == []} class="configs-empty table-empty" role="status"><strong>暂无配置数据</strong><span>没有匹配的系统配置，调整筛选条件后重试。</span></p>
-        <div class="configs-table-wrap" role="region" tabindex="0" aria-label="系统配置列表"><table class="configs-table"><caption class="sr-only">系统配置列表</caption><thead><tr><th scope="col">配置键</th><th scope="col">配置值</th><th scope="col">说明</th><th scope="col">状态</th><th scope="col">更新时间</th><th scope="col">操作</th></tr></thead><tbody>
+        <div class="configs-table-wrap" role="region" tabindex="0" aria-label="系统配置列表"><table class="configs-table"><caption class="sr-only">系统配置列表</caption><thead><tr><th scope="col">配置键</th><th scope="col">配置值</th><th scope="col">说明</th><th scope="col">状态</th><th scope="col">更新时间</th><th :if={@can_update_config} scope="col">操作</th></tr></thead><tbody>
           <%= for config <- @config_rows do %>
-            <tr><td><code class="config-key"><%= config["configKey"] %></code></td><td class="config-value"><%= config["configValue"] || "—" %></td><td><%= config["remark"] || config["configName"] || "—" %></td><td><span class="badge badge-neutral"><%= if config["isAllowChange"] in [1, true, "1", "true"], do: "可修改", else: "只读" %></span></td><td class="config-time"><%= config["updateTime"] || config["updatedAt"] || "—" %></td><td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="edit-config" phx-value-config-id={config["configId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-danger button-sm" phx-click="delete-config" phx-value-config-id={config["configId"]} phx-confirm="确认删除此系统配置吗？" phx-disable-with="删除中…">删除</button></td></tr>
+            <tr><td><code class="config-key"><%= config["configKey"] %></code></td><td class="config-value"><%= config["configValue"] || "—" %></td><td><%= config["remark"] || config["configName"] || "—" %></td><td><span class="badge badge-neutral"><%= if config["isAllowChange"] in [1, true, "1", "true"], do: "可修改", else: "只读" %></span></td><td class="config-time"><%= config["updateTime"] || config["updatedAt"] || "—" %></td><td :if={@can_update_config} class="table-actions"><button type="button" class="button button-ghost button-sm" phx-click="edit-config" phx-value-config-id={config["configId"]} phx-disable-with="加载中…">编辑</button><button type="button" class="button button-danger button-sm" phx-click="delete-config" phx-value-config-id={config["configId"]} phx-confirm="确认删除此系统配置吗？" phx-disable-with="删除中…">删除</button></td></tr>
           <% end %>
         </tbody></table></div>
         <div class="table-card-footer">

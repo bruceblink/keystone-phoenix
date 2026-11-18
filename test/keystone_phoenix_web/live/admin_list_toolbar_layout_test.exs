@@ -11,7 +11,8 @@ defmodule KeystonePhoenixWeb.AdminListToolbarLayoutTest do
       render_component(&System.configs/1, %{
         config_rows: [],
         config_feedback: {:error, "加载失败"},
-        read_only: false
+        read_only: false,
+        permissions: ["config:create"]
       })
 
     assert_in_order(config_html, [
@@ -28,7 +29,8 @@ defmodule KeystonePhoenixWeb.AdminListToolbarLayoutTest do
       render_component(&System.configs/1, %{
         config_rows: [],
         config_feedback: nil,
-        read_only: true
+        read_only: true,
+        permissions: ["config:read"]
       })
 
     refute read_only_config_html =~ ~s(phx-click="new-config")

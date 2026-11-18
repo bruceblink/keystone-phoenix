@@ -149,9 +149,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
   end
 
   def handle_event("save-config", params, socket) do
-    if Support.permission_socket?(socket, "config:create") or
-         Support.permission_socket?(socket, "config:update") do
-      config_id = String.trim(params["configId"] || "")
+    # 保存时按配置 ID 区分新增和编辑，避免表单打开后权限改变仍能写入。
+    config_id = String.trim(params["configId"] || "")
+    permission = if config_id == "", do: "config:create", else: "config:update"
+
+    if Support.permission_socket?(socket, permission) do
       params = Support.normalize_options_param(params)
 
       result =
@@ -187,7 +189,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Config do
           {:noreply, assign(socket, config_feedback: Support.form_error(error))}
       end
     else
-      {:noreply, socket}
+      {:noreply,
+       assign(
+         socket,
+         config_feedback: Feedback.error(:permission_denied, "当前账号已失去此项配置写权限，请关闭窗口后重试")
+       )}
     end
   end
 

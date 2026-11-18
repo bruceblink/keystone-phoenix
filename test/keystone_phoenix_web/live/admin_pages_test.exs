@@ -377,6 +377,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
                :active_modal,
                "config"
              )
+             |> Map.put(:permissions, ["config:create", "config:update"])
            ) =~ "save-config"
 
     config_modal_html =
@@ -387,6 +388,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
           :active_modal,
           "config"
         )
+        |> Map.put(:permissions, ["config:create", "config:update"])
       )
 
     assert config_modal_html =~ ~s(phx-value-modal="config" phx-disable-with="处理中…">取消</button>)
@@ -478,7 +480,8 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
         ],
         config_form: %{"configId" => ""},
         config_feedback: nil,
-        read_only: false
+        read_only: false,
+        permissions: ["config:update"]
       })
 
     assert config_table_html =~ "delete-config"

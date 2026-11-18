@@ -493,7 +493,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "api-keys" -> %>
                       <.api_keys api_key_rows={@api_key_rows} api_key_total={@api_key_total} api_key_page_num={@page_nums["api-keys"]} api_key_page_size={@page_sizes["api-keys"]} api_key_feedback={@api_key_feedback} api_key_form={@api_key_form} api_key_query={@api_key_query} api_key_status={@api_key_status} issued_api_key={@issued_api_key} permissions={@permissions} active_modal={@active_modal} read_only={@read_only} />
                     <% "configs" -> %>
-                      <.configs config_rows={@config_rows} config_total={@config_total} config_page_num={@page_nums["configs"]} config_page_size={@page_sizes["configs"]} config_form={@config_form} config_feedback={@config_feedback} config_filter={@config_filter} active_modal={@active_modal} read_only={@read_only} />
+                      <.configs config_rows={@config_rows} config_total={@config_total} config_page_num={@page_nums["configs"]} config_page_size={@page_sizes["configs"]} config_form={@config_form} config_feedback={@config_feedback} config_filter={@config_filter} active_modal={@active_modal} permissions={@permissions} />
                     <% "dicts" -> %>
                       <.dicts dict_type_rows={@dict_type_rows} dict_data_rows={@dict_data_rows} dict_data_total={@dict_data_total} dict_type_form={@dict_type_form} dict_data_form={@dict_data_form} selected_dict_type={@selected_dict_type} dict_feedback={@dict_feedback} active_modal={@active_modal} dict_data_page_num={@page_nums["dict-data"]} dict_data_page_size={@page_sizes["dict-data"]} dict_type_filter={@dict_type_filter} read_only={@read_only} />
                     <% "notices" -> %>
