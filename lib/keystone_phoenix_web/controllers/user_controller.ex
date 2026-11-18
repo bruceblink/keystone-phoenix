@@ -133,7 +133,7 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Updates editable fields for a local user."
   def update(conn, %{"user_id" => user_id} = params) do
-    case native_user_params(params) do
+    case native_user_params(params, :update) do
       {:ok, attrs} ->
         if Authz.role_assignment_allowed?(conn.assigns.current_user, role_id_param(attrs)) do
           case User.update_user(user_id, attrs,
@@ -237,7 +237,15 @@ defmodule KeystonePhoenixWeb.UserController do
     NativeContract.user(legacy)
   end
 
-  defp native_user_params(params) do
+  defp native_user_params(params), do: native_user_params(params, :standard)
+
+  defp native_user_params(params, :update) do
+    with :ok <- NativeContract.validate_user_update_params(params) do
+      {:ok, NativeContract.user_update_params(params)}
+    end
+  end
+
+  defp native_user_params(params, _mode) do
     with :ok <- NativeContract.validate_user_params(params) do
       {:ok, NativeContract.user_params(params)}
     end
@@ -508,6 +516,12 @@ defmodule KeystonePhoenixWeb.UserController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "角色编码无效、不存在或已停用"))
+  end
+
+  defp render_error(conn, :invalid_dept_id) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(ApiResponse.error(:validation_failed, "部门编号无效"))
   end
 
   defp render_error(conn, reason)

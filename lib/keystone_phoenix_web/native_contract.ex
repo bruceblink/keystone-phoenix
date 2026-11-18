@@ -33,6 +33,26 @@ defmodule KeystonePhoenixWeb.NativeContract do
     |> maybe_boolean_status()
   end
 
+  @doc "将 Native 用户更新中的部门字段按 clearDept 规则转换为 Phoenix 字段。"
+  def user_update_params(params) when is_map(params) do
+    attrs = user_params(params)
+    clear_dept? = Map.get(params, "clearDept") == true
+
+    case Map.fetch(params, "deptId") do
+      {:ok, nil} -> if(clear_dept?, do: attrs, else: Map.delete(attrs, "deptId"))
+      {:ok, _dept_id} -> attrs
+      :error -> if(clear_dept?, do: Map.put(attrs, "deptId", nil), else: attrs)
+    end
+  end
+
+  @doc "校验 Native 用户更新中的非空部门编号。"
+  def validate_user_update_params(params) when is_map(params) do
+    with :ok <- validate_user_params(params),
+         :ok <- validate_department_id(Map.get(params, "deptId")) do
+      :ok
+    end
+  end
+
   @doc "校验 Native 用户角色字段格式；角色存在性由用户领域事务统一检查。"
   def validate_user_params(params) when is_map(params) do
     case Map.get(params, "roleCodes") do
@@ -211,6 +231,17 @@ defmodule KeystonePhoenixWeb.NativeContract do
         params
     end
   end
+
+  defp validate_department_id(nil), do: :ok
+
+  defp validate_department_id(value) when is_binary(value) do
+    case KeystonePhoenix.Params.parse_uuid(value) do
+      {:ok, _uuid} -> :ok
+      :error -> {:error, :invalid_dept_id}
+    end
+  end
+
+  defp validate_department_id(_value), do: {:error, :invalid_dept_id}
 
   defp maybe_boolean_integer(params, key) do
     case Map.fetch(params, key) do
