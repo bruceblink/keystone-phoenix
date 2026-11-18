@@ -175,6 +175,9 @@ defmodule KeystonePhoenixWeb.ApiKeyController do
         :api_key_expired ->
           {:conflict, :api_key_expired, "API Key 已过期，请新建密钥。"}
 
+        :api_key_scope_unavailable ->
+          {:unprocessable_entity, :api_key_scope_unavailable, "原授权范围已不可用，请重新配置权限。"}
+
         :not_found ->
           {:not_found, :resource_not_found, "API Key 不存在"}
 

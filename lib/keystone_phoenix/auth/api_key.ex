@@ -176,7 +176,9 @@ defmodule KeystonePhoenix.Auth.ApiKey do
 
         permissions = Menu.permissions_for_user(user)
         scopes = current.scopes |> split_scopes() |> intersect_permissions(permissions)
-        if scopes == [], do: Repo.rollback(:scope_exceeds_permissions)
+
+        # 全部旧范围均已失效时保留旧记录，并返回可单独定位的业务原因。
+        if scopes == [], do: Repo.rollback(:api_key_scope_unavailable)
 
         replacement =
           issue_locked!(

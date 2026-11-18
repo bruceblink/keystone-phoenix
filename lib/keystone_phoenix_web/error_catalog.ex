@@ -145,6 +145,11 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       retryable: false,
       message_key: "error.api_key_expired"
     },
+    "api_key_scope_unavailable" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.api_key_scope_unavailable"
+    },
     "service_unavailable" => %{status: 503, retryable: true, message_key: "service.unavailable"},
     "authorization_unavailable" => %{
       status: 503,

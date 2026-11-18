@@ -243,6 +243,48 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
     assert Repo.aggregate(from(key in Key, where: key.user_id == ^user.user_id), :count, :id) == 1
   end
 
+  @tag :integration
+  test "rotation keeps only current scopes and rolls back when none remain", %{conn: conn} do
+    # 删除一项角色后轮换；恢复角色也不能扩张已经缩小的替代密钥范围。
+    primary = create_role(["api-key:create", "api-key:rotate", "user:read"])
+    secondary = create_role(["user:update"])
+    user = create_multi_role_user(primary, secondary)
+    token = step_up_token(user)
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{token}")
+
+    assert {:ok, issued} =
+             ApiKey.issue(user.user_id, "scope worker", ["user:read", "user:update"])
+
+    Repo.delete_all(
+      from membership in SysUserRole,
+        where: membership.user_id == ^user.user_id and membership.role_id == ^secondary.role_id
+    )
+
+    response = post(authorized_conn, "/api/v1/api-keys/#{issued.id}/rotate", %{})
+
+    assert %{"id" => replacement_id, "apiKey" => replacement_key, "scopes" => ["user:read"]} =
+             json_response(response, 200)["data"]
+
+    assert Repo.get!(Key, issued.id).rotated_to == replacement_id
+    Repo.insert!(%SysUserRole{user_id: user.user_id, role_id: secondary.role_id})
+    assert {:ok, principal} = ApiKey.authenticate(replacement_key)
+    assert principal.scopes == ["user:read"]
+
+    permission = Repo.get_by!(SysPermission, permission: "user:read")
+
+    Repo.delete_all(
+      from binding in SysRolePermission,
+        where:
+          binding.role_id == ^primary.role_id and
+            binding.permission_id == ^permission.permission_id
+    )
+
+    rejected = post(authorized_conn, "/api/v1/api-keys/#{replacement_id}/rotate", %{})
+    assert get_in(json_response(rejected, 422), ["error", "code"]) == "api_key_scope_unavailable"
+    assert Repo.get!(Key, replacement_id).revoked_at == nil
+    assert Repo.aggregate(from(key in Key, where: key.user_id == ^user.user_id), :count, :id) == 2
+  end
+
   defp create_user(permissions) do
     role = create_role(permissions)
     create_user_for_role(role)

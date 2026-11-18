@@ -97,6 +97,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Feedback do
   defp code_for_reason(:api_key_expiry_invalid), do: :api_key_expiry_invalid
   defp code_for_reason(:api_key_expiry_out_of_range), do: :api_key_expiry_out_of_range
   defp code_for_reason(:api_key_expired), do: :api_key_expired
+  defp code_for_reason(:api_key_scope_unavailable), do: :api_key_scope_unavailable
 
   defp code_for_reason(reason)
        when reason in [
@@ -153,6 +154,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Feedback do
     do: "API Key 到期时间必须晚于当前时间且不超过 90 天。"
 
   defp message_for_reason(:api_key_expired), do: "API Key 已过期，请新建密钥。"
+  defp message_for_reason(:api_key_scope_unavailable), do: "原授权范围已不可用，请重新配置权限。"
 
   defp message_for_reason(:role_codes_unsupported), do: "角色编码不受支持"
   defp message_for_reason(:mfa_not_enrolled), do: "MFA 状态不满足当前操作"

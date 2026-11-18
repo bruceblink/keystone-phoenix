@@ -63,6 +63,7 @@
 | `api_key_expiry_invalid` | 422 | API Key 到期时间格式无法解析 | 重新选择有效的到期时间 |
 | `api_key_expiry_out_of_range` | 422 | API Key 到期时间不晚于当前时间或超过 90 天 | 选择当前时间之后、90 天以内的时间 |
 | `api_key_expired` | 409 | 已过期的 API Key 不能轮换 | 新建 API Key |
+| `api_key_scope_unavailable` | 422 | API Key 轮换时原授权范围均不再属于持有人 | 恢复所需权限后重试，或新建 API Key |
 | `service_unavailable` | 503 | 服务暂时不能处理请求，但不属于特定授权状态 | 按退避策略重试 |
 | `authorization_unavailable` | 503 | 认证、授权或其依赖状态暂时不可用 | 按退避策略重试；见兼容范围 |
 | `internal_error` | 500 | 未分类的服务端处理失败 | 记录请求标识，避免盲目重复有副作用的请求 |
