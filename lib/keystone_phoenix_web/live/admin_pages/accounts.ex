@@ -13,7 +13,6 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
   def users(assigns) do
     assigns =
       assigns
-      |> assign_new(:read_only, fn -> false end)
       |> assign_new(:active_modal, fn -> nil end)
       |> assign_new(:page_num, fn -> 1 end)
       |> assign_new(:page_size, fn -> 50 end)
@@ -22,6 +21,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       |> assign_new(:user_query, fn -> "" end)
       |> assign_new(:user_display_name_query, fn -> "" end)
       |> assign_new(:role_rows, fn -> [] end)
+      |> assign_new(:role_directory_feedback, fn -> nil end)
       |> assign_new(:permissions, fn -> [] end)
       |> assign_new(:user_import_upload, fn -> nil end)
       |> assign_new(:user_import_result, fn -> nil end)
@@ -52,7 +52,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       <% end %>
       <%= if @active_modal == "user" do %>
         <.modal id="user-modal" title={if @user_form["userId"] == "", do: "新建用户", else: "编辑用户"} description="维护账号资料、组织归属和登录权限。">
-      <form :if={!@read_only} aria-describedby="user-feedback" phx-submit="save-user">
+      <form :if={user_form_allowed?(@user_form, @permissions)} id="user-form" aria-describedby="user-feedback" phx-submit="save-user">
         <input type="hidden" name="userId" value={@user_form["userId"]} />
         <div class="form-grid">
           <div><label for="user-username">用户名</label><input id="user-username" name="username" value={@user_form["username"] || ""} required /></div>
@@ -62,11 +62,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <div><label for="user-post">岗位 UUID</label><input id="user-post" name="postId" value={@user_form["postId"] || ""} placeholder="可选" /></div>
           <div><label for="user-email">邮箱</label><input id="user-email" type="email" name="email" value={@user_form["email"] || ""} /></div>
           <div><label for="user-phone">联系电话</label><input id="user-phone" name="phoneNumber" value={@user_form["phoneNumber"] || ""} /></div>
-          <fieldset class="wide user-role-picker"><legend>角色</legend><input type="hidden" name="roleCodes[]" value="" /><div class="user-role-options"><%= for role <- enabled_roles(@role_rows) do %><% role_code = role_code(role) %><label class="checkbox-label"><input type="checkbox" name="roleCodes[]" value={role_code} checked={role_code_selected?(@user_form["roleCodes"], role_code)} /><span><%= role["roleName"] || role["name"] || role_code %></span><code><%= role_code %></code></label><% end %></div><p :if={enabled_roles(@role_rows) == []} class="form-help" role="status">没有可选择的启用角色。</p><small>角色来自当前账号可配置的启用角色；未选择角色会清空用户角色。</small></fieldset>
+          <%= if user_role_assignment_allowed?(@permissions) do %>
+            <%= if @role_directory_feedback do %>
+              <p id="user-role-feedback" class={Feedback.class(@role_directory_feedback)} role={Feedback.role(@role_directory_feedback)} aria-live={Feedback.live(@role_directory_feedback)}><%= Feedback.message(@role_directory_feedback) %><%= if @user_form["userId"] in [nil, ""], do: "暂不能创建用户。", else: "保存资料时会保留原角色。" %></p>
+            <% else %>
+              <fieldset class="wide user-role-picker"><legend>角色</legend><input type="hidden" name="roleCodes[]" value="" /><div class="user-role-options"><%= for role <- enabled_roles(@role_rows) do %><% role_code = role_code(role) %><label class="checkbox-label"><input type="checkbox" name="roleCodes[]" value={role_code} checked={role_code_selected?(@user_form["roleCodes"], role_code)} /><span><%= role["roleName"] || role["name"] || role_code %></span><code><%= role_code %></code></label><% end %></div><p :if={enabled_roles(@role_rows) == []} class="form-help" role="status">没有可选择的启用角色。</p><small>角色来自当前账号可配置的启用角色；未选择角色会清空用户角色。</small></fieldset>
+            <% end %>
+          <% else %>
+            <p id="user-role-preserved" class="form-help" role="status">当前账号没有同时具备角色读取和分配权限；<%= if @user_form["userId"] in [nil, ""], do: "新用户将以未分配角色状态创建。", else: "保存资料时会保留原角色。" %></p>
+          <% end %>
           <div class="wide"><label for="user-remark">备注</label><textarea id="user-remark" name="remark"><%= @user_form["remark"] || "" %></textarea></div>
         </div>
-        <div class="form-options"><label><input type="checkbox" name="enabled" checked={@user_form["enabled"] in [true, 1, "1", "on"]} />账号启用</label><label :if={@user_form["userId"] != ""}><input type="checkbox" name="clearDept" checked={@user_form["clearDept"] in [true, 1, "1", "on"]} />清除部门归属</label></div>
-        <div class="form-actions"><button type="submit" phx-disable-with="保存中…">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="user" phx-disable-with="处理中…">取消编辑</button></div>
+        <div class="form-options"><label><input type="hidden" name="enabled" value="false" /><input type="checkbox" name="enabled" value="true" checked={@user_form["enabled"] in [true, 1, "1", "on"]} />账号启用</label><label :if={@user_form["userId"] != ""}><input type="checkbox" name="clearDept" checked={@user_form["clearDept"] in [true, 1, "1", "on"]} />清除部门归属</label></div>
+        <div class="form-actions"><button type="submit" disabled={user_creation_blocked?(@user_form, @permissions, @role_directory_feedback)} phx-disable-with="保存中…">保存用户</button><button :if={@user_form["userId"] != ""} type="button" class="secondary" phx-click="close-modal" phx-value-modal="user" phx-disable-with="处理中…">取消编辑</button></div>
       </form>
         </.modal>
       <% end %>
@@ -113,10 +121,10 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       <span id="user-download-hook" phx-hook="DownloadFile" hidden></span>
       <section class="card table-card users-table-card" aria-labelledby="users-table-title">
         <.list_toolbar label="用户列表操作">
-          <button :if={!@read_only} type="button" class="button button-primary refresh" phx-click="new-user" phx-disable-with="处理中…"><.nav_icon name="plus" />新增用户</button>
-          <button :if={!@read_only and "user:import" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="new-user-import" phx-disable-with="处理中…"><.nav_icon name="upload" />导入 Excel</button>
+          <button :if={"user:create" in @permissions} type="button" class="button button-primary refresh" phx-click="new-user" phx-disable-with="处理中…"><.nav_icon name="plus" />新增用户</button>
+          <button :if={"user:import" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="new-user-import" phx-disable-with="处理中…"><.nav_icon name="upload" />导入 Excel</button>
           <button :if={"user:export" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="export-users" phx-disable-with="导出中…"><.nav_icon name="download" />导出 Excel</button>
-          <button :if={!@read_only and "user:delete" in @permissions} type="button" class="button button-danger refresh danger-action" phx-click="delete-users" phx-value-user-ids={Enum.join(@selected_user_ids, ",")} phx-confirm="确认删除选中的用户吗？" disabled={@selected_user_ids == []} phx-disable-with="删除中…">删除用户（<%= length(@selected_user_ids) %>）</button>
+          <button :if={"user:delete" in @permissions} type="button" class="button button-danger refresh danger-action" phx-click="delete-users" phx-value-user-ids={Enum.join(@selected_user_ids, ",")} phx-confirm="确认删除选中的用户吗？" disabled={@selected_user_ids == []} phx-disable-with="删除中…">删除用户（<%= length(@selected_user_ids) %>）</button>
           <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新列表</button>
         </.list_toolbar>
         <div class="card-header">
@@ -132,12 +140,12 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
         <% else %>
           <div class="users-table-wrap" role="region" tabindex="0" aria-label="用户列表"><table class="users-table"><caption class="sr-only">用户列表</caption>
               <% all_selected = Enum.all?(page_user_rows, &(to_string(&1["userId"]) in @selected_user_ids)) %>
-              <thead><tr><th scope="col"><input type="checkbox" aria-label="选择当前页用户" checked={all_selected} phx-click="toggle-all-user-selection" phx-value-selected={if all_selected, do: "false", else: "true"} /></th><th scope="col">用户</th><th scope="col">UUID</th><th scope="col">部门</th><th scope="col">岗位</th><th scope="col">角色</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
+              <thead><tr><th scope="col"><input :if={"user:delete" in @permissions} type="checkbox" aria-label="选择当前页用户" checked={all_selected} phx-click="toggle-all-user-selection" phx-value-selected={if all_selected, do: "false", else: "true"} /></th><th scope="col">用户</th><th scope="col">UUID</th><th scope="col">部门</th><th scope="col">岗位</th><th scope="col">角色</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
               <tbody>
                 <%= for user <- page_user_rows do %>
                   <tr>
-                    <td><input type="checkbox" aria-label={"选择用户 #{user["username"]}"} checked={to_string(user["userId"]) in @selected_user_ids} phx-click="toggle-user-selection" phx-value-user-id={user["userId"]} phx-value-selected={if to_string(user["userId"]) in @selected_user_ids, do: "false", else: "true"} /></td><td><div class="user-cell"><span class="user-cell-avatar"><%= String.first(user["nickname"] || user["username"] || "U") %></span><span><strong><%= user["nickname"] || "" %></strong><small><%= user["username"] %></small></span></div></td><td><code class="user-uuid"><%= user["userId"] %></code></td><td><%= user["deptName"] || "" %></td><td><%= user["postName"] || "" %></td><td><%= user["roleName"] || "" %></td><td><span class={"status-badge #{Status.normal_paused(user["status"])}"}><%= if user["status"] == 1, do: "正常", else: "停用" %></span></td>
-                    <td :if={!@read_only} class="table-actions"><button type="button" class="button button-ghost refresh" phx-click="edit-user" phx-value-user-id={user["userId"]} phx-disable-with="加载中…">编辑</button></td>
+                    <td><input :if={"user:delete" in @permissions} type="checkbox" aria-label={"选择用户 #{user["username"]}"} checked={to_string(user["userId"]) in @selected_user_ids} phx-click="toggle-user-selection" phx-value-user-id={user["userId"]} phx-value-selected={if to_string(user["userId"]) in @selected_user_ids, do: "false", else: "true"} /></td><td><div class="user-cell"><span class="user-cell-avatar"><%= String.first(user["nickname"] || user["username"] || "U") %></span><span><strong><%= user["nickname"] || "" %></strong><small><%= user["username"] %></small></span></div></td><td><code class="user-uuid"><%= user["userId"] %></code></td><td><%= user["deptName"] || "" %></td><td><%= user["postName"] || "" %></td><td><%= user["roleName"] || "" %></td><td><span class={"status-badge #{Status.normal_paused(user["status"])}"}><%= if user["status"] == 1, do: "正常", else: "停用" %></span></td>
+                    <td class="table-actions"><button :if={"user:update" in @permissions} type="button" class="button button-ghost refresh" phx-click="edit-user" phx-value-user-id={user["userId"]} phx-disable-with="加载中…">编辑</button></td>
                   </tr>
                 <% end %>
               </tbody>
@@ -159,6 +167,20 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
       )
 
   defp role_code(role), do: to_string(role["roleKey"] || role["code"] || "")
+
+  # 角色相关字段只在表单类型和当前权限都匹配时提交。
+  defp user_form_allowed?(form, permissions) do
+    permission = if form["userId"] in [nil, ""], do: "user:create", else: "user:update"
+    permission in List.wrap(permissions)
+  end
+
+  defp user_role_assignment_allowed?(permissions),
+    do: "role:read" in List.wrap(permissions) and "role:assign" in List.wrap(permissions)
+
+  defp user_creation_blocked?(form, permissions, role_directory_feedback),
+    do:
+      form["userId"] in [nil, ""] and user_role_assignment_allowed?(permissions) and
+        not is_nil(role_directory_feedback)
 
   defp role_code_selected?(value, code) do
     value

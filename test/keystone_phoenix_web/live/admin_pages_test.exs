@@ -248,6 +248,7 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       dept_rows: [],
       post_rows: [],
       role_rows: [],
+      permissions: ["user:create", "role:read", "role:assign"],
       profile_form: %{
         "nickname" => "",
         "email" => "",
@@ -259,19 +260,8 @@ defmodule KeystonePhoenixWeb.AdminPagesTest do
       profile_feedback: nil
     }
 
-    account_modal_assigns =
-      Map.put(
-        Map.take(account_assigns, [
-          :user_rows,
-          :user_form,
-          :user_feedback,
-          :dept_rows,
-          :post_rows,
-          :role_rows
-        ]),
-        :active_modal,
-        "user"
-      )
+    # 该表单需要具备新增用户及角色配置权限的渲染数据。
+    account_modal_assigns = Map.put(account_assigns, :active_modal, "user")
 
     assert render_component(&Accounts.users/1, account_modal_assigns) =~ "save-user"
 

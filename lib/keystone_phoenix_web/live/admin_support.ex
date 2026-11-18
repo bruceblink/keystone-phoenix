@@ -15,6 +15,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.Live.AdminPages.Forms
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationData
+  alias KeystonePhoenixWeb.Live.AdminPages.RoleDirectory
   alias KeystonePhoenixWeb.Live.AdminPages.Pagination
   alias KeystonePhoenix.User
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
@@ -60,12 +61,14 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def load_dashboard do
     logs = load_logs()
     dictionary = load_dictionary("")
+    role_directory = RoleDirectory.load([])
 
     %{
       user_rows: load_users(),
       dept_rows: load_depts(),
       post_rows: load_posts(),
-      role_rows: load_roles(),
+      role_rows: role_directory.rows,
+      role_directory_feedback: role_directory.feedback,
       selected_role_ids: [],
       selected_role_id: "",
       selected_role_name: "",
@@ -93,6 +96,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       dept_rows: [],
       post_rows: [],
       role_rows: [],
+      role_directory_feedback: nil,
       selected_role_ids: [],
       selected_role_id: "",
       selected_role_name: "",
@@ -121,10 +125,16 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     dictionary = if access["dicts"], do: load_dictionary("", options), else: empty_dictionary()
     logs = logs_for_permissions(permissions, options, %{})
 
+    role_directory =
+      if "role:read" in permissions,
+        do: RoleDirectory.load(options),
+        else: RoleDirectory.empty()
+
     dashboard
     |> Map.put(:dept_rows, if(access["depts"], do: load_depts_for_user(user), else: []))
     |> Map.put(:post_rows, if(access["posts"], do: load_posts(options), else: []))
-    |> Map.put(:role_rows, if(access["roles"], do: load_roles(options), else: []))
+    |> Map.put(:role_rows, role_directory.rows)
+    |> Map.put(:role_directory_feedback, role_directory.feedback)
     |> Map.put(:menu_rows, if(access["menus"], do: load_menus(options), else: []))
     |> Map.put(:user_rows, if(access["users"], do: load_users_for_user(user), else: []))
     |> Map.put(:config_rows, if(access["configs"], do: load_configs(options), else: []))

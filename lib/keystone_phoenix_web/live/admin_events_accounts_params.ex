@@ -46,8 +46,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEventsAccountsParams do
     end
   end
 
-  # Phoenix 复选框提交 on，直接事件测试可能提交布尔值或数字。
-  defp truthy?(value), do: value in [true, 1, "1", "on"]
+  # 兼容复选框的隐藏 false 值和已选值重复提交。
+  defp truthy?(values) when is_list(values), do: Enum.any?(values, &truthy?/1)
+
+  defp truthy?(value), do: value in [true, 1, "1", "true", "on"]
 
   # null 表示编辑时保留原角色；空数组才表示主动清空角色。
   defp normalize_role_codes(nil, params), do: {:ok, params}

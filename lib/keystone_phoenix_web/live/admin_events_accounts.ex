@@ -205,57 +205,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("save-user", params, socket) do
-    if Support.permission_socket?(socket, "user:create") or
-         Support.permission_socket?(socket, "user:update") do
-      case AccountParams.normalize_user_params(params) do
-        {:ok, params} ->
-          user_id = String.trim(params["userId"] || "")
-          params = if user_id == "", do: params, else: Map.delete(params, "password")
-
-          result =
-            cond do
-              user_id == "" and
-                  Authz.scope_allowed?(socket.assigns.current_user, :dept, params["deptId"]) ->
-                User.create_user(params, authorization: authorization(socket, "user:create"))
-
-              user_id != "" and
-                  Authz.scope_allowed?(
-                    socket.assigns.current_user,
-                    :user_update,
-                    user_id,
-                    %{attrs: params}
-                  ) ->
-                User.update_user(user_id, params,
-                  authorization: authorization(socket, "user:update")
-                )
-
-              true ->
-                {:error, :data_scope_denied}
-            end
-
-          case result do
-            {:ok, _user} ->
-              {:noreply,
-               AccountsPagination.assign_reloaded(
-                 AccountReload.after_user_write(socket, "角色列表已刷新"),
-                 user_form: Support.empty_user_form(),
-                 active_modal: nil,
-                 user_feedback: if(user_id == "", do: "用户已创建", else: "用户已更新")
-               )}
-
-            {:error, :data_scope_denied} ->
-              {:noreply,
-               assign(socket, user_feedback: Feedback.error(:data_scope_denied, "没有数据权限"))}
-
-            error ->
-              {:noreply, assign(socket, user_feedback: Support.form_error(error))}
-          end
-
-        {:error, reason} ->
-          {:noreply, assign(socket, user_feedback: Support.form_error({:error, reason}))}
-      end
+    if user_creation_role_directory_unavailable?(params, socket) do
+      feedback = Feedback.error(:service_unavailable, "角色目录不可用，暂不能创建用户。请恢复后重试。")
+      {:noreply, assign(socket, user_feedback: feedback)}
     else
-      {:noreply, socket}
+      save_user(params, socket)
     end
   end
 
@@ -559,4 +513,70 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
       {:noreply, socket}
     end
   end
+
+  defp save_user(params, socket) do
+    if Support.permission_socket?(socket, "user:create") or
+         Support.permission_socket?(socket, "user:update") do
+      case AccountParams.normalize_user_params(params) do
+        {:ok, params} ->
+          user_id = String.trim(params["userId"] || "")
+          params = if user_id == "", do: params, else: Map.delete(params, "password")
+
+          result =
+            cond do
+              user_id == "" and
+                  Authz.scope_allowed?(socket.assigns.current_user, :dept, params["deptId"]) ->
+                User.create_user(params, authorization: authorization(socket, "user:create"))
+
+              user_id != "" and
+                  Authz.scope_allowed?(
+                    socket.assigns.current_user,
+                    :user_update,
+                    user_id,
+                    %{attrs: params}
+                  ) ->
+                User.update_user(user_id, params,
+                  authorization: authorization(socket, "user:update")
+                )
+
+              true ->
+                {:error, :data_scope_denied}
+            end
+
+          case result do
+            {:ok, _user} ->
+              {:noreply,
+               AccountsPagination.assign_reloaded(
+                 AccountReload.after_user_write(socket, "角色列表已刷新"),
+                 user_form: Support.empty_user_form(),
+                 active_modal: nil,
+                 user_feedback: if(user_id == "", do: "用户已创建", else: "用户已更新")
+               )}
+
+            {:error, :data_scope_denied} ->
+              {:noreply,
+               assign(socket, user_feedback: Feedback.error(:data_scope_denied, "没有数据权限"))}
+
+            error ->
+              {:noreply, assign(socket, user_feedback: Support.form_error(error))}
+          end
+
+        {:error, reason} ->
+          {:noreply, assign(socket, user_feedback: Support.form_error({:error, reason}))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # 角色读取和分配权限齐全时，目录失败必须阻止创建无角色账号。
+  defp user_creation_role_directory_unavailable?(params, socket) do
+    is_nil_or_blank?(params["userId"]) and
+      Support.permission_socket?(socket, "user:create") and
+      Support.permission_socket?(socket, "role:read") and
+      Support.permission_socket?(socket, "role:assign") and
+      not is_nil(socket.assigns[:role_directory_feedback])
+  end
+
+  defp is_nil_or_blank?(value), do: is_nil(value) or String.trim(to_string(value)) == ""
 end

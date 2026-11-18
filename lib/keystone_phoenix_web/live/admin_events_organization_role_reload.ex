@@ -14,11 +14,13 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleReload do
     case AdminReadSupport.roles(socket) do
       {:ok, rows} ->
         socket
-        |> assign(role_rows: rows)
+        |> assign(role_rows: rows, role_directory_feedback: nil)
         |> OrganizationRolePagination.refresh(1, success)
 
       {:error, reason} ->
-        assign(socket, role_feedback: Support.read_error_feedback(reason, message))
+        feedback = Support.read_error_feedback(reason, message)
+
+        assign(socket, role_feedback: feedback, role_directory_feedback: feedback)
     end
   end
 end
