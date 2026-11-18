@@ -86,12 +86,14 @@ defmodule KeystonePhoenixWeb.UserImportLiveTest do
                %{
                  "row" => 2,
                  "username" => duplicate_username,
-                 "reason" => "username already exists"
+                 "reason" => "username already exists",
+                 "code" => "validation_failed"
                },
                %{
                  "row" => 3,
                  "username" => unsafe_username,
-                 "reason" => "用户名：用户名只允许字母、数字和下划线，且首字符不能为数字"
+                 "reason" => "用户名：用户名只允许字母、数字和下划线，且首字符不能为数字",
+                 "code" => "validation_failed"
                }
              ]
            }
