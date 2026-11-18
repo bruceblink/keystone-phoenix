@@ -73,6 +73,67 @@ defmodule KeystonePhoenixWeb.AdminJobDeepLinkTest do
   end
 
   @tag :integration
+  test "任务成功翻页后清除批量选择", %{conn: conn, admin: admin} do
+    suffix = System.unique_integer([:positive])
+    keyword = "分页选择任务 #{suffix}"
+
+    for index <- 1..21 do
+      insert_job(KeystonePhoenix.Identity.v7(), "#{keyword} #{index}")
+    end
+
+    {:ok, view, _html} = live(conn, "/")
+    login(view, admin)
+    render_click(view, "show-panel", %{"panel" => "jobs"})
+    render_submit(view, "filter-jobs", %{"jobKeyword" => keyword})
+    render_click(view, "toggle-all-job-selection", %{"selected" => "true"})
+
+    selected_ids = live_socket(view).assigns.selected_job_ids
+    assert length(selected_ids) == 20
+
+    render_click(view, "paginate", %{"panel" => "jobs", "page" => "2"})
+
+    assert live_socket(view).assigns.page_nums["jobs"] == 2
+    assert live_socket(view).assigns.selected_job_ids == []
+  end
+
+  @tag :integration
+  test "任务翻页读取失败时保留当前页、行和批量选择", %{conn: conn, admin: admin} do
+    suffix = System.unique_integer([:positive])
+    keyword = "分页失败任务 #{suffix}"
+
+    for index <- 1..21 do
+      insert_job(KeystonePhoenix.Identity.v7(), "#{keyword} #{index}")
+    end
+
+    {:ok, view, _html} = live(conn, "/")
+    login(view, admin)
+    render_click(view, "show-panel", %{"panel" => "jobs"})
+    render_submit(view, "filter-jobs", %{"jobKeyword" => keyword})
+    render_click(view, "toggle-all-job-selection", %{"selected" => "true"})
+
+    old_rows = live_socket(view).assigns.job_rows
+    old_selected_ids = live_socket(view).assigns.selected_job_ids
+    old_uri = live_socket(view).assigns.current_uri
+    assert length(old_rows) == 20
+    assert length(old_selected_ids) == 20
+
+    # 临时隐藏查询表，触发真实 PostgreSQL 读取失败，再在测试事务内恢复。
+    Repo.query!("ALTER TABLE sys_job RENAME TO sys_job_unavailable")
+
+    try do
+      html = render_click(view, "paginate", %{"panel" => "jobs", "page" => "2"})
+
+      assert html =~ "任务列表读取失败，请重试"
+      assert live_socket(view).assigns.page_nums["jobs"] == 1
+      assert live_socket(view).assigns.job_rows == old_rows
+      assert live_socket(view).assigns.selected_job_ids == old_selected_ids
+      assert live_socket(view).assigns.current_uri == old_uri
+    after
+      Repo.query!("ALTER TABLE sys_job_unavailable RENAME TO sys_job")
+    end
+  end
+
+  @tag :integration
   test "首次深链接读取失败时显示重试入口，任务出现后可以重新读取", %{
     conn: conn,
     admin: admin

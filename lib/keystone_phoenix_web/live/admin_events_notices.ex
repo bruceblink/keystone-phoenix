@@ -191,8 +191,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Notices do
 
   def handle_event("paginate-notices", %{"page" => page}, socket) do
     case Integer.parse(to_string(page)) do
-      {page, ""} when page > 0 -> reload_notice_page(socket, page, nil)
-      _ -> {:noreply, socket}
+      {page, ""} when page > 0 ->
+        reload_notice_page(socket, page, nil, [], selected_notice_ids: [])
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -220,7 +223,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Notices do
   def handle_event("delete-notice", %{"notice-id" => notice_id}, socket),
     do: handle_event("delete-notices", %{"notice-ids" => notice_id}, socket)
 
-  defp reload_notice_page(socket, page, success, extra \\ []) do
+  # success_extra 仅在目标页读取成功后应用，分页失败时保留原页选择。
+  defp reload_notice_page(socket, page, success, extra \\ [], success_extra \\ []) do
     case load_notice_page(socket, page) do
       {:ok, result} ->
         attrs = [
@@ -232,7 +236,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Notices do
           page_sizes: Map.put(socket.assigns.page_sizes, "notices", result.size)
         ]
 
-        {:noreply, assign(socket, Keyword.merge(attrs, extra))}
+        {:noreply, assign(socket, attrs |> Keyword.merge(extra) |> Keyword.merge(success_extra))}
 
       {:error, reason} ->
         message =

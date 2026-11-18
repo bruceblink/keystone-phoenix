@@ -227,6 +227,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
              "users",
              "posts",
              "roles",
+             "notices",
              "jobs",
              "job-logs",
              "configs",
@@ -240,8 +241,13 @@ defmodule KeystonePhoenixWeb.LoginLive do
            ] do
     case Integer.parse(to_string(page)) do
       {page, ""} when page > 0 ->
-        socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, panel, page))
-        dispatch_pagination(panel, page, socket)
+        if panel in ["jobs", "notices"] do
+          # 公告和任务页码由服务端查询成功后更新；失败时保留旧页和旧选择。
+          dispatch_pagination(panel, page, socket)
+        else
+          socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, panel, page))
+          dispatch_pagination(panel, page, socket)
+        end
 
       _ ->
         {:noreply, socket}
@@ -304,6 +310,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   defp dispatch_pagination("dict-data", page, socket),
     do: SystemEvents.handle_event("paginate-dict-data", %{"page" => page}, socket)
+
+  defp dispatch_pagination("notices", page, socket),
+    do: SystemEvents.handle_event("paginate-notices", %{"page" => page}, socket)
 
   defp dispatch_pagination("jobs", page, socket),
     do: OperationsEvents.handle_event("paginate-jobs", %{"page" => page}, socket)

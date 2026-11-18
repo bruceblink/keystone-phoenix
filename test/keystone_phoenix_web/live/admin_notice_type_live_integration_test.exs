@@ -2,8 +2,10 @@ defmodule KeystonePhoenixWeb.AdminNoticeTypeLiveIntegrationTest do
   use KeystonePhoenixWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
+  import KeystonePhoenixWeb.LiveAuthenticationTestSupport, only: [live_socket: 1]
 
   alias KeystonePhoenix.Notice
+  alias KeystonePhoenix.Notice.SysNotice
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
@@ -139,6 +141,75 @@ defmodule KeystonePhoenixWeb.AdminNoticeTypeLiveIntegrationTest do
   end
 
   @tag :integration
+  test "公告成功翻页后清除批量选择", %{conn: conn, admin: admin} do
+    suffix = System.unique_integer([:positive])
+    title_prefix = "分页选择公告 #{suffix}"
+
+    for index <- 1..21 do
+      insert_notice("#{title_prefix} #{index}")
+    end
+
+    {:ok, view, _html} = live(conn, "/")
+    login(view, admin)
+    render_click(view, "show-panel", %{"panel" => "notices"})
+    render_submit(view, "filter-notices", %{"noticeTitle" => title_prefix, "published" => "all"})
+    render_click(view, "toggle-all-notice-selection", %{"selected" => "true"})
+
+    assert length(live_socket(view).assigns.selected_notice_ids) == 20
+
+    render_click(
+      element(
+        view,
+        "nav.pagination button[phx-click='paginate'][phx-value-panel='notices'][phx-value-page='2']"
+      )
+    )
+
+    assert live_socket(view).assigns.page_nums["notices"] == 2
+    assert live_socket(view).assigns.selected_notice_ids == []
+  end
+
+  @tag :integration
+  test "公告翻页读取失败时保留当前页、行和批量选择", %{conn: conn, admin: admin} do
+    suffix = System.unique_integer([:positive])
+    title_prefix = "分页失败公告 #{suffix}"
+
+    for index <- 1..21 do
+      insert_notice("#{title_prefix} #{index}")
+    end
+
+    {:ok, view, _html} = live(conn, "/")
+    login(view, admin)
+    render_click(view, "show-panel", %{"panel" => "notices"})
+    render_submit(view, "filter-notices", %{"noticeTitle" => title_prefix, "published" => "all"})
+    render_click(view, "toggle-all-notice-selection", %{"selected" => "true"})
+
+    old_rows = live_socket(view).assigns.notice_rows
+    old_selected_ids = live_socket(view).assigns.selected_notice_ids
+    assert length(old_rows) == 20
+    assert length(old_selected_ids) == 20
+
+    # 临时隐藏查询表，触发真实 PostgreSQL 读取失败，再在测试事务内恢复。
+    Repo.query!("ALTER TABLE sys_notice RENAME TO sys_notice_unavailable")
+
+    try do
+      html =
+        render_click(
+          element(
+            view,
+            "nav.pagination button[phx-click='paginate'][phx-value-panel='notices'][phx-value-page='2']"
+          )
+        )
+
+      assert html =~ "公告列表刷新失败，旧列表仍保留。请点击“刷新公告”重试。"
+      assert live_socket(view).assigns.page_nums["notices"] == 1
+      assert live_socket(view).assigns.notice_rows == old_rows
+      assert live_socket(view).assigns.selected_notice_ids == old_selected_ids
+    after
+      Repo.query!("ALTER TABLE sys_notice_unavailable RENAME TO sys_notice")
+    end
+  end
+
+  @tag :integration
   test "公告已创建但列表刷新失败时关闭表单并保留可刷新的旧列表", %{
     conn: conn,
     admin: admin
@@ -193,6 +264,24 @@ defmodule KeystonePhoenixWeb.AdminNoticeTypeLiveIntegrationTest do
       "status" => "1",
       "remark" => ""
     }
+  end
+
+  defp insert_notice(title) do
+    %SysNotice{}
+    |> SysNotice.changeset(%{
+      notice_title: title,
+      notice_type: "announcement",
+      notice_content: "公告分页选择验收",
+      status: 1
+    })
+    |> Repo.insert!()
+  end
+
+  defp login(view, admin) do
+    render_submit(view, "login", %{
+      "username" => admin.username,
+      "password" => "Strong!123"
+    })
   end
 
   # 仅在隔离测试数据库中让写入触发重命名，随后列表查询会真实遇到缺失表。

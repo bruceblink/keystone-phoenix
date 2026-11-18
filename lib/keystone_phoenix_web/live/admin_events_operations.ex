@@ -458,14 +458,19 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
     }
   end
 
-  defp refresh_job_page(socket, page) do
+  defp refresh_job_page(socket, page, clear_selection? \\ false) do
     case ReadSupport.jobs_page(socket, job_page_params(socket, page, current_job_filter(socket))) do
       {:ok, result} ->
-        assign(socket,
+        attrs = [
           job_rows: result.rows,
           job_total: result.total,
           page_nums: Map.put(socket.assigns.page_nums, "jobs", page)
-        )
+        ]
+
+        # 分页成功后清除上一页的批量选择，避免操作不可见任务。
+        attrs = if clear_selection?, do: Keyword.put(attrs, :selected_job_ids, []), else: attrs
+
+        assign(socket, attrs)
         |> push_jobs_path(socket.assigns[:selected_job_id])
 
       {:error, reason} ->
@@ -476,7 +481,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   defp paginate_jobs(socket, page) do
     case Integer.parse(to_string(page)) do
       {page_number, ""} when page_number > 0 ->
-        {:noreply, refresh_job_page(socket, page_number)}
+        {:noreply, refresh_job_page(socket, page_number, true)}
 
       _ ->
         {:noreply, socket}
