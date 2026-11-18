@@ -5,7 +5,7 @@ defmodule KeystonePhoenixWeb.AdminMenuRoleRetryTest do
 
   alias KeystonePhoenix.{Identity, Menu, Repo, Role}
   alias KeystonePhoenix.Authz.{SysPermission, SysRolePermission}
-  alias KeystonePhoenix.Role.SysRole
+  alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.Menu.SysMenu
   alias KeystonePhoenix.User.SysUser
 
@@ -131,6 +131,40 @@ defmodule KeystonePhoenixWeb.AdminMenuRoleRetryTest do
              [[1]]
 
     assert Enum.map(Role.menu_ids_for_role(role.role_id), &to_string/1) == [saved_menu_id]
+  end
+
+  test "editing menu metadata preserves a visible disabled role binding", %{
+    conn: conn,
+    user: user
+  } do
+    # 已绑定的停用角色仍需展示，编辑资料时应保留勾选并正确提交。
+    role = insert_role(unique("disabled_menu_role"))
+    role |> Ecto.Changeset.change(status: 0) |> Repo.update!()
+
+    {:ok, menu} =
+      Menu.create_menu(
+        %{"code" => unique("disabled_role_menu"), "name" => "停用角色菜单", "menuType" => "MENU"},
+        authorization: %{principal: user, permission: "menu:create"}
+      )
+
+    Repo.insert!(%SysRoleMenu{role_id: role.role_id, menu_id: menu.menu_id})
+    {:ok, view} = login(conn, user)
+    render_click(view, "show-panel", %{"panel" => "menus"})
+    render_click(view, "edit-menu", %{"menu-id" => menu.menu_id})
+
+    assert has_element?(view, "#menu-modal input[value='#{role.role_key}'][checked]")
+    assert has_element?(view, "#menu-modal", "已停用")
+
+    render_submit(view, "save-menu", %{
+      "menuId" => menu.menu_id,
+      "code" => menu.menu_code,
+      "name" => "更新后的菜单",
+      "menuType" => "MENU",
+      "menuRoleCodes[]" => [role.role_key]
+    })
+
+    assert render(view) =~ "菜单已更新"
+    assert Repo.get_by!(SysRoleMenu, role_id: role.role_id, menu_id: menu.menu_id)
   end
 
   defp insert_role(role_code) do

@@ -143,6 +143,41 @@ defmodule KeystonePhoenixWeb.MenuManagementControllerTest do
            |> get_in(["message"]) == "角色编码无效"
   end
 
+  @tag :integration
+  test "menu roles can retain or remove existing disabled bindings but cannot add new ones" do
+    # 在真实 HTTP 入口验证失败回滚和保留原有停用角色的区别。
+    actor_role = insert_role(["menu:manage"])
+    existing = insert_role([], 0)
+    unbound = insert_role([], 0)
+    enabled = insert_role([])
+    user = insert_user(actor_role.role_id)
+    menu = insert_menu("existing_disabled_role", 1)
+    assign_menu(existing.role_id, menu.menu_id)
+    token = login(user)
+    path = "/api/v1/menus/#{menu.menu_id}/roles"
+    conn = fn -> authorized(build_conn(), token) end
+
+    assert json_response(get(conn.(), path), 200)["data"]["roleCodes"] == [existing.role_key]
+
+    assert json_response(
+             put(conn.(), path, %{"roleCodes" => [existing.role_key, enabled.role_key]}),
+             200
+           )["success"]
+
+    assert json_response(
+             put(conn.(), path, %{"roleCodes" => [existing.role_key, unbound.role_key]}),
+             422
+           )
+
+    assert Enum.sort(json_response(get(conn.(), path), 200)["data"]["roleCodes"]) ==
+             Enum.sort([existing.role_key, enabled.role_key])
+
+    assert json_response(put(conn.(), path, %{"roleCodes" => [enabled.role_key]}), 200)["success"]
+    assert json_response(get(conn.(), path), 200)["data"]["roleCodes"] == [enabled.role_key]
+    assert json_response(put(conn.(), path, %{"roleCodes" => [existing.role_key]}), 422)
+    assert json_response(get(conn.(), path), 200)["data"]["roleCodes"] == [enabled.role_key]
+  end
+
   defp insert_role(permissions, status \\ 1) do
     role =
       %SysRole{}

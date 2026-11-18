@@ -14,9 +14,17 @@ defmodule KeystonePhoenix.Menu.RoleAssignment do
   def replace(menu_id, role_codes, options) when is_list(role_codes) and is_list(options) do
     with :ok <- Command.authorize_resource(options, "menu:manage", :menu),
          {:ok, menu_id} <- parse_menu_id(menu_id),
-         {:ok, role_ids} <- role_ids(role_codes) do
+         {:ok, role_codes} <- normalize_role_codes(role_codes) do
       Repo.transaction(fn ->
         ensure_menu!(menu_id)
+
+        # 仅允许保留该菜单已有的停用角色，避免新增停用绑定或误删旧关系。
+        role_ids =
+          case role_ids(role_codes, menu_id) do
+            {:ok, ids} -> ids
+            {:error, reason} -> Repo.rollback(reason)
+          end
+
         Repo.delete_all(from(rm in SysRoleMenu, where: rm.menu_id == ^menu_id))
 
         if role_ids != [] do
@@ -83,26 +91,30 @@ defmodule KeystonePhoenix.Menu.RoleAssignment do
         from(menu in SysMenu, where: menu.menu_id == ^menu_id and menu.deleted == false)
       )
 
-  defp role_ids(role_codes) do
+  defp normalize_role_codes(role_codes) do
     role_codes = role_codes |> Enum.map(&to_string/1) |> Enum.uniq()
 
-    if Enum.any?(role_codes, &(&1 == "")) do
-      {:error, :invalid_role_codes}
-    else
-      roles =
-        from(role in SysRole,
-          where: role.role_key in ^role_codes and role.deleted == false and role.status == 1,
-          select: {role.role_key, role.role_id}
-        )
-        |> Repo.all()
+    if Enum.any?(role_codes, &(&1 == "")),
+      do: {:error, :invalid_role_codes},
+      else: {:ok, role_codes}
+  end
 
-      role_map = Map.new(roles)
+  defp role_ids(role_codes, menu_id) do
+    roles =
+      from(role in SysRole,
+        left_join: binding in SysRoleMenu,
+        on: binding.role_id == role.role_id and binding.menu_id == ^menu_id,
+        where:
+          role.role_key in ^role_codes and role.deleted == false and
+            (role.status == 1 or not is_nil(binding.role_id)),
+        select: {role.role_key, role.role_id}
+      )
+      |> Repo.all()
 
-      if map_size(role_map) == length(role_codes) do
-        {:ok, Enum.map(role_codes, &Map.fetch!(role_map, &1))}
-      else
-        {:error, :role_not_found}
-      end
-    end
+    role_map = Map.new(roles)
+
+    if map_size(role_map) == length(role_codes),
+      do: {:ok, Enum.map(role_codes, &Map.fetch!(role_map, &1))},
+      else: {:error, :role_not_found}
   end
 end

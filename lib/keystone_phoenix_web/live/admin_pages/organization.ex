@@ -319,14 +319,21 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
         </div>
         <fieldset :if={"menu:manage" in @permissions} id="menu-role-codes" class="menu-role-access">
           <legend>可访问角色</legend>
-          <% enabled_menu_roles = Enum.filter(@role_rows, &(&1["status"] in [1, "1", true])) %>
-          <%= if enabled_menu_roles == [] do %>
+          <%!-- 已绑定的停用角色可保留或移除，未绑定停用角色不能新增。 --%>
+          <% selected_codes = Enum.map(@menu_role_codes, &to_string/1) %>
+          <% visible_roles = Enum.filter(@role_rows, &(&1["status"] in [1, "1", true] or to_string(&1["roleKey"] || &1["code"]) in selected_codes)) %>
+          <% visible_codes = Enum.map(visible_roles, &to_string(&1["roleKey"] || &1["code"])) %>
+          <% missing_codes = selected_codes -- visible_codes %>
+          <%= if visible_roles == [] and missing_codes == [] do %>
             <p class="form-help">暂无启用角色可分配。</p>
           <% else %>
             <div class="menu-role-options">
-              <%= for role <- enabled_menu_roles do %>
+              <%= for role <- visible_roles do %>
                 <% role_code = role["roleKey"] || role["code"] %>
-                <label class="checkbox-label"><input type="checkbox" name="menuRoleCodes[]" value={role_code} checked={to_string(role_code) in Enum.map(@menu_role_codes, &to_string/1)} /><span><%= role["roleName"] || role["name"] || role_code %> <small><%= role_code %></small></span></label>
+                <label class="checkbox-label"><input type="checkbox" name="menuRoleCodes[]" value={role_code} checked={to_string(role_code) in selected_codes} /><span><%= role["roleName"] || role["name"] || role_code %> <small><%= role_code %><%= if role["status"] not in [1, "1", true], do: " · 已停用" %></small></span></label>
+              <% end %>
+              <%= for role_code <- missing_codes do %>
+                <label class="checkbox-label"><input type="checkbox" name="menuRoleCodes[]" value={role_code} checked /><span><%= role_code %> <small>角色详情不可读取</small></span></label>
               <% end %>
             </div>
           <% end %>
