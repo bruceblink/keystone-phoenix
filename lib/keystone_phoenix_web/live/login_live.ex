@@ -148,6 +148,9 @@ defmodule KeystonePhoenixWeb.LoginLive do
 
   def handle_event("retry-notifications", _params, socket), do: LoginNotifications.retry(socket)
 
+  def handle_event("paginate-notifications", params, socket),
+    do: LoginNotifications.change_page(params, socket)
+
   def handle_event("close-notifications", _params, socket), do: LoginNotifications.close(socket)
 
   def handle_event("back-notifications", _params, socket), do: LoginNotifications.back(socket)
@@ -450,7 +453,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <span class="context-kicker">Keystone</span><span class="context-separator">/</span>
                   </div>
                   <div class="topbar-actions">
-                    <.menu open={@notifications_open} loading={@notifications_loading} notifications={@in_app_notifications} unread_count={@notifications_unread_count} error={@notifications_error} read_error={@notification_read_error} read_error_action={@notification_read_error_action} read_error_label={@notification_read_error_label} selected={LoginNotifications.selected(@in_app_notifications, @selected_notification_id)} />
+                    <.menu open={@notifications_open} loading={@notifications_loading} notifications={@in_app_notifications} unread_count={@notifications_unread_count} page={@notifications_page} has_more={@notifications_has_more} error={@notifications_error} read_error={@notification_read_error} read_error_action={@notification_read_error_action} read_error_label={@notification_read_error_label} selected={LoginNotifications.selected(@in_app_notifications, @selected_notification_id)} />
                     <button type="button" class="user-menu user-menu-button user-profile-button" phx-click="show-panel" phx-value-panel="profile" aria-label="打开个人资料">
                       <span class="avatar user-avatar" aria-hidden="true"><%= String.first(to_string(@current_user["nickname"] || @current_user["username"])) %></span>
                       <span class="user-copy">

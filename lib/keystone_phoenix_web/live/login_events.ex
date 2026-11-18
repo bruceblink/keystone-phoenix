@@ -445,6 +445,8 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       active_panel: "monitor",
       notifications_open: false,
       notifications_loading: false,
+      notifications_page: 1,
+      notifications_has_more: false,
       notifications_error: nil,
       notification_read_error: nil,
       notification_read_error_action: nil,

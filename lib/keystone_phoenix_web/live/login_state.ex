@@ -52,6 +52,8 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       notifications_user_id: nil,
       notifications_async_name: nil,
       notifications_unread_count: 0,
+      notifications_page: 1,
+      notifications_has_more: false,
       selected_notification_id: nil,
       in_app_notifications: [],
       active_modal: nil,

@@ -33,7 +33,7 @@ defmodule KeystonePhoenixWeb.AdminNotificationsTest do
     assert list_html =~ ~s(phx-click="open-notification")
     assert list_html =~ ~s(phx-hook="LocalDateTime")
     assert list_html =~ ~s(data-utc-time="2026-11-15T01:00:00Z")
-    assert list_html =~ ~s(class="notification-count")
+    assert list_html =~ ~s(class="notification-dot")
     assert list_html =~ ~s(aria-label="通知，1 条未读")
     refute list_html =~ "通知详情"
 

@@ -8,16 +8,35 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
   alias KeystonePhoenix.Notification
 
   @async_name :user_notifications
-  @load_error "站内通知暂时无法读取，请重试"
+  @load_error "无法读取站内通知"
+  @read_error "无法标记已读，请重试"
   @missing_error "通知不存在或已移除，请刷新后重试"
 
   @doc "切换通知弹层；打开时异步读取当前用户的收件箱。"
   def toggle(socket) do
-    if socket.assigns.notifications_open, do: close(socket), else: load(socket)
+    if socket.assigns.notifications_open, do: close(socket), else: load(socket, 1)
   end
 
-  @doc "重新读取当前用户收件箱，并清除上一次的详情和错误状态。"
-  def retry(socket), do: load(socket)
+  @doc "重新读取当前页收件箱，并清除上一次的详情和错误状态。"
+  def retry(socket), do: load(socket, socket.assigns.notifications_page)
+
+  @doc "读取通知上一页或服务端确认存在的下一页。"
+  def change_page(%{"page" => value}, socket) do
+    current_page = socket.assigns.notifications_page
+
+    case Integer.parse(to_string(value)) do
+      {page, ""}
+      when page > 0 and page <= 1_000_000 and
+             (page == current_page - 1 or
+                (page == current_page + 1 and socket.assigns.notifications_has_more)) ->
+        if page_change_allowed?(socket, page), do: load(socket, page), else: {:noreply, socket}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def change_page(_params, socket), do: {:noreply, socket}
 
   @doc "同步刷新当前用户的收件箱和未读数，供登录及通知写入后更新顶栏。"
   def refresh(socket) do
@@ -107,59 +126,62 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
 
   @doc "处理异步结果；账号、弹层或请求改变后忽略旧结果。"
   def handle_async(
-        {@async_name, user_id, _request_id} = async_name,
-        {:ok, {result_user_id, {:ok, %{items: items, unread_count: unread_count}}}},
+        {@async_name, user_id, page, _request_id} = async_name,
+        {:ok,
+         {result_user_id, result_page,
+          {:ok, %{items: items, unread_count: unread_count, has_more: has_more}}}},
         socket
       )
-      when user_id == result_user_id do
-    finish_load(socket, async_name, user_id, items, unread_count, nil)
+      when user_id == result_user_id and page == result_page do
+    finish_load(socket, async_name, user_id, page, items, unread_count, has_more, nil)
   end
 
   def handle_async(
-        {@async_name, user_id, _request_id} = async_name,
-        {:ok, {result_user_id, {:error, _reason}}},
+        {@async_name, user_id, page, _request_id} = async_name,
+        {:ok, {result_user_id, result_page, {:error, _reason}}},
         socket
       )
-      when user_id == result_user_id,
-      do: finish_load(socket, async_name, user_id, nil, nil, @load_error)
+      when user_id == result_user_id and page == result_page,
+      do: finish_load(socket, async_name, user_id, page, nil, nil, false, @load_error)
 
-  def handle_async({@async_name, user_id, _request_id} = async_name, {:exit, _reason}, socket) do
-    finish_load(socket, async_name, user_id, nil, nil, @load_error)
+  def handle_async(
+        {@async_name, user_id, page, _request_id} = async_name,
+        {:exit, _reason},
+        socket
+      ) do
+    finish_load(socket, async_name, user_id, page, nil, nil, false, @load_error)
   end
 
   def handle_async(_name, _result, socket), do: {:noreply, socket}
 
-  defp load(socket) do
+  defp load(socket, page) do
     user_id = current_user_id(socket)
 
     if is_binary(user_id) do
-      async_name = {@async_name, user_id, make_ref()}
+      socket = clear_previous_user_data(cancel_current_async(socket), user_id)
 
-      socket =
-        socket
-        |> cancel_current_async()
-        |> clear_previous_user_data(user_id)
-        |> assign(
-          notifications_open: true,
-          notifications_loading: true,
-          notifications_error: nil,
-          notification_read_error: nil,
-          notification_read_error_action: nil,
-          notification_read_error_label: nil,
-          selected_notification_id: nil,
-          notifications_user_id: user_id,
-          notifications_async_name: async_name
-        )
-        |> Phoenix.LiveView.start_async(async_name, fn ->
-          {user_id, Notification.list_for_user(user_id)}
-        end)
-
-      {:noreply, socket}
+      socket
+      |> assign(
+        notifications_open: true,
+        notifications_loading: true,
+        notifications_page: page,
+        notifications_has_more: false,
+        notifications_error: nil,
+        notification_read_error: nil,
+        notification_read_error_action: nil,
+        notification_read_error_label: nil,
+        selected_notification_id: nil,
+        notifications_user_id: user_id,
+        in_app_notifications: []
+      )
+      |> start_load_page(user_id, page)
     else
       {:noreply,
        assign(socket,
          notifications_open: true,
          notifications_loading: false,
+         notifications_page: page,
+         notifications_has_more: false,
          notifications_error: @load_error,
          notification_read_error: nil,
          notification_read_error_action: nil,
@@ -171,6 +193,19 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
          notifications_async_name: nil
        )}
     end
+  end
+
+  defp start_load_page(socket, user_id, page) do
+    async_name = {@async_name, user_id, page, make_ref()}
+
+    socket =
+      socket
+      |> assign(notifications_async_name: async_name)
+      |> Phoenix.LiveView.start_async(async_name, fn ->
+        {user_id, page, Notification.list_for_user(user_id, page)}
+      end)
+
+    {:noreply, socket}
   end
 
   defp mark_selected_read(socket, user_id, notification_id, notification) do
@@ -208,7 +243,7 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
         {:noreply,
          assign(socket,
            notifications_error: nil,
-           notification_read_error: @load_error,
+           notification_read_error: @read_error,
            notification_read_error_action: "retry-notification-read",
            notification_read_error_label: "重试标记已读",
            selected_notification_id: notification_id
@@ -216,7 +251,16 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
     end
   end
 
-  defp finish_load(socket, async_name, user_id, items, unread_count, error) do
+  defp finish_load(
+         socket,
+         async_name,
+         user_id,
+         page,
+         items,
+         unread_count,
+         has_more,
+         error
+       ) do
     if socket.assigns.notifications_open and
          socket.assigns.notifications_async_name == async_name and
          socket.assigns.notifications_user_id == user_id and
@@ -232,7 +276,9 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
           do:
             Keyword.merge(values,
               in_app_notifications: items,
-              notifications_unread_count: unread_count
+              notifications_unread_count: unread_count,
+              notifications_page: page,
+              notifications_has_more: has_more
             ),
           else: values
 
@@ -246,15 +292,24 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
     if socket.assigns.notifications_user_id == user_id do
       socket
     else
-      assign(socket, in_app_notifications: [], notifications_unread_count: 0)
+      assign(socket,
+        in_app_notifications: [],
+        notifications_unread_count: 0,
+        notifications_page: 1,
+        notifications_has_more: false
+      )
     end
   end
 
   defp refresh_current_user(%{assigns: %{notifications_open: true}} = socket, user_id) do
-    case Notification.list_for_user(user_id) do
-      {:ok, %{items: items, unread_count: unread_count}} ->
+    page = socket.assigns.notifications_page
+
+    case Notification.list_for_user(user_id, page) do
+      {:ok, %{items: items, unread_count: unread_count, page: page, has_more: has_more}} ->
         assign(socket,
           notifications_loading: false,
+          notifications_page: page,
+          notifications_has_more: has_more,
           notifications_error: nil,
           notifications_user_id: user_id,
           notifications_unread_count: unread_count,
@@ -295,6 +350,16 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
   defp current_user_id(socket) do
     user = socket.assigns[:current_user]
     if is_map(user), do: Map.get(user, "userId") || Map.get(user, :user_id), else: nil
+  end
+
+  # 翻页只接受当前用户打开面板后的相邻页请求。
+  defp page_change_allowed?(socket, page) do
+    user_id = current_user_id(socket)
+
+    socket.assigns.notifications_open and not socket.assigns.notifications_loading and
+      is_binary(user_id) and user_id == socket.assigns.notifications_user_id and
+      is_nil(socket.assigns.selected_notification_id) and
+      (page < socket.assigns.notifications_page or socket.assigns.notifications_has_more)
   end
 
   defp cancel_current_async(socket) do

@@ -5,6 +5,7 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
 
   alias KeystonePhoenix.Identity
   alias KeystonePhoenix.Notification
+  alias KeystonePhoenix.Notification.SysNotification
   alias KeystonePhoenix.Notice.SysNotice
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.SysRole
@@ -27,20 +28,21 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
 
     assert LiveSupport.live_socket(view).assigns.in_app_notifications == []
     assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 1
-    assert has_element?(view, ".notification-count", "1")
+    assert has_element?(view, ".notification-dot")
+    assert has_element?(view, "button[aria-label='通知，1 条未读']")
     render_click(view, "toggle-notifications")
     owner_html = render_async(view)
 
     assert owner_html =~ own_notification.title
     refute owner_html =~ other_notification.title
     refute owner_html =~ announcement.notice_title
-    assert has_element?(view, ".notification-count", "1")
+    assert has_element?(view, ".notification-dot")
 
     render_click(view, "open-notification", %{"notification-id" => own_notification.id})
     assert has_element?(view, ".notification-detail h3", own_notification.title)
     assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 0
     assert Repo.get!(KeystonePhoenix.Notification.SysNotification, own_notification.id).read_at
-    refute has_element?(view, ".notification-count")
+    refute has_element?(view, ".notification-dot")
 
     render_click(view, "logout")
     login(view, other)
@@ -55,6 +57,119 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
     render_click(view, "open-notification", %{"notification-id" => own_notification.id})
     assert is_nil(LiveSupport.live_socket(view).assigns.selected_notification_id)
     refute render(view) =~ own_notification.content
+  end
+
+  @tag :integration
+  test "changes notification pages and preserves the unread count across page errors", %{
+    conn: conn
+  } do
+    role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+    owner = create_user(role, "inbox_paged")
+    base_time = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+
+    for index <- 1..55 do
+      read_at = if index <= 2, do: DateTime.add(base_time, index, :second), else: nil
+
+      %SysNotification{}
+      |> SysNotification.changeset(%{
+        id: Identity.v7(),
+        user_id: owner.user_id,
+        type: "test.page",
+        title: "分页站内通知 #{index}",
+        content: "第 #{index} 条通知内容。",
+        created_at: DateTime.add(base_time, index, :second),
+        read_at: read_at
+      })
+      |> Repo.insert!()
+    end
+
+    {:ok, view, _html} = live(conn, "/")
+    login(view, owner)
+    render_click(view, "toggle-notifications")
+    page_one_html = render_async(view)
+
+    assert length(LiveSupport.live_socket(view).assigns.in_app_notifications) == 50
+    assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 53
+    assert LiveSupport.live_socket(view).assigns.notifications_has_more
+    assert page_one_html =~ "分页站内通知 55"
+
+    refute Enum.any?(
+             LiveSupport.live_socket(view).assigns.in_app_notifications,
+             &(&1["title"] == "分页站内通知 1")
+           )
+
+    assert page_one_html =~ "50 条本页通知 · 第 1 页"
+
+    assert has_element?(
+             view,
+             "button[phx-click='paginate-notifications'][phx-value-page='0'][disabled]"
+           )
+
+    assert has_element?(
+             view,
+             "button[phx-click='paginate-notifications'][phx-value-page='2']:not([disabled])"
+           )
+
+    Repo.query!("ALTER TABLE sys_user_notification RENAME TO sys_user_notification_unavailable")
+
+    try do
+      render_click(view, "paginate-notifications", %{"page" => "2"})
+      failed_page_html = render_async(view)
+
+      assert failed_page_html =~ "无法读取站内通知"
+      assert has_element?(view, "button[phx-click='retry-notifications']", "重试")
+
+      assert has_element?(
+               view,
+               "button[phx-click='paginate-notifications'][phx-value-page='1']:not([disabled])"
+             )
+
+      assert has_element?(
+               view,
+               "button[phx-click='paginate-notifications'][phx-value-page='3'][disabled]"
+             )
+
+      assert LiveSupport.live_socket(view).assigns.in_app_notifications == []
+      assert LiveSupport.live_socket(view).assigns.notifications_page == 2
+      assert LiveSupport.live_socket(view).assigns.notifications_error
+    after
+      Repo.query!("ALTER TABLE sys_user_notification_unavailable RENAME TO sys_user_notification")
+    end
+
+    render_click(view, "retry-notifications")
+    page_two_html = render_async(view)
+
+    assert length(LiveSupport.live_socket(view).assigns.in_app_notifications) == 5
+    assert LiveSupport.live_socket(view).assigns.notifications_page == 2
+    assert LiveSupport.live_socket(view).assigns.notifications_has_more == false
+    assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 53
+    assert page_two_html =~ "5 条本页通知 · 第 2 页"
+
+    assert Enum.any?(
+             LiveSupport.live_socket(view).assigns.in_app_notifications,
+             &(&1["title"] == "分页站内通知 1")
+           )
+
+    assert page_two_html =~ "分页站内通知 1</strong>"
+
+    notification =
+      Enum.find(
+        LiveSupport.live_socket(view).assigns.in_app_notifications,
+        &(&1["title"] == "分页站内通知 1")
+      )
+
+    render_click(view, "open-notification", %{"notification-id" => notification["id"]})
+    assert has_element?(view, ".notification-detail h3", "分页站内通知 1")
+    refute has_element?(view, ".notification-pagination")
+    render_click(view, "back-notifications")
+    assert has_element?(view, ".notification-pagination", "第 2 页")
+    assert length(LiveSupport.live_socket(view).assigns.in_app_notifications) == 5
+
+    render_click(view, "paginate-notifications", %{"page" => "1"})
+    render_async(view)
+    assert LiveSupport.live_socket(view).assigns.notifications_page == 1
+    assert length(LiveSupport.live_socket(view).assigns.in_app_notifications) == 50
+    assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 53
   end
 
   @tag :integration
@@ -148,16 +263,18 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
     assert has_element?(view, "#api-key-feedback[role='status']", "API Key 已签发")
     refute has_element?(view, "#api-key-form-feedback")
     assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 1
-    assert has_element?(view, ".notification-count", "1")
+    assert has_element?(view, ".notification-dot")
 
     render_click(view, "rotate-api-key", %{"id" => issued.id})
     rotated = LiveSupport.live_socket(view).assigns.issued_api_key
     assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 2
-    assert has_element?(view, ".notification-count", "2")
+    assert has_element?(view, ".notification-dot")
+    assert has_element?(view, "button[aria-label='通知，2 条未读']")
 
     render_click(view, "revoke-api-key", %{"id" => rotated.id})
     assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 3
-    assert has_element?(view, ".notification-count", "3")
+    assert has_element?(view, ".notification-dot")
+    assert has_element?(view, "button[aria-label='通知，3 条未读']")
   end
 
   @tag :integration
