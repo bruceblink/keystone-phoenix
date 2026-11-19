@@ -38,14 +38,14 @@ LiveView 页面和头像资源，不属于后端业务接口。
 
 标准 JWK Set 另有 `/api/.well-known/jwks.json` 1 条路径。健康接口用于运行状态检查，但属于 `/api/v1` 接口集合，不单独重复计数。
 
-路由集合现在由 `scripts/check_api_route_contract.py` 固化检查。该脚本从 admin-web 的 `client.ts`、`jobClient.ts` 和 `userFileClient.ts` 提取实际调用，从 Native 的 JAX-RS `@Path` 和 Phoenix 的 `router.ex` 提取路由，统一参数占位符后检查三项：admin-web 调用必须同时存在于两个后端；Native 与 Phoenix 的 `/api/v1` 方法和路径集合必须一致；admin-web 源码不能重新引用已删除的 `/system/`、`/logs/`、`/auth/passkey` 等旧路径标识。当前验证命令和结果如下：
+路由集合现在由 `scripts/check_api_route_contract.py` 固化检查。该脚本从 admin-web 的 `client.ts`、`jobClient.ts` 和 `userFileClient.ts` 提取实际调用，从 Native 的 JAX-RS `@Path` 和 Phoenix 的 `router.ex` 提取路由，统一参数占位符后检查三项：admin-web 调用必须同时存在于两个后端；Native 与 Phoenix 的 `/api/v1` 方法和路径集合必须一致；admin-web 源码不能重新引用已删除的 `/system/`、`/logs/`、`/auth/passkey` 等旧路径标识。2026-11-19 对当前分支执行验证，结果如下：
 
 ```bash
 python3 scripts/check_api_route_contract.py \
   --native-root ../keystone-native \
   --admin-root ../keystone-admin-web
-# OK: admin-web uses 74 API routes
-# OK: Native and Phoenix expose the same 108 /api/v1 routes
+# OK: admin-web uses 83 API routes
+# OK: Native and Phoenix expose the same 112 /api/v1 routes
 # OK: JWK route set matches (1 route)
 # OK: no legacy admin-web API path markers
 ```
@@ -62,7 +62,7 @@ Phoenix HTTP 控制器现在按 Native/admin-web 的响应结构返回数据。�
 
 为保存 Native 所需的业务字段，新增并应用了部门编码、菜单编码、菜单排序、配置启用状态、任务编码和字典字符串值迁移。部门和菜单保留旧 LiveView 原始写入的数据库触发器。任务编码另有更高版本修复迁移，覆盖“迁移记录已存在但列未创建”的旧安装状态。
 
-Phoenix 已使用 `sys_user_role` 保存多角色成员关系。两端角色成员接口默认返回完整用户 ID 数组；指定 `include=identity` 时，只返回用户 ID、用户名和显示名。成员列表尚未提供服务端分页，大型组织仍需评估完整列表的读取成本。Phoenix 任务列表的 `lastStatus` 和 `lastRunAt` 没有独立持久化来源，返回空值。Phoenix 的 BEAM 运行时按 Native 监控字段提供结构化结果，Java 专属含义不适用。
+Phoenix 已使用 `sys_user_role` 保存多角色成员关系。两端角色成员接口默认返回完整用户 ID 数组；指定 `include=identity` 时，只返回用户 ID、用户名和显示名。成员列表尚未提供服务端分页，大型组织仍需评估完整列表的读取成本。Phoenix 从任务执行日志回填并在后续运行时保存最近状态和时间；任务列表返回 `lastStatus` 和 UTC `lastRunAt`。此前没有运行记录的任务仍返回空值。Phoenix 的 BEAM 运行时按 Native 监控字段提供结构化结果，Java 专属含义不适用。
 
 ## UI 验收边界
 
@@ -77,7 +77,7 @@ Phoenix MFA parity 已在 `a5d5320` 完成：普通敏感写操作按账号的 `
 2026-11-15 在本机分别启动 Native、Phoenix 和同一份 admin-web 构建。Native 使用 MySQL 8.4，Phoenix 使用本地 PostgreSQL；页面代理通过 `VITE_ENABLE_MOCK=false` 切换 `http://127.0.0.1:8080` 与 `http://127.0.0.1:4000`。
 
 - Native 已完成真实 HTTP smoke：健康检查、登录、监控、在线会话、用户、角色、组织、岗位、菜单、API Key、配置、字典、通知、任务、登录日志、操作审计、个人资料和注销均返回预期成功状态；`GET /api/v1/dictionaries` 与 `GET /api/v1/notices/manage` 使用 admin-web 的正式路径验证通过。该证据证明接口可用，不等同于真实浏览器页面通过。
-- Native 的页面矩阵已完成：在端口 `5178` 的 admin-web 使用 Native 测试账号登录，监控、用户、角色、组织、岗位、菜单、API Key、审计、登录日志、定时任务、配置、字典、通知和个人资料页面均能通过侧栏或头像入口打开；通知公告通过独立菜单访问，监控帮助可以展开和关闭。Chrome CDP 页面验收还覆盖活动会话 409 的取消/强制接管、注销、站内通知列表/详情和通知铃铛不跳公告管理；Native admin-web 在 280、320、390、768 和 1280 视口的 `document` 与 `body` 宽度均等于视口宽度，未发现横向溢出。Codex 内置浏览器已优先打开，但当前会话不能保持交互，因此该条记录为 headless 实际页面证据，不声称可视窗口通过。
+- Native 的当次页面导航检查：在端口 `5178` 的 admin-web 使用 Native 测试账号登录，监控、用户、角色、组织、岗位、菜单、API Key、审计、登录日志、定时任务、配置、字典、通知和个人资料页面均能通过侧栏或头像入口打开；通知公告通过独立菜单访问，监控帮助可以展开和关闭。Chrome CDP 页面验收还覆盖活动会话 409 的取消/强制接管、注销、站内通知列表/详情和通知铃铛不跳公告管理；Native admin-web 在 280、320、390、768 和 1280 视口的 `document` 与 `body` 宽度均等于视口宽度，未发现横向溢出。Codex 内置浏览器已优先打开，但当次会话不能保持交互，因此该条记录为 headless 实际页面证据，不声称可视窗口通过，也不代表全部页面操作已验收。
 - 同一份 admin-web 使用 `ag1/123456` 登录 Phoenix 成功。运行监控、用户、角色、组织、岗位、菜单、API Key、配置、字典、公告、登录日志、操作审计、定时任务和个人资料页面均通过真实导航打开；个人资料只从顶栏用户图形进入，侧栏不显示“工作台”和个人资料菜单。
 - Phoenix 补充窗口记录：同一份 admin-web 在 `VITE_API_PROXY_TARGET=http://127.0.0.1:4000`、前端端口 `5176` 下使用 `ag1/123456` 登录成功；可见菜单已增至 14 项并包含“接口文档”，其余页面、通知公告入口、顶栏用户图形入口、监控帮助展开和关闭均通过验收。Chrome CDP 页面验收还确认活动会话 409 的取消/强制接管、MFA 继续、站内通知列表/详情和通知铃铛不跳公告管理；390、768 和 1280 视口均无横向溢出，窄屏侧栏选择后自动收起。Codex 内置浏览器已优先打开，但当前会话不能保持交互，因此该条记录为 headless 实际页面证据。Swagger 菜单的 `/api/swagger` 和 `/api/openapi` 路由由 Phoenix 控制器测试覆盖。
 - 本次真实窗口复核补充了 Phoenix 岗位页：岗位列表、无结果筛选、重置、每页状态、新增弹窗打开和取消关闭均通过；页面显示“系统 API”来源，未发现横向溢出。
