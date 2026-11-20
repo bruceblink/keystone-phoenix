@@ -6,6 +6,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
   alias KeystonePhoenix.Auth.ApiKey
   alias KeystonePhoenixWeb.Live.AdminPages.ApiKeys
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
+  alias KeystonePhoenixWeb.Live.AdminEvents.ApiKeyExpiryTimer
   alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
   alias KeystonePhoenixWeb.LoginNotifications
@@ -204,6 +205,30 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
   def handle_event("dismiss-api-key-secret", _params, socket),
     do: {:noreply, assign(socket, issued_api_key: nil)}
 
+  # 到期后重读有效筛选，其他筛选只更新时间以更新状态和轮换按钮。
+  def handle_info({:api_key_expiry_tick, token}, socket) do
+    if token == socket.assigns[:api_key_expiry_token] and
+         socket.assigns.active_panel == "api-keys" do
+      socket =
+        assign(socket,
+          api_key_expiry_timer: nil,
+          api_key_expiry_token: nil,
+          api_key_now: DateTime.utc_now()
+        )
+
+      if socket.assigns.api_key_status == "active" and expired_api_key_visible?(socket) do
+        handle_event("refresh-api-keys", %{}, socket)
+      else
+        {:noreply, schedule_expiry_timer(socket)}
+      end
+    else
+      # 已取消或替换的计时消息不能刷新当前页面。
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info(_message, socket), do: {:noreply, socket}
+
   defp scope_allowed?(socket, scope) do
     Enum.any?(ApiKeys.scope_entries(socket.assigns[:permissions]), &(&1["permission"] == scope))
   end
@@ -242,25 +267,61 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
 
     case AdminReadSupport.api_keys_page(socket, params) do
       {:ok, result} ->
-        assign(
-          socket,
-          Keyword.merge(extra,
-            api_key_rows: result.items,
-            api_key_total: result.total,
-            api_key_feedback: success,
-            page_nums: Map.put(socket.assigns.page_nums, "api-keys", result.page),
-            page_sizes: Map.put(socket.assigns.page_sizes, "api-keys", result.size)
+        socket =
+          assign(
+            socket,
+            Keyword.merge(extra,
+              api_key_rows: result.items,
+              api_key_total: result.total,
+              api_key_feedback: success,
+              api_key_now: DateTime.utc_now(),
+              page_nums: Map.put(socket.assigns.page_nums, "api-keys", result.page),
+              page_sizes: Map.put(socket.assigns.page_sizes, "api-keys", result.size)
+            )
           )
-        )
+
+        schedule_expiry_timer(socket)
 
       {:error, reason} ->
-        assign(socket,
-          api_key_feedback:
-            Support.read_error_feedback(
-              reason,
-              if(success, do: "#{success}，但列表刷新失败，请重试", else: "API Key 列表刷新失败，请重试")
-            )
-        )
+        socket =
+          assign(socket,
+            api_key_feedback:
+              Support.read_error_feedback(
+                reason,
+                if(success, do: "#{success}，但列表刷新失败，请重试", else: "API Key 列表刷新失败，请重试")
+              ),
+            api_key_now: DateTime.utc_now()
+          )
+
+        schedule_expiry_timer(socket)
     end
+  end
+
+  defp schedule_expiry_timer(%{assigns: %{active_panel: "api-keys"}} = socket) do
+    socket = ApiKeyExpiryTimer.cancel(socket)
+    now = DateTime.utc_now()
+
+    nearest =
+      Enum.reduce(socket.assigns.api_key_rows, nil, fn key, nearest ->
+        if (is_nil(key.revoked_at) and key.expires_at) &&
+             DateTime.compare(key.expires_at, now) == :gt do
+          if is_nil(nearest) or DateTime.compare(key.expires_at, nearest) == :lt,
+            do: key.expires_at,
+            else: nearest
+        else
+          nearest
+        end
+      end)
+
+    if nearest, do: ApiKeyExpiryTimer.schedule(socket, nearest), else: socket
+  end
+
+  defp schedule_expiry_timer(socket), do: ApiKeyExpiryTimer.cancel(socket)
+
+  defp expired_api_key_visible?(socket) do
+    Enum.any?(socket.assigns.api_key_rows, fn key ->
+      (is_nil(key.revoked_at) and key.expires_at) &&
+        DateTime.compare(key.expires_at, socket.assigns.api_key_now) != :gt
+    end)
   end
 end

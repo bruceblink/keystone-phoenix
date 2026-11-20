@@ -14,7 +14,6 @@ defmodule KeystonePhoenixWeb.LoginLive do
   alias KeystonePhoenix.Auth
   alias KeystonePhoenix.Auth.LoginLimiter
   alias KeystonePhoenixWeb.Live.AdminSupport
-  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.LoginState
@@ -186,7 +185,10 @@ defmodule KeystonePhoenixWeb.LoginLive do
     panel = Navigation.normalize_panel(panel)
 
     if AdminSupport.panel_allowed?(socket, panel) do
-      socket = assign(socket, sidebar_open: false)
+      socket =
+        socket
+        |> KeystonePhoenixWeb.Live.AdminEvents.ApiKeyExpiryTimer.cancel()
+        |> assign(sidebar_open: false)
 
       cond do
         panel == "profile" ->
@@ -350,42 +352,18 @@ defmodule KeystonePhoenixWeb.LoginLive do
     do: LoginNotifications.handle_async(name, result, socket)
 
   @impl true
-  def handle_info({:admin_job_finished, _job_id, result}, socket) do
-    feedback =
-      case result do
-        :ok ->
-          "任务已执行并写入运行日志"
+  def handle_info({:admin_job_finished, job_id, result}, socket),
+    do: KeystonePhoenixWeb.Live.AdminEvents.AsyncJobs.handle_info(job_id, result, socket)
 
-        {:skipped, :already_running} ->
-          "任务正在执行，本次触发已跳过"
+  def handle_info({:api_key_expiry_tick, _token} = message, socket),
+    do: SecurityEvents.handle_info(message, socket)
 
-        {:error, :not_found} ->
-          Feedback.error(:resource_not_found, "找不到指定任务")
+  def handle_info(_message, socket), do: {:noreply, socket}
 
-        {:error, reason} ->
-          Feedback.error(
-            Feedback.code(Feedback.from_reason(reason)),
-            "任务执行失败：#{inspect(reason)}"
-          )
-
-        _ ->
-          Feedback.error(:internal_error, "任务状态未知，请检查运行日志")
-      end
-
-    reload =
-      if AdminSupport.admin_socket?(socket) do
-        [
-          job_rows: AdminSupport.load_jobs(),
-          job_log_rows: AdminSupport.load_job_logs()
-        ]
-      else
-        [
-          job_rows: AdminSupport.load_jobs_for_socket(socket),
-          job_log_rows: AdminSupport.load_job_logs_for_socket(socket)
-        ]
-      end
-
-    {:noreply, assign(socket, Keyword.put(reload, :job_feedback, feedback))}
+  @impl true
+  def terminate(_reason, socket) do
+    KeystonePhoenixWeb.Live.AdminEvents.ApiKeyExpiryTimer.cancel(socket)
+    :ok
   end
 
   defp liveview_ip(socket) do
@@ -498,7 +476,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                       <!-- 用户表单需要保留首次角色目录读取失败的状态。 -->
                       <.users user_rows={@user_rows} user_total={@user_total} users_server_paged={@users_server_paged} user_form={@user_form} user_feedback={@user_feedback} user_query={@user_query} user_display_name_query={@user_display_name_query} selected_user_ids={@selected_user_ids} user_import_result={@user_import_result} active_modal={@active_modal} dept_rows={@dept_rows} post_rows={@post_rows} role_rows={@role_rows} role_directory_feedback={@role_directory_feedback} role_scope_allowed={@role_scope_allowed} page_num={@page_nums["users"]} page_size={@page_sizes["users"]} read_only={@read_only} permissions={@permissions} user_import_upload={@uploads.user_import} />
                     <% "api-keys" -> %>
-                      <.api_keys api_key_rows={@api_key_rows} api_key_total={@api_key_total} api_key_page_num={@page_nums["api-keys"]} api_key_page_size={@page_sizes["api-keys"]} api_key_feedback={@api_key_feedback} api_key_form={@api_key_form} api_key_query={@api_key_query} api_key_status={@api_key_status} issued_api_key={@issued_api_key} permissions={@permissions} active_modal={@active_modal} read_only={@read_only} />
+                      <.api_keys api_key_rows={@api_key_rows} api_key_total={@api_key_total} api_key_page_num={@page_nums["api-keys"]} api_key_page_size={@page_sizes["api-keys"]} api_key_feedback={@api_key_feedback} api_key_form={@api_key_form} api_key_query={@api_key_query} api_key_status={@api_key_status} api_key_now={@api_key_now} issued_api_key={@issued_api_key} permissions={@permissions} active_modal={@active_modal} read_only={@read_only} />
                     <% "configs" -> %>
                       <.configs config_rows={@config_rows} config_total={@config_total} config_page_num={@page_nums["configs"]} config_page_size={@page_sizes["configs"]} config_form={@config_form} config_feedback={@config_feedback} config_filter={@config_filter} active_modal={@active_modal} permissions={@permissions} />
                     <% "dicts" -> %>

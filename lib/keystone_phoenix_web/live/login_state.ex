@@ -10,6 +10,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
     socket
     |> cancel_avatar_uploads()
     |> cancel_notification_load()
+    |> KeystonePhoenixWeb.Live.AdminEvents.ApiKeyExpiryTimer.cancel()
     |> assign(
       username: "operator",
       password: "keystone",
@@ -162,6 +163,9 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       api_key_rows: [],
       api_key_total: 0,
       api_key_feedback: nil,
+      api_key_now: DateTime.utc_now(),
+      api_key_expiry_timer: nil,
+      api_key_expiry_token: nil,
       api_key_form: %{"name" => "", "scopes" => "", "expiresAt" => ""},
       api_key_query: "",
       api_key_status: "all",

@@ -9,6 +9,7 @@ defmodule KeystonePhoenixWeb.Live.LoginPanelNavigation do
   alias KeystonePhoenixWeb.Live.AdminEvents.OperationsDeepLinks
   alias KeystonePhoenixWeb.Live.AdminEvents.Operations, as: OperationsEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.Security, as: SecurityEvents
+  alias KeystonePhoenixWeb.Live.AdminEvents.ApiKeyExpiryTimer
   alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
   alias KeystonePhoenixWeb.Live.AdminPages.Navigation
   alias KeystonePhoenixWeb.Live.AdminPages.Pagination
@@ -90,6 +91,7 @@ defmodule KeystonePhoenixWeb.Live.LoginPanelNavigation do
   defp activate_panel(socket, panel, params) do
     socket =
       socket
+      |> ApiKeyExpiryTimer.cancel()
       |> assign(active_panel: panel)
       |> assign(FilterNavigation.assigns(panel, params))
       |> FilterNavigation.apply_page(panel, params)

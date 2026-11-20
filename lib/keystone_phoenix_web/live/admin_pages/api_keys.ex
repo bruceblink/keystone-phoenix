@@ -21,6 +21,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
       |> assign_new(:api_key_form, fn -> empty_form() end)
       |> assign_new(:api_key_query, fn -> "" end)
       |> assign_new(:api_key_status, fn -> "all" end)
+      |> assign_new(:api_key_now, fn -> DateTime.utc_now() end)
       |> assign_new(:api_key_scope_query, fn -> "" end)
       |> assign_new(:scope_entries, fn -> scope_entries(assigns[:permissions]) end)
       |> assign_new(:issued_api_key, fn -> nil end)
@@ -92,7 +93,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.ApiKeys do
               <%= for key <- @api_key_rows do %>
                 <% revoked = not is_nil(key.revoked_at) %>
                 <%!-- 已过期凭据仍可撤销，但不能签发立即失效的替代密钥。 --%>
-                <% expired = key.expires_at && DateTime.compare(key.expires_at, DateTime.utc_now()) != :gt %>
+                <% expired = key.expires_at && DateTime.compare(key.expires_at, @api_key_now) != :gt %>
                 <tr>
                   <td><div class="api-key-cell"><strong><%= key.name %></strong><small><%= key.id %></small></div></td>
                   <td><code>ks_live_<%= key.prefix %>_••••</code></td>
