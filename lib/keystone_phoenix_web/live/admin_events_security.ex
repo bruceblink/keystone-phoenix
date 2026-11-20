@@ -7,6 +7,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
   alias KeystonePhoenixWeb.Live.AdminPages.ApiKeys
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminEvents.ApiKeyExpiryTimer
+  alias KeystonePhoenixWeb.Live.AdminEvents.ApiKeyPageLoader
   alias KeystonePhoenixWeb.Live.AdminReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
   alias KeystonePhoenixWeb.LoginNotifications
@@ -251,26 +252,25 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
   defp current_page(socket), do: get_in(socket.assigns, [:page_nums, "api-keys"]) || 1
 
   defp load_page(socket, query, status, page, success, extra \\ []) do
-    params = %{
-      "keyword" => String.trim(to_string(query || "")),
-      "status" => status || "all",
-      "pageNum" => page,
-      "pageSize" => get_in(socket.assigns, [:page_sizes, "api-keys"]) || 20
-    }
+    reader = fn requested_page ->
+      params = %{
+        "keyword" => String.trim(to_string(query || "")),
+        "status" => status || "all",
+        "pageNum" => requested_page,
+        "pageSize" => get_in(socket.assigns, [:page_sizes, "api-keys"]) || 20
+      }
 
-    socket =
-      assign(socket,
-        api_key_query: query || "",
-        api_key_status: status || "all",
-        page_nums: Map.put(socket.assigns.page_nums, "api-keys", page)
-      )
+      AdminReadSupport.api_keys_page(socket, params)
+    end
 
-    case AdminReadSupport.api_keys_page(socket, params) do
+    case ApiKeyPageLoader.load(reader, page) do
       {:ok, result} ->
         socket =
           assign(
             socket,
             Keyword.merge(extra,
+              api_key_query: query || "",
+              api_key_status: status || "all",
               api_key_rows: result.items,
               api_key_total: result.total,
               api_key_feedback: success,
@@ -283,13 +283,24 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
         schedule_expiry_timer(socket)
 
       {:error, reason} ->
-        socket =
-          assign(socket,
-            api_key_feedback:
+        feedback =
+          case reason do
+            :resource_conflict ->
+              Feedback.error(:resource_conflict, "列表在重新读取期间再次变化，请重试")
+
+            _ ->
               Support.read_error_feedback(
                 reason,
-                if(success, do: "#{success}，但列表刷新失败，请重试", else: "API Key 列表刷新失败，请重试")
-              ),
+                if(success,
+                  do: "#{success}，但列表刷新失败，请重试",
+                  else: "API Key 列表刷新失败，请重试"
+                )
+              )
+          end
+
+        socket =
+          assign(socket,
+            api_key_feedback: feedback,
             api_key_now: DateTime.utc_now()
           )
 

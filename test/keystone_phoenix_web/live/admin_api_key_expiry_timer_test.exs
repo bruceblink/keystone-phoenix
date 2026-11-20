@@ -10,6 +10,7 @@ defmodule KeystonePhoenixWeb.AdminApiKeyExpiryTimerTest do
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
   alias KeystonePhoenixWeb.Live.AdminEvents.ApiKeyExpiryTimer
+  alias KeystonePhoenixWeb.Live.AdminEvents.ApiKeyPageLoader
   alias KeystonePhoenixWeb.Live.AdminEvents.Security
   alias KeystonePhoenixWeb.LiveAuthenticationTestSupport, as: LiveSupport
 
@@ -76,6 +77,37 @@ defmodule KeystonePhoenixWeb.AdminApiKeyExpiryTimerTest do
 
       not has_element?(view, "tr", "短期密钥二") and
         LiveSupport.live_socket(view).assigns.api_key_total == 0
+    end)
+  end
+
+  @tag :integration
+  test "最后一页唯一密钥到期后回到最后有效页", %{conn: conn} do
+    owner = create_admin_user("expiry_last_page")
+    expiring_key = issue_key(owner, "最后一页到期密钥")
+    set_expiry(expiring_key, 60)
+    Enum.each(1..20, fn index -> issue_key(owner, "保留密钥 #{index}") end)
+
+    {:ok, view, _html} = live(conn, "/")
+    login(view, owner)
+    render_click(view, "show-panel", %{"panel" => "api-keys"})
+    render_submit(view, "filter-api-keys", %{"query" => "", "status" => "active"})
+
+    assert has_element?(view, "nav.pagination", "第 1 / 2 页")
+    render_click(view, "paginate", %{"panel" => "api-keys", "page" => "2"})
+    assert has_element?(view, "tr", "最后一页到期密钥")
+    assert has_element?(view, "nav.pagination", "第 2 / 2 页")
+
+    set_expiry(expiring_key, 3)
+    render_click(view, "refresh-api-keys")
+
+    assert_eventually(fn ->
+      render(view)
+      assigns = LiveSupport.live_socket(view).assigns
+
+      assigns.page_nums["api-keys"] == 1 and assigns.api_key_total == 20 and
+        length(assigns.api_key_rows) == 20 and
+        not has_element?(view, "tr", "最后一页到期密钥") and
+        not has_element?(view, "nav.pagination")
     end)
   end
 
@@ -228,6 +260,40 @@ defmodule KeystonePhoenixWeb.AdminApiKeyExpiryTimerTest do
     assert refreshed.assigns.api_key_rows == socket.assigns.api_key_rows
     assert refreshed.assigns.api_key_feedback == "保留当前反馈"
     assert is_nil(refreshed.assigns.api_key_expiry_timer)
+  end
+
+  test "页码过界后的末页读取失败时不改变旧列表页码" do
+    owner = self()
+
+    reader = fn page ->
+      send(owner, {:page_read, page})
+
+      if page == 8,
+        do: {:ok, %{page: 8, size: 20, total: 101}},
+        else: {:error, :service_unavailable}
+    end
+
+    assert {:error, :service_unavailable} = ApiKeyPageLoader.load(reader, 8)
+    assert_receive {:page_read, 8}
+    assert_receive {:page_read, 6}
+    refute_receive {:page_read, _page}
+  end
+
+  test "结果再次缩小时只重读一次并返回冲突" do
+    owner = self()
+
+    reader = fn page ->
+      send(owner, {:page_read, page})
+
+      if page == 8,
+        do: {:ok, %{page: 8, size: 20, total: 101}},
+        else: {:ok, %{page: 6, size: 20, total: 80}}
+    end
+
+    assert {:error, :resource_conflict} = ApiKeyPageLoader.load(reader, 8)
+    assert_receive {:page_read, 8}
+    assert_receive {:page_read, 6}
+    refute_receive {:page_read, _page}
   end
 
   defp create_admin_user(prefix) do
