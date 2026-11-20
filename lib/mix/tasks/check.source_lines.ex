@@ -40,8 +40,7 @@ defmodule Mix.Tasks.Check.SourceLines do
 
   defp line_count(path) do
     path
-    |> File.read!()
-    |> String.split("\n", trim: false)
-    |> length()
+    |> File.stream!()
+    |> Enum.count()
   end
 end
