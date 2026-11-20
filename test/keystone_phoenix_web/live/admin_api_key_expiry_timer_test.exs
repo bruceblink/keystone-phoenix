@@ -279,7 +279,7 @@ defmodule KeystonePhoenixWeb.AdminApiKeyExpiryTimerTest do
     refute_receive {:page_read, _page}
   end
 
-  test "结果再次缩小时只重读一次并返回冲突" do
+  test "结果再次缩小时只重读一次并返回专用错误码" do
     owner = self()
 
     reader = fn page ->
@@ -290,7 +290,7 @@ defmodule KeystonePhoenixWeb.AdminApiKeyExpiryTimerTest do
         else: {:ok, %{page: 6, size: 20, total: 80}}
     end
 
-    assert {:error, :resource_conflict} = ApiKeyPageLoader.load(reader, 8)
+    assert {:error, :api_key_page_changed} = ApiKeyPageLoader.load(reader, 8)
     assert_receive {:page_read, 8}
     assert_receive {:page_read, 6}
     refute_receive {:page_read, _page}

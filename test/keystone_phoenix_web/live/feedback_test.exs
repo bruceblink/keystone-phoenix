@@ -3,6 +3,7 @@ defmodule KeystonePhoenixWeb.Live.FeedbackTest do
 
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminSupport
+  alias KeystonePhoenixWeb.ErrorCatalog
 
   test "feedback keeps a stable code while preserving rendered message helpers" do
     feedback = AdminSupport.form_error({:error, :not_found})
@@ -35,6 +36,20 @@ defmodule KeystonePhoenixWeb.Live.FeedbackTest do
 
     # 部门和其他页面仍通过通用映射使用 resource_conflict。
     assert Feedback.code(Feedback.from_reason(:has_users)) == "resource_conflict"
+  end
+
+  test "API Key pagination changes use a unique retryable diagnostic code" do
+    # 验证分页变化通过目录登记的专用代码反馈，并允许调用方重试。
+    feedback = Feedback.error(:api_key_page_changed, "列表在读取期间多次变化，请刷新后重试")
+
+    assert Feedback.code(feedback) == "api_key_page_changed"
+
+    assert ErrorCatalog.lookup(:api_key_page_changed) == %{
+             code: "api_key_page_changed",
+             status: 409,
+             retryable: true,
+             message_key: "error.api_key_page_changed"
+           }
   end
 
   test "unknown reasons use a stable internal code and safe message" do

@@ -48,6 +48,7 @@ EXPECTED_STATUS = {
     "api_key_expiry_invalid": 422,
     "api_key_expiry_out_of_range": 422,
     "api_key_expired": 409,
+    "api_key_page_changed": 409,
     "api_key_scope_unavailable": 422,
     "service_unavailable": 503,
     "authorization_unavailable": 503,

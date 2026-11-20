@@ -65,12 +65,13 @@
 | `api_key_expiry_invalid` | 422 | API Key 到期时间格式无法解析 | 重新选择有效的到期时间 |
 | `api_key_expiry_out_of_range` | 422 | API Key 到期时间不晚于当前时间或超过 90 天 | 选择当前时间之后、90 天以内的时间 |
 | `api_key_expired` | 409 | 已过期的 API Key 不能轮换 | 新建 API Key |
+| `api_key_page_changed` | 409 | API Key 分页回退期间结果再次变化，无法确认有效页码 | 刷新列表后重试 |
 | `api_key_scope_unavailable` | 422 | API Key 轮换时原授权范围均不再属于持有人 | 恢复所需权限后重试，或新建 API Key |
 | `service_unavailable` | 503 | 服务暂时不能处理请求，但不属于特定授权状态 | 按退避策略重试 |
 | `authorization_unavailable` | 503 | 认证、授权或其依赖状态暂时不可用 | 按退避策略重试；见兼容范围 |
 | `internal_error` | 500 | 未分类的服务端处理失败 | 记录请求标识，避免盲目重复有副作用的请求 |
 
-目录当前包含 37 个代码。密码策略按固定顺序返回第一个失败规则：密码缺失、长度不足、命中禁用列表、包含用户名、缺少大写字母、缺少小写字母、缺少数字、缺少特殊字符。密码创建、用户资料更新、密码重置、个人改密、首次改密和 Excel 用户导入都保留这些专用代码，并保持原有 `422` HTTP 状态。用户资料更新中缺失、`null`、空字符串或仅 Java 空白字符的可选密码会被忽略；非空密码会经过相同策略检查。用户资料更新失败时，资料、密码和会话都保持不变。成功更新密码时，现有会话继续有效，和 Native 一致。API Key 签发使用独立代码区分名称错误、到期时间格式错误和到期范围错误，三种情况都保持原有 `422` HTTP 状态。角色删除使用 `role_has_members` 和 `role_protected` 区分两种不可删除条件；它们也保持原有 `422` HTTP 状态。`resource_conflict` 仍用于其他资源冲突。`https_required`、`mfa_state_conflict` 和 `mfa_invalid_code` 也是规范代码，不属于客户端本地代码。
+目录当前包含 42 个代码。密码策略按固定顺序返回第一个失败规则：密码缺失、长度不足、命中禁用列表、包含用户名、缺少大写字母、缺少小写字母、缺少数字、缺少特殊字符。密码创建、用户资料更新、密码重置、个人改密、首次改密和 Excel 用户导入都保留这些专用代码，并保持原有 `422` HTTP 状态。用户资料更新中缺失、`null`、空字符串或仅 Java 空白字符的可选密码会被忽略；非空密码会经过相同策略检查。用户资料更新失败时，资料、密码和会话都保持不变。成功更新密码时，现有会话继续有效，和 Native 一致。API Key 签发使用独立代码区分名称错误、到期时间格式错误和到期范围错误，三种情况都保持原有 `422` HTTP 状态；分页回退在重复变化后使用 `api_key_page_changed` 标识，可刷新后重试。角色删除使用 `role_has_members` 和 `role_protected` 区分两种不可删除条件；它们也保持原有 `422` HTTP 状态。`resource_conflict` 仍用于其他资源冲突。`https_required`、`mfa_state_conflict` 和 `mfa_invalid_code` 也是规范代码，不属于客户端本地代码。
 
 ## `legacy` 兼容范围
 
@@ -101,7 +102,7 @@ admin-web 不执行授权判断，也不根据代码重写 HTTP 状态。页面�
 
 `keystone-phoenix/scripts/check_error_code_catalog.py` 只读取三个仓库的源码和本文表格。它不启动运行时，不连接数据库，也不调用接口。检查内容如下：
 
-- 目录表格仍为 37 个代码，并且每个代码只有一行和一个默认状态。
+- 目录表格仍为 42 个代码，并且每个代码只有一行和一个默认状态。
 - Phoenix、Native 和 admin-web 的服务端代码集合与目录完全相同，没有重复项或遗漏项。
 - Phoenix 和 Native 的状态值与目录一致。
 - admin-web 的 `BUSINESS_ERROR_CATALOG`、`SERVER_ERROR_CODES` 和安全可读提示覆盖全部规范代码。

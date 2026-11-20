@@ -156,6 +156,12 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       retryable: false,
       message_key: "error.api_key_expired"
     },
+    # 有效页回退期间结果再次缩小时，用此代码提示刷新列表后重试。
+    "api_key_page_changed" => %{
+      status: 409,
+      retryable: true,
+      message_key: "error.api_key_page_changed"
+    },
     "api_key_scope_unavailable" => %{
       status: 422,
       retryable: false,

@@ -285,8 +285,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Security do
       {:error, reason} ->
         feedback =
           case reason do
-            :resource_conflict ->
-              Feedback.error(:resource_conflict, "列表在重新读取期间再次变化，请重试")
+            # 专用代码说明分页回退期间结果再次变化，用户可刷新后重试。
+            :api_key_page_changed ->
+              Feedback.error(:api_key_page_changed, "列表在读取期间多次变化，请刷新后重试")
 
             _ ->
               Support.read_error_feedback(

@@ -19,8 +19,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.ApiKeyPageLoader do
   defp read_last_page(read_page, last_page) do
     case read_page.(last_page) do
       {:ok, result} ->
+        # 回退后结果再次越界时返回专用错误，让 LiveView 保留当前列表并提示重试。
         if result.page > last_page(result.total, result.size),
-          do: {:error, :resource_conflict},
+          do: {:error, :api_key_page_changed},
           else: {:ok, result}
 
       {:error, _reason} = error ->
