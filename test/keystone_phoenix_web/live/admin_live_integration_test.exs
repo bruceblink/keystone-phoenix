@@ -259,7 +259,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
 
     render_click(view, "new-user")
     assert has_element?(view, "form[phx-submit='save-user']")
-    assert has_element?(view, "input[name='roleCodes[]']")
+    refute has_element?(view, "input[name='roleCodes[]']")
     render_click(view, "edit-user", %{"user-id" => "999999999"})
     assert has_element?(view, "#user-feedback[role='alert']")
     assert render(view) =~ "找不到指定用户"
