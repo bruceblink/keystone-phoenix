@@ -127,6 +127,11 @@ defmodule KeystonePhoenixWeb.LoginLive do
     {:noreply, assign(socket, active_modal: nil, role_feedback: nil)}
   end
 
+  # 关闭任务删除确认框时清除本次反馈，避免取消后仍显示删除错误。
+  def handle_event("close-modal", _params, %{assigns: %{active_modal: "job-delete"}} = socket) do
+    {:noreply, assign(socket, active_modal: nil, job_feedback: nil)}
+  end
+
   def handle_event("close-modal", _params, socket) do
     {:noreply, assign(socket, active_modal: nil)}
   end
@@ -266,7 +271,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
   @config_events ~w(refresh-config delete-config filter-configs reset-config-filter paginate-configs new-config edit-config save-config)
   @system_events ~w(refresh-dicts select-dict-type filter-dict-data reset-dict-data-filter paginate-dict-data new-dict-type edit-dict-type save-dict-type delete-dict-type new-dict-data edit-dict-data save-dict-data delete-dict-data refresh-logs refresh-login-logs refresh-operation-logs new-notice edit-notice cancel-notice save-notice toggle-notice-status publish-notice toggle-notice-selection toggle-all-notice-selection paginate-notices delete-notice delete-notices refresh-notices filter-notices reset-notice-filter)
   @audit_events ~w(filter-login-logs reset-login-log-filter paginate-login-logs filter-operation-logs reset-operation-log-filter paginate-operation-logs filter-dict-types reset-dict-type-filter export-login-logs export-operation-logs)
-  @operations_events ~w(refresh-jobs filter-jobs reset-job-filter toggle-job-selection toggle-all-job-selection select-job new-job edit-job save-job delete-job delete-jobs run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor retry-monitor toggle-monitor-help logout-online-user)
+  @operations_events ~w(refresh-jobs filter-jobs reset-job-filter toggle-job-selection toggle-all-job-selection select-job new-job edit-job save-job delete-job delete-jobs open-job-delete run-job cancel-job toggle-job-status refresh-job-logs refresh-monitor retry-monitor toggle-monitor-help logout-online-user)
   @security_events ~w(refresh-api-keys new-api-key save-api-key rotate-api-key revoke-api-key filter-api-keys paginate-api-keys filter-api-key-scopes toggle-api-key-scope dismiss-api-key-secret)
 
   @impl true

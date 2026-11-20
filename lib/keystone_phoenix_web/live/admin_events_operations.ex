@@ -6,6 +6,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
   alias KeystonePhoenix.Monitor
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminPages.FilterNavigation
+  alias KeystonePhoenixWeb.Live.AdminEvents.OperationsDeletion
+  alias KeystonePhoenixWeb.Live.AdminEvents.OperationsSelection
   alias KeystonePhoenixWeb.Live.AdminReadSupport, as: ReadSupport
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
 
@@ -105,30 +107,35 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
         )
       )
 
-  def handle_event("delete-jobs", %{"job-ids" => job_ids}, socket) do
-    if Support.permission_socket?(socket, "job:delete") do
-      ids = String.split(job_ids, ",", trim: true)
+  def handle_event("open-job-delete", _params, socket),
+    do: OperationsDeletion.open_confirmation(socket)
 
-      case Job.delete_jobs(ids, authorization(socket, "job:delete")) do
-        :ok ->
-          {:noreply,
-           assign(socket,
-             selected_job_ids: [],
-             selected_job: nil,
-             job_log_loaded_page: nil,
-             job_form: Support.empty_job_form(),
-             active_modal: nil,
-             job_feedback: "已删除 #{length(ids)} 个任务"
-           )
-           |> refresh_job_page(1)}
+  def handle_event(
+        "delete-jobs",
+        %{"job-ids" => job_ids},
+        %{assigns: %{active_modal: "job-delete"}} = socket
+      ) do
+    case OperationsDeletion.delete(socket, job_ids) do
+      {:ok, ids} ->
+        {:noreply,
+         assign(socket,
+           selected_job_ids: [],
+           job_form: Support.empty_job_form(),
+           active_modal: nil,
+           job_feedback: "已删除 #{length(ids)} 个任务"
+         )
+         |> OperationsSelection.clear_deleted_job_detail(ids)
+         |> refresh_job_page(1)}
 
-        error ->
-          {:noreply, assign(socket, job_feedback: Support.form_error(error))}
-      end
-    else
-      {:noreply, socket}
+      {:error, feedback} ->
+        {:noreply, assign(socket, job_feedback: feedback)}
+
+      :ignore ->
+        {:noreply, socket}
     end
   end
+
+  def handle_event("delete-jobs", _params, socket), do: {:noreply, socket}
 
   def handle_event("new-job", _params, socket) do
     if Support.permission_socket?(socket, "job:create") do
@@ -201,11 +208,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
           {:noreply,
            assign(socket,
              selected_job_ids: [],
-             selected_job: nil,
              job_form: Support.empty_job_form(),
              active_modal: nil,
              job_feedback: "任务已删除"
            )
+           |> OperationsSelection.clear_deleted_job_detail([job_id])
            |> refresh_job_page(1)}
 
         error ->

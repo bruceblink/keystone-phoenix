@@ -37,7 +37,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
           <p class="page-description">查询任务配置、运行状态和执行日志。新增、编辑、启停和手动执行使用独立操作入口。</p>
         </div>
       </header>
-      <%= if @job_feedback do %><p id="job-feedback" class={Feedback.class(@job_feedback)} role={Feedback.role(@job_feedback)} aria-live={Feedback.live(@job_feedback)}><%= Feedback.message(@job_feedback) %></p><% end %>
+      <%= if @job_feedback && @active_modal != "job-delete" do %><p id="job-feedback" class={Feedback.class(@job_feedback)} role={Feedback.role(@job_feedback)} aria-live={Feedback.live(@job_feedback)}><%= Feedback.message(@job_feedback) %></p><% end %>
       <section class="card jobs-filter-card">
         <form id="jobs-filter" class="jobs-filter-form filter-form" phx-submit="filter-jobs">
           <label for="jobs-filter-keyword"><span>任务名称、编码或分组</span><input id="jobs-filter-keyword" name="jobKeyword" value={@job_filter["keyword"] || ""} placeholder="按任务名称、调用目标或分组筛选" autocomplete="off" /></label>
@@ -62,10 +62,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Operations do
       </form>
         </.modal>
       <% end %>
+      <dialog id="job-delete-modal" class="modal modal-sm job-delete-dialog" data-open={if(@active_modal == "job-delete", do: "true", else: "false")} data-invoker-id="job-delete-toolbar-action" aria-labelledby="job-delete-modal-title" aria-describedby="job-delete-modal-description" phx-hook="JobDeleteDialog">
+        <header class="modal-header"><div><h2 id="job-delete-modal-title">删除任务</h2><p id="job-delete-modal-description">请确认本次批量操作的范围。</p></div><button type="button" class="modal-close" aria-label="关闭" phx-click="close-modal">×</button></header>
+        <div class="modal-body">
+          <div class="delete-confirm-panel"><span class="delete-confirm-icon" aria-hidden="true">!</span><div><strong>将删除 <%= length(@selected_job_ids) %> 条任务记录</strong><p>删除后不可恢复。请确认已选择正确的记录。</p></div></div>
+          <p :if={@job_feedback} id="job-delete-feedback" class={Feedback.class(@job_feedback)} role={Feedback.role(@job_feedback)} aria-live={Feedback.live(@job_feedback)}><%= Feedback.message(@job_feedback) %></p>
+        </div>
+        <form id="job-delete-form" phx-submit="delete-jobs"><input type="hidden" name="job-ids" value={Enum.join(@selected_job_ids, ",")} /></form>
+        <footer class="modal-footer"><button type="button" class="button button-ghost" phx-click="close-modal" autofocus>取消</button><button type="submit" form="job-delete-form" class="button button-danger" phx-disable-with="删除中…">确认删除 <%= length(@selected_job_ids) %> 条</button></footer>
+      </dialog>
       <section class="card jobs-table-card" aria-labelledby="jobs-table-title">
         <.list_toolbar label="定时任务列表操作">
           <button :if={!@read_only} type="button" class="button button-primary button-sm" phx-click="new-job" phx-disable-with="处理中…"><.nav_icon name="plus" />新增任务</button>
-          <button :if={!@read_only} type="button" class="button button-danger button-sm" phx-click="delete-jobs" phx-value-job-ids={Enum.join(@selected_job_ids, ",")} phx-confirm="确认删除选中的任务吗？" disabled={@selected_job_ids == []} phx-disable-with="删除中…">删除任务（<%= length(@selected_job_ids) %>）</button>
+          <button :if={!@read_only} type="button" id="job-delete-toolbar-action" class="button button-danger button-sm" phx-click="open-job-delete" phx-disable-with="确认中…" disabled={@selected_job_ids == []}>删除任务（<%= length(@selected_job_ids) %>）</button>
           <button type="button" class="button button-secondary button-sm" phx-click="refresh-jobs" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新任务</button>
         </.list_toolbar>
         <header class="card-header table-card-heading">

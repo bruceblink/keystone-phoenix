@@ -252,6 +252,17 @@ defmodule KeystonePhoenixWeb.AdminJobDeepLinkTest do
   end
 
   @tag :integration
+  test "没有任务删除权限时不会打开确认框", %{conn: conn} do
+    {user, _role} = LiveSupport.create_scoped_user()
+    {:ok, view, _html} = live(conn, "/")
+    login(view, user)
+
+    render_click(view, "open-job-delete")
+
+    assert live_socket(view).assigns.active_modal == nil
+  end
+
+  @tag :integration
   test "切换任务读取失败会清除旧详情，创建目标后重试显示新任务", %{
     conn: conn,
     admin: admin
@@ -284,6 +295,132 @@ defmodule KeystonePhoenixWeb.AdminJobDeepLinkTest do
     assert html =~ "#{job_b.job_name} · 执行日志"
     refute html =~ "无法读取所选任务或执行日志，请重试"
     assert live_socket(view).assigns.selected_job["jobName"] == job_b.job_name
+  end
+
+  @tag :integration
+  test "删除当前查看的任务会关闭日志详情并清除深链接", %{conn: conn, admin: admin} do
+    job = insert_job(KeystonePhoenix.Identity.v7(), "待删除的日志任务")
+    insert_job_log(job, "待删除任务的日志")
+
+    {:ok, view, _html} = live(conn, "/")
+    login(view, admin)
+    render_click(view, "show-panel", %{"panel" => "jobs"})
+    render_click(view, "select-job", %{"job-id" => to_string(job.job_id)})
+
+    assert has_element?(view, "#selected-job-logs-title", "待删除的日志任务 · 执行日志")
+    assert render(view) =~ "待删除任务的日志"
+    assert URI.parse(live_socket(view).assigns.current_uri).query =~ to_string(job.job_id)
+
+    render_click(view, "toggle-job-selection", %{
+      "job-id" => to_string(job.job_id),
+      "selected" => "true"
+    })
+
+    html = render_click(view, "open-job-delete")
+
+    assert has_element?(
+             view,
+             "dialog#job-delete-modal[data-open='true'][aria-labelledby='job-delete-modal-title']"
+           )
+
+    assert has_element?(view, "#job-delete-modal strong", "将删除 1 条任务记录")
+    assert has_element?(view, "#job-delete-modal button[autofocus]", "取消")
+    assert has_element?(view, "#job-delete-form input[name='job-ids'][value='#{job.job_id}']")
+    assert Repo.get(SysJob, job.job_id)
+    assert html =~ "待删除任务的日志"
+
+    render_submit(view, "delete-jobs", %{"job-ids" => KeystonePhoenix.Identity.v7()})
+
+    assert has_element?(view, "dialog#job-delete-modal[data-open='true']")
+    assert has_element?(view, "#job-delete-feedback[role='alert']", "删除范围已变化，请重新选择任务后确认")
+    assert Repo.get(SysJob, job.job_id)
+
+    html = render_submit(view, "delete-jobs", %{"job-ids" => to_string(job.job_id)})
+
+    assert is_nil(live_socket(view).assigns.selected_job_id)
+    assert is_nil(live_socket(view).assigns.selected_job)
+    assert live_socket(view).assigns.job_log_rows == []
+    assert live_socket(view).assigns.active_modal == nil
+    assert URI.parse(live_socket(view).assigns.current_uri).path == "/jobs"
+    refute (URI.parse(live_socket(view).assigns.current_uri).query || "") =~ "jobs_selectedJobId"
+    refute html =~ "待删除的日志任务 · 执行日志"
+    refute html =~ "待删除任务的日志"
+    assert html =~ "已删除 1 个任务"
+  end
+
+  @tag :integration
+  test "取消任务删除确认后保留选择且不删除任务", %{conn: conn, admin: admin} do
+    job = insert_job(KeystonePhoenix.Identity.v7(), "取消删除后保留的任务")
+
+    {:ok, view, _html} = live(conn, "/")
+    login(view, admin)
+    render_click(view, "show-panel", %{"panel" => "jobs"})
+
+    render_click(view, "toggle-job-selection", %{
+      "job-id" => to_string(job.job_id),
+      "selected" => "true"
+    })
+
+    render_click(view, "open-job-delete")
+
+    assert has_element?(view, "dialog#job-delete-modal[data-open='true']")
+    html = render_click(view, "close-modal")
+
+    assert live_socket(view).assigns.active_modal == nil
+    assert has_element?(view, "dialog#job-delete-modal[data-open='false']")
+    assert live_socket(view).assigns.selected_job_ids == [to_string(job.job_id)]
+    assert Repo.get(SysJob, job.job_id)
+    assert has_element?(view, "button[phx-click='open-job-delete']:not([disabled])")
+    assert html =~ ~s(data-open="false")
+  end
+
+  @tag :integration
+  test "删除其他任务时保留当前日志详情和深链接", %{conn: conn, admin: admin} do
+    selected_job = insert_job(KeystonePhoenix.Identity.v7(), "保留的日志任务")
+    deleted_job = insert_job(KeystonePhoenix.Identity.v7(), "删除的非选中任务")
+    insert_job_log(selected_job, "仍应显示的任务日志")
+    insert_job_log(deleted_job, "不应继续存在的任务日志")
+
+    {:ok, view, _html} = live(conn, "/")
+    login(view, admin)
+    render_click(view, "show-panel", %{"panel" => "jobs"})
+    render_click(view, "select-job", %{"job-id" => to_string(selected_job.job_id)})
+
+    render_click(view, "toggle-job-selection", %{
+      "job-id" => to_string(deleted_job.job_id),
+      "selected" => "true"
+    })
+
+    assert live_socket(view).assigns.selected_job_ids == [to_string(deleted_job.job_id)]
+
+    html = render_click(view, "open-job-delete")
+
+    assert has_element?(view, "dialog#job-delete-modal[data-open='true'] strong", "将删除 1 条任务记录")
+
+    assert has_element?(
+             view,
+             "#job-delete-form input[name='job-ids'][value='#{deleted_job.job_id}']"
+           )
+
+    assert Repo.get(SysJob, deleted_job.job_id)
+    assert html =~ "仍应显示的任务日志"
+
+    html = render_submit(view, "delete-jobs", %{"job-ids" => to_string(deleted_job.job_id)})
+
+    assert live_socket(view).assigns.selected_job_id == to_string(selected_job.job_id)
+    assert live_socket(view).assigns.selected_job["jobName"] == selected_job.job_name
+    assert Enum.map(live_socket(view).assigns.job_log_rows, & &1["jobMessage"]) == ["仍应显示的任务日志"]
+    assert has_element?(view, "#selected-job-logs-title", "保留的日志任务 · 执行日志")
+    assert html =~ "仍应显示的任务日志"
+    refute html =~ "不应继续存在的任务日志"
+
+    assert URI.parse(live_socket(view).assigns.current_uri).query =~
+             to_string(selected_job.job_id)
+
+    refute (URI.parse(live_socket(view).assigns.current_uri).query || "") =~
+             to_string(deleted_job.job_id)
+
+    assert live_socket(view).assigns.selected_job_ids == []
   end
 
   @tag :integration

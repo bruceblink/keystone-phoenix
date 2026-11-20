@@ -159,7 +159,7 @@ defmodule KeystonePhoenixWeb.AdminListToolbarLayoutTest do
         job_rows: [],
         job_feedback: {:error, "加载失败"},
         selected_job_ids: [],
-        active_modal: nil,
+        active_modal: "job-delete",
         read_only: false
       })
 
@@ -171,14 +171,22 @@ defmodule KeystonePhoenixWeb.AdminListToolbarLayoutTest do
 
     assert_in_order(job_html, [
       ~s(phx-click="new-job"),
-      ~s(phx-click="delete-jobs"),
+      ~s(phx-click="open-job-delete"),
       ~s(phx-click="refresh-jobs")
     ])
 
-    assert job_html =~ ~s(phx-confirm="确认删除选中的任务吗？")
+    assert job_html =~ ~s(phx-click="open-job-delete")
 
     assert job_html =~
-             ~s(phx-click="delete-jobs" phx-value-job-ids="" phx-confirm="确认删除选中的任务吗？" disabled phx-disable-with="删除中…")
+             ~s(id="job-delete-toolbar-action" class="button button-danger button-sm" phx-click="open-job-delete")
+
+    assert job_html =~ ~s(disabled>删除任务（0）</button>)
+
+    assert job_html =~ ~s(id="job-delete-form" phx-submit="delete-jobs")
+    assert job_html =~ ~s(<dialog id="job-delete-modal")
+    assert job_html =~ ~s(aria-labelledby="job-delete-modal-title")
+    assert job_html =~ ~s(autofocus>取消</button>)
+    refute job_html =~ ~s(id="job-delete-modal" role="dialog")
 
     job_log_html =
       render_component(&Operations.job_logs/1, %{

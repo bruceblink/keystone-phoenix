@@ -1,5 +1,30 @@
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
 const Hooks = {
+  JobDeleteDialog: {
+    mounted() {
+      // 原生 dialog 管理焦点；关闭事件再同步到 LiveView 服务端状态。
+      this.handleClose = () => {
+        if (this.el.dataset.open === "true") this.pushEvent("close-modal", {});
+      };
+      this.el.addEventListener("close", this.handleClose);
+      this.syncOpenState();
+    },
+    updated() {
+      this.syncOpenState();
+    },
+    syncOpenState() {
+      if (this.el.dataset.open === "true" && !this.el.open) {
+        const invoker = document.getElementById(this.el.dataset.invokerId);
+        if (invoker && document.activeElement !== invoker) invoker.focus({ preventScroll: true });
+        this.el.showModal();
+      }
+      if (this.el.dataset.open !== "true" && this.el.open) this.el.close();
+    },
+    destroyed() {
+      this.el.removeEventListener("close", this.handleClose);
+      if (this.el.open) this.el.close();
+    }
+  },
   LocalDateTime: {
     mounted() {
       this.formatTime();
