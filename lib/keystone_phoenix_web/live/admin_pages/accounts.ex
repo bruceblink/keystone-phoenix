@@ -48,9 +48,19 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           </div>
         </form>
       </section>
-      <%= if @user_feedback do %>
+      <%= if @user_feedback && @active_modal != "user-delete" do %>
         <p id="user-feedback" class={Feedback.class(@user_feedback)} role={Feedback.role(@user_feedback)} aria-live={Feedback.live(@user_feedback)}><%= Feedback.message(@user_feedback) %></p>
       <% end %>
+      <dialog :if={"user:delete" in @permissions} id="user-delete-modal" class="modal modal-sm user-delete-dialog" data-open={if(@active_modal == "user-delete", do: "true", else: "false")} data-invoker-id="user-delete-toolbar-action" aria-labelledby="user-delete-modal-title" aria-describedby="user-delete-modal-description" phx-hook="UserDeleteDialog">
+        <header class="modal-header"><div><h2 id="user-delete-modal-title">删除用户</h2><p id="user-delete-modal-description">请确认本次批量操作的范围。</p></div><button type="submit" form="user-delete-cancel-form" class="modal-close" aria-label="关闭">×</button></header>
+        <div class="modal-body">
+          <div class="delete-confirm-panel"><span class="delete-confirm-icon" aria-hidden="true">!</span><div><strong>将删除 <%= length(@selected_user_ids) %> 条用户记录</strong><p>删除后不可恢复。请确认已选择正确的记录。</p></div></div>
+          <p :if={@user_feedback} id="user-delete-feedback" class={Feedback.class(@user_feedback)} role={Feedback.role(@user_feedback)} aria-live={Feedback.live(@user_feedback)}><%= Feedback.message(@user_feedback) %></p>
+        </div>
+        <form id="user-delete-form" phx-submit="delete-users"><input type="hidden" name="user-ids" value={Enum.join(@selected_user_ids, ",")} /></form>
+        <form id="user-delete-cancel-form" method="dialog"></form>
+        <footer class="modal-footer"><button type="submit" form="user-delete-cancel-form" class="button button-ghost" autofocus>取消</button><button type="submit" form="user-delete-form" class="button button-danger" phx-disable-with="删除中…">确认删除 <%= length(@selected_user_ids) %> 个</button></footer>
+      </dialog>
       <%= if @active_modal == "user" do %>
         <.modal id="user-modal" title={if @user_form["userId"] == "", do: "新建用户", else: "编辑用户"} description="维护账号资料、组织归属和登录权限。">
       <form :if={user_form_allowed?(@user_form, @permissions)} id="user-form" aria-describedby="user-feedback" phx-submit="save-user">
@@ -161,7 +171,7 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Accounts do
           <button :if={"user:create" in @permissions} type="button" class="button button-primary refresh" phx-click="new-user" phx-disable-with="处理中…"><.nav_icon name="plus" />新增用户</button>
           <button :if={"user:import" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="new-user-import" phx-disable-with="处理中…"><.nav_icon name="upload" />导入 Excel</button>
           <button :if={"user:export" in @permissions} type="button" class="button button-secondary refresh secondary" phx-click="export-users" phx-disable-with="导出中…"><.nav_icon name="download" />导出 Excel</button>
-          <button :if={"user:delete" in @permissions} type="button" class="button button-danger refresh danger-action" phx-click="delete-users" phx-value-user-ids={Enum.join(@selected_user_ids, ",")} phx-confirm="确认删除选中的用户吗？" disabled={@selected_user_ids == []} phx-disable-with="删除中…">删除用户（<%= length(@selected_user_ids) %>）</button>
+          <button :if={"user:delete" in @permissions} type="button" id="user-delete-toolbar-action" class="button button-danger refresh danger-action" phx-click="open-user-delete" disabled={@selected_user_ids == []} phx-disable-with="确认中…">删除用户（<%= length(@selected_user_ids) %>）</button>
           <button type="button" class="button button-secondary refresh secondary" phx-click="refresh-users" phx-disable-with="刷新中…"><.nav_icon name="refresh" />刷新列表</button>
         </.list_toolbar>
         <div class="card-header">

@@ -69,6 +69,9 @@ defmodule KeystonePhoenixWeb.AdminUserPaginationTest do
 
     deleted_id = hd(live_socket(view).assigns.user_rows)["userId"]
     render_click(view, "delete-user", %{"user-id" => deleted_id})
+    assert live_socket(view).assigns.active_modal == "user-delete"
+    refute Repo.get!(SysUser, deleted_id).deleted
+    render_submit(view, "delete-users", %{"user-ids" => deleted_id})
 
     assigns = live_socket(view).assigns
     assert assigns.user_total == 20

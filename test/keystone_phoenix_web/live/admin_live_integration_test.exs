@@ -231,7 +231,7 @@ defmodule KeystonePhoenixWeb.AdminLiveIntegrationTest do
     })
 
     assert to_string(admin.user_id) in live_socket(view).assigns.selected_user_ids
-    refute has_element?(view, "button[phx-click='delete-users'][disabled]")
+    refute has_element?(view, "button[phx-click='open-user-delete'][disabled]")
     render_click(view, "reset-user-filter")
     assert live_socket(view).assigns.selected_user_ids == []
     render_click(view, "export-users")

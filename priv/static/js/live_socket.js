@@ -1,30 +1,46 @@
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-const Hooks = {
-  JobDeleteDialog: {
-    mounted() {
-      // 原生 dialog 管理焦点；关闭事件再同步到 LiveView 服务端状态。
-      this.handleClose = () => {
-        if (this.el.dataset.open === "true") this.pushEvent("close-modal", {});
-      };
-      this.el.addEventListener("close", this.handleClose);
-      this.syncOpenState();
-    },
-    updated() {
-      this.syncOpenState();
-    },
-    syncOpenState() {
-      if (this.el.dataset.open === "true" && !this.el.open) {
-        const invoker = document.getElementById(this.el.dataset.invokerId);
-        if (invoker && document.activeElement !== invoker) invoker.focus({ preventScroll: true });
-        this.el.showModal();
-      }
-      if (this.el.dataset.open !== "true" && this.el.open) this.el.close();
-    },
-    destroyed() {
-      this.el.removeEventListener("close", this.handleClose);
-      if (this.el.open) this.el.close();
-    }
+// 任务和用户删除共用原生 dialog 的打开、关闭和焦点行为。
+const nativeConfirmDialog = (closeEvent) => ({
+  mounted() {
+    this.handleClose = () => {
+      // 将原生关闭请求延后到本轮 DOM patch 后，区分 Escape 和 LiveView 临时移除 open 属性。
+      queueMicrotask(() => {
+        if (this.el.dataset.open === "true" && !this.el.open) this.pushEvent(closeEvent, {});
+      });
+    };
+    this.el.addEventListener("close", this.handleClose);
+    this.wasOpen = false;
+    this.syncOpenState();
   },
+  updated() {
+    this.syncOpenState();
+  },
+  syncOpenState() {
+    const shouldOpen = this.el.dataset.open === "true";
+    if (shouldOpen && !this.el.open) {
+      const invoker = document.getElementById(this.el.dataset.invokerId);
+      if (invoker && document.activeElement !== invoker) invoker.focus({ preventScroll: true });
+      this.el.showModal();
+    }
+    if (!shouldOpen && this.wasOpen) {
+      const invokerId = this.el.dataset.invokerId;
+      if (this.el.open) this.el.close();
+      // LiveView 收到取消事件后会更新 DOM；下一帧将焦点还给更新后的触发按钮。
+      requestAnimationFrame(() => {
+        const invoker = document.getElementById(invokerId);
+        if (invoker?.isConnected && !invoker.disabled) invoker.focus({ preventScroll: true });
+      });
+    }
+    this.wasOpen = shouldOpen;
+  },
+  destroyed() {
+    this.el.removeEventListener("close", this.handleClose);
+    if (this.el.open) this.el.close();
+  }
+});
+const Hooks = {
+  UserDeleteDialog: nativeConfirmDialog("close-user-delete"),
+  JobDeleteDialog: nativeConfirmDialog("close-modal"),
   LocalDateTime: {
     mounted() {
       this.formatTime();

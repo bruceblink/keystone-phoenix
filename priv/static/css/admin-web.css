@@ -325,6 +325,11 @@ a { color: inherit; text-decoration: none; }
 .modal.job-delete-dialog[open] { position: fixed; inset: 0; margin: auto; padding: 0; }
 dialog.job-delete-dialog:modal { overscroll-behavior: contain; }
 dialog.job-delete-dialog::backdrop { overflow: hidden; overscroll-behavior: contain; background: rgba(3, 8, 16, .78); backdrop-filter: blur(8px); }
+/* 原生删除确认共用定位和滚动边界，不改变表单模态框行为。 */
+.modal:is(.job-delete-dialog, .user-delete-dialog):not([open]) { display: none; }
+.modal:is(.job-delete-dialog, .user-delete-dialog)[open] { position: fixed; inset: 0; margin: auto; padding: 0; }
+dialog:is(.job-delete-dialog, .user-delete-dialog):modal { overscroll-behavior: contain; }
+dialog:is(.job-delete-dialog, .user-delete-dialog)::backdrop { overflow: hidden; overscroll-behavior: contain; background: rgba(3, 8, 16, .78); backdrop-filter: blur(8px); }
 .login-session-warning { margin: 0; color: var(--muted-strong); font-size: 12px; line-height: 1.7; }
 
 /* 短屏手机压缩登录页的装饰和间距，保证表单在首屏内完整可用。 */

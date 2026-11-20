@@ -22,7 +22,7 @@ defmodule KeystonePhoenixWeb.AdminListToolbarTest do
       ~s(phx-click="new-user"),
       ~s(phx-click="new-user-import"),
       ~s(phx-click="export-users"),
-      ~s(phx-click="delete-users"),
+      ~s(phx-click="open-user-delete"),
       ~s(phx-click="refresh-users")
     ])
 

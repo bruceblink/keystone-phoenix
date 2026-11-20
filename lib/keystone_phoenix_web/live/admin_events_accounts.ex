@@ -9,6 +9,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   alias KeystonePhoenixWeb.Live.AdminEventsAccountsParams, as: AccountParams
   alias KeystonePhoenixWeb.Live.AdminEvents.Profile, as: ProfileEvents
   alias KeystonePhoenixWeb.Live.AdminEvents.AccountsRoles
+  alias KeystonePhoenixWeb.Live.AdminEvents.AccountsUserDeletion
   alias KeystonePhoenixWeb.Live.Authentication
   alias KeystonePhoenixWeb.Live.AdminSupport, as: Support
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
@@ -97,6 +98,9 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     end
   end
 
+  def handle_event(event, params, socket) when event in ["open-user-delete", "close-user-delete"],
+    do: AccountsUserDeletion.handle_event(event, params, socket)
+
   def handle_event(
         "toggle-user-selection",
         %{"user-id" => user_id, "selected" => selected},
@@ -125,8 +129,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
     {:noreply, assign(socket, selected_user_ids: selected_ids)}
   end
 
-  def handle_event("delete-users", %{"user-ids" => user_ids}, socket) do
-    delete_users(socket, String.split(user_ids, ",", trim: true))
+  def handle_event("delete-users", params, socket) do
+    case AccountsUserDeletion.confirmed_ids(params, socket) do
+      {:ok, user_ids} -> delete_users(socket, user_ids)
+      {:error, feedback} -> {:noreply, assign(socket, user_feedback: feedback)}
+      :ignore -> {:noreply, socket}
+    end
   end
 
   def handle_event("import-users", _params, socket) do
@@ -225,7 +233,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Accounts do
   end
 
   def handle_event("delete-user", %{"user-id" => user_id}, socket) do
-    delete_users(socket, [user_id])
+    if Support.permission_socket?(socket, "user:delete") do
+      socket = assign(socket, selected_user_ids: [user_id])
+      handle_event("open-user-delete", %{}, socket)
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("reset-user-password", params, socket) do
