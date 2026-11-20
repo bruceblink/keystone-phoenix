@@ -33,6 +33,7 @@ defmodule KeystonePhoenixWeb.RoleController do
   alias KeystonePhoenixWeb.NativeContract
 
   @role_export_headers ["角色ID", "角色名称", "角色标识", "角色排序", "角色状态", "备注", "创建时间", "数据范围"]
+  @max_pagination_value 2_147_483_647
 
   @doc "按 Native 约定返回角色数组或分页结果。"
   def list(conn, params) do
@@ -302,21 +303,80 @@ defmodule KeystonePhoenixWeb.RoleController do
     |> NativeContract.role()
   end
 
-  # Native 忽略该接口的分页参数并返回完整结果；分批查询保持 Phoenix 单次读取有界。
+  # 新分页参数返回一页；旧参数继续触发有界分批读取并保留数组响应。
   defp role_users(role_id, params, actor, fetch_page) do
-    case Excel.all_rows_result(
-           fn page_params -> fetch_page.(role_id, page_params, actor) end,
-           params
-         ) do
-      {:ok, rows} ->
-        if params["include"] == "identity",
-          do: {:ok, rows},
-          else: {:ok, NativeContract.role_user_ids(rows)}
+    if role_users_pagination_requested?(params) do
+      paged_role_users(role_id, params, actor, fetch_page)
+    else
+      all_role_users(role_id, params, actor, fetch_page)
+    end
+  end
+
+  defp paged_role_users(role_id, params, actor, fetch_page) do
+    page = pagination_value(params, "page", 1)
+    size = pagination_value(params, "size", 20) |> min(100)
+
+    query_params =
+      params
+      |> Map.put("pageNum", page)
+      |> Map.put("pageSize", size)
+
+    case fetch_page.(role_id, query_params, actor) do
+      %{rows: rows, total: total} ->
+        {:ok,
+         %{
+           items: role_user_items(rows, params),
+           page: page,
+           size: size,
+           total: total
+         }}
 
       {:error, reason} ->
         {:error, reason}
     end
   end
+
+  defp all_role_users(role_id, params, actor, fetch_page) do
+    case Excel.all_rows_result(
+           fn page_params -> fetch_page.(role_id, page_params, actor) end,
+           params
+         ) do
+      {:ok, rows} -> {:ok, role_user_items(rows, params)}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp role_user_items(rows, %{"include" => "identity"}), do: rows
+  defp role_user_items(rows, _params), do: NativeContract.role_user_ids(rows)
+
+  defp role_users_pagination_requested?(params),
+    do:
+      Map.has_key?(params, "page") or Map.has_key?(params, :page) or
+        Map.has_key?(params, "size") or Map.has_key?(params, :size)
+
+  defp pagination_value(params, key, default) do
+    if Map.has_key?(params, key) or Map.has_key?(params, pagination_atom(key)),
+      do: normalized_positive_integer(param(params, key), 1),
+      else: default
+  end
+
+  defp param(params, "page"), do: Map.get(params, "page", Map.get(params, :page))
+  defp param(params, "size"), do: Map.get(params, "size", Map.get(params, :size))
+  defp pagination_atom("page"), do: :page
+  defp pagination_atom("size"), do: :size
+
+  defp normalized_positive_integer(value, _default)
+       when is_integer(value) and value > 0 and value <= @max_pagination_value,
+       do: value
+
+  defp normalized_positive_integer(value, default) when is_binary(value) do
+    case Integer.parse(value) do
+      {number, ""} when number > 0 and number <= @max_pagination_value -> number
+      _ -> default
+    end
+  end
+
+  defp normalized_positive_integer(_value, default), do: default
 
   defp role_export_row(row) do
     [

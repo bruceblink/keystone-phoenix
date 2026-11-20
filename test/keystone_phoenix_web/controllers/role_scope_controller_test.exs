@@ -252,7 +252,7 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
   end
 
   @tag :integration
-  test "role member HTTP queries return all IDs even when page parameters are supplied" do
+  test "role member HTTP queries keep legacy pagination unpaged and support native paging" do
     reader_role = create_role("ALL")
     grant_permission(reader_role.role_id, "role:read")
     target_role = create_role("ALL")
@@ -260,12 +260,17 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
     actor = create_user(reader_role.role_id)
     token = step_up_token(actor)
     now = DateTime.utc_now()
+    identity_filter = "roleScopeFilter#{System.unique_integer([:positive])}"
 
     allocated_rows =
       for index <- 1..501 do
         %{
           user_id: Identity.v7(),
-          username: "role_scope_bulk_#{index}_#{System.unique_integer([:positive])}",
+          username:
+            if(index == 1,
+              do: identity_filter,
+              else: "role_scope_bulk_#{index}_#{System.unique_integer([:positive])}"
+            ),
           password: "bulk-test-password",
           role_id: preferred_role.role_id,
           status: 1,
@@ -322,15 +327,118 @@ defmodule KeystonePhoenixWeb.RoleScopeControllerTest do
              &(Map.keys(&1) |> Enum.sort() == ["displayName", "id", "username"])
            )
 
-    explicit_page =
+    legacy_ids =
       get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
         "allocated" => "true",
         "pageNum" => "2",
         "pageSize" => "3"
       })
 
-    explicit_page_ids = json_response(explicit_page, 200)["data"]
-    assert MapSet.new(explicit_page_ids) == MapSet.new(allocated_ids)
+    assert %{"data" => ids} = json_response(legacy_ids, 200)
+    assert length(ids) == 501
+    assert MapSet.new(ids) == MapSet.new(allocated_ids)
+
+    explicit_page =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "true",
+        "page" => "2",
+        "size" => "3"
+      })
+
+    explicit_result = json_response(explicit_page, 200)["data"]
+    ordered_ids = Enum.sort(allocated_ids, :desc)
+    assert explicit_result["page"] == 2
+    assert explicit_result["size"] == 3
+    assert explicit_result["total"] == 501
+    assert explicit_result["items"] == Enum.slice(ordered_ids, 3, 3)
+
+    size_only =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "true",
+        "size" => "4"
+      })
+
+    size_only_result = json_response(size_only, 200)["data"]
+    assert size_only_result["page"] == 1
+    assert size_only_result["size"] == 4
+    assert size_only_result["total"] == 501
+    assert size_only_result["items"] == Enum.take(ordered_ids, 4)
+
+    page_only =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "true",
+        "page" => "2"
+      })
+
+    page_only_result = json_response(page_only, 200)["data"]
+    assert page_only_result["page"] == 2
+    assert page_only_result["size"] == 20
+    assert page_only_result["total"] == 501
+    assert length(page_only_result["items"]) == 20
+
+    normalized_bounds =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "true",
+        "page" => "0",
+        "size" => "-3"
+      })
+
+    normalized_result = json_response(normalized_bounds, 200)["data"]
+    assert normalized_result["page"] == 1
+    assert normalized_result["size"] == 1
+    assert normalized_result["total"] == 501
+    assert normalized_result["items"] == Enum.take(ordered_ids, 1)
+
+    overflow_bounds =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "true",
+        "page" => "2147483648",
+        "size" => "2147483648"
+      })
+
+    overflow_result = json_response(overflow_bounds, 200)["data"]
+    assert overflow_result["page"] == 1
+    assert overflow_result["size"] == 1
+    assert overflow_result["total"] == 501
+    assert overflow_result["items"] == Enum.take(ordered_ids, 1)
+
+    capped_size =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "true",
+        "size" => "101"
+      })
+
+    capped_result = json_response(capped_size, 200)["data"]
+    assert capped_result["size"] == 100
+    assert capped_result["total"] == 501
+    assert length(capped_result["items"]) == 100
+
+    unallocated_page =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "false",
+        "page" => "1",
+        "size" => "1"
+      })
+
+    unallocated_result = json_response(unallocated_page, 200)["data"]
+    assert unallocated_result["page"] == 1
+    assert unallocated_result["size"] == 1
+    assert unallocated_result["total"] >= length(unallocated_ids)
+    assert length(unallocated_result["items"]) == 1
+
+    filtered_page =
+      get(authorized(token), "/api/v1/roles/#{target_role.role_id}/users", %{
+        "allocated" => "true",
+        "include" => "identity",
+        "username" => identity_filter,
+        "page" => "1",
+        "size" => "10"
+      })
+
+    filtered_result = json_response(filtered_page, 200)["data"]
+    assert filtered_result["total"] == 1
+    assert [%{"id" => _, "username" => username, "displayName" => _}] = filtered_result["items"]
+    assert username == identity_filter
 
     missing_role = get(authorized(token), "/api/v1/roles/#{Identity.v7()}/users")
     assert get_in(json_response(missing_role, 404), ["error", "code"]) == "resource_not_found"
