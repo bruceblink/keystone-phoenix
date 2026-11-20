@@ -51,7 +51,8 @@ defmodule KeystonePhoenix.User do
     query =
       from u in SysUser,
         where: u.deleted == false,
-        order_by: [desc: u.user_id]
+        # 与 Native 用户列表和导出按 UUID 升序的顺序保持一致。
+        order_by: [asc: u.user_id]
 
     query
     |> filter_uuid(:user_id, params["userId"] || params[:user_id])

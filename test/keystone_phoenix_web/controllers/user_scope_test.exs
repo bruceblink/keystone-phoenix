@@ -145,6 +145,29 @@ defmodule KeystonePhoenixWeb.UserScopeTest do
     expected = MapSet.new([ctx.actor.user_id, ctx.oldest.user_id, ctx.descendant.user_id])
     assert MapSet.new(Enum.map(rows, & &1["id"])) == expected
 
+    expected_page_order = expected |> MapSet.to_list() |> Enum.sort()
+
+    paged_ids =
+      for page <- [1, 2], reduce: [] do
+        ids ->
+          response =
+            get(authorized(tokens.token), "/api/v1/users", %{
+              "username" => "scope_user",
+              "page" => to_string(page),
+              "size" => "2"
+            })
+            |> json_response(200)
+            |> get_in(["data"])
+
+          assert response["page"] == page
+          assert response["size"] == 2
+          assert response["total"] == length(expected_page_order)
+          ids ++ Enum.map(response["items"], & &1["id"])
+      end
+
+    assert paged_ids == expected_page_order
+    assert length(Enum.uniq(paged_ids)) == length(expected_page_order)
+
     assert json_response(
              get(authorized(tokens.token), "/api/v1/users/#{ctx.oldest.user_id}"),
              200
