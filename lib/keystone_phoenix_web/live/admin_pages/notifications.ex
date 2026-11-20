@@ -29,9 +29,9 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Notifications do
           <button type="button" class="button button-ghost button-sm" phx-click="close-notifications" aria-label="关闭通知">×</button>
         </header>
         <%= cond do %>
-          <% @loading -> %>
+          <% @loading == true and @notifications == [] -> %>
             <div class="notification-state" role="status" aria-live="polite">正在读取通知</div>
-          <% @error -> %>
+          <% not is_nil(@error) and @notifications == [] -> %>
             <div class="notification-state notification-state-error" role="alert"><span><%= @error %></span><button type="button" class="button button-ghost button-sm" phx-click="retry-notifications">重试</button></div>
           <% @selected -> %>
             <article class="notification-detail">
@@ -41,6 +41,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Notifications do
               <div :if={@read_error} class="notification-state notification-state-error" role="alert"><span><%= @read_error %></span><button type="button" class="button button-ghost button-sm" phx-click={@read_error_action}><%= @read_error_label %></button></div>
             </article>
           <% true -> %>
+            <!-- 后台刷新失败时保留旧列表，同时显示错误和重试入口。 -->
+            <div :if={@error} class="notification-state notification-state-error" role="alert"><span><%= @error %></span><button type="button" class="button button-ghost button-sm" phx-click="retry-notifications">重试</button></div>
             <div class="notification-list" role="list">
               <%= if @notifications == [] do %>
                 <div class="notification-state" role="status">暂无站内通知</div>

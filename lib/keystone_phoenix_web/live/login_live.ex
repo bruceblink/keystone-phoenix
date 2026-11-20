@@ -358,11 +358,16 @@ defmodule KeystonePhoenixWeb.LoginLive do
   def handle_info({:api_key_expiry_tick, _token} = message, socket),
     do: SecurityEvents.handle_info(message, socket)
 
+  # 通知计时消息由会话令牌校验，旧账号或重复消息不会刷新收件箱。
+  def handle_info({:notifications_refresh_tick, token}, socket),
+    do: LoginNotifications.handle_refresh_tick(token, socket)
+
   def handle_info(_message, socket), do: {:noreply, socket}
 
   @impl true
   def terminate(_reason, socket) do
     KeystonePhoenixWeb.Live.AdminEvents.ApiKeyExpiryTimer.cancel(socket)
+    LoginNotifications.cancel(socket)
     :ok
   end
 

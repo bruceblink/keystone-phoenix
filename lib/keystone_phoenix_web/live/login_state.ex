@@ -9,7 +9,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
   def reset(socket) do
     socket
     |> cancel_avatar_uploads()
-    |> cancel_notification_load()
+    |> KeystonePhoenixWeb.LoginNotifications.cancel()
     |> KeystonePhoenixWeb.Live.AdminEvents.ApiKeyExpiryTimer.cancel()
     |> assign(
       username: "operator",
@@ -53,6 +53,9 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       notification_read_error_label: nil,
       notifications_user_id: nil,
       notifications_async_name: nil,
+      # 注销时清理站内通知轮询，避免旧会话再次读取收件箱。
+      notifications_refresh_timer: nil,
+      notifications_refresh_token: nil,
       notifications_unread_count: 0,
       notifications_page: 1,
       notifications_has_more: false,
@@ -217,14 +220,6 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
   defp cancel_avatar_uploads(socket) do
     cancel_uploads(socket, :avatar)
     |> cancel_uploads(:user_import)
-  end
-
-  # 登录结束时取消待处理的收件箱读取，避免旧账号通知进入新会话。
-  defp cancel_notification_load(socket) do
-    case socket.assigns[:notifications_async_name] do
-      nil -> socket
-      async_name -> Phoenix.LiveView.cancel_async(socket, async_name)
-    end
   end
 
   # 注销时取消尚未消费的上传，避免文件继续占用 LiveView 临时目录。

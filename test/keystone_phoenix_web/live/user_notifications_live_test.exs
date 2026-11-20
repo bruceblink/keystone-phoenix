@@ -13,6 +13,7 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
   alias KeystonePhoenixWeb.LiveAuthenticationTestSupport, as: LiveSupport
+  alias KeystonePhoenixWeb.Live.AdminPages.Notifications, as: NotificationMenu
 
   @password "Strong!123"
 
@@ -87,6 +88,170 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
     render_click(view, "open-notification", %{"notification-id" => own_notification.id})
     assert is_nil(LiveSupport.live_socket(view).assigns.selected_notification_id)
     refute render(view) =~ own_notification.content
+  end
+
+  # 站内通知轮询须保留详情、旧列表和注销后的会话边界。
+  @tag :integration
+  test "refreshes the badge and open inbox on the notification timer", %{conn: conn} do
+    role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+    owner = create_user(role, "inbox_timer")
+    first = Notification.create_api_key_event!(owner.user_id, :created)
+
+    {:ok, view, _html} = live(conn, "/")
+    login(view, owner)
+
+    token = LiveSupport.live_socket(view).assigns.notifications_refresh_token
+    assert is_reference(token)
+
+    send(view.pid, {:notifications_refresh_tick, token})
+    render(view)
+
+    assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 1
+    assert has_element?(view, "button[aria-label='通知，1 条未读']")
+
+    render_click(view, "toggle-notifications")
+    render_async(view)
+    assert has_element?(view, ".notification-list-item", first.title)
+    render_click(view, "open-notification", %{"notification-id" => first.id})
+    assert has_element?(view, ".notification-detail h3", first.title)
+
+    second = Notification.create_api_key_event!(owner.user_id, :rotated)
+    next_token = LiveSupport.live_socket(view).assigns.notifications_refresh_token
+    assert is_reference(next_token)
+    refute next_token == token
+
+    send(view.pid, {:notifications_refresh_tick, next_token})
+    render(view)
+
+    assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 1
+    assert has_element?(view, ".notification-detail h3", first.title)
+    assert length(LiveSupport.live_socket(view).assigns.in_app_notifications) == 1
+
+    render_click(view, "back-notifications")
+    refreshed_html = render_async(view)
+
+    assert refreshed_html =~ second.title
+    assert length(LiveSupport.live_socket(view).assigns.in_app_notifications) == 2
+    refute LiveSupport.live_socket(view).assigns.selected_notification_id
+
+    Repo.query!("ALTER TABLE sys_user_notification RENAME TO sys_user_notification_unavailable")
+
+    try do
+      stale_data = LiveSupport.live_socket(view).assigns.in_app_notifications
+      stale_count = LiveSupport.live_socket(view).assigns.notifications_unread_count
+      stale_token = LiveSupport.live_socket(view).assigns.notifications_refresh_token
+
+      send(view.pid, {:notifications_refresh_tick, stale_token})
+      failed_html = render_async(view)
+
+      assert failed_html =~ "无法读取站内通知"
+      assert has_element?(view, ".notification-state-error[role='alert']", "无法读取站内通知")
+      assert has_element?(view, ".notification-list-item", second.title)
+      assert LiveSupport.live_socket(view).assigns.in_app_notifications == stale_data
+      assert LiveSupport.live_socket(view).assigns.notifications_unread_count == stale_count
+    after
+      Repo.query!("ALTER TABLE sys_user_notification_unavailable RENAME TO sys_user_notification")
+    end
+
+    render_click(view, "retry-notifications")
+    render_async(view)
+    assert LiveSupport.live_socket(view).assigns.notifications_error == nil
+
+    stale_token = LiveSupport.live_socket(view).assigns.notifications_refresh_token
+    render_click(view, "logout")
+    assert LiveSupport.live_socket(view).assigns.notifications_refresh_timer == nil
+    assert LiveSupport.live_socket(view).assigns.notifications_refresh_token == nil
+
+    send(view.pid, {:notifications_refresh_tick, stale_token})
+    render(view)
+
+    assert LiveSupport.live_socket(view).assigns.current_user == nil
+    assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 0
+    assert LiveSupport.live_socket(view).assigns.notifications_refresh_timer == nil
+  end
+
+  # 用真实 LiveView 状态和数据库分页结果验证迟到响应不会关闭详情。
+  @tag :integration
+  test "keeps a selected notification when opening it during a page refresh", %{conn: conn} do
+    role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+    owner = create_user(role, "inbox_refresh_detail")
+
+    base_time =
+      DateTime.utc_now()
+      |> DateTime.add(-60, :second)
+      |> DateTime.truncate(:microsecond)
+
+    notifications =
+      for index <- 1..50 do
+        %SysNotification{}
+        |> SysNotification.changeset(%{
+          id: Identity.v7(),
+          user_id: owner.user_id,
+          type: "test.refresh-detail",
+          title: "后台刷新通知 #{index}",
+          content: "后台刷新时保持已选通知详情。",
+          created_at: DateTime.add(base_time, index, :second)
+        })
+        |> Repo.insert!()
+      end
+
+    oldest = hd(notifications)
+    {:ok, view, _html} = live(conn, "/")
+    login(view, owner)
+    render_click(view, "toggle-notifications")
+    render_async(view)
+    assert has_element?(view, ".notification-list-item", oldest.title)
+
+    Notification.create_api_key_event!(owner.user_id, :rotated)
+    assert {:ok, shifted_page} = Notification.list_for_user(owner.user_id, 1)
+    refute Enum.any?(shifted_page.items, &(&1["id"] == oldest.id))
+
+    async_name = {:user_notifications, owner.user_id, 1, make_ref()}
+
+    socket =
+      LiveSupport.live_socket(view)
+      |> Phoenix.Component.assign(
+        notifications_loading: true,
+        notifications_async_name: async_name
+      )
+
+    {:noreply, selected_socket} =
+      KeystonePhoenixWeb.LoginNotifications.open(
+        %{"notification-id" => oldest.id},
+        socket
+      )
+
+    assert selected_socket.assigns.notifications_loading == false
+    assert selected_socket.assigns.notifications_async_name == nil
+    assert selected_socket.assigns.selected_notification_id == oldest.id
+
+    {:noreply, final_socket} =
+      KeystonePhoenixWeb.LoginNotifications.handle_async(
+        async_name,
+        {:ok, {owner.user_id, 1, {:ok, shifted_page}}},
+        selected_socket
+      )
+
+    selected =
+      KeystonePhoenixWeb.LoginNotifications.selected(
+        final_socket.assigns.in_app_notifications,
+        final_socket.assigns.selected_notification_id
+      )
+
+    menu_html =
+      render_component(&NotificationMenu.menu/1, %{
+        open: true,
+        loading: final_socket.assigns.notifications_loading,
+        notifications: final_socket.assigns.in_app_notifications,
+        unread_count: final_socket.assigns.notifications_unread_count,
+        page: final_socket.assigns.notifications_page,
+        has_more: final_socket.assigns.notifications_has_more,
+        error: nil,
+        selected: selected
+      })
+
+    assert selected["title"] == oldest.title
+    assert menu_html =~ "<h3>#{oldest.title}</h3>"
   end
 
   @tag :integration
@@ -192,6 +357,7 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
     assert has_element?(view, ".notification-detail h3", "分页站内通知 1")
     refute has_element?(view, ".notification-pagination")
     render_click(view, "back-notifications")
+    render_async(view)
     assert has_element?(view, ".notification-pagination", "第 2 页")
     assert length(LiveSupport.live_socket(view).assigns.in_app_notifications) == 5
 
@@ -210,6 +376,8 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
     {:ok, view, _html} = live(conn, "/")
     login(view, user)
     assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 0
+    refresh_token = LiveSupport.live_socket(view).assigns.notifications_refresh_token
+    assert is_reference(refresh_token)
 
     render_click(view, "show-panel", %{"panel" => "api-keys"})
     render_click(view, "new-api-key")
@@ -305,6 +473,7 @@ defmodule KeystonePhoenixWeb.UserNotificationsLiveTest do
     assert LiveSupport.live_socket(view).assigns.notifications_unread_count == 3
     assert has_element?(view, ".notification-dot")
     assert has_element?(view, "button[aria-label='通知，3 条未读']")
+    assert LiveSupport.live_socket(view).assigns.notifications_refresh_token == refresh_token
   end
 
   @tag :integration

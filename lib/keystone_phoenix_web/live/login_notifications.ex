@@ -8,6 +8,7 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
   alias KeystonePhoenix.Notification
 
   @async_name :user_notifications
+  @refresh_interval_ms 30_000
   @load_error "无法读取站内通知"
   @read_error "无法标记已读，请重试"
   @missing_error "通知不存在或已移除，请刷新后重试"
@@ -43,26 +44,64 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
     socket = cancel_current_async(socket)
     user_id = current_user_id(socket)
 
-    if is_binary(user_id) and user_id == socket.assigns.notifications_user_id do
-      refresh_current_user(socket, user_id)
+    socket =
+      if is_binary(user_id) and user_id == socket.assigns.notifications_user_id do
+        refresh_current_user(socket, user_id)
+      else
+        assign(socket,
+          notifications_loading: false,
+          notifications_async_name: nil,
+          notifications_error: nil,
+          notification_read_error: nil,
+          notification_read_error_action: nil,
+          notification_read_error_label: nil,
+          notifications_user_id: user_id,
+          notifications_unread_count: 0,
+          in_app_notifications: [],
+          selected_notification_id: nil
+        )
+      end
+
+    schedule_refresh(socket)
+  end
+
+  @doc "处理定时刷新；只接受当前登录会话的计时令牌。"
+  def handle_refresh_tick(token, socket) do
+    if socket.assigns[:notifications_refresh_token] == token do
+      socket = assign(socket, notifications_refresh_timer: nil, notifications_refresh_token: nil)
+      user_id = current_user_id(socket)
+
+      if is_binary(user_id) and user_id == socket.assigns.notifications_user_id do
+        socket =
+          if socket.assigns.notifications_loading,
+            do: socket,
+            else: refresh_periodically(socket, user_id)
+
+        {:noreply, schedule_refresh(socket)}
+      else
+        {:noreply, refresh(socket)}
+      end
     else
-      assign(socket,
-        notifications_loading: false,
-        notifications_async_name: nil,
-        notifications_error: nil,
-        notification_read_error: nil,
-        notification_read_error_action: nil,
-        notification_read_error_label: nil,
-        notifications_user_id: user_id,
-        notifications_unread_count: 0,
-        in_app_notifications: [],
-        selected_notification_id: nil
-      )
+      {:noreply, socket}
     end
   end
 
-  @doc "账号会话切换前取消当前用户的收件箱读取。"
-  def cancel(socket), do: cancel_current_async(socket)
+  @doc "账号会话切换或 LiveView 结束前取消收件箱读取和定时刷新。"
+  def cancel(socket) do
+    socket
+    |> cancel_current_async()
+    |> cancel_refresh_timer()
+  end
+
+  @doc "LiveView 结束时取消尚未触发的站内通知计时器。"
+  def cancel_refresh_timer(socket) do
+    case socket.assigns[:notifications_refresh_timer] do
+      nil -> :ok
+      timer -> Process.cancel_timer(timer)
+    end
+
+    assign(socket, notifications_refresh_timer: nil, notifications_refresh_token: nil)
+  end
 
   @doc "关闭弹层并取消读取，避免关闭后旧结果更新页面。"
   def close(socket) do
@@ -83,13 +122,22 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
 
   @doc "返回通知列表并清除当前详情。"
   def back(socket) do
-    {:noreply,
-     assign(socket,
-       selected_notification_id: nil,
-       notification_read_error: nil,
-       notification_read_error_action: nil,
-       notification_read_error_label: nil
-     )}
+    socket =
+      assign(socket,
+        selected_notification_id: nil,
+        notification_read_error: nil,
+        notification_read_error_action: nil,
+        notification_read_error_label: nil
+      )
+
+    user_id = current_user_id(socket)
+
+    if socket.assigns.notifications_open and is_binary(user_id) and
+         user_id == socket.assigns.notifications_user_id do
+      {:noreply, start_refresh_page(socket, user_id, socket.assigns.notifications_page)}
+    else
+      {:noreply, socket}
+    end
   end
 
   @doc "仅打开当前用户列表中的通知，并立即标记为已读。"
@@ -98,6 +146,7 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
     notification = selected(socket.assigns.in_app_notifications, notification_id)
 
     if is_binary(user_id) and user_id == socket.assigns.notifications_user_id and notification do
+      socket = cancel_refreshing_page(socket)
       mark_selected_read(socket, user_id, notification_id, notification)
     else
       {:noreply, socket}
@@ -196,6 +245,17 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
   end
 
   defp start_load_page(socket, user_id, page) do
+    {:noreply, start_page_load(socket, user_id, page)}
+  end
+
+  # 轮询或详情返回时保留旧列表，查询失败后仍可查看并重试。
+  defp start_refresh_page(socket, user_id, page) do
+    socket
+    |> assign(notifications_loading: true, notifications_error: nil)
+    |> start_page_load(user_id, page)
+  end
+
+  defp start_page_load(socket, user_id, page) do
     async_name = {@async_name, user_id, page, make_ref()}
 
     socket =
@@ -205,8 +265,17 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
         {user_id, page, Notification.list_for_user(user_id, page)}
       end)
 
-    {:noreply, socket}
+    socket
   end
+
+  # 用户打开旧列表项时取消后台刷新，避免返回结果把当前详情移出列表。
+  defp cancel_refreshing_page(%{assigns: %{notifications_loading: true}} = socket) do
+    socket
+    |> cancel_current_async()
+    |> assign(notifications_loading: false)
+  end
+
+  defp cancel_refreshing_page(socket), do: socket
 
   defp mark_selected_read(socket, user_id, notification_id, notification) do
     case Notification.mark_read(user_id, notification_id) do
@@ -301,6 +370,14 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
     end
   end
 
+  defp refresh_current_user(
+         %{assigns: %{notifications_open: true, selected_notification_id: id}} = socket,
+         user_id
+       )
+       when not is_nil(id) do
+    refresh_unread_count(socket, user_id)
+  end
+
   defp refresh_current_user(%{assigns: %{notifications_open: true}} = socket, user_id) do
     page = socket.assigns.notifications_page
 
@@ -338,6 +415,53 @@ defmodule KeystonePhoenixWeb.LoginNotifications do
 
       {:error, _reason} ->
         assign(socket, notifications_loading: false, notifications_async_name: nil)
+    end
+  end
+
+  defp refresh_periodically(
+         %{assigns: %{notifications_open: true, selected_notification_id: id}} = socket,
+         user_id
+       )
+       when not is_nil(id) do
+    refresh_unread_count(socket, user_id)
+  end
+
+  defp refresh_periodically(%{assigns: %{notifications_open: true}} = socket, user_id) do
+    start_refresh_page(socket, user_id, socket.assigns.notifications_page)
+  end
+
+  defp refresh_periodically(socket, user_id), do: refresh_unread_count(socket, user_id)
+
+  defp refresh_unread_count(socket, user_id) do
+    case Notification.unread_count_for_user(user_id) do
+      {:ok, unread_count} ->
+        assign(socket, notifications_unread_count: unread_count)
+
+      {:error, _reason} ->
+        socket
+    end
+  end
+
+  # 每个已认证 LiveView 只保留一个一次性计时器，触发后由 refresh/1 续订。
+  defp schedule_refresh(socket) do
+    if is_binary(current_user_id(socket)) do
+      case socket.assigns[:notifications_refresh_timer] do
+        nil ->
+          token = make_ref()
+
+          timer =
+            Process.send_after(self(), {:notifications_refresh_tick, token}, @refresh_interval_ms)
+
+          assign(socket,
+            notifications_refresh_timer: timer,
+            notifications_refresh_token: token
+          )
+
+        _timer ->
+          socket
+      end
+    else
+      cancel_refresh_timer(socket)
     end
   end
 
