@@ -109,3 +109,63 @@
   .app-shell > .shell-content > .topbar .logout-button span, .app-shell > .shell-content > .topbar .user-copy, .app-shell > .shell-content > .topbar .user-menu > svg { display: none; }
   .app-shell > .shell-content > .shell-main .monitor-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* 复选框和单选框保留原生外观与尺寸，不继承文本框的填充、边框和最小高度。 */
+.app-shell .checkbox-label > input[type="checkbox"],
+.app-shell .checkbox-label > input[type="radio"],
+.app-shell .form-grid input[type="checkbox"],
+.app-shell .form-grid input[type="radio"],
+.app-shell .form-options input[type="checkbox"] {
+  appearance: auto;
+  inline-size: 16px;
+  block-size: 16px;
+  min-inline-size: 16px;
+  min-block-size: 16px;
+  margin: 0;
+  padding: 0;
+  border: revert;
+  border-radius: revert;
+  outline: revert;
+  background: revert;
+  color: revert;
+  font: revert;
+  box-shadow: none;
+  flex: 0 0 auto;
+  accent-color: var(--cyan);
+  cursor: pointer;
+}
+
+.app-shell .checkbox-label,
+.app-shell .form-options > label {
+  align-items: center;
+  min-block-size: 44px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.app-shell .form-grid .wide > .checkbox-label,
+.app-shell .form-options > label {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.app-shell input[type="checkbox"]:focus-visible,
+.app-shell input[type="radio"]:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.app-shell .checkbox-label > input[type="checkbox"]:disabled,
+.app-shell .checkbox-label > input[type="radio"]:disabled,
+.app-shell .form-grid input[type="checkbox"]:disabled,
+.app-shell .form-grid input[type="radio"]:disabled,
+.app-shell .form-options input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+@media (max-width: 620px) {
+  .app-shell .checkbox-label,
+  .app-shell .form-options > label { min-block-size: 48px; }
+}
