@@ -12,7 +12,6 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   alias KeystonePhoenix.Log
   alias KeystonePhoenix.Notice
   alias KeystonePhoenix.Post
-  alias KeystonePhoenix.Role
   alias KeystonePhoenixWeb.Live.AdminPages.Forms
   alias KeystonePhoenixWeb.Live.AdminPages.OrganizationData
   alias KeystonePhoenixWeb.Live.AdminPages.RoleDirectory
@@ -74,6 +73,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       selected_role_name: "",
       allocated_role_user_rows: [],
       unallocated_role_user_rows: [],
+      role_user_totals: %{allocated: 0, unallocated: 0},
       role_user_feedback: nil,
       menu_rows: load_menus(),
       notice_rows: load_notices(),
@@ -102,6 +102,7 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
       selected_role_name: "",
       allocated_role_user_rows: [],
       unallocated_role_user_rows: [],
+      role_user_totals: %{allocated: 0, unallocated: 0},
       role_user_feedback: nil,
       menu_rows: [],
       notice_rows: [],
@@ -417,19 +418,6 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   def load_roles(options) when is_list(options), do: OrganizationData.load_roles(options)
 
   def load_roles_for_socket(socket), do: load_roles(authorization_options(socket))
-
-  def load_role_users(role_id, actor \\ nil) do
-    %{
-      allocated:
-        Excel.all_rows(fn params ->
-          Role.list_allocated_users(role_id, params, actor)
-        end),
-      unallocated:
-        Excel.all_rows(fn params ->
-          Role.list_unallocated_users(role_id, params, actor)
-        end)
-    }
-  end
 
   def data_scope_label(scope), do: OrganizationData.data_scope_label(scope)
 

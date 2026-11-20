@@ -25,6 +25,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleRefresh do
         selected_role_name: "",
         allocated_role_user_rows: [],
         unallocated_role_user_rows: [],
+        role_user_totals: %{allocated: 0, unallocated: 0},
         role_user_feedback: nil
       )
 

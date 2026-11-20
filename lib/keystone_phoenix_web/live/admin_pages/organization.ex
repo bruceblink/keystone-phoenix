@@ -166,10 +166,16 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
       |> assign_new(:menu_rows, fn -> [] end)
       |> assign_new(:allocated_role_user_rows, fn -> [] end)
       |> assign_new(:unallocated_role_user_rows, fn -> [] end)
+      |> assign_new(:role_user_totals, fn ->
+        %{
+          allocated: length(assigns[:allocated_role_user_rows] || []),
+          unallocated: length(assigns[:unallocated_role_user_rows] || [])
+        }
+      end)
       |> assign_new(:role_user_feedback, fn -> nil end)
       |> assign_new(:allocated_page_num, fn -> 1 end)
       |> assign_new(:unallocated_page_num, fn -> 1 end)
-      |> assign_new(:role_user_page_size, fn -> 50 end)
+      |> assign_new(:role_user_page_size, fn -> 8 end)
       |> assign_new(:role_permission_query, fn -> "" end)
       |> assign_new(:role_permissions_feedback, fn -> nil end)
       |> assign_new(:role_permissions_form, fn ->
@@ -273,8 +279,8 @@ defmodule KeystonePhoenixWeb.Live.AdminPages.Organization do
           </div>
           <%= if @role_user_feedback do %><p id="role-user-feedback" class={Feedback.class(@role_user_feedback)} role={Feedback.role(@role_user_feedback)} aria-live={Feedback.live(@role_user_feedback)}><%= Feedback.message(@role_user_feedback) %></p><% end %>
           <div class="monitor-grid details">
-            <div><h3>已分配用户（<%= length(@allocated_role_user_rows) %>）</h3><div class="table-wrap"><div class="table-scroll" role="region" tabindex="0" aria-label="已分配用户列表"><table><caption class="sr-only">已分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- page_rows(@allocated_role_user_rows, @allocated_page_num, @role_user_page_size) do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={"role:assign" in @permissions} type="button" class="button button-danger refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="unassign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">取消分配</button></td></tr><% end %></tbody></table></div></div><.pagination panel="role-users-allocated" page_num={min(@allocated_page_num, page_count(length(@allocated_role_user_rows), @role_user_page_size))} page_size={@role_user_page_size} total={length(@allocated_role_user_rows)} /></div>
-            <div><h3>可分配用户（<%= length(@unallocated_role_user_rows) %>）</h3><div class="table-wrap"><div class="table-scroll" role="region" tabindex="0" aria-label="可分配用户列表"><table><caption class="sr-only">可分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- page_rows(@unallocated_role_user_rows, @unallocated_page_num, @role_user_page_size) do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={"role:assign" in @permissions} type="button" class="button button-ghost refresh" phx-click="assign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">分配</button></td></tr><% end %></tbody></table></div></div><.pagination panel="role-users-unallocated" page_num={min(@unallocated_page_num, page_count(length(@unallocated_role_user_rows), @role_user_page_size))} page_size={@role_user_page_size} total={length(@unallocated_role_user_rows)} /></div>
+            <div><h3>已分配用户（<%= @role_user_totals.allocated %>）</h3><div class="table-wrap"><div class="table-scroll" role="region" tabindex="0" aria-label="已分配用户列表"><table><caption class="sr-only">已分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- @allocated_role_user_rows do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={"role:assign" in @permissions} type="button" class="button button-danger refresh danger-action" phx-confirm="确认执行此危险操作吗？" phx-click="unassign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">取消分配</button></td></tr><% end %></tbody></table></div></div><.pagination panel="role-users-allocated" page_num={min(@allocated_page_num, page_count(@role_user_totals.allocated, @role_user_page_size))} page_size={@role_user_page_size} total={@role_user_totals.allocated} /></div>
+            <div><h3>可分配用户（<%= @role_user_totals.unallocated %>）</h3><div class="table-wrap"><div class="table-scroll" role="region" tabindex="0" aria-label="可分配用户列表"><table><caption class="sr-only">可分配用户列表</caption><thead><tr><th scope="col">用户名</th><th scope="col">昵称</th><th scope="col">操作</th></tr></thead><tbody><%= for user <- @unallocated_role_user_rows do %><tr><td><%= user["username"] %></td><td><%= user["nickname"] %></td><td><button :if={"role:assign" in @permissions} type="button" class="button button-ghost refresh" phx-click="assign-role-user" phx-value-user-id={user["userId"]} phx-disable-with="处理中…">分配</button></td></tr><% end %></tbody></table></div></div><.pagination panel="role-users-unallocated" page_num={min(@unallocated_page_num, page_count(@role_user_totals.unallocated, @role_user_page_size))} page_size={@role_user_page_size} total={@role_user_totals.unallocated} /></div>
           </div>
         </section>
       <% end %>

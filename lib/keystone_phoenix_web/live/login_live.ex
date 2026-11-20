@@ -251,8 +251,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
            ] do
     case Integer.parse(to_string(page)) do
       {page, ""} when page > 0 ->
-        if panel in ["jobs", "notices"] do
-          # 公告和任务页码由服务端查询成功后更新；失败时保留旧页和旧选择。
+        if panel in ["jobs", "notices", "role-users-allocated", "role-users-unallocated"] do
+          # 查询成功后才更新页码；失败时保留旧页和旧选择。
           dispatch_pagination(panel, page, socket)
         else
           socket = assign(socket, page_nums: Map.put(socket.assigns.page_nums, panel, page))
@@ -342,7 +342,8 @@ defmodule KeystonePhoenixWeb.LoginLive do
       else: {:noreply, socket}
   end
 
-  defp dispatch_pagination(_panel, _page, socket), do: {:noreply, socket}
+  defp dispatch_pagination(panel, page, socket),
+    do: KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleUsers.paginate(socket, panel, page)
 
   @impl true
   def handle_async(name, result, socket),
@@ -490,7 +491,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
                     <% "posts" -> %>
                       <.posts post_rows={@post_rows} post_total={@post_total} post_form={@post_form} post_feedback={@post_feedback} post_filter={@post_filter} active_modal={@active_modal} page_num={@page_nums["posts"]} page_size={@page_sizes["posts"]} read_only={@read_only} permissions={@permissions} />
                     <% "roles" -> %>
-                      <.roles role_rows={@role_rows} role_page_rows={@role_page_rows} role_total={@role_total} role_form={@role_form} role_feedback={@role_feedback} role_filter={@role_filter} menu_rows={@menu_rows} active_modal={@active_modal} selected_role_ids={@selected_role_ids} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_feedback={@role_user_feedback} role_permissions_form={@role_permissions_form} role_permissions_feedback={@role_permissions_feedback} role_permission_query={@role_permission_query} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} page_num={@page_nums["roles"]} page_size={@page_sizes["roles"]} read_only={@read_only} permissions={@permissions} />
+                      <.roles role_rows={@role_rows} role_page_rows={@role_page_rows} role_total={@role_total} role_form={@role_form} role_feedback={@role_feedback} role_filter={@role_filter} menu_rows={@menu_rows} active_modal={@active_modal} selected_role_ids={@selected_role_ids} selected_role_id={@selected_role_id} selected_role_name={@selected_role_name} allocated_role_user_rows={@allocated_role_user_rows} unallocated_role_user_rows={@unallocated_role_user_rows} role_user_totals={@role_user_totals} role_user_feedback={@role_user_feedback} role_permissions_form={@role_permissions_form} role_permissions_feedback={@role_permissions_feedback} role_permission_query={@role_permission_query} allocated_page_num={@page_nums["role-users-allocated"]} unallocated_page_num={@page_nums["role-users-unallocated"]} role_user_page_size={@page_sizes["role-users-allocated"]} page_num={@page_nums["roles"]} page_size={@page_sizes["roles"]} read_only={@read_only} permissions={@permissions} />
                     <% "menus" -> %>
                       <.menus menu_rows={@menu_rows} menu_form={@menu_form} menu_feedback={@menu_feedback} menu_filter={@menu_filter} menu_role_codes={@menu_role_codes} role_rows={@role_rows} permissions={@permissions} active_modal={@active_modal} read_only={@read_only} />
                     <% "users" -> %>

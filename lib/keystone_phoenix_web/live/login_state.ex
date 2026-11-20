@@ -129,8 +129,8 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
         "login-logs" => 20,
         "operation-logs" => 20,
         "online-users" => 50,
-        "role-users-allocated" => 50,
-        "role-users-unallocated" => 50
+        "role-users-allocated" => 8,
+        "role-users-unallocated" => 8
       },
       role_rows: [],
       role_directory_feedback: nil,
@@ -142,6 +142,7 @@ defmodule KeystonePhoenixWeb.Live.LoginState do
       role_filter: %{"keyword" => "", "status" => "all"},
       allocated_role_user_rows: [],
       unallocated_role_user_rows: [],
+      role_user_totals: %{allocated: 0, unallocated: 0},
       role_user_feedback: nil,
       role_feedback: nil,
       role_form: Support.empty_role_form(),

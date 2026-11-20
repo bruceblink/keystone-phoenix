@@ -342,7 +342,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
            )}
 
         role ->
-          case AdminReadSupport.role_users(role_id, socket.assigns.current_user) do
+          case AdminReadSupport.role_users(
+                 role_id,
+                 socket.assigns.current_user,
+                 socket.assigns.page_sizes["role-users-allocated"]
+               ) do
             {:ok, users} ->
               {:noreply,
                assign(socket,
@@ -352,8 +356,12 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Organization do
                    socket.assigns.page_nums
                    |> Map.put("role-users-allocated", 1)
                    |> Map.put("role-users-unallocated", 1),
-                 allocated_role_user_rows: users.allocated,
-                 unallocated_role_user_rows: users.unallocated,
+                 allocated_role_user_rows: users.allocated.rows,
+                 unallocated_role_user_rows: users.unallocated.rows,
+                 role_user_totals: %{
+                   allocated: users.allocated.total,
+                   unallocated: users.unallocated.total
+                 },
                  role_user_feedback: nil
                )}
 

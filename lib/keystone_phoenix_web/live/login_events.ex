@@ -479,6 +479,7 @@ defmodule KeystonePhoenixWeb.Live.LoginEvents do
       selected_role_name: "",
       allocated_role_user_rows: [],
       unallocated_role_user_rows: [],
+      role_user_totals: %{allocated: 0, unallocated: 0},
       role_user_feedback: nil,
       role_feedback: nil,
       role_form: AdminSupport.empty_role_form(),

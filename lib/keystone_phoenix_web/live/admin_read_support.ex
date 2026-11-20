@@ -107,18 +107,33 @@ defmodule KeystonePhoenixWeb.Live.AdminReadSupport do
 
   def menus(socket), do: OrganizationData.load_menus_result(organization_options(socket))
 
-  @doc "读取角色成员列表，并区分空列表和服务失败。"
-  def role_users(role_id, actor \\ nil) do
-    with {:ok, allocated} <-
-           Excel.all_rows_result(fn params ->
-             Role.list_allocated_users(role_id, params, actor)
-           end),
-         {:ok, unallocated} <-
-           Excel.all_rows_result(fn params ->
-             Role.list_unallocated_users(role_id, params, actor)
-           end) do
-      {:ok, %{allocated: allocated, unallocated: unallocated}}
-    end
+  @doc "读取角色成员的两栏当前页，并区分空列表和服务失败。"
+  def role_users(role_id, actor, page_size) do
+    params = %{"pageNum" => 1, "pageSize" => page_size}
+    allocated = Role.list_allocated_users(role_id, params, actor)
+    unallocated = Role.list_unallocated_users(role_id, params, actor)
+    {:ok, %{allocated: allocated, unallocated: unallocated}}
+  rescue
+    _error -> {:error, :service_unavailable}
+  end
+
+  @doc "读取指定成员栏的页面，页码越界时回到最后一页。"
+  def role_users_page(role_id, actor, panel, page, page_size) do
+    fetch =
+      if panel == "role-users-allocated",
+        do: &Role.list_allocated_users/3,
+        else: &Role.list_unallocated_users/3
+
+    result = fetch.(role_id, %{"pageNum" => page, "pageSize" => page_size}, actor)
+    last_page = max(div(result.total + page_size - 1, page_size), 1)
+    actual_page = min(page, last_page)
+
+    result =
+      if actual_page == page,
+        do: result,
+        else: fetch.(role_id, %{"pageNum" => actual_page, "pageSize" => page_size}, actor)
+
+    {:ok, actual_page, result}
   rescue
     _error -> {:error, :service_unavailable}
   end

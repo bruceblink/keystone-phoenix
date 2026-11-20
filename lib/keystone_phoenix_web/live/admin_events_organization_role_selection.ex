@@ -15,6 +15,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleSelection do
         assign(socket,
           allocated_role_user_rows: [],
           unallocated_role_user_rows: [],
+          role_user_totals: %{allocated: 0, unallocated: 0},
           page_nums: reset_member_pages(socket.assigns.page_nums)
         )
       end
@@ -34,6 +35,7 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OrganizationRoleSelection do
       selected_role_name: "",
       allocated_role_user_rows: [],
       unallocated_role_user_rows: [],
+      role_user_totals: %{allocated: 0, unallocated: 0},
       role_user_feedback: nil,
       page_nums: reset_member_pages(socket.assigns.page_nums)
     )
