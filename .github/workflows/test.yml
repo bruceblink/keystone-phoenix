@@ -71,6 +71,9 @@ jobs:
       - name: Compile with warnings as errors
         run: mix compile --warnings-as-errors
 
+      - name: Test browser confirmation handling
+        run: node --test test/js/phx_confirm.test.mjs
+
       - name: Run unit and database tests
         run: mix test
 

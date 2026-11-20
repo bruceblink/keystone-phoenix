@@ -586,6 +586,7 @@ defmodule KeystonePhoenixWeb.LoginLive do
             <% end %>
           </section>
         </main>
+        <KeystonePhoenixWeb.Live.AdminPages.Confirmation.dialog />
         <script src="/assets/phoenix/phoenix.min.js"></script>
         <script src="/assets/phoenix_live_view/phoenix_live_view.min.js"></script>
         <script src="/js/live_socket.js"></script>

@@ -1,4 +1,38 @@
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+// 在 LiveView 发送事件前拦截需确认的操作；用户确认后只重放一次原按钮事件。
+const confirmationDialog = document.getElementById("phx-confirm-dialog");
+const approvedConfirmActions = new WeakSet();
+let pendingConfirmAction = null;
+
+if (confirmationDialog) {
+  const confirmationMessage = document.getElementById("phx-confirm-message");
+  const confirmAction = document.getElementById("phx-confirm-accept");
+  document.addEventListener("click", (event) => {
+    const action = event.target instanceof Element ? event.target.closest("[phx-confirm]") : null;
+    if (!action || action.disabled || approvedConfirmActions.has(action)) {
+      if (action && approvedConfirmActions.has(action)) approvedConfirmActions.delete(action);
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    pendingConfirmAction = action;
+    confirmationMessage.textContent = action.getAttribute("phx-confirm") || "请确认此操作。";
+    confirmationDialog.returnValue = "";
+    confirmationDialog.showModal();
+  }, true);
+  document.getElementById("phx-confirm-cancel").addEventListener("click", () => confirmationDialog.close("cancel"));
+  document.getElementById("phx-confirm-close").addEventListener("click", () => confirmationDialog.close("cancel"));
+  confirmAction.addEventListener("click", () => confirmationDialog.close("confirm"));
+  confirmationDialog.addEventListener("close", () => {
+    const action = pendingConfirmAction;
+    pendingConfirmAction = null;
+    if (confirmationDialog.returnValue === "confirm" && action?.isConnected && !action.disabled) {
+      approvedConfirmActions.add(action);
+      action.click();
+    }
+    confirmationDialog.returnValue = "";
+  });
+}
 // 任务和用户删除共用原生 dialog 的打开、关闭和焦点行为。
 const nativeConfirmDialog = (closeEvent) => ({
   mounted() {
