@@ -486,15 +486,36 @@ defmodule KeystonePhoenix.Auth.ApiKey do
   defp split_scopes(_value), do: []
 
   defp normalize_name(value) when is_binary(value) do
-    value = String.trim(value)
+    codepoints = String.codepoints(value)
 
-    # 数据库 varchar(128) 按 Unicode 码点计数，不能用字素簇数量判断上限。
-    if value != "" and length(String.codepoints(value)) <= 128,
-      do: {:ok, value},
-      else: {:error, :api_key_name_invalid}
+    trimmed_codepoints =
+      codepoints
+      |> Enum.drop_while(&java_trim_codepoint?/1)
+      |> Enum.reverse()
+      |> Enum.drop_while(&java_trim_codepoint?/1)
+      |> Enum.reverse()
+
+    # Java String.isBlank 使用 Character.isWhitespace；NBSP 等字符不属于空白。
+    if Enum.all?(codepoints, &java_whitespace_codepoint?/1) or length(trimmed_codepoints) > 128 do
+      {:error, :api_key_name_invalid}
+    else
+      # Java String.trim 只去除 U+0000..U+0020，不能用 Unicode String.trim 替代。
+      {:ok, IO.iodata_to_binary(trimmed_codepoints)}
+    end
   end
 
   defp normalize_name(_value), do: {:error, :api_key_name_invalid}
+
+  defp java_trim_codepoint?(<<codepoint::utf8>>), do: codepoint <= 0x20
+
+  defp java_whitespace_codepoint?(<<codepoint::utf8>>)
+       when codepoint in 0x0009..0x000D or codepoint in 0x001C..0x001F or codepoint == 0x0020 or
+              codepoint == 0x1680 or codepoint in 0x2000..0x2006 or
+              codepoint in 0x2008..0x200A or codepoint in 0x2028..0x2029 or
+              codepoint == 0x205F or codepoint == 0x3000,
+       do: true
+
+  defp java_whitespace_codepoint?(_codepoint), do: false
 
   defp validate_expiry(nil), do: :ok
 

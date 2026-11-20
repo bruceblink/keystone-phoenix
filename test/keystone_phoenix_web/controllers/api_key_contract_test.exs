@@ -50,6 +50,65 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
   end
 
   @tag :integration
+  test "API Key names follow Native Java trim and blank semantics", %{conn: conn} do
+    user = create_user(["api-key:create"])
+    token = step_up_token(user)
+    authorized_conn = put_req_header(conn, "authorization", "Bearer #{token}")
+    max_name = String.duplicate("a", 128)
+
+    valid_names = [
+      {"\t \u2003worker\u2003 \r", "\u2003worker\u2003"},
+      {"\u00A0", "\u00A0"},
+      {"\u2007", "\u2007"},
+      {"\u202F", "\u202F"},
+      {"\u0085", "\u0085"},
+      # Java trim 去除边界 NUL，但 Character.isWhitespace 不把 NUL 判为空白。
+      {<<0x00>>, ""},
+      {"\t" <> max_name <> "\r", max_name}
+    ]
+
+    for {input_name, expected_name} <- valid_names do
+      response =
+        build_conn()
+        |> put_req_header("authorization", "Bearer #{token}")
+        |> post("/api/v1/api-keys", %{"name" => input_name, "scopes" => ["api-key:create"]})
+
+      body = json_response(response, 201)
+      assert get_in(body, ["data", "name"]) == expected_name
+      assert Repo.get!(Key, get_in(body, ["data", "id"])).name == expected_name
+    end
+
+    java_whitespace_codepoints =
+      Enum.to_list(0x0009..0x000D) ++
+        Enum.to_list(0x001C..0x001F) ++
+        [0x0020, 0x1680] ++
+        Enum.to_list(0x2000..0x2006) ++
+        Enum.to_list(0x2008..0x200A) ++
+        Enum.to_list(0x2028..0x2029) ++ [0x205F, 0x3000]
+
+    java_whitespace_only_names =
+      Enum.map(java_whitespace_codepoints, fn codepoint -> <<codepoint::utf8>> end)
+
+    for input_name <- java_whitespace_only_names ++ ["\u2003\t\r", " \t\r"] do
+      response =
+        authorized_conn
+        |> post("/api/v1/api-keys", %{"name" => input_name, "scopes" => ["api-key:create"]})
+
+      assert response.status == 422
+      assert get_in(json_response(response, 422), ["error", "code"]) == "api_key_name_invalid"
+    end
+
+    over_limit = "\t" <> String.duplicate("a", 129) <> "\r"
+
+    response =
+      authorized_conn
+      |> post("/api/v1/api-keys", %{"name" => over_limit, "scopes" => ["api-key:create"]})
+
+    assert response.status == 422
+    assert get_in(json_response(response, 422), ["error", "code"]) == "api_key_name_invalid"
+  end
+
+  @tag :integration
   test "API Key issue validation returns distinct business codes and keeps HTTP 422" do
     user = create_user(["api-key:create"])
     token = step_up_token(user)

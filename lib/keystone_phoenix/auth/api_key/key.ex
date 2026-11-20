@@ -28,22 +28,27 @@ defmodule KeystonePhoenix.Auth.ApiKey.Key do
   @doc "校验 API Key 持久化字段，禁止明文凭据进入 schema。"
   def changeset(key, attrs) do
     key
-    |> cast(attrs, [
-      :id,
-      :user_id,
-      :subject_id,
-      :created_by,
-      :name,
-      :key_prefix,
-      :key_hash,
-      :scopes,
-      :expires_at,
-      :revoked_at,
-      :last_used_at,
-      :last_used_ip,
-      :rotated_to,
-      :revoked_reason
-    ])
+    |> cast(
+      attrs,
+      [
+        :id,
+        :user_id,
+        :subject_id,
+        :created_by,
+        :name,
+        :key_prefix,
+        :key_hash,
+        :scopes,
+        :expires_at,
+        :revoked_at,
+        :last_used_at,
+        :last_used_ip,
+        :rotated_to,
+        :revoked_reason
+      ],
+      empty_values: []
+    )
+    # API Key 服务已按 Native Java 规则校验名称，保留其空字符串和非断行空格语义。
     |> validate_required([:id, :user_id, :subject_id, :name, :key_prefix, :key_hash, :scopes])
     |> validate_length(:name, max: 128)
     |> validate_format(:key_prefix, ~r/\A[A-Za-z0-9_-]{8,24}\z/)
