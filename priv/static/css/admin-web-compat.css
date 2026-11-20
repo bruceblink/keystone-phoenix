@@ -101,6 +101,8 @@
   .app-shell > .sidebar.sidebar-open { transform: translateX(0); }
   .app-shell > .sidebar > .primary-nav { position: static; inset: auto; width: auto; max-height: none; overflow: visible; transform: none; }
   .app-shell > .sidebar-scrim { display: block; position: fixed; inset: 0; z-index: 10; border: 0; background: rgba(2,7,14,.62); }
+  /* 遮罩是关闭按钮，但悬停时仍须保持半透明背景，不能继承普通按钮主题色。 */
+  .app-shell > button.sidebar-scrim:hover:not(:disabled) { background: rgba(2,7,14,.62); box-shadow: none; transform: none; }
   .app-shell > .shell-content > .topbar { justify-content: flex-start; }
   .app-shell > .shell-content > .topbar .topbar-actions { margin-left: auto; }
   .app-shell > .shell-content > .topbar .mobile-menu { display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 8px; color: var(--muted-strong); background: transparent; }
