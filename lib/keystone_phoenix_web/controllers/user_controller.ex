@@ -96,7 +96,7 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Returns a paginated list of users."
   def list(conn, params) do
-    page = User.list_users(NativeContract.pagination_params(params), conn.assigns.current_user)
+    page = User.list_users(NativeContract.user_filter_params(params), conn.assigns.current_user)
     json(conn, ApiResponse.ok(NativeContract.users_page(page, params)))
   end
 
@@ -275,7 +275,10 @@ defmodule KeystonePhoenixWeb.UserController do
 
   @doc "Builds the authorized user workbook for HTTP and LiveView downloads."
   def export_workbook(params, actor) when is_map(params) and is_map(actor) do
-    rows = Excel.all_rows(&User.list_users(&1, actor), params) |> enrich_export_rows()
+    rows =
+      Excel.all_rows(&User.list_users(&1, actor), NativeContract.user_filter_params(params))
+      |> enrich_export_rows()
+
     Excel.export(@user_export_headers, Enum.map(rows, &user_export_row/1), "users.xlsx")
   end
 

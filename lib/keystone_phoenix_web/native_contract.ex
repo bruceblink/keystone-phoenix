@@ -83,6 +83,28 @@ defmodule KeystonePhoenixWeb.NativeContract do
     |> maybe_copy("size", "pageSize")
   end
 
+  @doc "将 Native 用户查询的 enabled 布尔值转为 Phoenix 内部状态筛选；该参数优先于旧 status。"
+  def user_filter_params(params) when is_map(params) do
+    params = pagination_params(params)
+
+    case Map.get(params, "enabled") do
+      enabled when is_boolean(enabled) ->
+        Map.put(params, "status", if(enabled, do: 1, else: 0))
+
+      enabled when is_binary(enabled) ->
+        case enabled do
+          "" ->
+            Map.delete(params, "status")
+
+          _value ->
+            Map.put(params, "status", if(String.downcase(enabled) == "true", do: 1, else: 0))
+        end
+
+      _other ->
+        params
+    end
+  end
+
   @doc "判断请求是否显式要求服务端分页。"
   def pagination_requested?(params) when is_map(params) do
     Map.has_key?(params, "page") or Map.has_key?(params, "size") or

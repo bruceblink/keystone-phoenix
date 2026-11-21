@@ -75,6 +75,25 @@ defmodule KeystonePhoenixWeb.NativeContractTest do
     assert [%{"id" => "job-1", "name" => "任务"}] = page.items
   end
 
+  test "user filters follow Native enabled precedence and Boolean conversion" do
+    # 原查询参数 status 保持兼容；Native 的 enabled 存在时优先，空值代表不筛选。
+    assert NativeContract.user_filter_params(%{"status" => "1"})["status"] == "1"
+
+    assert NativeContract.user_filter_params(%{"status" => "1", "enabled" => "TrUe"})["status"] ==
+             1
+
+    assert NativeContract.user_filter_params(%{"status" => "1", "enabled" => "false"})["status"] ==
+             0
+
+    assert NativeContract.user_filter_params(%{"status" => "1", "enabled" => "invalid"})["status"] ==
+             0
+
+    refute Map.has_key?(
+             NativeContract.user_filter_params(%{"status" => "1", "enabled" => ""}),
+             "status"
+           )
+  end
+
   test "post pagination preserves Native page metadata" do
     page =
       NativeContract.posts_page(
