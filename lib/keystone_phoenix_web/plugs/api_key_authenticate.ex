@@ -20,6 +20,12 @@ defmodule KeystonePhoenixWeb.Plugs.ApiKeyAuthenticate do
       {:ok, principal} ->
         assign(conn, :api_key_principal, principal)
 
+      {:error, :permission_denied} ->
+        conn
+        |> put_status(:forbidden)
+        |> Phoenix.Controller.json(ApiResponse.error(:permission_denied, "没有操作权限"))
+        |> halt()
+
       _ ->
         conn
         |> put_status(:unauthorized)

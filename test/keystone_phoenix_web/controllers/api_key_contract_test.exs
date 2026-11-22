@@ -181,8 +181,8 @@ defmodule KeystonePhoenixWeb.ApiKeyContractTest do
     Repo.update!(Ecto.Changeset.change(user, role_id: nil))
 
     invalid = get(authorized.(), "/api/v1/users")
-    assert invalid.status == 401
-    assert get_in(json_response(invalid, 401), ["error", "code"]) == "invalid_credential"
+    assert invalid.status == 403
+    assert get_in(json_response(invalid, 403), ["error", "code"]) == "permission_denied"
   end
 
   test "API Key cannot enter human authentication or API Key management paths", %{conn: conn} do

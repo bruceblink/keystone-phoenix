@@ -79,7 +79,7 @@ defmodule KeystonePhoenix.Auth.ApiKeyTest do
     assert reduced.scopes == ["user:read"]
 
     revoke_role_permission(primary.role_id, "user:read")
-    assert {:error, :invalid_credential} = ApiKey.authenticate(issued.api_key, "127.0.0.10")
+    assert {:error, :permission_denied} = ApiKey.authenticate(issued.api_key, "127.0.0.10")
   end
 
   test "new roles do not expand approved scopes and rotation re-intersects current roles" do

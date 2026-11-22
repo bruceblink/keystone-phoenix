@@ -223,26 +223,30 @@ defmodule KeystonePhoenix.Auth.ApiKey do
   defp authenticate_record(key, _value, ip_address) do
     with subject_id when is_binary(subject_id) <- key.subject_id,
          %ServiceSubject{enabled: true} = subject <- Repo.get(ServiceSubject, subject_id),
-         %SysUser{status: 1, deleted: false} = user <- Repo.get(SysUser, key.user_id),
-         scopes when scopes != [] <-
-           intersect_permissions(split_scopes(key.scopes), Menu.permissions_for_user(user)) do
-      touch_last_used(key, ip_address)
+         %SysUser{status: 1, deleted: false} = user <- Repo.get(SysUser, key.user_id) do
+      scopes = intersect_permissions(split_scopes(key.scopes), Menu.permissions_for_user(user))
 
-      {:ok,
-       %{
-         key_id: key.id,
-         credential_id: key.id,
-         subject_type: "SERVICE_SUBJECT",
-         subject_id: subject.id,
-         user_id: user.user_id,
-         username: user.username,
-         role_id: user.role_id,
-         dept_id: user.dept_id,
-         credential_type: "API_KEY",
-         permissions: scopes,
-         scopes: scopes,
-         approved_scopes: scopes
-       }}
+      if scopes == [] do
+        {:error, :permission_denied}
+      else
+        touch_last_used(key, ip_address)
+
+        {:ok,
+         %{
+           key_id: key.id,
+           credential_id: key.id,
+           subject_type: "SERVICE_SUBJECT",
+           subject_id: subject.id,
+           user_id: user.user_id,
+           username: user.username,
+           role_id: user.role_id,
+           dept_id: user.dept_id,
+           credential_type: "API_KEY",
+           permissions: scopes,
+           scopes: scopes,
+           approved_scopes: scopes
+         }}
+      end
     else
       _ -> {:error, :invalid_credential}
     end
