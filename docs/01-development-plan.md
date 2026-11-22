@@ -1260,3 +1260,9 @@ Phoenix `12f9696` 已将 LiveView 公告类型超长校验映射为 `notice_type
 - Native `ec75cb3` 增加真实 HTTP 回归：有效 API Key 的全部 approved scopes 被当前角色撤销后，业务接口仍返回 HTTP 403 和 `permission_denied`；撤销前请求返回 200。Native 原有认证失败条件不变，非法、过期或已撤销的 API Key 仍返回 HTTP 401 和 `invalid_credential`。
 - Phoenix `842cd4a` 将有效 API Key 与当前用户权限的空交集映射为 `permission_denied`，API Key 插件返回 HTTP 403；用户、服务主体、密钥状态无效时仍返回 HTTP 401 和 `invalid_credential`。直接领域测试和 HTTP 合约测试已同步更新。
 - Native 编译和测试类检查、Phoenix 格式、严格编译、源码行数和差异检查通过。Native HTTP 定向测试因本机 Docker/MySQL 不可用未完成；Phoenix HTTP/集成测试因本机 PostgreSQL `localhost:5432` 不可用未完成。启动数据库后必须补跑两端真实 HTTP 回归，再把结果纳入 1.0 发布证据。
+
+### 2026-11-22 API Key 范围失效回归收口
+
+- Phoenix `b2b3436` 修复有效 API Key 在权限交集为空时的后处理分支。`permission_denied` 不再被异常包装为 `authorization_unavailable`，也不会增加错误凭据限流计数。Phoenix API Key 领域与 HTTP 定向集成测试 `21 passed`。
+- Native `ec75cb3` 的 `ApiKeyScopeRotationHttpTest` 在独立 MySQL 8.4 容器中 `3 passed`，覆盖全部 approved scopes 被撤销后的 403、旧密钥范围不扩张和轮换交集为空时不创建替代密钥。
+- Phoenix 完整集成回归 `699 passed`。修正跨项目错误目录、任务编辑权限前提和用户刷新失败测试的数据库故障注入方式，提交为 `f839885`。Phoenix 格式、严格编译、源码行数和差异检查继续通过。
