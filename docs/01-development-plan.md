@@ -1299,6 +1299,8 @@ admin-web `cf0e12b` 已增加 `vX.Y.Z` 标签触发的正式发布工作流。�
 
 Native `b061e72` 已将发布工作流扩展为 GitHub Release 资产流程。正式标签会在 GHCR 镜像、SBOM、provenance、Cosign 和 smoke 之外生成 JVM fast-jar 压缩包与 SHA-256 校验和，并创建 Release notes。Native 同步新增 CHANGELOG 基线。当前尚未运行真实 release tag，镜像 digest、Release 资产和候选后端切换仍待验证。
 
+本轮完成未创建标签的本地资产演练：admin-web 生产包 SHA-256 为 `ff2e33c44fad7dab3e9aa5880d50b3b08ee59dbe896e0d76ed3a30ded042614b`，Native JVM fast-jar 包 SHA-256 为 `641bb00e82c5eb19ea70ad34400544ba31e74353dee2fe53958d45294d2bd533`。该演练只证明本地产物和校验和可生成，不证明 GitHub Release、GHCR 镜像或真实候选切换已通过。
+
 ### 2026-11-22 菜单停用角色绑定审查校正
 
 Native、Phoenix LiveView 和 admin-web 当前都支持读取已有停用角色绑定、保留或明确移除已有绑定、只新增启用角色，并在绑定失败时保留菜单资料和角色草稿后重试。Native HTTP、Phoenix 控制器与 LiveView、admin-web 菜单测试均覆盖该矩阵。旧记录中“完整后端修复仍未完成”的描述属于历史审查时点，当前不再作为发布缺口。菜单无效角色和权限标识仍使用通用校验错误码，属于独立错误码切片。
