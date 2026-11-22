@@ -206,3 +206,11 @@ Phoenix `93efb71` 又补齐角色分页后的写入状态转换：保存、停�
 Phoenix `05f148e` 将菜单参数统一为 `menus_keyword`，并为组织结构增加 `departments_keyword` 深链接。两类树形页面继续完整读取，避免分页破坏父子关系；查询、直接打开和重置行为由 LiveView 集成测试覆盖。
 
 Phoenix `f7cf392` 修复测试环境后台清理进程与 SQL sandbox owner 的时序干扰。测试环境延后会话和 Passkey 清理任务，生产清理间隔不变；覆盖率和 LiveView 集成测试在 CI 中均为 `442 passed`。
+
+### 2026-11-22 公告类型边界和 MFA 会话复核
+
+公告类型长度边界已完成三端对齐。Native `46b66e5` 在创建和更新入口按 Unicode 码点数校验 `noticeType`，32 个码点允许，超过 32 个码点返回 HTTP 422 和 `notice_type_invalid`；更新先执行长度校验，因此非法类型和不存在的资源不会混淆为 404。Phoenix `ed4f5d7` 为同一 changeset 错误登记 `notice_type_invalid`，保持 HTTP 422；admin-web `a97056f` 将该代码加入错误目录、用户提示和排错反查。
+
+Native 的 `NoticeTypeLengthResourceHttpTest` 覆盖 ASCII、表情、组合字符、创建无副作用、更新保留旧值、缺省类型和不存在 ID 场景。`./gradlew testClasses`、错误码/响应结构/异常映射测试、`./gradlew assemble` 和 `git diff --check` 通过；真实 HTTP 测试因本机 Docker/MySQL 未启动，在 Flyway 连接阶段未执行。Phoenix 格式、严格编译、源码行数和差异检查通过；公告 HTTP 集成测试因本机 PostgreSQL `localhost:5432` 未启动而未执行。admin-web 错误码测试 `23 passed`，`pnpm typecheck` 和 `pnpm build` 通过。
+
+Phoenix `223a9c3` 修复 MFA step-up 最终替换 access token 的到期竞态。行锁查询现在同时要求 `refresh_expires_at` 和 `idle_expires_at` 晚于当前时间，新增回归覆盖两种到期情况并确认旧 token 不被替换。格式、严格编译和源码行数检查通过；该集成回归因本机 PostgreSQL 未启动而未执行。
