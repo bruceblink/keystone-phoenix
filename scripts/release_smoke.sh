@@ -19,6 +19,7 @@ smoke_username="smoke_admin_${RANDOM}_$$"
 smoke_password="Strong!12345"
 
 # 解析成功响应中的访问令牌和刷新令牌，避免在烟测输出中打印令牌内容。
+# 登录与刷新接口使用 accessToken 字段，保持烟测与正式 HTTP 响应约定一致。
 extract_token_pair() {
   python -c '
 import json
@@ -27,7 +28,7 @@ import sys
 try:
     response = json.load(sys.stdin)
     data = response["data"]
-    access_token = data["token"]
+    access_token = data["accessToken"]
     refresh_token = data["refreshToken"]
 except (KeyError, TypeError, ValueError):
     raise SystemExit(1)
