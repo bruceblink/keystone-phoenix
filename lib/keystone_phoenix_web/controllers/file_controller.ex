@@ -79,7 +79,7 @@ defmodule KeystonePhoenixWeb.FileController do
   end
 
   defp render_error(conn, :not_found) do
-    conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "文件不存在"))
+    conn |> put_status(:not_found) |> json(ApiResponse.error(:resource_not_found, "文件不存在"))
   end
 
   defp render_error(conn, reason) when reason in [:invalid_file_name, :storage_error] do

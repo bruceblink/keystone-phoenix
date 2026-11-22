@@ -67,6 +67,11 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
            ]) ==
              "resource_not_found"
 
+    assert get_in(
+             json_response(get(authorized.(), "/api/v1/file/download?fileName=missing.txt"), 404),
+             ["error", "code"]
+           ) == "resource_not_found"
+
     assert get_in(json_response(post(authorized.(), "/api/v1/file/upload", %{}), 422), [
              "error",
              "code"
