@@ -488,8 +488,10 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
   end
 
   # 将服务端失败转换为带级别的反馈，页面据此选择警示语义和视觉样式。
-  def form_error({:error, %Ecto.Changeset{} = changeset}),
-    do: Feedback.error(:validation_failed, notice_form_error(changeset))
+  def form_error({:error, %Ecto.Changeset{} = changeset}) do
+    code = if notice_type_invalid?(changeset), do: :notice_type_invalid, else: :validation_failed
+    Feedback.error(code, notice_form_error(changeset))
+  end
 
   def form_error({:error, reason}), do: Feedback.from_reason(reason)
   def form_error(:error), do: Feedback.error(:internal_error, "操作失败")
@@ -499,6 +501,12 @@ defmodule KeystonePhoenixWeb.Live.AdminSupport do
     do: AdminReadSupport.read_error_feedback(reason, message)
 
   def human_error(reason), do: Feedback.human_error(reason)
+
+  # 保留公告类型长度校验的专用业务码，避免 LiveView 丢失 changeset 元数据。
+  defp notice_type_invalid?(changeset) do
+    {_message, options} = Keyword.get(changeset.errors, :notice_type, {nil, []})
+    is_list(options) and Keyword.get(options, :validation) == :notice_type_invalid
+  end
 
   def admin_socket?(socket) do
     case socket.assigns[:current_user] do

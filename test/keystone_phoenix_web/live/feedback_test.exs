@@ -4,6 +4,7 @@ defmodule KeystonePhoenixWeb.Live.FeedbackTest do
   alias KeystonePhoenixWeb.Live.AdminPages.Feedback
   alias KeystonePhoenixWeb.Live.AdminSupport
   alias KeystonePhoenixWeb.ErrorCatalog
+  alias KeystonePhoenix.Notice.SysNotice
 
   test "feedback keeps a stable code while preserving rendered message helpers" do
     feedback = AdminSupport.form_error({:error, :not_found})
@@ -63,5 +64,17 @@ defmodule KeystonePhoenixWeb.Live.FeedbackTest do
     changeset = Ecto.Changeset.cast({%{}, %{}}, %{}, [])
 
     assert Feedback.code(AdminSupport.form_error({:error, changeset})) == "validation_failed"
+  end
+
+  test "notice type length changeset keeps its dedicated error code" do
+    changeset =
+      SysNotice.changeset(%SysNotice{}, %{
+        notice_title: "title",
+        notice_content: "content",
+        notice_type: String.duplicate("x", 33),
+        status: 1
+      })
+
+    assert Feedback.code(AdminSupport.form_error({:error, changeset})) == "notice_type_invalid"
   end
 end
