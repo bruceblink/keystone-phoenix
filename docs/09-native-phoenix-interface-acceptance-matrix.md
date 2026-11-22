@@ -216,3 +216,5 @@ Native 的 `NoticeTypeLengthResourceHttpTest` 覆盖 ASCII、表情、组合字�
 Phoenix `223a9c3` 修复 MFA step-up 最终替换 access token 的到期竞态。行锁查询现在同时要求 `refresh_expires_at` 和 `idle_expires_at` 晚于当前时间，新增回归覆盖两种到期情况并确认旧 token 不被替换。格式、严格编译和源码行数检查通过；该集成回归因本机 PostgreSQL 未启动而未执行。
 
 Phoenix `c10adfd` 已将个人资料不存在和在线会话不存在的 404 响应从 `validation_failed` 对齐为 `resource_not_found`，与 Native 的 `ApiExceptionMapper` 和 admin-web 错误目录一致。新增资料控制器和监控控制器回归，覆盖资源不存在时的状态和业务码；格式、严格编译、源码行数和差异检查通过。真实 PostgreSQL 集成测试因本机数据库未启动而未执行。
+
+Phoenix `56f5e7f` 已将文件下载路径不存在的 404 响应对齐为 `resource_not_found`，与 Native `FileResource` 一致；接口契约矩阵新增已认证缺失文件回归。格式、严格编译、源码行数和差异检查通过；真实 PostgreSQL 集成测试因本机数据库未启动而未执行。
