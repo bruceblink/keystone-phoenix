@@ -1283,3 +1283,8 @@ Phoenix `12f9696` 已将 LiveView 公告类型超长校验映射为 `notice_type
 - Native 和 Phoenix 当前 `status=active` 都排除已过期密钥，轮换已过期密钥返回 `409/api_key_expired`，轮换前重新计算权限交集。此前文档中关于后端仍可能返回过期 active 密钥的记录属于历史审查时点。
 - admin-web `d398187` 修复开发环境 mock fallback 的 active 筛选，使其同时检查 `revokedAt` 和 `expiresAt`。新增过期模拟密钥和客户端回归，客户端定向测试 `52 passed`，类型检查通过。
 - 最新三端回归结果为 Phoenix `699 passed`，Native `./gradlew test quarkusBuild` 成功，admin-web `362 passed`、类型检查和生产构建通过。
+
+### 2026-11-22 admin-web 用户权限组合验收校正
+
+- admin-web `0b5ebf9` 已处理用户新增、编辑、删除、导入导出和角色分配的细分权限。没有 `role:read` 与 `role:assign` 时，新用户保存不发送角色绑定，编辑用户保留已有角色。现有 `UsersPageCapabilities` 覆盖无角色权限、只有角色读取、只有角色分配和无角色数据范围四种组合。
+- admin-web 最新全量测试为 `38 files / 363 passed`，类型检查和生产构建通过。此前“React 对无角色新增组合仍需对齐”的记录属于旧审查时点，当前实现已覆盖。
