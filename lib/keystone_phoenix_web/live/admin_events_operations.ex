@@ -255,10 +255,10 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
           {:noreply, assign(socket, job_feedback: Feedback.error(:resource_not_found, "找不到指定任务"))}
 
         {:error, :data_scope_denied} ->
-          {:noreply, assign(socket, job_feedback: Feedback.error(:resource_not_found, "找不到指定任务"))}
+          {:noreply, assign(socket, job_feedback: Feedback.error(:data_scope_denied, "没有数据权限"))}
 
         {:error, :permission_denied} ->
-          {:noreply, assign(socket, job_feedback: Feedback.error(:resource_not_found, "找不到指定任务"))}
+          {:noreply, assign(socket, job_feedback: Feedback.error(:permission_denied, "没有操作权限"))}
       end
     else
       {:noreply, socket}
