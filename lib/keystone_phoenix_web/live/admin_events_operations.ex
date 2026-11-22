@@ -160,9 +160,11 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.Operations do
 
         {:error, reason} ->
           feedback =
-            if reason in [:permission_denied, :data_scope_denied],
-              do: Feedback.error(:resource_not_found, "找不到指定任务"),
-              else: Support.read_error_feedback(reason, "找不到指定任务")
+            case reason do
+              :permission_denied -> Feedback.error(:permission_denied, "没有操作权限")
+              :data_scope_denied -> Feedback.error(:data_scope_denied, "没有数据权限")
+              other -> Support.read_error_feedback(other, "找不到指定任务")
+            end
 
           {:noreply, assign(socket, job_feedback: feedback)}
       end

@@ -52,6 +52,48 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OperationsTest do
     assert Feedback.message(result.assigns.job_feedback) == "找不到指定任务"
   end
 
+  test "edit task permission denial keeps the permission error code" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{
+        __changed__: %{},
+        current_user: %{user_id: KeystonePhoenix.Identity.v7()},
+        permissions: ["job:update"],
+        job_rows: []
+      }
+    }
+
+    assert {:noreply, result} =
+             Operations.handle_event(
+               "edit-job",
+               %{"job-id" => KeystonePhoenix.Identity.v7()},
+               socket
+             )
+
+    assert Feedback.code(result.assigns.job_feedback) == "permission_denied"
+    assert Feedback.message(result.assigns.job_feedback) == "没有操作权限"
+  end
+
+  test "edit task data scope denial keeps the data scope error code" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{
+        __changed__: %{},
+        current_user: %{user_id: KeystonePhoenix.Identity.v7()},
+        permissions: ["job:update", "job:read"],
+        job_rows: []
+      }
+    }
+
+    assert {:noreply, result} =
+             Operations.handle_event(
+               "edit-job",
+               %{"job-id" => KeystonePhoenix.Identity.v7()},
+               socket
+             )
+
+    assert Feedback.code(result.assigns.job_feedback) == "data_scope_denied"
+    assert Feedback.message(result.assigns.job_feedback) == "没有数据权限"
+  end
+
   test "run task permission denial keeps the permission error code" do
     socket = %Phoenix.LiveView.Socket{
       assigns: %{
