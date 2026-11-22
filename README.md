@@ -21,8 +21,11 @@ The dependency versions are locked in [`mix.lock`](mix.lock). `mix.exs` keeps
 the compatible minor version ranges so security and patch releases can be
 updated with the normal Mix workflow.
 
-当前主线按 `v1.0.0` 发布目标维护。正式发布标签只在
-[`docs/04-deployment-runbook.md`](docs/04-deployment-runbook.md) 中记录的生产 smoke 检查通过后创建。
+Phoenix `v1.0.0` 已发布。正式镜像 Release smoke 已通过，发布记录见
+[GitHub Release](https://github.com/bruceblink/keystone-phoenix/releases/tag/v1.0.0)。
+镜像为 `ghcr.io/bruceblink/keystone-phoenix:1.0.0`，digest 为
+`sha256:156ca9c62a0ef5882e681aaa0975fc39d46a7527f0b0c1c21c7d24ec8b146f2a`。
+发布验收记录见 [`docs/1.0-release-candidate.md`](docs/1.0-release-candidate.md)。
 
 ## 1.0.0 生产配套
 

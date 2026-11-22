@@ -1,5 +1,28 @@
 # Keystone Phoenix 当前主线
 
+## Keystone Phoenix 1.0.0
+
+对比范围：`v0.3.0..v1.0.0`　发布日期：2026-11-22
+
+### 修复
+
+- 修复发布 smoke 使用旧登录令牌字段的问题，统一读取 `data.accessToken`。
+- 修复发布 smoke 密码长度和代理信任配置，确保正式镜像可以完成启动、登录和受保护接口检查。
+
+### 新增
+
+- 发布 Phoenix `v1.0.0` 正式镜像、GitHub Release、Cosign 签名、SBOM 和 provenance。
+- 完成 Phoenix JSON API 和 LiveView 管理页面与 admin-web 的 1.0 配套说明。
+
+### 优化
+
+- 补充数据库迁移、认证、刷新令牌、JWK、API Key、文件和健康检查的正式镜像 smoke 验收。
+
+### 维护、文档与测试
+
+- 完成 Phoenix、Native 和 admin-web 三端 1.0 发布证据和资产摘要记录。
+- 更新 README、发布验收清单、生产配套关系和 Native 后续维护边界。
+
 ## [Unreleased]
 
 ### 修复 / Bug Fixes
