@@ -288,6 +288,12 @@ defmodule KeystonePhoenix.Auth.ApiKey do
     result
   end
 
+  # 有效密钥的权限范围失效不属于凭据错误，不增加错误凭据限流计数。
+  defp after_authentication({:error, :permission_denied} = result, value, _ip_address) do
+    _ = RateLimiter.clear(value)
+    result
+  end
+
   defp issue_locked!(user, subject_id, name, scopes, expires_at, event) do
     prefix = random(@key_prefix_bytes)
     secret = random(@secret_bytes)
