@@ -97,7 +97,13 @@ defmodule KeystonePhoenixWeb.ContractMatrixTest do
         ] do
       response = delete(authorized.(), path)
       assert response.status == 422, "expected #{path} to reject its deprecated alias"
-      assert get_in(json_response(response, 422), ["error", "code"]) == "validation_failed"
+
+      expected_code =
+        if String.contains?(path, "/notices?"),
+          do: "notice_ids_invalid",
+          else: "validation_failed"
+
+      assert get_in(json_response(response, 422), ["error", "code"]) == expected_code
     end
   end
 
