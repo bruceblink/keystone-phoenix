@@ -230,6 +230,17 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
   end
 
   @tag :integration
+  test "公告批量删除参数错误使用专用业务码" do
+    token = admin_token()
+
+    for path <- ["/api/v1/notices", "/api/v1/notices?notice_ids=not-a-uuid"] do
+      response = delete(authorized(build_conn(), token), path)
+      assert response.status == 422
+      assert get_in(json_response(response, 422), ["error", "code"]) == "notice_ids_invalid"
+    end
+  end
+
+  @tag :integration
   test "公告管理列表在提供 page 和 size 时返回 Native 分页契约" do
     token = admin_token()
     title = "分页公告 #{System.unique_integer([:positive])}"

@@ -139,7 +139,7 @@ defmodule KeystonePhoenixWeb.NoticeController do
   defp render_error(conn, :invalid_ids) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "公告编号无效"))
+    |> json(ApiResponse.error(:notice_ids_invalid, "公告编号无效"))
   end
 
   defp render_error(conn, :invalid_published) do
