@@ -1250,3 +1250,5 @@ Phoenix `656de7c` 已将任务编辑读取的权限和数据范围错误同步�
 2026-11-22 文档校正：角色成员当前实现已支持 `username`、`phoneNumber` 筛选、`include=identity`、`page/size` 分页和旧数组兼容；Native 与 Phoenix 均按 UUID 降序返回。此前关于成员分页和筛选未完成的历史记录不再代表当前代码状态。
 
 Phoenix `c39f3f2` 已将头像更新的 `null` 和非字符串输入统一为 `422/profile_avatar_required`，与 Native 一致，避免函数子句错误。回归覆盖缺失、空值、数字和空白输入；PostgreSQL 集成测试仍待数据库启动后补跑。
+
+Phoenix `12f9696` 已将 LiveView 公告类型超长校验映射为 `notice_type_invalid`，与 HTTP 控制器、Native 和 admin-web 的错误目录一致；普通表单校验继续使用 `validation_failed`。无数据库反馈验证通过，LiveView 测试仍待 PostgreSQL 启动后补跑。

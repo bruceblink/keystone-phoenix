@@ -438,3 +438,5 @@ Phoenix `5f66778` 将密码设置规则和配置默认值对齐 Native，并覆�
 2026-11-22 Phoenix LiveView 任务编辑错误反馈：`656de7c` 将编辑读取中的权限拒绝和数据范围拒绝改为 `permission_denied`、`data_scope_denied`，与 admin-web 的错误诊断一致。四条编辑/执行分支已完成无数据库事件验证；本机 PostgreSQL 未启动，集成测试待补跑。
 
 2026-11-22 Phoenix 资料头像输入校验：`c39f3f2` 将 `avatar: null` 和非字符串输入统一映射为 `profile_avatar_required`，与 Native/admin-web 的 422 约定一致。资料接口回归已补齐，PostgreSQL 未启动时仅完成编译和静态验证。
+
+2026-11-22 Phoenix LiveView 公告表单错误：`12f9696` 保留公告类型超长的 `notice_type_invalid` 业务码，避免页面显示泛化的 `validation_failed`。无数据库事件验证通过，LiveView 测试待 PostgreSQL 启动后补跑。
