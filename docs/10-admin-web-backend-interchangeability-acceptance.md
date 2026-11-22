@@ -442,3 +442,5 @@ Phoenix `5f66778` 将密码设置规则和配置默认值对齐 Native，并覆�
 2026-11-22 Phoenix LiveView 公告表单错误：`12f9696` 保留公告类型超长的 `notice_type_invalid` 业务码，避免页面显示泛化的 `validation_failed`。无数据库事件验证通过，LiveView 测试待 PostgreSQL 启动后补跑。
 
 2026-11-22 MFA 状态校正：当前 Native 与 Phoenix 都使用 600 秒最近认证窗口；Phoenix 已在最终会话 token 替换时重新检查 refresh/idle 到期时间。此前记录的最近认证时间差异仅适用于历史审查时点。
+
+2026-11-22 API Key 授权范围失效已完成两端对齐：Native `ec75cb3` 与 Phoenix `842cd4a` 对仍有效但已没有可用授权范围的 API Key 统一返回 HTTP 403、`permission_denied`。API Key 撤销、过期、格式错误或用户/服务主体失效仍统一返回 HTTP 401、`invalid_credential`。admin-web 已有 `permission_denied` 错误目录和提示，无需新增前端分支。Native 增加全部范围撤销 HTTP 回归；Phoenix 更新领域和 HTTP 合约测试。由于本机 Docker/MySQL 与 PostgreSQL 均未启动，两端真实 HTTP 回归尚未完成，不能把该切片标记为完整运行验收通过。
