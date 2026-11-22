@@ -32,6 +32,7 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     api_key_expired
     api_key_scope_unavailable
     api_key_name_invalid
+    api_key_page_changed
     profile_display_name_required
     profile_avatar_required
     authentication_required
@@ -45,6 +46,7 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     mfa_required
     mfa_step_up_required
     mfa_state_conflict
+    notice_type_invalid
     permission_denied
     payload_too_large
     password_contains_username

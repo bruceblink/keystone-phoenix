@@ -39,8 +39,8 @@ defmodule KeystonePhoenixWeb.Live.AdminEvents.OperationsTest do
     socket = %Phoenix.LiveView.Socket{
       assigns: %{
         __changed__: %{},
-        current_user: %{},
-        permissions: ["job:update"],
+        current_user: %{user_id: KeystonePhoenix.Identity.v7(), data_scope: "ALL"},
+        permissions: ["job:update", "job:read"],
         job_rows: []
       }
     }

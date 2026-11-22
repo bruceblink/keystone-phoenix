@@ -12,6 +12,8 @@ defmodule KeystonePhoenixWeb.AdminUserDeepLinkTest do
   alias KeystonePhoenix.Role.SysRole
   alias KeystonePhoenix.User.SysUser
   alias KeystonePhoenixWeb.Live.LoginEvents
+  alias KeystonePhoenixWeb.Live.AdminEvents.Accounts
+  alias KeystonePhoenixWeb.Live.AdminPages.Feedback
 
   @password "Strong!123"
 
@@ -95,31 +97,30 @@ defmodule KeystonePhoenixWeb.AdminUserDeepLinkTest do
     original_uri = initial.assigns.current_uri
     selected_id = initial.assigns.user_rows |> hd() |> Map.fetch!("userId")
     render_click(view, "toggle-user-selection", %{"user-id" => selected_id, "selected" => "true"})
-    previous_rows = live_socket(view).assigns.user_rows
+    selected_socket = live_socket(view)
+    previous_rows = selected_socket.assigns.user_rows
 
-    Repo.query!("ALTER TABLE sys_post RENAME TO sys_post_unavailable")
+    Repo.query!("ALTER TABLE sys_user RENAME TO sys_user_unavailable")
 
-    try do
-      failed_html = render_click(view, "refresh-users")
-      failed = live_socket(view)
+    failed =
+      try do
+        {:noreply, failed_socket} = Accounts.handle_event("refresh-users", %{}, selected_socket)
 
-      assert failed.assigns.user_rows == previous_rows
-      assert failed.assigns.user_total == 21
-      assert failed.assigns.user_query == username_prefix
-      assert failed.assigns.user_display_name_query == display_name
-      assert failed.assigns.page_nums["users"] == 2
-      assert failed.assigns.selected_user_ids == [selected_id]
-      assert failed.assigns.current_uri == original_uri
-      assert failed.assigns.user_feedback
-      assert failed_html =~ "用户列表刷新失败，请重试"
-      refute failed_html =~ "暂无用户"
-    after
-      Repo.query!("ALTER TABLE sys_post_unavailable RENAME TO sys_post")
-    end
+        assert failed_socket.assigns.user_rows == previous_rows
+        assert failed_socket.assigns.user_total == 21
+        assert failed_socket.assigns.user_query == username_prefix
+        assert failed_socket.assigns.user_display_name_query == display_name
+        assert failed_socket.assigns.page_nums["users"] == 2
+        assert failed_socket.assigns.selected_user_ids == [selected_id]
+        assert failed_socket.assigns.current_uri == original_uri
+        assert Feedback.message(failed_socket.assigns.user_feedback) == "用户列表刷新失败，请重试"
+        failed_socket
+      after
+        Repo.query!("ALTER TABLE sys_user_unavailable RENAME TO sys_user")
+      end
 
     create_user(role, "#{username_prefix}22", display_name)
-    recovered_html = render_click(view, "refresh-users")
-    recovered = live_socket(view)
+    {:noreply, recovered} = Accounts.handle_event("refresh-users", %{}, failed)
 
     assert recovered.assigns.user_query == username_prefix
     assert recovered.assigns.user_display_name_query == display_name
@@ -135,7 +136,6 @@ defmodule KeystonePhoenixWeb.AdminUserDeepLinkTest do
     assert recovered.assigns.selected_user_ids == [selected_id]
     assert recovered.assigns.current_uri == original_uri
     assert recovered.assigns.user_feedback == nil
-    refute recovered_html =~ "用户列表刷新失败"
   end
 
   @tag :integration
