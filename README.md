@@ -85,8 +85,9 @@ The current frontend reference is
 The current `main` branch is the usable replacement baseline. The reference
 frontend remains the API and page-behavior baseline, while LiveView reimplements
 the admin-web pages. Release acceptance requires matching page structure,
-layout, interaction, copy, responsive behavior, and error states; the existing
-LiveView-only page variants are not release baselines.
+layout, interaction, copy, responsive behavior, loading states, and error
+states. LiveView page variants must remain aligned with the admin-web baseline
+before they are included in a release candidate.
 
 Implemented API slices currently include health checks, dictionary type/data
 CRUD, ETS-backed dictionary lookups, and system configuration CRUD with
