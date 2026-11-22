@@ -436,3 +436,5 @@ Phoenix `5f66778` 将密码设置规则和配置默认值对齐 Native，并覆�
 2026-11-22 Phoenix LiveView 任务执行错误反馈：`7063f57` 修复 `permission_denied` 和 `data_scope_denied` 被误报为 `resource_not_found` 的问题。该行为现在与 admin-web 的 `ActionError` 显示和错误码诊断一致。两条分支已通过无数据库事件验证；本机 PostgreSQL 未启动，LiveView 集成测试待补跑。
 
 2026-11-22 Phoenix LiveView 任务编辑错误反馈：`656de7c` 将编辑读取中的权限拒绝和数据范围拒绝改为 `permission_denied`、`data_scope_denied`，与 admin-web 的错误诊断一致。四条编辑/执行分支已完成无数据库事件验证；本机 PostgreSQL 未启动，集成测试待补跑。
+
+2026-11-22 Phoenix 资料头像输入校验：`c39f3f2` 将 `avatar: null` 和非字符串输入统一映射为 `profile_avatar_required`，与 Native/admin-web 的 422 约定一致。资料接口回归已补齐，PostgreSQL 未启动时仅完成编译和静态验证。

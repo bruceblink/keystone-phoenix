@@ -224,3 +224,5 @@ Phoenix `28a7eeb` 已将字典项创建时不存在或停用的字典类型从 H
 Phoenix `7063f57` 已修复 LiveView 任务执行失败反馈：`permission_denied` 和 `data_scope_denied` 不再误报为 `resource_not_found`，页面分别显示“没有操作权限”和“没有数据权限”。事件回归和无数据库运行验证覆盖两条分支；格式、严格编译和源码行数检查通过。LiveView 测试套件因本机 PostgreSQL 未启动未执行。
 
 Phoenix `656de7c` 同步修复任务编辑读取失败反馈，权限拒绝和数据范围拒绝现在保留各自业务错误码。编辑和执行事件的四条权限分支均通过无数据库运行验证；LiveView 测试套件仍因本机 PostgreSQL 未启动未执行。
+
+Phoenix `c39f3f2` 已在头像更新入口拒绝 `null` 和非字符串值，统一返回 HTTP 422 `profile_avatar_required`，避免函数子句错误；资料接口回归覆盖缺失、空值、数字和空白输入。格式、严格编译和源码行数检查通过；真实 PostgreSQL 回归因本机数据库未启动未执行。
