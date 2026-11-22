@@ -446,3 +446,5 @@ Phoenix `5f66778` 将密码设置规则和配置默认值对齐 Native，并覆�
 2026-11-22 API Key 授权范围失效已完成两端对齐：Native `ec75cb3` 与 Phoenix `842cd4a` 对仍有效但已没有可用授权范围的 API Key 统一返回 HTTP 403、`permission_denied`。API Key 撤销、过期、格式错误或用户/服务主体失效仍统一返回 HTTP 401、`invalid_credential`。admin-web 已有 `permission_denied` 错误目录和提示，无需新增前端分支。Native 增加全部范围撤销 HTTP 回归；Phoenix 更新领域和 HTTP 合约测试。由于本机 Docker/MySQL 与 PostgreSQL 均未启动，两端真实 HTTP 回归尚未完成，不能把该切片标记为完整运行验收通过。
 
 回归已收口：Phoenix `b2b3436` 修复空权限交集的后处理异常，API Key 定向集成测试 `21 passed`；Native `ec75cb3` 的独立 MySQL 8.4 HTTP 测试 `3 passed`；Phoenix 完整集成回归 `699 passed`。admin-web API Key 页面已有 403 `permission_denied` 的统一诊断、重试和操作失败反馈，定向测试 `24 passed`，类型检查通过。两端真实数据库容器在本轮回归后保持运行，后续页面验收可复用。
+
+公告发布参数错误码已完成三端对齐：Native `fc9ef59`、Phoenix `b34e870` 和 admin-web `9957023` 对缺失或非布尔 `published` 统一返回 HTTP 422、`notice_published_invalid`。Phoenix 管理接口定向测试 `13 passed`，Native 管理写接口相关测试 `9 passed`，admin-web 公告页面和错误目录测试 `30 passed`。admin-web 现有发布按钮继续发送布尔值，错误诊断会显示专用代码和中文含义。

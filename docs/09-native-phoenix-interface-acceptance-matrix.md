@@ -236,3 +236,7 @@ Phoenix `12f9696` 已将 LiveView 公告类型超长 changeset 的错误码保�
 Native `ec75cb3` 和 Phoenix `842cd4a` 统一 API Key 的边界：密钥本身仍有效，但批准的权限与当前用户权限没有交集时，业务接口返回 HTTP 403、业务码 `permission_denied`；密钥撤销、过期、格式错误或关联主体失效时，仍返回 HTTP 401、业务码 `invalid_credential`。Native 增加了全部范围撤销后的 HTTP 回归，Phoenix 更新领域与 HTTP 合约回归。编译、格式、源码行数和差异检查通过；两端真实 HTTP 测试分别受本机 Docker/MySQL 和 PostgreSQL 未启动限制，待数据库恢复后补跑。
 
 补充回归结果：Phoenix `b2b3436` 修复 `permission_denied` 后处理分支，API Key 定向集成测试 `21 passed`；Native `ec75cb3` 在独立 MySQL 8.4 容器中运行 `ApiKeyScopeRotationHttpTest`，`3 passed`。Phoenix 完整集成回归为 `699 passed`。两端现在有真实数据库证据支持有效密钥空权限交集返回 403，非法、过期、撤销或主体失效仍返回 401。
+
+### 2026-11-22 公告发布参数错误码
+
+Native `fc9ef59`、Phoenix `b34e870` 和 admin-web `9957023` 将公告发布接口的缺失或非布尔 `published` 参数统一为 HTTP 422、`notice_published_invalid`。Native 管理写接口定向测试、错误码目录和跨项目契约检查通过；Phoenix 管理读取写入回归 `13 passed`；admin-web 公告页面与错误目录定向测试 `30 passed`，类型检查通过。三端仍使用同一发布路径和布尔请求字段。

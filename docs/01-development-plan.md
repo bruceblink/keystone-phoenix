@@ -1266,3 +1266,9 @@ Phoenix `12f9696` 已将 LiveView 公告类型超长校验映射为 `notice_type
 - Phoenix `b2b3436` 修复有效 API Key 在权限交集为空时的后处理分支。`permission_denied` 不再被异常包装为 `authorization_unavailable`，也不会增加错误凭据限流计数。Phoenix API Key 领域与 HTTP 定向集成测试 `21 passed`。
 - Native `ec75cb3` 的 `ApiKeyScopeRotationHttpTest` 在独立 MySQL 8.4 容器中 `3 passed`，覆盖全部 approved scopes 被撤销后的 403、旧密钥范围不扩张和轮换交集为空时不创建替代密钥。
 - Phoenix 完整集成回归 `699 passed`。修正跨项目错误目录、任务编辑权限前提和用户刷新失败测试的数据库故障注入方式，提交为 `f839885`。Phoenix 格式、严格编译、源码行数和差异检查继续通过。
+
+### 2026-11-22 公告发布参数错误码对齐
+
+- Native `fc9ef59`、Phoenix `b34e870` 和 admin-web `9957023` 将公告发布接口缺失或非布尔 `published` 参数统一为 HTTP 422、`notice_published_invalid`。合法布尔值的发布和取消发布行为保持不变。
+- Native 将发布请求字段按 JSON 节点校验，补充 3 项 HTTP、错误目录和跨项目契约测试；Phoenix 增加控制器专用映射和管理接口回归，相关定向测试 13 项通过；admin-web 增加错误目录、用户提示和公告页面诊断测试 30 项通过，类型检查通过。
+- 三端业务错误码目录和 HTTP 路由检查待本轮最终回归后确认，Native/Phoenix/admin-web 的真实页面发布按钮继续发送布尔值。
