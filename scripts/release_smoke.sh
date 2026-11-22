@@ -16,7 +16,7 @@ database="keystone_phoenix_smoke"
 database_url="ecto://postgres:postgres@${postgres}/${database}"
 postgres_image="postgres:18@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42"
 smoke_username="smoke_admin_${RANDOM}_$$"
-smoke_password="Strong!123"
+smoke_password="Strong!12345"
 
 # 解析成功响应中的访问令牌和刷新令牌，避免在烟测输出中打印令牌内容。
 extract_token_pair() {
