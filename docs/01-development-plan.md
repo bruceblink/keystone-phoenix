@@ -1244,3 +1244,5 @@ Phoenix `56f5e7f` 已将缺失文件下载的 HTTP 404 错误码统一为 `resou
 Phoenix `28a7eeb` 已将字典项创建时不存在或停用的字典类型统一为 HTTP 404 `resource_not_found`，与 Native 后端可替换约定一致；管理接口回归已覆盖缺失类型。静态检查通过，PostgreSQL 集成测试仍待数据库启动后补跑。
 
 Phoenix `7063f57` 已将 LiveView 任务执行的权限错误对齐 admin-web：权限不足返回 `permission_denied`，数据范围不足返回 `data_scope_denied`，不再误报为任务不存在。事件回归和无数据库运行验证通过；LiveView 测试套件仍待 PostgreSQL 启动后补跑。
+
+Phoenix `656de7c` 已将任务编辑读取的权限和数据范围错误同步对齐；编辑与执行入口均保留准确错误码。四条事件分支通过无数据库运行验证，PostgreSQL 集成测试仍待补跑。
