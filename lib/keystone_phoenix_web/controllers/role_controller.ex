@@ -443,7 +443,7 @@ defmodule KeystonePhoenixWeb.RoleController do
   defp render_error(conn, :permission_not_found) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "权限不存在或已停用"))
+    |> json(ApiResponse.error(:permission_not_found, "权限不存在或已停用"))
   end
 
   defp render_error(conn, :invalid_ids) do

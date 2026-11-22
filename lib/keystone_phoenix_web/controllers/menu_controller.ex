@@ -171,7 +171,12 @@ defmodule KeystonePhoenixWeb.MenuController do
 
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, message))
+    |> json(
+      ApiResponse.error(
+        if(reason == :permission_not_found, do: :permission_not_found, else: :validation_failed),
+        message
+      )
+    )
   end
 
   defp render_error(conn, reason)

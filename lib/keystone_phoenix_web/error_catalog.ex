@@ -69,6 +69,12 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       retryable: false,
       message_key: "request.validation_failed"
     },
+    # 角色或菜单引用不存在、停用或未登记的权限标识。
+    "permission_not_found" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.permission_not_found"
+    },
     # 公告类型超过 32 个 Unicode 码点时使用独立代码，便于两端排错。
     "notice_type_invalid" => %{
       status: 422,

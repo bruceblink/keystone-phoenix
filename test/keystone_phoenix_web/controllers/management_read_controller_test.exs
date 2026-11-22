@@ -518,7 +518,7 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
       })
 
     assert response.status == 422
-    assert get_in(json_response(response, 422), ["error", "code"]) == "validation_failed"
+    assert get_in(json_response(response, 422), ["error", "code"]) == "permission_not_found"
   end
 
   defp admin_token do

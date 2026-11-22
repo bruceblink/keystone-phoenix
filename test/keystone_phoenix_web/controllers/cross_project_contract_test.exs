@@ -50,6 +50,7 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     notice_published_invalid
     notice_ids_invalid
     permission_denied
+    permission_not_found
     payload_too_large
     password_contains_username
     password_disallowed
