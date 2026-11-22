@@ -1303,7 +1303,7 @@ Native GitHub Actions 运行 `44985272194` 已通过 `build-and-test` 和 `nativ
 
 Phoenix `869c94a` 已将 release-image 工作流扩展为 GitHub Release 记录流程。正式标签会在 GHCR 镜像签名和 release smoke 成功后生成双语 Release notes，记录镜像标签和 digest，并创建 GitHub Release。当前尚未运行真实 release tag，镜像 digest、Release 记录和候选后端切换仍待验证。
 
-Phoenix GitHub Actions 运行 `44986338608` 和最新运行 `44987248724` 均通过格式、严格编译、单元/数据库测试、覆盖率基线和 LiveView integration 测试。最新运行确认发布记录和文档更新没有引入 CI 回归。
+Phoenix GitHub Actions 运行 `44986338608`、`44987248724` 和最新运行 `44990665388` 均通过格式、严格编译、单元/数据库测试、覆盖率基线和 LiveView integration 测试。最新运行同时验证了质量工作流的超时和同分支互斥配置。
 
 本轮完成未创建标签的本地资产演练：admin-web 生产包 SHA-256 为 `ff2e33c44fad7dab3e9aa5880d50b3b08ee59dbe896e0d76ed3a30ded042614b`，Native JVM fast-jar 包 SHA-256 为 `641bb00e82c5eb19ea70ad34400544ba31e74353dee2fe53958d45294d2bd533`。该演练只证明本地产物和校验和可生成，不证明 GitHub Release、GHCR 镜像或真实候选切换已通过。
 
