@@ -1240,3 +1240,5 @@ Phoenix `223a9c3` 已在 MFA step-up 最终行锁替换 access token 时重新�
 Phoenix `c10adfd` 已将个人资料不存在和在线会话不存在的 HTTP 404 错误码统一为 `resource_not_found`，与 Native 和 admin-web 的替换约定一致。新增两个控制器回归测试；格式、严格编译和源码行数检查通过。PostgreSQL 未启动，因此真实 HTTP 集成测试仍待补跑。
 
 Phoenix `56f5e7f` 已将缺失文件下载的 HTTP 404 错误码统一为 `resource_not_found`，与 Native 的文件资源接口一致；接口契约矩阵已增加已认证缺失文件回归。静态检查通过，PostgreSQL 集成测试仍待数据库启动后补跑。
+
+Phoenix `28a7eeb` 已将字典项创建时不存在或停用的字典类型统一为 HTTP 404 `resource_not_found`，与 Native 后端可替换约定一致；管理接口回归已覆盖缺失类型。静态检查通过，PostgreSQL 集成测试仍待数据库启动后补跑。
