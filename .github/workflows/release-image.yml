@@ -6,7 +6,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
   packages: write
   attestations: write
   id-token: write
@@ -35,6 +35,8 @@ jobs:
 
       - name: Check out source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
 
       - name: Enforce source file size limit
         run: ./scripts/check_source_lines.sh
@@ -89,3 +91,36 @@ jobs:
         env:
           IMAGE_REF: ghcr.io/${{ github.repository }}:${{ steps.metadata.outputs.version }}
         run: ./scripts/release_smoke.sh "${IMAGE_REF}"
+
+      - name: Generate release notes
+        shell: bash
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          previous="$(git tag --sort=-version:refname --list 'v*' | grep -v "^${GITHUB_REF_NAME}$" | head -n 1 || true)"
+          {
+            echo "keystone-phoenix ${GITHUB_REF_NAME#v}"
+            if [[ -n "${previous}" ]]; then
+              echo "对比范围：${previous}..${GITHUB_REF_NAME}"
+            fi
+            echo "镜像：ghcr.io/${GITHUB_REPOSITORY}:${GITHUB_REF_NAME#v}"
+            echo "镜像摘要：${IMAGE_DIGEST}"
+            echo ""
+            echo "🚀 新功能 / Features"
+            git log --format='- %s' ${previous:+"${previous}.."}${GITHUB_REF_NAME} --grep='^feat' || true
+            echo ""
+            echo "🐛 问题修复 / Bug Fixes"
+            git log --format='- %s' ${previous:+"${previous}.."}${GITHUB_REF_NAME} --grep='^fix' || true
+            echo ""
+            echo "🧰 维护、文档与测试 / Maintenance, Docs & Tests"
+            git log --format='- %s' ${previous:+"${previous}.."}${GITHUB_REF_NAME} --grep='^\(chore\|docs\|test\|ci\|build\|refactor\)' || true
+          } > release-notes.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "Keystone Phoenix ${GITHUB_REF_NAME#v}" \
+            --notes-file release-notes.md
