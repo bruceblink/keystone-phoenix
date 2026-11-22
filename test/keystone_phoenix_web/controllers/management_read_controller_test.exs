@@ -204,6 +204,32 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
   end
 
   @tag :integration
+  test "公告发布参数错误使用专用业务码" do
+    token = admin_token()
+    title = "公告发布参数 #{System.unique_integer([:positive])}"
+
+    notice_id =
+      post(authorized(build_conn(), token), "/api/v1/notices", %{
+        "title" => title,
+        "noticeType" => "notification",
+        "content" => "参数错误回归",
+        "enabled" => true
+      })
+      |> json_response(201)
+      |> get_in(["data", "id"])
+
+    for payload <- [%{}, %{"published" => "true"}, %{"published" => nil}] do
+      response =
+        post(authorized(build_conn(), token), "/api/v1/notices/#{notice_id}/publish", payload)
+
+      assert response.status == 422
+      assert get_in(json_response(response, 422), ["error", "code"]) == "notice_published_invalid"
+    end
+
+    assert delete(authorized(build_conn(), token), "/api/v1/notices/#{notice_id}").status == 200
+  end
+
+  @tag :integration
   test "公告管理列表在提供 page 和 size 时返回 Native 分页契约" do
     token = admin_token()
     title = "分页公告 #{System.unique_integer([:positive])}"

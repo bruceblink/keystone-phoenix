@@ -47,6 +47,7 @@ defmodule KeystonePhoenixWeb.CrossProjectContractTest do
     mfa_step_up_required
     mfa_state_conflict
     notice_type_invalid
+    notice_published_invalid
     permission_denied
     payload_too_large
     password_contains_username

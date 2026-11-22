@@ -145,7 +145,7 @@ defmodule KeystonePhoenixWeb.NoticeController do
   defp render_error(conn, :invalid_published) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "published 必须是布尔值"))
+    |> json(ApiResponse.error(:notice_published_invalid, "published 必须是布尔值"))
   end
 
   defp render_error(conn, :permission_denied) do

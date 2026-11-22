@@ -75,6 +75,12 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       retryable: false,
       message_key: "error.notice_type_invalid"
     },
+    # 公告发布字段缺失或类型错误时使用独立代码，便于反查调用方输入问题。
+    "notice_published_invalid" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.notice_published_invalid"
+    },
     # 用户名重复和格式错误仅作为导入失败行的细分代码，不改变导入接口状态。
     "username_already_exists" => %{
       status: 422,
