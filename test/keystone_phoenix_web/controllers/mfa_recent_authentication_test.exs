@@ -201,6 +201,39 @@ defmodule KeystonePhoenixWeb.MfaRecentAuthenticationTest do
   end
 
   @tag :integration
+  test "step-up token replacement rejects sessions expired during the locked check" do
+    user = create_user([])
+    access_token = enroll_and_step_up(user)
+    assert {:ok, claims} = Token.verify(access_token, Token.access_type())
+    session = Repo.get!(AuthSession, claims["sid"])
+    now = DateTime.utc_now()
+
+    for expired_attrs <- [
+          [refresh_expires_at: DateTime.add(now, -1, :second)],
+          [idle_expires_at: DateTime.add(now, -1, :second)]
+        ] do
+      Repo.update!(Ecto.Changeset.change(session, expired_attrs))
+
+      assert {:error, :invalid_token} =
+               SessionAccess.replace_access_token(
+                 user.user_id,
+                 session.id,
+                 claims["jti"],
+                 Identity.v7()
+               )
+
+      assert Repo.get!(AuthSession, session.id).access_token_id == claims["jti"]
+
+      Repo.update!(
+        Ecto.Changeset.change(session,
+          refresh_expires_at: DateTime.add(now, 600, :second),
+          idle_expires_at: DateTime.add(now, 600, :second)
+        )
+      )
+    end
+  end
+
+  @tag :integration
   test "MFA administration and Passkey registration follow account policy when disabled",
        _context do
     original_passkey = Application.get_env(:keystone_phoenix, :passkey)

@@ -161,13 +161,15 @@ defmodule KeystonePhoenix.Auth.SessionAccess do
     result =
       Repo.transaction(fn ->
         lock_user(user_id)
+        now = DateTime.utc_now()
 
         query =
           from current in AuthSession,
             where:
               current.id == ^session_id and current.user_id == ^user_id and
                 current.access_token_id == ^current_access_token_id and current.active == true and
-                is_nil(current.revoked_at),
+                is_nil(current.revoked_at) and current.refresh_expires_at > ^now and
+                current.idle_expires_at > ^now,
             lock: "FOR UPDATE"
 
         query =
