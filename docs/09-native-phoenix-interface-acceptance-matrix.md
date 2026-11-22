@@ -228,3 +228,5 @@ Phoenix `656de7c` 同步修复任务编辑读取失败反馈，权限拒绝和�
 Phoenix `c39f3f2` 已在头像更新入口拒绝 `null` 和非字符串值，统一返回 HTTP 422 `profile_avatar_required`，避免函数子句错误；资料接口回归覆盖缺失、空值、数字和空白输入。格式、严格编译和源码行数检查通过；真实 PostgreSQL 回归因本机数据库未启动未执行。
 
 Phoenix `12f9696` 已将 LiveView 公告类型超长 changeset 的错误码保留为 `notice_type_invalid`，与 HTTP 控制器和 admin-web 一致；普通 changeset 仍返回 `validation_failed`。无数据库错误反馈验证通过，LiveView 测试因本机 PostgreSQL 未启动未执行。
+
+2026-11-22 MFA 状态校正：Native 和 Phoenix 当前都验证最近 600 秒内的 MFA step-up；Phoenix 的最终 token 替换也已在 `223a9c3` 补充 refresh/idle 到期检查。

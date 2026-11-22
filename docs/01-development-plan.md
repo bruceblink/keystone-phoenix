@@ -1252,3 +1252,5 @@ Phoenix `656de7c` 已将任务编辑读取的权限和数据范围错误同步�
 Phoenix `c39f3f2` 已将头像更新的 `null` 和非字符串输入统一为 `422/profile_avatar_required`，与 Native 一致，避免函数子句错误。回归覆盖缺失、空值、数字和空白输入；PostgreSQL 集成测试仍待数据库启动后补跑。
 
 Phoenix `12f9696` 已将 LiveView 公告类型超长校验映射为 `notice_type_invalid`，与 HTTP 控制器、Native 和 admin-web 的错误目录一致；普通表单校验继续使用 `validation_failed`。无数据库反馈验证通过，LiveView 测试仍待 PostgreSQL 启动后补跑。
+
+2026-11-22 状态校正：Native 和 Phoenix 当前都检查最近 600 秒内的 MFA step-up；Phoenix `223a9c3` 还补充了最终 token 替换时的 refresh/idle 到期检查。历史章节中的“最近认证时间差异”不再代表当前实现。
