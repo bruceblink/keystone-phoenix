@@ -69,4 +69,29 @@ defmodule KeystonePhoenixWeb.MonitorControllerTest do
     assert get_in(json_response(response, 200), ["data", "loggedOut"]) == true
     assert {:error, :invalid_token} = Auth.authenticate_access_token(token)
   end
+
+  @tag :integration
+  test "不存在的在线会话使用 resource_not_found" do
+    role = Repo.get_by!(SysRole, role_key: "admin", deleted: false)
+
+    user =
+      %SysUser{}
+      |> SysUser.create_changeset(%{
+        username: "monitor_missing_session_#{System.unique_integer([:positive])}",
+        password: "Strong!123",
+        role_id: role.role_id,
+        status: 1
+      })
+      |> Repo.insert!()
+
+    token = step_up_token(user)
+
+    response =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{token}")
+      |> delete("/api/v1/monitor/onlineUser/#{KeystonePhoenix.Identity.v7()}")
+
+    assert response.status == 404
+    assert get_in(json_response(response, 404), ["error", "code"]) == "resource_not_found"
+  end
 end

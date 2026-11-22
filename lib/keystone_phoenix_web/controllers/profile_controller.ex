@@ -129,7 +129,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
   def update_avatar(conn, _params), do: render_error(conn, :profile_avatar_required)
 
   defp render_error(conn, :not_found) do
-    conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "找不到当前用户"))
+    conn |> put_status(:not_found) |> json(ApiResponse.error(:resource_not_found, "找不到当前用户"))
   end
 
   defp render_error(conn, :invalid_old_password) do

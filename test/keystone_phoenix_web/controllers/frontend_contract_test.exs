@@ -12,6 +12,7 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
   alias KeystonePhoenix.Repo
   alias KeystonePhoenix.Role.{SysRole, SysRoleMenu}
   alias KeystonePhoenix.User.SysUser
+  alias KeystonePhoenixWeb.ProfileController
 
   @tag :integration
   test "frontend management APIs preserve the expected DTO shapes", %{conn: conn} do
@@ -140,6 +141,20 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     end
 
     assert Repo.get!(SysUser, fixtures.user.user_id).nickname == original.nickname
+  end
+
+  @tag :integration
+  test "missing profile uses resource_not_found" do
+    fixtures = fixtures()
+    Repo.update!(Ecto.Changeset.change(fixtures.user, deleted: true))
+
+    response =
+      build_conn()
+      |> Plug.Conn.assign(:current_user, %{user_id: fixtures.user.user_id})
+      |> ProfileController.show(%{})
+
+    assert response.status == 404
+    assert get_in(json_response(response, 404), ["error", "code"]) == "resource_not_found"
   end
 
   @tag :integration

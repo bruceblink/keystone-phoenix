@@ -104,7 +104,7 @@ defmodule KeystonePhoenixWeb.MonitorController do
   end
 
   defp render_error(conn, :not_found) do
-    conn |> put_status(:not_found) |> json(ApiResponse.error(:validation_failed, "找不到在线会话"))
+    conn |> put_status(:not_found) |> json(ApiResponse.error(:resource_not_found, "找不到在线会话"))
   end
 
   defp render_error(conn, :unavailable) do
