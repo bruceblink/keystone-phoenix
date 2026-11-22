@@ -1276,7 +1276,7 @@ Phoenix `12f9696` 已将 LiveView 公告类型超长校验映射为 `notice_type
 ### 2026-11-22 公告批量删除参数错误码对齐
 
 - Native `fac95f7`、Phoenix `b4ba5db` 和 admin-web `9871282` 将公告批量删除的 `notice_ids` 缺失、空白或包含非法 UUID 统一为 HTTP 422、`notice_ids_invalid`。旧参数名和格式错误也进入同一专用代码，合法 UUID 列表和重复 UUID 的删除语义保持不变。
-- Native OwnerBatchResource HTTP、错误目录和跨项目契约测试通过；Phoenix 管理接口定向回归 `14 passed`；admin-web 公告删除错误诊断测试 `32 passed`，类型检查通过。三端目录检查已扩展到 45 个共享服务端错误码。
+- Native OwnerBatchResource HTTP、错误目录和跨项目契约测试通过；Phoenix 管理接口定向回归 `14 passed`；admin-web 公告删除错误诊断测试 `32 passed`，类型检查通过。三端目录检查已扩展到 46 个共享服务端错误码。
 
 ### 2026-11-22 API Key 过期筛选回归校正
 
@@ -1289,7 +1289,7 @@ Phoenix `12f9696` 已将 LiveView 公告类型超长校验映射为 `notice_type
 结论：当前版本 **NO-GO，暂缓发布 1.0**。功能开发和本地自动化回归属于条件通过，发布候选和生产验收证据尚未形成。
 
 - 当前版本仍为 Phoenix `0.3.0`、Native `0.1.0-SNAPSHOT`、admin-web `0.1.0`。三个仓库没有统一的 `v1.0.0` 候选提交、标签、版本清单和校验信息。Native 没有 CHANGELOG 或 Release 资产流程；admin-web 只有质量检查 CI，没有正式构建、部署、缓存和回滚产物流程。
-- 当前代码基线的自动化证据为 Phoenix `699 passed`，Native `./gradlew test quarkusBuild` 成功，admin-web `38 files / 363 passed`、类型检查和生产构建通过。静态契约为 45 个共享业务错误码、Native/Phoenix 各 112 条 `/api/v1` 路由和一致的 JWK 路由集合。这些结果不能替代候选版本的真实切换验收。
+- 当前代码基线的自动化证据为 Phoenix `699 passed`，Native `./gradlew test quarkusBuild` 成功，admin-web `38 files / 363 passed`、类型检查和生产构建通过。静态契约为 46 个共享业务错误码、Native/Phoenix 各 112 条 `/api/v1` 路由和一致的 JWK 路由集合。这些结果不能替代候选版本的真实切换验收。
 - 逐页面新增、编辑、删除、筛选、分页、加载失败、重试、批量写入和详情返回矩阵仍未完整关闭。Phoenix LiveView 与 admin-web 的 1:1 页面基准仍缺少逐页证明。当前没有最新候选版本的 Codex 内置浏览器可视窗口证据，历史 Chrome 或无头证据不能代替该检查。
 - 公网 OIDC、真实浏览器和硬件 Passkey、浏览器 CSRF/Cookie、生产 TLS/代理链、多节点恢复、正式备份恢复、生产数据升级和发布窗口演练仍未完成。当前 Native 任务锁也只能证明单节点行为。
 

@@ -449,7 +449,7 @@ Phoenix `5f66778` 将密码设置规则和配置默认值对齐 Native，并覆�
 
 公告发布参数错误码已完成三端对齐：Native `fc9ef59`、Phoenix `b34e870` 和 admin-web `9957023` 对缺失或非布尔 `published` 统一返回 HTTP 422、`notice_published_invalid`。Phoenix 管理接口定向测试 `13 passed`，Native 管理写接口相关测试 `9 passed`，admin-web 公告页面和错误目录测试 `30 passed`。admin-web 现有发布按钮继续发送布尔值，错误诊断会显示专用代码和中文含义。
 
-公告批量删除参数错误码已完成三端对齐：Native `fac95f7`、Phoenix `b4ba5db` 和 admin-web `9871282` 对 `notice_ids` 缺失、空白、旧参数名或非法 UUID 统一返回 HTTP 422、`notice_ids_invalid`。Native HTTP 与契约回归、Phoenix 管理接口回归 `14 passed`、admin-web 公告删除诊断回归 `32 passed`。当前共享错误码目录包含 45 个服务端代码，admin-web 继续保留 4 个客户端本地代码。
+公告批量删除参数错误码已完成三端对齐：Native `fac95f7`、Phoenix `b4ba5db` 和 admin-web `9871282` 对 `notice_ids` 缺失、空白、旧参数名或非法 UUID 统一返回 HTTP 422、`notice_ids_invalid`。Native HTTP 与契约回归、Phoenix 管理接口回归 `14 passed`、admin-web 公告删除诊断回归 `32 passed`。当前共享错误码目录包含 46 个服务端代码，admin-web 继续保留 4 个客户端本地代码。
 
 ### 2026-11-22 1.0 发布 readiness 结论
 
