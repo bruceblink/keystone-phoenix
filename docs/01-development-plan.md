@@ -1295,7 +1295,7 @@ Phoenix `12f9696` 已将 LiveView 公告类型超长校验映射为 `notice_type
 
 发布前的 P0 项目是统一三端 `1.0.0` 版本和候选提交，建立 admin-web 正式产物，冻结接口、迁移和错误码目录，使用同一候选分别连接 Native 与 Phoenix 完成真实数据库和可视窗口验收，并执行正式镜像、备份恢复和回滚检查。若 1.0 明确限制为单节点、无公网 IdP、无硬件 Passkey 的支持范围，可以移除对应外部范围，但必须在发布说明和运行手册中明确记录。未完成 P0 前不创建 `v1.0.0` 标签或 Release。
 
-admin-web `cf0e12b` 已增加 `vX.Y.Z` 标签触发的正式发布工作流。工作流会运行全量测试、类型检查和生产构建，生成 `dist` 压缩包与 SHA-256 校验和并创建 GitHub Release。当前尚未运行真实 release tag，因此产物下载、Release 资产和后端切换验收仍属于待验证证据。
+admin-web `cf0e12b` 已增加 `vX.Y.Z` 标签触发的正式发布工作流，`36b8f3a` 新增 CHANGELOG 基线。工作流会运行全量测试、类型检查和生产构建，生成 `dist` 压缩包与 SHA-256 校验和并创建 GitHub Release。当前尚未运行真实 release tag，因此产物下载、Release 资产和后端切换验收仍属于待验证证据。
 
 Native `b061e72`、`f76355d` 已将发布工作流扩展为 GitHub Release 资产流程。正式标签会在 GHCR 镜像、SBOM、provenance、Cosign 和 smoke 之外生成 JVM fast-jar 压缩包与 SHA-256 校验和，并创建 Release notes。Native 同步新增 CHANGELOG 基线。当前尚未运行真实 release tag，镜像 digest、Release 资产和候选后端切换仍待验证。
 
