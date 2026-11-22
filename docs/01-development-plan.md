@@ -1277,3 +1277,9 @@ Phoenix `12f9696` 已将 LiveView 公告类型超长校验映射为 `notice_type
 
 - Native `fac95f7`、Phoenix `b4ba5db` 和 admin-web `9871282` 将公告批量删除的 `notice_ids` 缺失、空白或包含非法 UUID 统一为 HTTP 422、`notice_ids_invalid`。旧参数名和格式错误也进入同一专用代码，合法 UUID 列表和重复 UUID 的删除语义保持不变。
 - Native OwnerBatchResource HTTP、错误目录和跨项目契约测试通过；Phoenix 管理接口定向回归 `14 passed`；admin-web 公告删除错误诊断测试 `32 passed`，类型检查通过。三端目录检查已扩展到 45 个共享服务端错误码。
+
+### 2026-11-22 API Key 过期筛选回归校正
+
+- Native 和 Phoenix 当前 `status=active` 都排除已过期密钥，轮换已过期密钥返回 `409/api_key_expired`，轮换前重新计算权限交集。此前文档中关于后端仍可能返回过期 active 密钥的记录属于历史审查时点。
+- admin-web `d398187` 修复开发环境 mock fallback 的 active 筛选，使其同时检查 `revokedAt` 和 `expiresAt`。新增过期模拟密钥和客户端回归，客户端定向测试 `52 passed`，类型检查通过。
+- 最新三端回归结果为 Phoenix `699 passed`，Native `./gradlew test quarkusBuild` 成功，admin-web `362 passed`、类型检查和生产构建通过。
