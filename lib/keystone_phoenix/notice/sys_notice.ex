@@ -48,7 +48,7 @@ defmodule KeystonePhoenix.Notice.SysNotice do
   defp validate_notice_type_length(changeset) do
     validate_change(changeset, :notice_type, fn :notice_type, value ->
       if length(String.codepoints(value)) > 32,
-        do: [notice_type: {"should be at most 32 characters", []}],
+        do: [notice_type: {"should be at most 32 characters", [validation: :notice_type_invalid]}],
         else: []
     end)
   end

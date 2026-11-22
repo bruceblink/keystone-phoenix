@@ -342,7 +342,9 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
       })
 
     assert too_long_response.status == 422
-    assert get_in(json_response(too_long_response, 422), ["error", "code"]) == "validation_failed"
+
+    assert get_in(json_response(too_long_response, 422), ["error", "code"]) ==
+             "notice_type_invalid"
   end
 
   @tag :integration

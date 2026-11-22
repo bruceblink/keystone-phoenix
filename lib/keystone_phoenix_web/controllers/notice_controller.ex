@@ -158,15 +158,29 @@ defmodule KeystonePhoenixWeb.NoticeController do
 
   defp render_error(conn, %Ecto.Changeset{} = changeset) do
     errors = Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
+    error_code = notice_type_error_code(changeset)
 
     conn
     |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "参数校验失败", errors))
+    |> json(ApiResponse.error(error_code, "参数校验失败", errors))
   end
 
   defp render_error(conn, _reason) do
     conn
     |> put_status(:unprocessable_entity)
     |> json(ApiResponse.error(:validation_failed, "参数校验失败"))
+  end
+
+  # 仅把公告类型长度校验映射到专用业务码，其他字段继续使用通用校验码。
+  defp notice_type_error_code(changeset) do
+    case changeset.errors[:notice_type] do
+      {_message, options} when is_list(options) ->
+        if Keyword.get(options, :validation) == :notice_type_invalid,
+          do: :notice_type_invalid,
+          else: :validation_failed
+
+      _other ->
+        :validation_failed
+    end
   end
 end

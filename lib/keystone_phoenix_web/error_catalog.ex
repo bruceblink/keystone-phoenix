@@ -69,6 +69,12 @@ defmodule KeystonePhoenixWeb.ErrorCatalog do
       retryable: false,
       message_key: "request.validation_failed"
     },
+    # 公告类型超过 32 个 Unicode 码点时使用独立代码，便于两端排错。
+    "notice_type_invalid" => %{
+      status: 422,
+      retryable: false,
+      message_key: "error.notice_type_invalid"
+    },
     # 用户名重复和格式错误仅作为导入失败行的细分代码，不改变导入接口状态。
     "username_already_exists" => %{
       status: 422,
