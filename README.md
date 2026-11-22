@@ -1,8 +1,8 @@
 # Keystone Phoenix
 
-Elixir/Phoenix rewrite project for [Keystone](https://github.com/bruceblink/Keystone).
+Keystone Phoenix 是 Keystone 的 Elixir、Phoenix 和 Phoenix LiveView 后端。项目从第一版开始使用 PostgreSQL，并提供 JSON API、LiveView 管理页面、认证、权限、审计和后台任务能力。
 
-The project is managed with Mix and uses PostgreSQL from the first commit.
+Phoenix 以 [Keystone Admin Web](https://github.com/bruceblink/keystone-admin-web) 为页面和交互基准。LiveView 在 Phoenix 内重新实现 admin-web 的页面结构、布局、查询、表单、通知和响应式行为，不直接复用 React 页面代码。
 
 ## Toolchain
 
@@ -21,9 +21,18 @@ The dependency versions are locked in [`mix.lock`](mix.lock). `mix.exs` keeps
 the compatible minor version ranges so security and patch releases can be
 updated with the normal Mix workflow.
 
-The current release baseline is `0.3.0`. Release tags are created only after
-the production smoke checks in [`docs/04-deployment-runbook.md`](docs/04-deployment-runbook.md)
-pass against the built image.
+当前主线按 `v1.0.0` 发布目标维护。正式发布标签只在
+[`docs/04-deployment-runbook.md`](docs/04-deployment-runbook.md) 中记录的生产 smoke 检查通过后创建。
+
+## 1.0.0 生产配套
+
+Phoenix 只提供管理后台后端，不能单独作为完整的生产管理系统运行。生产部署必须将 Phoenix 与同一版本的 [Keystone Admin Web](https://github.com/bruceblink/keystone-admin-web) 绑定：
+
+- 标准组合为 `admin-web v1.0.0 + Phoenix v1.0.0`。admin-web 提供管理页面，Phoenix 提供 `/api/v1` 服务、LiveView 页面、数据库迁移和运行时能力。
+- `admin-web v1.0.0 + Native v1.0.0` 是可替换的后端组合。切换前必须重新完成接口、权限、错误码、登录、通知、查询、写操作和窄屏布局验收。
+- 只部署 Phoenix 而不部署 admin-web，或将 Phoenix 与未验收的前端构建包混用，均不满足生产发布条件。
+
+前端 API 代理或 API 基地址必须指向选定的 Phoenix 服务。前端构建包、Phoenix 镜像和 PostgreSQL 迁移必须来自同一发布验收批次。Native 1.0 发布后只维护缺陷、安全问题和依赖兼容性，新增业务功能主要进入 Phoenix 主线。
 
 ## Local development
 
@@ -49,22 +58,18 @@ mix ecto.rollback
 MIX_ENV=prod mix release
 ```
 
-Production images are built by the GitHub Actions release workflow. Do not build
-the production image on the development machine. After a formal `vX.Y.Z` tag is
-published, pull the CI-built image and run its migration and release commands:
+生产镜像由 GitHub Actions 发布工作流构建。开发机不构建生产镜像。正式
+`vX.Y.Z` 标签发布后，使用 CI 构建的镜像执行迁移并启动服务：
 
 ```bash
-docker pull ghcr.io/bruceblink/keystone-phoenix:0.3.0
-docker run --rm --env-file .env --entrypoint /app/bin/migrate ghcr.io/bruceblink/keystone-phoenix:0.3.0
-docker run --rm --env-file .env -p 4000:4000 ghcr.io/bruceblink/keystone-phoenix:0.3.0 start
+docker pull ghcr.io/bruceblink/keystone-phoenix:1.0.0
+docker run --rm --env-file .env --entrypoint /app/bin/migrate ghcr.io/bruceblink/keystone-phoenix:1.0.0
+docker run --rm --env-file .env -p 4000:4000 ghcr.io/bruceblink/keystone-phoenix:1.0.0 start
 ```
 
-GitHub Actions publishes release images to
-`ghcr.io/bruceblink/keystone-phoenix` only for stable semantic version tags
-such as `v0.3.0`. The image uses the unprefixed `X.Y.Z` tag, for example
-`0.3.0`, and does not create branch, commit, `latest`, or `v`-prefixed aliases.
-The workflow validates the Git tag before pushing and keeps BuildKit layers in
-the GitHub Actions cache.
+GitHub Actions 只为稳定语义版本标签发布
+`ghcr.io/bruceblink/keystone-phoenix`。镜像使用不带 `v` 的 `X.Y.Z` 标签，例如
+`1.0.0`，不创建分支、提交、`latest` 或带 `v` 的别名。工作流会校验 Git 标签，构建并签名镜像，生成 SBOM 和 provenance，执行远端 smoke，并创建 GitHub Release。BuildKit 层使用 GitHub Actions 缓存。
 
 The release reads `DATABASE_URL`, `SECRET_KEY_BASE`, `JWT_PRIVATE_KEY`, and
 `PHX_HOST` at runtime. Use `/api/v1/health` for liveness; rebuildable cache
@@ -76,18 +81,9 @@ the PostgreSQL connection pools. `AUTH_SESSION_CLEANUP_INTERVAL_MS` and
 Scheduler polling and task concurrency can be adjusted with `JOB_SCHEDULER_INTERVAL_MS`,
 `JOB_TASK_MAX_CHILDREN`, and `JOB_EXECUTION_TIMEOUT_MS`.
 
-The frontend is being rebuilt with Phoenix LiveView. The existing Keystone
-frontend can continue calling the JSON endpoints while LiveView owns the new
-server-rendered interactive pages and Ecto owns PostgreSQL access.
+Phoenix LiveView 是 Phoenix 的正式管理页面实现。admin-web 是页面结构、文案、交互和 `/api/v1` 行为的基准，LiveView 必须在 Phoenix 中重新实现这些页面。发布验收需要覆盖导航、登录、通知、查询条件、分页、加载、空数据、错误、重试、编辑、删除、批量操作、详情和响应式布局。
 
-The current frontend reference is
-[bruceblink/keystone-frontend](https://github.com/bruceblink/keystone-frontend).
-The current `main` branch is the usable replacement baseline. The reference
-frontend remains the API and page-behavior baseline, while LiveView reimplements
-the admin-web pages. Release acceptance requires matching page structure,
-layout, interaction, copy, responsive behavior, loading states, and error
-states. LiveView page variants must remain aligned with the admin-web baseline
-before they are included in a release candidate.
+Native 与 Phoenix 共用 admin-web 的后端接口约定。两套后端可以替换同一份 admin-web，但替换前需要验证版本对应的接口、权限范围、业务错误码和页面闭环。Phoenix LiveView 的样式和布局也必须与 admin-web 的验收基准保持一致。
 
 Implemented API slices currently include health checks, dictionary type/data
 CRUD, ETS-backed dictionary lookups, and system configuration CRUD with
@@ -185,6 +181,24 @@ profiles, configuration, dictionaries, notices, logs, scheduled jobs, and
 monitoring. Phoenix and LiveView browser assets are served from their Mix
 dependencies, so the page does not need a separate Node.js build step. Every
 source file is kept at 600 lines or fewer and the limit is checked by CI.
+
+## 页面和接口验收
+
+LiveView 管理壳从 `/` 登录页进入，使用侧边导航访问运行监控、用户、角色、部门、岗位、菜单与权限、API Key、接口文档、配置、字典、通知、登录日志、操作审计、定时任务和个人资料。通知铃铛只显示当前用户的站内通知，点击列表项后显示通知详情。
+
+JSON API 统一使用 `/api/v1` 前缀和 `{success, data, message, error}` 响应结构。登录和刷新使用 `data.accessToken`、`data.refreshToken`，API Key 只在创建或轮换响应中返回明文。业务错误使用唯一业务错误码，HTTP 状态码保持接口约定不变。
+
+发布前至少执行以下检查：
+
+```bash
+mix format --check-formatted
+mix check.source_lines
+MIX_ENV=prod mix compile --warnings-as-errors
+mix test
+mix test --include integration
+```
+
+发布工作流还会验证正式标签、数据库迁移可重复执行、备份恢复、认证、刷新令牌轮换、JWK、API Key 范围、文件和健康检查，随后执行镜像 smoke、Cosign、SBOM、provenance 和 GitHub Release 资产核验。公网 IdP、硬件 Passkey、多节点恢复、生产 TLS/代理链和生产发布窗口仍需在目标环境单独验收。
 
 ## PostgreSQL and ETS configuration
 
