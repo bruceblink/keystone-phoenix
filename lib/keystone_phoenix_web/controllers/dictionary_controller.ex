@@ -193,8 +193,8 @@ defmodule KeystonePhoenixWeb.DictionaryController do
 
   defp render_error(conn, :dict_type_not_found) do
     conn
-    |> put_status(:unprocessable_entity)
-    |> json(ApiResponse.error(:validation_failed, "字典类型不存在或已停用"))
+    |> put_status(:not_found)
+    |> json(ApiResponse.error(:resource_not_found, "字典类型不存在或已停用"))
   end
 
   defp render_error(conn, :permission_denied) do

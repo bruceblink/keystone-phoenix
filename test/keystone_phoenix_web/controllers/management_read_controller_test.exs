@@ -74,6 +74,19 @@ defmodule KeystonePhoenixWeb.ManagementReadControllerTest do
 
     assert type_response.status == 201
 
+    missing_item_response =
+      post(authorized(build_conn(), token), "/api/v1/dictionaries/missing-dict-type/items", %{
+        "dictType" => "missing-dict-type",
+        "dictLabel" => "不存在的类型",
+        "dictValue" => 1,
+        "status" => 1
+      })
+
+    assert missing_item_response.status == 404
+
+    assert get_in(json_response(missing_item_response, 404), ["error", "code"]) ==
+             "resource_not_found"
+
     assert Enum.any?(
              get(authorized(build_conn(), token), "/api/v1/dictionaries", %{
                "dictType" => dict_type
