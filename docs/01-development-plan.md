@@ -1297,7 +1297,7 @@ Phoenix `12f9696` 已将 LiveView 公告类型超长校验映射为 `notice_type
 
 admin-web `cf0e12b` 已增加 `vX.Y.Z` 标签触发的正式发布工作流。工作流会运行全量测试、类型检查和生产构建，生成 `dist` 压缩包与 SHA-256 校验和并创建 GitHub Release。当前尚未运行真实 release tag，因此产物下载、Release 资产和后端切换验收仍属于待验证证据。
 
-Native `b061e72` 已将发布工作流扩展为 GitHub Release 资产流程。正式标签会在 GHCR 镜像、SBOM、provenance、Cosign 和 smoke 之外生成 JVM fast-jar 压缩包与 SHA-256 校验和，并创建 Release notes。Native 同步新增 CHANGELOG 基线。当前尚未运行真实 release tag，镜像 digest、Release 资产和候选后端切换仍待验证。
+Native `b061e72`、`f76355d` 已将发布工作流扩展为 GitHub Release 资产流程。正式标签会在 GHCR 镜像、SBOM、provenance、Cosign 和 smoke 之外生成 JVM fast-jar 压缩包与 SHA-256 校验和，并创建 Release notes。Native 同步新增 CHANGELOG 基线。当前尚未运行真实 release tag，镜像 digest、Release 资产和候选后端切换仍待验证。
 
 Phoenix `869c94a` 已将 release-image 工作流扩展为 GitHub Release 记录流程。正式标签会在 GHCR 镜像签名和 release smoke 成功后生成双语 Release notes，记录镜像标签和 digest，并创建 GitHub Release。当前尚未运行真实 release tag，镜像 digest、Release 记录和候选后端切换仍待验证。
 
