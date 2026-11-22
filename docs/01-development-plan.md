@@ -1284,6 +1284,17 @@ Phoenix `12f9696` 已将 LiveView 公告类型超长校验映射为 `notice_type
 - admin-web `d398187` 修复开发环境 mock fallback 的 active 筛选，使其同时检查 `revokedAt` 和 `expiresAt`。新增过期模拟密钥和客户端回归，客户端定向测试 `52 passed`，类型检查通过。
 - 最新三端回归结果为 Phoenix `699 passed`，Native `./gradlew test quarkusBuild` 成功，admin-web `362 passed`、类型检查和生产构建通过。
 
+### 2026-11-22 1.0 发布 readiness 审查
+
+结论：当前版本 **NO-GO，暂缓发布 1.0**。功能开发和本地自动化回归属于条件通过，发布候选和生产验收证据尚未形成。
+
+- 当前版本仍为 Phoenix `0.3.0`、Native `0.1.0-SNAPSHOT`、admin-web `0.1.0`。三个仓库没有统一的 `v1.0.0` 候选提交、标签、版本清单和校验信息。Native 没有 CHANGELOG 或 Release 资产流程；admin-web 只有质量检查 CI，没有正式构建、部署、缓存和回滚产物流程。
+- 当前代码基线的自动化证据为 Phoenix `699 passed`，Native `./gradlew test quarkusBuild` 成功，admin-web `38 files / 363 passed`、类型检查和生产构建通过。静态契约为 45 个共享业务错误码、Native/Phoenix 各 112 条 `/api/v1` 路由和一致的 JWK 路由集合。这些结果不能替代候选版本的真实切换验收。
+- 逐页面新增、编辑、删除、筛选、分页、加载失败、重试、批量写入和详情返回矩阵仍未完整关闭。Phoenix LiveView 与 admin-web 的 1:1 页面基准仍缺少逐页证明。当前没有最新候选版本的 Codex 内置浏览器可视窗口证据，历史 Chrome 或无头证据不能代替该检查。
+- 公网 OIDC、真实浏览器和硬件 Passkey、浏览器 CSRF/Cookie、生产 TLS/代理链、多节点恢复、正式备份恢复、生产数据升级和发布窗口演练仍未完成。当前 Native 任务锁也只能证明单节点行为。
+
+发布前的 P0 项目是统一三端 `1.0.0` 版本和候选提交，建立 admin-web 正式产物，冻结接口、迁移和错误码目录，使用同一候选分别连接 Native 与 Phoenix 完成真实数据库和可视窗口验收，并执行正式镜像、备份恢复和回滚检查。若 1.0 明确限制为单节点、无公网 IdP、无硬件 Passkey 的支持范围，可以移除对应外部范围，但必须在发布说明和运行手册中明确记录。未完成 P0 前不创建 `v1.0.0` 标签或 Release。
+
 ### 2026-11-22 admin-web 用户权限组合验收校正
 
 - admin-web `0b5ebf9` 已处理用户新增、编辑、删除、导入导出和角色分配的细分权限。没有 `role:read` 与 `role:assign` 时，新用户保存不发送角色绑定，编辑用户保留已有角色。现有 `UsersPageCapabilities` 覆盖无角色权限、只有角色读取、只有角色分配和无角色数据范围四种组合。
