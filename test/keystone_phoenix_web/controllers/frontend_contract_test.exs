@@ -166,7 +166,13 @@ defmodule KeystonePhoenixWeb.FrontendContractTest do
     assert auth.() |> put("/api/v1/profile/avatar", %{"avatar" => avatar}) |> json_response(200)
 
     # 空地址不能覆盖或清除已经保存的头像。
-    for params <- [%{}, %{"avatar" => ""}, %{"avatar" => " \t "}] do
+    for params <- [
+          %{},
+          %{"avatar" => nil},
+          %{"avatar" => 123},
+          %{"avatar" => ""},
+          %{"avatar" => " \t "}
+        ] do
       response = auth.() |> put("/api/v1/profile/avatar", params)
       assert get_in(json_response(response, 422), ["error", "code"]) == "profile_avatar_required"
       assert Repo.get!(SysUser, fixtures.user.user_id).avatar == avatar

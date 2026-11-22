@@ -103,7 +103,7 @@ defmodule KeystonePhoenixWeb.ProfileController do
     end
   end
 
-  def update_avatar(conn, %{"avatar" => avatar}) do
+  def update_avatar(conn, %{"avatar" => avatar}) when is_binary(avatar) do
     with {:ok, current_user} <- User.get_user(conn.assigns.current_user.user_id) do
       case User.update_avatar(
              conn.assigns.current_user.user_id,
@@ -124,6 +124,10 @@ defmodule KeystonePhoenixWeb.ProfileController do
       {:error, :not_found} -> render_error(conn, :not_found)
     end
   end
+
+  # 非字符串头像地址与缺失地址使用相同的业务错误，避免进入 User.update_avatar 的二进制子句。
+  def update_avatar(conn, %{"avatar" => _invalid}),
+    do: render_error(conn, :profile_avatar_required)
 
   def update_avatar(conn, %{"avatarfile" => _invalid}), do: render_error(conn, :invalid_upload)
   def update_avatar(conn, _params), do: render_error(conn, :profile_avatar_required)
