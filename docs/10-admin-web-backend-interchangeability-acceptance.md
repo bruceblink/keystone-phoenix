@@ -429,7 +429,9 @@ Phoenix `5f66778` 将密码设置规则和配置默认值对齐 Native，并覆�
 
 2026-11-18 角色错误码补充验收：Native `d574c48`、Phoenix `0d48983` 和 admin-web `32db064` 将角色有成员和管理员角色受保护分别标识为 `role_has_members` 与 `role_protected`，HTTP 状态仍为 422。三端目录检查为 23 个共享服务端代码。Native 真实 MySQL HTTP 和错误目录定向测试 13 项通过；Phoenix 相关集成、目录和 LiveView 定向测试 24 项通过；admin-web 全量测试 176 项通过，类型检查和构建通过。Codex 内置浏览器连接隔离 Native 后，分别验证两种删除错误的文案和代码、关闭后清除错误，以及 320 逻辑像素下没有页面横向溢出。本次未在浏览器完成 Phoenix LiveView 的真实二次认证和删除失败反馈。
 
-成员列表仍一次读取全部匹配用户，服务端分页尚未实现。现有证据不覆盖全部页面写操作、生产部署或正式发布；跨数据库 Unicode 筛选差异继续保持待完成状态。
+历史记录中的“成员列表仍一次读取全部匹配用户、服务端分页尚未实现”已不适用于当前代码。Native 和 Phoenix 当前都支持 `username`、`phoneNumber` 筛选、`include=identity`、`page/size` 分页和旧数组兼容，并按 UUID 降序返回。现有证据仍不覆盖全部页面写操作、生产部署或正式发布；跨数据库 Unicode 筛选差异继续保持待完成状态。
+
+2026-11-22 文档校正：角色成员查询的当前实现已与 admin-web 使用约定一致。历史章节保留原始审查时点，不再作为当前未完成项判断依据。
 
 2026-11-22 Phoenix LiveView 任务执行错误反馈：`7063f57` 修复 `permission_denied` 和 `data_scope_denied` 被误报为 `resource_not_found` 的问题。该行为现在与 admin-web 的 `ActionError` 显示和错误码诊断一致。两条分支已通过无数据库事件验证；本机 PostgreSQL 未启动，LiveView 集成测试待补跑。
 

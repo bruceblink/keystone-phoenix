@@ -1246,3 +1246,5 @@ Phoenix `28a7eeb` 已将字典项创建时不存在或停用的字典类型统�
 Phoenix `7063f57` 已将 LiveView 任务执行的权限错误对齐 admin-web：权限不足返回 `permission_denied`，数据范围不足返回 `data_scope_denied`，不再误报为任务不存在。事件回归和无数据库运行验证通过；LiveView 测试套件仍待 PostgreSQL 启动后补跑。
 
 Phoenix `656de7c` 已将任务编辑读取的权限和数据范围错误同步对齐；编辑与执行入口均保留准确错误码。四条事件分支通过无数据库运行验证，PostgreSQL 集成测试仍待补跑。
+
+2026-11-22 文档校正：角色成员当前实现已支持 `username`、`phoneNumber` 筛选、`include=identity`、`page/size` 分页和旧数组兼容；Native 与 Phoenix 均按 UUID 降序返回。此前关于成员分页和筛选未完成的历史记录不再代表当前代码状态。
