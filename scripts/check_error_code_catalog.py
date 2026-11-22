@@ -31,6 +31,7 @@ EXPECTED_STATUS = {
     "payload_too_large": 413,
     "https_required": 426,
     "validation_failed": 422,
+    "notice_type_invalid": 422,
     "username_already_exists": 422,
     "username_invalid_format": 422,
     "password_same_as_current": 422,
