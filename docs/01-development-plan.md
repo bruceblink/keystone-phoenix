@@ -1272,3 +1272,8 @@ Phoenix `12f9696` 已将 LiveView 公告类型超长校验映射为 `notice_type
 - Native `fc9ef59`、Phoenix `b34e870` 和 admin-web `9957023` 将公告发布接口缺失或非布尔 `published` 参数统一为 HTTP 422、`notice_published_invalid`。合法布尔值的发布和取消发布行为保持不变。
 - Native 将发布请求字段按 JSON 节点校验，补充 3 项 HTTP、错误目录和跨项目契约测试；Phoenix 增加控制器专用映射和管理接口回归，相关定向测试 13 项通过；admin-web 增加错误目录、用户提示和公告页面诊断测试 30 项通过，类型检查通过。
 - 三端业务错误码目录和 HTTP 路由检查待本轮最终回归后确认，Native/Phoenix/admin-web 的真实页面发布按钮继续发送布尔值。
+
+### 2026-11-22 公告批量删除参数错误码对齐
+
+- Native `fac95f7`、Phoenix `b4ba5db` 和 admin-web `9871282` 将公告批量删除的 `notice_ids` 缺失、空白或包含非法 UUID 统一为 HTTP 422、`notice_ids_invalid`。旧参数名和格式错误也进入同一专用代码，合法 UUID 列表和重复 UUID 的删除语义保持不变。
+- Native OwnerBatchResource HTTP、错误目录和跨项目契约测试通过；Phoenix 管理接口定向回归 `14 passed`；admin-web 公告删除错误诊断测试 `32 passed`，类型检查通过。三端目录检查已扩展到 45 个共享服务端错误码。

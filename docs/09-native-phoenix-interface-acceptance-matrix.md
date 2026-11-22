@@ -240,3 +240,7 @@ Native `ec75cb3` 和 Phoenix `842cd4a` 统一 API Key 的边界：密钥本身�
 ### 2026-11-22 公告发布参数错误码
 
 Native `fc9ef59`、Phoenix `b34e870` 和 admin-web `9957023` 将公告发布接口的缺失或非布尔 `published` 参数统一为 HTTP 422、`notice_published_invalid`。Native 管理写接口定向测试、错误码目录和跨项目契约检查通过；Phoenix 管理读取写入回归 `13 passed`；admin-web 公告页面与错误目录定向测试 `30 passed`，类型检查通过。三端仍使用同一发布路径和布尔请求字段。
+
+### 2026-11-22 公告批量删除参数错误码
+
+Native `fac95f7`、Phoenix `b4ba5db` 和 admin-web `9871282` 将公告批量删除的 `notice_ids` 缺失、空白或非法 UUID 统一为 HTTP 422、`notice_ids_invalid`。Native HTTP 回归、Phoenix 管理回归 `14 passed` 和 admin-web 公告错误诊断回归 `32 passed` 通过。合法 UUID 和重复 UUID 的删除行为继续保持原有语义。
